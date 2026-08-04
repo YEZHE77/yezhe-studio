@@ -85,6 +85,34 @@ export default function Orders() {
 
   const openNew = () => { setForm(emptyForm()); setErr(''); setShowForm(true); };
 
+  // 编辑订单（基本信息；金额通过收款/退款调整，不在本处改）
+  const [edit, setEdit] = useState(null);
+  const [editForm, setEditForm] = useState({ customer_name: '', customer_phone: '', shoot_date: '', executor: '', remark: '', status: '' });
+  const openEdit = () => {
+    if (!detail) return;
+    setEditForm({
+      customer_name: detail.customer_name || '', customer_phone: detail.customer_phone || '',
+      shoot_date: detail.shoot_date || '', executor: detail.executor || '',
+      remark: detail.remark || '', status: detail.status
+    });
+    setEdit(true);
+  };
+  async function saveEdit(e) {
+    e.preventDefault();
+    try {
+      await http.put('/api/orders/' + detail.id, editForm);
+      setEdit(false);
+      openDetail(detail.id); load();
+    } catch (e2) { alert((e2.response && e2.response.data && e2.response.data.error) || '保存失败'); }
+  }
+  async function removeOrder() {
+    if (!confirm('确认删除该订单？\n订单及其收款流水、选片记录将一并永久删除，不可恢复。')) return;
+    try {
+      await http.delete('/api/orders/' + detail.id);
+      setDetail(null); load();
+    } catch (e2) { alert((e2.response && e2.response.data && e2.response.data.error) || '删除失败'); }
+  }
+
   async function submit(e) {
     e.preventDefault();
     setErr('');
@@ -279,6 +307,8 @@ export default function Orders() {
                 className="px-3 py-1.5 rounded bg-panel2 border border-line text-white text-xs">+ 收款</button>
               <button onClick={refund} className="px-3 py-1.5 rounded bg-panel2 border border-line text-amber-400 text-xs">退款</button>
               <button onClick={cancel} className="px-3 py-1.5 rounded bg-panel2 border border-line text-red-400 text-xs">作废</button>
+              <button onClick={openEdit} className="px-3 py-1.5 rounded bg-panel2 border border-line text-white text-xs">编辑</button>
+              <button onClick={removeOrder} className="px-3 py-1.5 rounded bg-panel2 border border-line text-red-400 text-xs">删除</button>
             </div>
 
             {/* 收款流水 */}
@@ -377,6 +407,37 @@ export default function Orders() {
               <button onClick={savePay} className="px-4 py-2 rounded bg-brand text-white text-sm">保存</button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* 编辑订单弹窗 */}
+      {edit && detail && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[70] p-4" onClick={() => setEdit(false)}>
+          <form onClick={(e) => e.stopPropagation()} onSubmit={saveEdit} className="w-full max-w-md bg-panel border border-line rounded-xl2 p-6">
+            <div className="text-white font-medium mb-4">编辑订单 · {detail.order_no}</div>
+            <div className="grid grid-cols-2 gap-3">
+              <input required value={editForm.customer_name} onChange={(e) => setEditForm({ ...editForm, customer_name: e.target.value })} placeholder="客户姓名"
+                className="px-3 py-2 rounded bg-panel2 border border-line text-white text-sm outline-none" />
+              <input value={editForm.customer_phone} onChange={(e) => setEditForm({ ...editForm, customer_phone: e.target.value })} placeholder="联系电话"
+                className="px-3 py-2 rounded bg-panel2 border border-line text-white text-sm outline-none" />
+            </div>
+            <input value={editForm.shoot_date} onChange={(e) => setEditForm({ ...editForm, shoot_date: e.target.value })} type="date" placeholder="拍摄日期"
+              className="w-full mt-3 px-3 py-2 rounded bg-panel2 border border-line text-white text-sm outline-none" />
+            <input value={editForm.executor} onChange={(e) => setEditForm({ ...editForm, executor: e.target.value })} placeholder="执行人"
+              className="w-full mt-3 px-3 py-2 rounded bg-panel2 border border-line text-white text-sm outline-none" />
+            <select value={editForm.status} onChange={(e) => setEditForm({ ...editForm, status: e.target.value })}
+              className="w-full mt-3 px-3 py-2 rounded bg-panel2 border border-line text-white text-sm outline-none">
+              <option value="unpaid">待付定金</option><option value="deposit">已付定金</option><option value="shot">已拍摄</option>
+              <option value="selecting">选片中</option><option value="retouching">精修中</option><option value="delivered">已交付</option>
+              <option value="completed">已完成</option><option value="cancelled">已作废</option>
+            </select>
+            <input value={editForm.remark} onChange={(e) => setEditForm({ ...editForm, remark: e.target.value })} placeholder="备注"
+              className="w-full mt-3 px-3 py-2 rounded bg-panel2 border border-line text-white text-sm outline-none" />
+            <div className="flex gap-2 justify-end mt-4">
+              <button type="button" onClick={() => setEdit(false)} className="px-4 py-2 rounded text-sm text-muted">取消</button>
+              <button type="submit" className="px-4 py-2 rounded bg-brand text-white text-sm">保存</button>
+            </div>
+          </form>
         </div>
       )}
     </div>

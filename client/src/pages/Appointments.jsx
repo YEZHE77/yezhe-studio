@@ -10,8 +10,14 @@ export default function Appointments() {
   const [list, setList] = useState([]);
   const [pkgs, setPkgs] = useState([]);
   const [detail, setDetail] = useState(null);
+  const [editing, setEditing] = useState(null);
   const [conv, setConv] = useState(null); // 转单结果弹层
+  const [form, setForm] = useState(emptyForm());
   const nav = useNavigate();
+
+  function emptyForm() {
+    return { id: null, name: '', phone: '', package_id: '', hope_date: '', remark: '', status: 'pending' };
+  }
 
   const load = () => {
     const p = new URLSearchParams();
@@ -30,6 +36,38 @@ export default function Appointments() {
       load();
     } catch (e) {
       alert((e.response && e.response.data && e.response.data.error) || '转单失败');
+    }
+  }
+
+  const openDetail = (a) => { setEditing(null); setDetail(a); };
+  const openEdit = (a) => {
+    setDetail(null);
+    setEditing({ id: a.id, name: a.name, phone: a.phone, package_id: a.package_id || '', hope_date: a.hope_date || '', remark: a.remark || '', status: a.status });
+    setForm({ id: a.id, name: a.name, phone: a.phone, package_id: a.package_id || '', hope_date: a.hope_date || '', remark: a.remark || '', status: a.status });
+  };
+
+  async function saveEdit(e) {
+    e.preventDefault();
+    try {
+      await http.put('/api/admin/appointments/' + editing.id, {
+        name: form.name, phone: form.phone, package_id: form.package_id || null,
+        hope_date: form.hope_date, remark: form.remark, status: form.status
+      });
+      setEditing(null);
+      load();
+    } catch (e2) {
+      alert((e2.response && e2.response.data && e2.response.data.error) || '保存失败');
+    }
+  }
+
+  async function remove(a) {
+    if (!confirm(`确认删除预约「${a.name}」？此操作不可恢复。`)) return;
+    try {
+      await http.delete('/api/admin/appointments/' + a.id);
+      setDetail(null);
+      load();
+    } catch (e2) {
+      alert((e2.response && e2.response.data && e2.response.data.error) || '删除失败');
     }
   }
 
@@ -59,19 +97,19 @@ export default function Appointments() {
               <th className="p-3 font-medium">期望日期</th>
               <th className="p-3 font-medium">备注</th>
               <th className="p-3 font-medium">状态</th>
-              <th className="p-3 font-medium">操作</th>
+              <th className="p-3 font-medium text-right">操作</th>
             </tr>
           </thead>
           <tbody>
             {list.map((a) => (
-              <tr key={a.id} className="border-b border-line last:border-0 hover:bg-panel2">
+              <tr key={a.id} onClick={() => openDetail(a)} className="border-b border-line last:border-0 cursor-pointer hover:bg-panel2">
                 <td className="p-3 text-white">{a.name}</td>
                 <td className="p-3 text-white">{a.phone}</td>
                 <td className="p-3 text-muted">{a.package_name || '—'}</td>
                 <td className="p-3 text-muted">{a.hope_date || '—'}</td>
                 <td className="p-3 text-muted max-w-[180px] truncate">{a.remark || '—'}</td>
                 <td className="p-3"><span className={'px-2 py-1 rounded-full text-xs ' + badge(a.status)}>{STATUS_LABEL[a.status] || a.status}</span></td>
-                <td className="p-3">
+                <td className="p-3 text-right whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
                   {a.status === 'pending' ? (
                     <button onClick={() => convert(a)} className="px-3 py-1.5 rounded bg-brand text-white text-xs hover:opacity-90">转订单</button>
                   ) : (
@@ -84,6 +122,67 @@ export default function Appointments() {
           </tbody>
         </table>
       </div>
+
+      {/* 详情弹窗 */}
+      {detail && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" onClick={() => setDetail(null)}>
+          <div onClick={(e) => e.stopPropagation()} className="w-full max-w-md bg-panel border border-line rounded-xl2 p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="text-white font-medium">预约详情</div>
+              <button onClick={() => setDetail(null)} className="text-muted text-sm">✕</button>
+            </div>
+            <div className="space-y-2 text-sm mb-4">
+              <Row label="称呼" value={detail.name} />
+              <Row label="电话" value={detail.phone} />
+              <Row label="意向套系" value={detail.package_name || '—'} />
+              <Row label="期望日期" value={detail.hope_date || '—'} />
+              <Row label="备注" value={detail.remark || '—'} />
+              <Row label="状态" value={STATUS_LABEL[detail.status] || detail.status} />
+            </div>
+            <div className="flex gap-2 justify-end">
+              <button onClick={() => remove(detail)} className="px-3 py-1.5 rounded border border-line text-red-400 text-xs hover:bg-red-500/10">删除</button>
+              <button onClick={() => openEdit(detail)} className="px-3 py-1.5 rounded border border-line text-white text-xs">编辑</button>
+              {detail.status === 'pending' && (
+                <button onClick={() => convert(detail)} className="px-3 py-1.5 rounded bg-brand text-white text-xs">转订单</button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 编辑弹窗 */}
+      {editing && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[60] p-4" onClick={() => setEditing(null)}>
+          <form onClick={(e) => e.stopPropagation()} onSubmit={saveEdit} className="w-full max-w-md bg-panel border border-line rounded-xl2 p-6">
+            <div className="text-white font-medium mb-4">编辑预约</div>
+            <input required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="称呼"
+              className="w-full mb-3 px-3 py-2 rounded bg-panel2 border border-line text-white text-sm outline-none" />
+            <input required value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="联系电话"
+              className="w-full mb-3 px-3 py-2 rounded bg-panel2 border border-line text-white text-sm outline-none" />
+            <select value={form.package_id} onChange={(e) => setForm({ ...form, package_id: e.target.value })}
+              className="w-full mb-3 px-3 py-2 rounded bg-panel2 border border-line text-white text-sm outline-none">
+              <option value="">未选套系</option>
+              {pkgs.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+            </select>
+            <input value={form.hope_date} onChange={(e) => setForm({ ...form, hope_date: e.target.value })} type="date" placeholder="期望日期"
+              className="w-full mb-3 px-3 py-2 rounded bg-panel2 border border-line text-white text-sm outline-none" />
+            <textarea value={form.remark} onChange={(e) => setForm({ ...form, remark: e.target.value })} placeholder="备注"
+              className="w-full mb-3 px-3 py-2 rounded bg-panel2 border border-line text-white text-sm outline-none h-16" />
+            <div className="flex gap-2 mb-4">
+              <span className="text-xs text-muted self-center">状态</span>
+              <select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}
+                className="flex-1 px-3 py-2 rounded bg-panel2 border border-line text-white text-sm outline-none">
+                <option value="pending">待处理</option>
+                <option value="converted">已转订单</option>
+              </select>
+            </div>
+            <div className="flex gap-2 justify-end">
+              <button type="button" onClick={() => setEditing(null)} className="px-4 py-2 rounded text-sm text-muted">取消</button>
+              <button type="submit" className="px-4 py-2 rounded bg-brand text-white text-sm">保存</button>
+            </div>
+          </form>
+        </div>
+      )}
 
       {/* 转单结果 */}
       {conv && (
@@ -103,6 +202,14 @@ export default function Appointments() {
   );
 }
 
+function Row({ label, value }) {
+  return (
+    <div className="flex justify-between gap-4">
+      <span className="text-muted">{label}</span>
+      <span className="text-white text-right">{value}</span>
+    </div>
+  );
+}
 function btn(active, label) {
   return 'px-3 py-2 rounded-full text-sm border ' + (active ? 'bg-brand text-white border-brand' : 'bg-panel border-line text-muted');
 }

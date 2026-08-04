@@ -134,6 +134,18 @@ router.post('/:id/payments', authRequired, requireRole(['admin', 'photographer',
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// 物理删除订单（仅管理员，级联删除收款流水与选片记录）
+router.delete('/:id', authRequired, requireRole(['admin']), async (req, res) => {
+  try {
+    const o = await get('SELECT id FROM orders WHERE id = ?', [req.params.id]);
+    if (!o) return res.status(404).json({ error: '订单不存在' });
+    await run('DELETE FROM payments WHERE order_id = ?', [req.params.id]);
+    await run('DELETE FROM photo_select WHERE order_id = ?', [req.params.id]);
+    await run('DELETE FROM orders WHERE id = ?', [req.params.id]);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // 作废（仅标记 cancelled，禁止物理删除）
 router.post('/:id/cancel', authRequired, requireRole(['admin']), async (req, res) => {
   try {

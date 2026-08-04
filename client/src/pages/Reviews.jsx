@@ -26,6 +26,16 @@ export default function Reviews() {
     }
   }
 
+  async function remove(id) {
+    if (!confirm('确认删除该评价？此操作不可恢复。')) return;
+    try {
+      await http.delete('/api/admin/evaluates/' + id);
+      load();
+    } catch (e) {
+      alert((e.response && e.response.data && e.response.data.error) || '删除失败');
+    }
+  }
+
   return (
     <div className="max-w-5xl mx-auto">
       <div className="flex items-center justify-between mb-4">
@@ -60,12 +70,15 @@ export default function Reviews() {
                 ))}
               </div>
             )}
-            {e.status === 'pending' && (
-              <div className="flex gap-2">
-                <button onClick={() => review(e.id, 'approve')} className="flex-1 px-3 py-1.5 rounded bg-emerald-600 text-white text-xs hover:opacity-90">通过</button>
-                <button onClick={() => review(e.id, 'reject')} className="flex-1 px-3 py-1.5 rounded bg-panel2 border border-line text-red-400 text-xs">驳回</button>
-              </div>
-            )}
+            <div className="flex gap-2">
+              {e.status === 'pending' && (
+                <>
+                  <button onClick={() => review(e.id, 'approve')} className="flex-1 px-3 py-1.5 rounded bg-emerald-600 text-white text-xs hover:opacity-90">通过</button>
+                  <button onClick={() => review(e.id, 'reject')} className="flex-1 px-3 py-1.5 rounded bg-panel2 border border-line text-red-400 text-xs">驳回</button>
+                </>
+              )}
+              <button onClick={() => remove(e.id)} className="px-3 py-1.5 rounded bg-panel2 border border-line text-red-400 text-xs hover:bg-red-500/10">删除</button>
+            </div>
           </div>
         ))}
         {list.length === 0 && <div className="col-span-full text-center text-muted py-10">暂无评价</div>}

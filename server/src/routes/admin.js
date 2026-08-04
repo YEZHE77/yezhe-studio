@@ -54,6 +54,29 @@ router.post('/appointments/:id/convert', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// 编辑预约（修改称呼/电话/意向套系/期望日期/备注/状态）
+router.put('/appointments/:id', async (req, res) => {
+  try {
+    const a = await get('SELECT * FROM appointments WHERE id = ?', [req.params.id]);
+    if (!a) return res.status(404).json({ error: '预约不存在' });
+    const b = req.body;
+    await run(
+      'UPDATE appointments SET name=?, phone=?, package_id=?, hope_date=?, remark=?, status=? WHERE id=?',
+      [b.name ?? a.name, b.phone ?? a.phone, b.package_id ?? a.package_id,
+       b.hope_date ?? a.hope_date, b.remark ?? a.remark, b.status ?? a.status, req.params.id]
+    );
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// 删除预约
+router.delete('/appointments/:id', async (req, res) => {
+  try {
+    await run('DELETE FROM appointments WHERE id = ?', [req.params.id]);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // ===== 2. 选片结果（管理端查看 / 修改）=====
 async function linkedSamplePhotos(orderId) {
   const works = await query('SELECT id, title FROM works WHERE order_id = ? ORDER BY id DESC', [orderId]);
@@ -126,6 +149,14 @@ router.post('/evaluates/:id/review', async (req, res) => {
     const status = action === 'approve' ? 'approved' : 'rejected';
     await run('UPDATE evaluates SET status = ? WHERE id = ?', [status, req.params.id]);
     res.json({ ok: true, status });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// 删除评价
+router.delete('/evaluates/:id', async (req, res) => {
+  try {
+    await run('DELETE FROM evaluates WHERE id = ?', [req.params.id]);
+    res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
