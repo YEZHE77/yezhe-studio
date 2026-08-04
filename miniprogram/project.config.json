@@ -35,5 +35,6 @@
   "projectname": "yezhe-studio-miniprogram",
   "condition": {},
   "simulatorPluginLibVersion": {},
-  "editorSetting": {}
+  "editorSetting": {},
+  "isGameTourist": false
 }

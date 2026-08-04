@@ -14,7 +14,7 @@ export async function seedIfNeeded() {
   }
 
   const catCount = await get('SELECT COUNT(*) AS c FROM categories');
-  if (catCount.c === 0) {
+  if (Number(catCount.c) === 0) {
     for (const [name, kind] of [['婚礼', 'work'], ['领证', 'work'], ['孕妇照', 'work'], ['写真', 'work']]) {
       await insert('INSERT INTO categories (name, kind, sort) VALUES (?,?,?)', [name, kind, 0]);
     }
@@ -24,7 +24,7 @@ export async function seedIfNeeded() {
   // 套系（2 条）
   const pkgCount = await get('SELECT COUNT(*) AS c FROM packages');
   let firstPkgId = null;
-  if (pkgCount.c === 0) {
+  if (Number(pkgCount.c) === 0) {
     firstPkgId = await insert(
       `INSERT INTO packages (name, price, category_id, description, addons, marketing, status, sort)
        VALUES (?,?,?,?,?,?,?,?)`,
@@ -50,7 +50,7 @@ export async function seedIfNeeded() {
 
   // 档期（1 条）
   const scCount = await get('SELECT COUNT(*) AS c FROM schedules');
-  if (scCount.c === 0) {
+  if (Number(scCount.c) === 0) {
     const today = new Date();
     const d = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 3);
     const ds = d.toISOString().slice(0, 10);
@@ -64,7 +64,7 @@ export async function seedIfNeeded() {
 
   // 演示订单（引用套系 + 收款流水）
   const oCount = await get('SELECT COUNT(*) AS c FROM orders');
-  if (oCount.c === 0) {
+  if (Number(oCount.c) === 0) {
     const pkg = await get('SELECT * FROM packages WHERE id = ?', [firstPkgId]);
     const snapshot = JSON.stringify({ id: pkg.id, name: pkg.name, price: pkg.price });
     const order_no = 'NO20260801';
@@ -84,7 +84,7 @@ export async function seedIfNeeded() {
 
   // 演示作品
   const wCount = await get('SELECT COUNT(*) AS c FROM works');
-  if (wCount.c === 0) {
+  if (Number(wCount.c) === 0) {
     const cid = (await get("SELECT id FROM categories WHERE name = '婚礼'")).id;
     const wid = await insert(
       `INSERT INTO works (title, category_id, is_public, is_private, cover_url, description, tags, customer_name)
