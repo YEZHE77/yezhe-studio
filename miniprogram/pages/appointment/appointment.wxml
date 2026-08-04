@@ -1,0 +1,44 @@
+<view class="page">
+  <view class="section"><view class="section-title"><text>预约拍摄</text></view></view>
+
+  <view class="form card">
+    <view class="field">
+      <view class="field-label">称呼</view>
+      <input class="input" placeholder="怎么称呼您" value="{{name}}" bindinput="onName" />
+    </view>
+    <view class="field">
+      <view class="field-label">联系电话</view>
+      <input class="input" type="number" placeholder="11 位手机号" value="{{phone}}" bindinput="onPhone" />
+    </view>
+    <view class="field" wx:if="{{packages.length}}">
+      <view class="field-label">意向套系</view>
+      <picker mode="selector" range="{{packages}}" range-key="name" value="{{pkgIndex}}" bindchange="onPkg">
+        <view class="input picker">{{packages[pkgIndex].name}} ›</view>
+      </picker>
+    </view>
+    <view class="field">
+      <view class="field-label">期望日期</view>
+      <picker mode="date" value="{{hopeDate}}" bindchange="onDate">
+        <view class="input picker">{{hopeDate || '选择日期'}} ›</view>
+      </picker>
+    </view>
+    <view class="field">
+      <view class="field-label">备注</view>
+      <textarea class="textarea" placeholder="拍摄想法 / 地点 / 风格…" value="{{remark}}" bindinput="onRemark" />
+    </view>
+    <view class="btn btn-block" bindtap="submit" disabled="{{submitting}}">提交预约</view>
+    <view class="form-tip muted small">提交后摄影师会尽快与您联系，也可在「我的」中查看进度。</view>
+  </view>
+
+  <view class="section"><view class="section-title"><text>我的预约</text></view></view>
+  <view class="appt" wx:for="{{list}}" wx:key="id">
+    <view class="appt-top">
+      <text class="appt-name">{{item.name}}</text>
+      <text class="appt-status">{{item.statusText}}</text>
+    </view>
+    <view class="muted small" wx:if="{{item.package_name}}">套系：{{item.package_name}}</view>
+    <view class="muted small" wx:if="{{item.hope_date}}">期望：{{item.hope_date}}</view>
+    <view class="muted small" wx:if="{{item.remark}}">备注：{{item.remark}}</view>
+  </view>
+  <view wx:if="{{list.length === 0}}" class="empty">还没有预约</view>
+</view>

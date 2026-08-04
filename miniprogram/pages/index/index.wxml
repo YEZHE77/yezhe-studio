@@ -1,0 +1,73 @@
+<view class="page">
+  <!-- 首屏 -->
+  <view class="hero">
+    <view class="hero-en">YEZHE STUDIO</view>
+    <view class="hero-cn">叶哲 · 影像志</view>
+    <view class="hero-tag">婚礼 / 写真 / 纪实摄影</view>
+  </view>
+
+  <!-- 精选客片 -->
+  <view class="section">
+    <view class="section-title">
+      <text>精选客片</text>
+      <text class="section-sub" bindtap="goWorks">全部 ›</text>
+    </view>
+  </view>
+  <view class="grid">
+    <view class="grid-item card" wx:for="{{works}}" wx:key="id" bindtap="openWork" data-id="{{item.id}}">
+      <image wx:if="{{item.cover}}" class="grid-cover" src="{{item.cover}}" mode="aspectFill" />
+      <view wx:else class="grid-cover grid-cover--ph"></view>
+      <view class="grid-cap">
+        <text class="grid-title">{{item.title}}</text>
+        <text class="grid-cat muted small">{{item.category_name || ''}}</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 热门套系 -->
+  <view class="section">
+    <view class="section-title">
+      <text>热门套系</text>
+      <text class="section-sub" bindtap="goPackage">全部 ›</text>
+    </view>
+  </view>
+  <view class="pkg-list">
+    <view class="pkg card" wx:for="{{packages}}" wx:key="id" bindtap="goPackage">
+      <view class="pkg-name">{{item.name}}</view>
+      <view class="pkg-desc muted small">{{item.description}}</view>
+      <view class="pkg-price"><text class="price-symbol">¥</text><text class="price">{{item.price}}</text> 起</view>
+    </view>
+  </view>
+
+  <!-- 客户说 -->
+  <view class="section" wx:if="{{reviews.length}}">
+    <view class="section-title"><text>客户说</text></view>
+  </view>
+  <view class="review" wx:for="{{reviews}}" wx:key="id">
+    <view class="review-stars">{{item.stars}} 星</view>
+    <view class="review-text">{{item.text}}</view>
+    <view class="review-name muted small">{{item.customer_name || '匿名客户'}}</view>
+  </view>
+  <view style="height:40rpx"></view>
+
+  <!-- 预约入口 -->
+  <view class="cta-wrap">
+    <view class="btn btn-block" bindtap="goAppointment">立即预约拍摄</view>
+  </view>
+  <view style="height:48rpx"></view>
+
+  <!-- 作品大图弹层 -->
+  <view wx:if="{{detail}}" class="mask" bindtap="closeDetail">
+    <view class="sheet" catchtap="noop">
+      <view class="sheet-bar"></view>
+      <view class="detail-title">{{detail.work.title}}</view>
+      <view class="detail-desc muted small">{{detail.work.description}}</view>
+      <view wx:if="{{detailLoading}}" class="empty">加载中…</view>
+      <scroll-view wx:else scroll-y class="detail-scroll">
+        <image wx:for="{{detail.albums}}" wx:key="id" class="detail-img" src="{{item.photo_url}}" mode="widthFix"
+               bindtap="previewImage" data-url="{{item.photo_url}}" wx:if="{{item.photo_url}}" />
+        <view wx:if="{{detail.albums.length === 0}}" class="empty">暂无照片</view>
+      </scroll-view>
+    </view>
+  </view>
+</view>

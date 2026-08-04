@@ -1,0 +1,23 @@
+.page { padding: 0 0 60rpx; }
+.profile {
+  display: flex; align-items: center; padding: 60rpx 40rpx;
+  background: #111111; color: #fff;
+}
+.avatar {
+  width: 110rpx; height: 110rpx; border-radius: 50%; background: #fff; color: #111;
+  display: flex; align-items: center; justify-content: center; font-size: 48rpx; font-weight: 700;
+}
+.profile-info { margin-left: 28rpx; }
+.profile-name { font-size: 36rpx; font-weight: 600; letter-spacing: 2rpx; }
+.profile-info .muted { color: rgba(255,255,255,.6); margin-top: 6rpx; }
+
+.menu { margin: 24rpx 32rpx; overflow: hidden; }
+.menu-item {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 32rpx 28rpx; font-size: 30rpx;
+}
+.menu-item + .menu-item { border-top: 1rpx solid #f2f2f2; }
+
+.about { margin: 24rpx 40rpx; }
+.about-title { font-size: 28rpx; font-weight: 600; margin-bottom: 12rpx; }
+.about-text { font-size: 26rpx; line-height: 1.8; }

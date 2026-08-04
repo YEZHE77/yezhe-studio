@@ -1,0 +1,12 @@
+<view class="page">
+  <view class="section"><view class="section-title"><text>拍摄提醒订阅</text></view></view>
+  <view class="card form">
+    <view class="field">
+      <view class="field-label">订阅模板 ID</view>
+      <input class="input" placeholder="在 mp.weixin.qq.com 订阅消息中获取" value="{{tmplId}}" bindinput="onTmpl" />
+    </view>
+    <view class="btn btn-block" bindtap="requestSubscribe">授权订阅提醒</view>
+    <view wx:if="{{subscribed}}" class="ok muted small">✓ 已订阅，拍摄节点将收到通知</view>
+    <view class="tip muted small">订阅后，摄影师在关键节点（如成片交付）可通过服务端推送提醒。模板需在微信公众平台「订阅消息」中申请。</view>
+  </view>
+</view>

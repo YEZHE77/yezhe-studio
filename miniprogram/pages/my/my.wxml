@@ -1,0 +1,38 @@
+<view class="page">
+  <view class="profile">
+    <view class="avatar">叶</view>
+    <view class="profile-info">
+      <view class="profile-name">叶哲 STUDIO</view>
+      <view class="muted small">{{login ? '已登录' : '未登录'}}</view>
+    </view>
+  </view>
+
+  <view class="menu card">
+    <view class="menu-item" data-url="/pages/appointment/appointment" bindtap="go">
+      <text>我的预约</text><text class="muted">›</text>
+    </view>
+    <view class="menu-item" data-url="/pages/order/order" bindtap="go">
+      <text>我的订单</text><text class="muted">›</text>
+    </view>
+    <view class="menu-item" data-url="/pages/evaluate/evaluate" bindtap="go">
+      <text>我的评价</text><text class="muted">›</text>
+    </view>
+    <view class="menu-item" data-url="/pages/subscribe/subscribe" bindtap="go">
+      <text>拍摄提醒订阅</text><text class="muted">›</text>
+    </view>
+  </view>
+
+  <view class="menu card">
+    <view class="menu-item" bindtap="copyContact">
+      <text>联系摄影师（复制微信号）</text><text class="muted">›</text>
+    </view>
+    <view class="menu-item" bindtap="openAdmin">
+      <text>商家管理后台</text><text class="muted">›</text>
+    </view>
+  </view>
+
+  <view class="about">
+    <view class="about-title">关于叶哲 STUDIO</view>
+    <view class="about-text muted">海口婚礼 / 人像 / 纪实摄影。我们用光影记录你的重要时刻，从预约、拍摄、选片到成片交付，全程在小程序内完成。</view>
+  </view>
+</view>

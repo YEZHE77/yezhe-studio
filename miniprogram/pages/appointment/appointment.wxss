@@ -1,0 +1,9 @@
+.page { padding: 0 0 40rpx; }
+.form { margin: 0 32rpx; padding: 32rpx; }
+.picker { display: flex; align-items: center; color: #111; }
+.form-tip { margin-top: 20rpx; text-align: center; }
+
+.appt { margin: 0 32rpx 20rpx; padding: 28rpx; background: #fff; border-radius: 16rpx; }
+.appt-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8rpx; }
+.appt-name { font-size: 30rpx; font-weight: 600; }
+.appt-status { font-size: 24rpx; color: #111; background: #f0f0f0; padding: 6rpx 18rpx; border-radius: 20rpx; }

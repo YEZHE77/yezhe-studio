@@ -1,0 +1,198 @@
+// schema.js —— 建表与向前兼容迁移
+// 两种方言各自 DDL；首次启动自动创建；后续新增列用 ensureColumn 增量迁移，绝不破坏已有数据。
+import { dialect, run, query } from './db.js';
+
+const PG_DDL = `
+CREATE TABLE IF NOT EXISTS users (
+  id SERIAL PRIMARY KEY, username TEXT UNIQUE NOT NULL, password_hash TEXT NOT NULL,
+  role TEXT NOT NULL DEFAULT 'photographer', name TEXT, created_at TIMESTAMPTZ DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS categories (
+  id SERIAL PRIMARY KEY, name TEXT NOT NULL, kind TEXT NOT NULL DEFAULT 'work', sort INTEGER NOT NULL DEFAULT 0, created_at TIMESTAMPTZ DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS works (
+  id SERIAL PRIMARY KEY, title TEXT NOT NULL, category_id INTEGER, is_public INTEGER NOT NULL DEFAULT 1,
+  is_private INTEGER NOT NULL DEFAULT 0, cover_url TEXT, description TEXT, blessing TEXT,
+  tags TEXT, live INTEGER NOT NULL DEFAULT 0, customer_name TEXT, order_id INTEGER, created_at TIMESTAMPTZ DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS albums (
+  id SERIAL PRIMARY KEY, work_id INTEGER NOT NULL, zone TEXT NOT NULL DEFAULT 'sample',
+  photo_url TEXT, local_path TEXT, sort INTEGER NOT NULL DEFAULT 0, created_at TIMESTAMPTZ DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS selections (
+  id SERIAL PRIMARY KEY, work_id INTEGER NOT NULL, client_openid TEXT, selected TEXT, extra_count INTEGER NOT NULL DEFAULT 0,
+  status TEXT NOT NULL DEFAULT 'pending', created_at TIMESTAMPTZ DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS orders (
+  id SERIAL PRIMARY KEY, order_no TEXT, customer_name TEXT, package_id INTEGER, status TEXT NOT NULL DEFAULT 'unpaid',
+  deposit REAL NOT NULL DEFAULT 0, balance REAL NOT NULL DEFAULT 0, deposit_method TEXT, balance_method TEXT,
+  shoot_date TEXT, executor TEXT, created_at TIMESTAMPTZ DEFAULT now()
+);`;
+
+const SQLITE_DDL = `
+CREATE TABLE IF NOT EXISTS users (
+  id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT UNIQUE NOT NULL, password_hash TEXT NOT NULL,
+  role TEXT NOT NULL DEFAULT 'photographer', name TEXT, created_at TEXT DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS categories (
+  id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, kind TEXT NOT NULL DEFAULT 'work', sort INTEGER NOT NULL DEFAULT 0, created_at TEXT DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS works (
+  id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NOT NULL, category_id INTEGER, is_public INTEGER NOT NULL DEFAULT 1,
+  is_private INTEGER NOT NULL DEFAULT 0, cover_url TEXT, description TEXT, blessing TEXT,
+  tags TEXT, live INTEGER NOT NULL DEFAULT 0, customer_name TEXT, order_id INTEGER, created_at TEXT DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS albums (
+  id INTEGER PRIMARY KEY AUTOINCREMENT, work_id INTEGER NOT NULL, zone TEXT NOT NULL DEFAULT 'sample',
+  photo_url TEXT, local_path TEXT, sort INTEGER NOT NULL DEFAULT 0, created_at TEXT DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS selections (
+  id INTEGER PRIMARY KEY AUTOINCREMENT, work_id INTEGER NOT NULL, client_openid TEXT, selected TEXT, extra_count INTEGER NOT NULL DEFAULT 0,
+  status TEXT NOT NULL DEFAULT 'pending', created_at TEXT DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS orders (
+  id INTEGER PRIMARY KEY AUTOINCREMENT, order_no TEXT, customer_name TEXT, package_id INTEGER, status TEXT NOT NULL DEFAULT 'unpaid',
+  deposit REAL NOT NULL DEFAULT 0, balance REAL NOT NULL DEFAULT 0, deposit_method TEXT, balance_method TEXT,
+  shoot_date TEXT, executor TEXT, created_at TEXT DEFAULT CURRENT_TIMESTAMP
+);`;
+
+// 套系管理
+const PG_PACKAGES = `
+CREATE TABLE IF NOT EXISTS packages (
+  id SERIAL PRIMARY KEY, name TEXT NOT NULL, price REAL NOT NULL DEFAULT 0, category_id INTEGER,
+  cover_url TEXT, description TEXT, addons TEXT, marketing TEXT, status TEXT NOT NULL DEFAULT 'on',
+  sort INTEGER NOT NULL DEFAULT 0, created_at TIMESTAMPTZ DEFAULT now()
+);`;
+const SQLITE_PACKAGES = `
+CREATE TABLE IF NOT EXISTS packages (
+  id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, price REAL NOT NULL DEFAULT 0, category_id INTEGER,
+  cover_url TEXT, description TEXT, addons TEXT, marketing TEXT, status TEXT NOT NULL DEFAULT 'on',
+  sort INTEGER NOT NULL DEFAULT 0, created_at TEXT DEFAULT CURRENT_TIMESTAMP
+);`;
+
+// 档期管理
+const PG_SCHEDULES = `
+CREATE TABLE IF NOT EXISTS schedules (
+  id SERIAL PRIMARY KEY, date TEXT NOT NULL, period TEXT NOT NULL DEFAULT 'full',
+  status TEXT NOT NULL DEFAULT 'free', order_no TEXT, photographer TEXT, note TEXT, created_at TIMESTAMPTZ DEFAULT now()
+);`;
+const SQLITE_SCHEDULES = `
+CREATE TABLE IF NOT EXISTS schedules (
+  id INTEGER PRIMARY KEY AUTOINCREMENT, date TEXT NOT NULL, period TEXT NOT NULL DEFAULT 'full',
+  status TEXT NOT NULL DEFAULT 'free', order_no TEXT, photographer TEXT, note TEXT, created_at TEXT DEFAULT CURRENT_TIMESTAMP
+);`;
+
+// 收款流水（财务看板与资金流水的唯一可信来源）
+const PG_PAYMENTS = `
+CREATE TABLE IF NOT EXISTS payments (
+  id SERIAL PRIMARY KEY, order_id INTEGER, order_no TEXT, type TEXT NOT NULL DEFAULT 'deposit',
+  amount REAL NOT NULL DEFAULT 0, method TEXT NOT NULL DEFAULT 'offline', note TEXT, created_at TIMESTAMPTZ DEFAULT now()
+);`;
+const SQLITE_PAYMENTS = `
+CREATE TABLE IF NOT EXISTS payments (
+  id INTEGER PRIMARY KEY AUTOINCREMENT, order_id INTEGER, order_no TEXT, type TEXT NOT NULL DEFAULT 'deposit',
+  amount REAL NOT NULL DEFAULT 0, method TEXT NOT NULL DEFAULT 'offline', note TEXT, created_at TEXT DEFAULT CURRENT_TIMESTAMP
+);`;
+
+// 客户侧（C 端小程序）新表：customers / appointments / photo_select / evaluates
+// 双方言 DDL；首次启动自动创建；向前兼容用 ensureColumn 给 orders/works 补列。
+const PG_CUSTOMER_TABLES = `
+CREATE TABLE IF NOT EXISTS customers (
+  id SERIAL PRIMARY KEY, openid TEXT UNIQUE NOT NULL, nickname TEXT, avatar TEXT, phone TEXT,
+  created_at TIMESTAMPTZ DEFAULT now(), updated_at TIMESTAMPTZ DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS appointments (
+  id SERIAL PRIMARY KEY, openid TEXT NOT NULL, name TEXT, phone TEXT, package_id INTEGER,
+  hope_date TEXT, remark TEXT, status TEXT NOT NULL DEFAULT 'pending', created_at TIMESTAMPTZ DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS photo_select (
+  id SERIAL PRIMARY KEY, order_id INTEGER NOT NULL, openid TEXT NOT NULL, marks TEXT,
+  draft TEXT, submitted INTEGER NOT NULL DEFAULT 0, created_at TIMESTAMPTZ DEFAULT now(), updated_at TIMESTAMPTZ DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS evaluates (
+  id SERIAL PRIMARY KEY, order_id INTEGER NOT NULL, openid TEXT NOT NULL, stars INTEGER NOT NULL DEFAULT 5,
+  text TEXT, images TEXT, status TEXT NOT NULL DEFAULT 'pending', created_at TIMESTAMPTZ DEFAULT now()
+);`;
+const SQLITE_CUSTOMER_TABLES = `
+CREATE TABLE IF NOT EXISTS customers (
+  id INTEGER PRIMARY KEY AUTOINCREMENT, openid TEXT UNIQUE NOT NULL, nickname TEXT, avatar TEXT, phone TEXT,
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP, updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS appointments (
+  id INTEGER PRIMARY KEY AUTOINCREMENT, openid TEXT NOT NULL, name TEXT, phone TEXT, package_id INTEGER,
+  hope_date TEXT, remark TEXT, status TEXT NOT NULL DEFAULT 'pending', created_at TEXT DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS photo_select (
+  id INTEGER PRIMARY KEY AUTOINCREMENT, order_id INTEGER NOT NULL, openid TEXT NOT NULL, marks TEXT,
+  draft TEXT, submitted INTEGER NOT NULL DEFAULT 0, created_at TEXT DEFAULT CURRENT_TIMESTAMP, updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS evaluates (
+  id INTEGER PRIMARY KEY AUTOINCREMENT, order_id INTEGER NOT NULL, openid TEXT NOT NULL, stars INTEGER NOT NULL DEFAULT 5,
+  text TEXT, images TEXT, status TEXT NOT NULL DEFAULT 'pending', created_at TEXT DEFAULT CURRENT_TIMESTAMP
+);`;
+
+// orders 的向前兼容新增列（仅当不存在时补加，绝不删列/不破坏数据）
+const ORDERS_NEW_COLUMNS = [
+  ['customer_phone', 'TEXT'],
+  ['package_snapshot', dialect === 'pg' ? 'TEXT' : 'TEXT'],
+  ['addons_snapshot', dialect === 'pg' ? 'TEXT' : 'TEXT'],
+  ['total_amount', 'REAL NOT NULL DEFAULT 0'],
+  ['paid_amount', 'REAL NOT NULL DEFAULT 0'],
+  ['remark', 'TEXT'],
+  ['logs', dialect === 'pg' ? 'TEXT' : 'TEXT'],
+  ['refund_amount', 'REAL NOT NULL DEFAULT 0'],
+  ['cancelled', 'INTEGER NOT NULL DEFAULT 0']
+];
+
+async function colsOf(table) {
+  if (dialect === 'pg') {
+    const r = await query(`SELECT column_name FROM information_schema.columns WHERE table_name = $1`, [table]);
+    return r.map((x) => x.column_name);
+  }
+  const r = await query(`PRAGMA table_info(${table})`);
+  return r.map((x) => x.name);
+}
+
+async function ensureColumn(table, col, def) {
+  const cols = await colsOf(table);
+  if (!cols.includes(col)) {
+    await run(`ALTER TABLE ${table} ADD COLUMN ${col} ${def}`);
+    console.log(`[schema] orders 补列 ${col}`);
+  }
+}
+
+export async function initSchema() {
+  const ddl = dialect === 'pg' ? PG_DDL : SQLITE_DDL;
+  const stmts = ddl.split(';').map((s) => s.trim()).filter(Boolean);
+  for (const s of stmts) await run(s);
+
+  // 新增表
+  for (const s of (dialect === 'pg' ? PG_PACKAGES : SQLITE_PACKAGES).split(';').map((x) => x.trim()).filter(Boolean)) await run(s);
+  for (const s of (dialect === 'pg' ? PG_SCHEDULES : SQLITE_SCHEDULES).split(';').map((x) => x.trim()).filter(Boolean)) await run(s);
+  for (const s of (dialect === 'pg' ? PG_PAYMENTS : SQLITE_PAYMENTS).split(';').map((x) => x.trim()).filter(Boolean)) await run(s);
+
+  // 客户侧新表
+  for (const s of (dialect === 'pg' ? PG_CUSTOMER_TABLES : SQLITE_CUSTOMER_TABLES).split(';').map((x) => x.trim()).filter(Boolean)) await run(s);
+
+  // orders 增量补列
+  for (const [col, def] of ORDERS_NEW_COLUMNS) await ensureColumn('orders', col, def);
+  // 客户绑定列 + 成片下载开关
+  await ensureColumn('orders', 'openid', 'TEXT');
+  await ensureColumn('works', 'allow_download', 'INTEGER NOT NULL DEFAULT 0');
+
+  console.log('[schema] 表结构已就绪');
+}
+
+// 小工具：把数据库行里的 json 文本列解析成对象
+export function parseRow(row, jsonCols = []) {
+  if (!row) return row;
+  const out = { ...row };
+  for (const c of jsonCols) {
+    if (out[c] && typeof out[c] === 'string') {
+      try { out[c] = JSON.parse(out[c]); } catch { out[c] = []; }
+    }
+  }
+  return out;
+}
+
+export { query };

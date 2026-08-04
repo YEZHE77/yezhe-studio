@@ -1,0 +1,42 @@
+<view class="page">
+  <view class="section"><view class="section-title"><text>我的订单</text></view></view>
+
+  <view class="order" wx:for="{{orders}}" wx:key="id" bindtap="openOrder" data-id="{{item.id}}">
+    <view class="order-top">
+      <text class="order-pkg">{{item.packageName || '定制拍摄'}}</text>
+      <text class="order-status">{{item.statusText}}</text>
+    </view>
+    <view class="muted small" wx:if="{{item.order_no}}">订单号：{{item.order_no}}</view>
+    <view class="order-amt">
+      <text class="muted small">应收 {{item.totalText}}</text>
+      <text class="muted small">已付 {{item.paidText}}</text>
+    </view>
+  </view>
+  <view wx:if="{{orders.length === 0}}" class="empty">还没有订单，去预约拍摄吧</view>
+
+  <!-- 订单详情弹层 -->
+  <view wx:if="{{detail}}" class="mask" bindtap="closeDetail">
+    <view class="sheet" catchtap="noop">
+      <view class="sheet-bar"></view>
+      <view class="d-pkg">{{detail.packageName || '定制拍摄'}}</view>
+      <view class="d-status">{{detail.statusText}}</view>
+
+      <view class="d-amt">
+        <view><text class="muted small">应收</text><text class="price"> ¥{{detail.total_amount}}</text></view>
+        <view><text class="muted small">已付</text><text class="price"> ¥{{detail.paid_amount}}</text></view>
+      </view>
+
+      <view class="d-block" wx:if="{{detail.worksTitles}}">
+        <view class="d-label">关联作品</view>
+        <view class="muted">{{detail.worksTitles}}</view>
+      </view>
+
+      <view class="d-actions">
+        <view class="btn btn-ghost btn-block" wx:if="{{detail.works.length}}" bindtap="goAlbum" data-id="{{detail.id}}">查看成片</view>
+        <view class="btn btn-ghost btn-block" wx:if="{{detail.canSelect}}" bindtap="goSelect" data-id="{{detail.id}}">在线选片</view>
+        <view class="btn btn-block" wx:if="{{detail.canEvaluate}}" bindtap="goEvaluate" data-id="{{detail.id}}">写评价</view>
+      </view>
+      <view wx:if="{{detail.evaluated}}" class="d-evaluated muted small">已评价（{{detail.evaluateStatus === 'approved' ? '已展示' : '审核中'}}）</view>
+    </view>
+  </view>
+</view>

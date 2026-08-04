@@ -1,0 +1,41 @@
+<view class="page">
+  <view class="section"><view class="section-title"><text>拍摄套系</text></view></view>
+
+  <view class="pkg-list">
+    <view class="pkg card" wx:for="{{packages}}" wx:key="id" bindtap="openPkg" data-id="{{item.id}}">
+      <image wx:if="{{item.cover_url}}" class="pkg-cover" src="{{item.cover_url}}" mode="aspectFill" />
+      <view wx:else class="pkg-cover pkg-cover--ph"></view>
+      <view class="pkg-body">
+        <view class="pkg-name">{{item.name}}</view>
+        <view class="pkg-desc muted small">{{item.description}}</view>
+        <view class="pkg-price"><text class="price-symbol">¥</text><text class="price">{{item.price}}</text> 起</view>
+      </view>
+    </view>
+    <view wx:if="{{packages.length === 0}}" class="empty">暂无套系</view>
+  </view>
+
+  <!-- 套系详情弹层 -->
+  <view wx:if="{{detail}}" class="mask" bindtap="closeDetail">
+    <view class="sheet" catchtap="noop">
+      <view class="sheet-bar"></view>
+      <view class="d-name">{{detail.name}}</view>
+      <view class="d-price"><text class="price-symbol">¥</text><text class="price">{{detail.price}}</text> 起</view>
+      <view class="d-desc muted">{{detail.description}}</view>
+
+      <view class="d-block" wx:if="{{detail.addons.length}}">
+        <view class="d-label">增值服务</view>
+        <view class="d-addon" wx:for="{{detail.addons}}" wx:key="name">
+          <text>{{item.name}}</text><text class="muted">+¥{{item.price}}</text>
+        </view>
+      </view>
+
+      <view class="d-block" wx:if="{{detail.marketing.coupon || detail.marketing.activity}}">
+        <view class="d-label">优惠活动</view>
+        <view class="d-tag" wx:if="{{detail.marketing.coupon}}">🎟 {{detail.marketing.coupon}}</view>
+        <view class="d-tag" wx:if="{{detail.marketing.activity}}">🎁 {{detail.marketing.activity}}</view>
+      </view>
+
+      <view class="d-cta"><view class="btn btn-block" bindtap="goAppointment">立即预约此套系</view></view>
+    </view>
+  </view>
+</view>

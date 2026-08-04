@@ -1,0 +1,18 @@
+.page { padding: 24rpx 20rpx 160rpx; }
+.hint { padding: 12rpx 20rpx 20rpx; font-size: 30rpx; }
+.hint-num { font-size: 40rpx; font-weight: 700; margin-right: 6rpx; }
+
+.grid { display: flex; flex-wrap: wrap; }
+.cell { position: relative; width: calc(33.33% - 12rpx); margin: 6rpx; border-radius: 10rpx; overflow: hidden; border: 4rpx solid transparent; }
+.cell-img { width: 100%; height: 240rpx; display: block; background: #eee; }
+.cell-on { border-color: #111; }
+.cell-badge {
+  position: absolute; right: 10rpx; bottom: 10rpx; width: 40rpx; height: 40rpx;
+  background: #111; color: #fff; border-radius: 50%; text-align: center; line-height: 40rpx; font-size: 24rpx;
+}
+
+.bar {
+  position: fixed; left: 0; right: 0; bottom: 0; display: flex; gap: 20rpx;
+  padding: 20rpx 32rpx calc(20rpx + env(safe-area-inset-bottom)); background: #fff; border-top: 1rpx solid #eee;
+}
+.bar .btn { flex: 1; }

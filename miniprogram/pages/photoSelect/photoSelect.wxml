@@ -1,0 +1,20 @@
+<view class="page">
+  <view class="hint">
+    <text class="hint-num">{{selected.length}}</text> 张已选
+    <text class="muted small"> · 点击照片勾选/取消</text>
+  </view>
+
+  <view class="grid" wx:if="{{photos.length}}">
+    <view class="cell {{item._sel ? 'cell-on' : ''}}" wx:for="{{photos}}" wx:key="id"
+          bindtap="toggle" data-url="{{item.photo_url}}">
+      <image class="cell-img" src="{{item.photo_url}}" mode="aspectFill" />
+      <view class="cell-badge" wx:if="{{item._sel}}">✓</view>
+    </view>
+  </view>
+  <view wx:else class="empty">暂无可选小样</view>
+
+  <view class="bar">
+    <view class="btn btn-ghost" bindtap="save" disabled="{{saving}}">保存草稿</view>
+    <view class="btn" bindtap="submit" disabled="{{submitting}}">提交选片</view>
+  </view>
+</view>

@@ -1,0 +1,31 @@
+<view class="page">
+  <!-- 提交评价 -->
+  <block wx:if="{{mode === 'submit'}}">
+    <view class="section"><view class="section-title"><text>写评价</text></view></view>
+    <view class="form card">
+      <view class="stars">
+        <text wx:for="{{[1,2,3,4,5]}}" wx:key="*this" class="star {{stars >= item ? 'star-on' : ''}}"
+              data-n="{{item}}" bindtap="setStar">★</text>
+        <text class="muted small" style="margin-left:16rpx">{{stars}} 星</text>
+      </view>
+      <textarea class="textarea" placeholder="分享你的拍摄体验…" value="{{text}}" bindinput="onText" />
+      <view class="btn btn-block" bindtap="submit" disabled="{{submitting}}">提交评价</view>
+      <view class="form-tip muted small" bindtap="back">返回我的评价</view>
+    </view>
+  </block>
+
+  <!-- 我的评价列表 -->
+  <block wx:else>
+    <view class="section"><view class="section-title"><text>我的评价</text></view></view>
+    <view class="ev" wx:for="{{myList}}" wx:key="id">
+      <view class="ev-top"><text class="ev-stars">{{item.stars}} 星</text><text class="ev-status">{{item.statusText}}</text></view>
+      <view class="ev-text">{{item.text}}</view>
+    </view>
+    <view wx:if="{{myList.length === 0}}" class="empty">还没有评价</view>
+
+    <view class="section" wx:if="{{orders.length}}"><view class="section-title"><text>去评价订单</text></view></view>
+    <view class="ord" wx:for="{{orders}}" wx:key="id" bindtap="pickOrder" data-id="{{item.id}}">
+      <text>{{item.packageName || '定制拍摄'}}</text><text class="muted">去评价 ›</text>
+    </view>
+  </block>
+</view>

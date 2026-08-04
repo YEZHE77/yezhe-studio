@@ -1,0 +1,73 @@
+// db.js —— 数据库适配层
+// 开发/冒烟：DATABASE_URL 留空 → 使用内置 node:sqlite 本地文件（零依赖、零账号）
+// 生产部署：DATABASE_URL=postgres://...（Neon）→ 自动切换到 pg，业务代码无需改动
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+export const dataDir = path.join(__dirname, '..', 'data');
+fs.mkdirSync(dataDir, { recursive: true });
+
+const DATABASE_URL = process.env.DATABASE_URL || '';
+export const dialect = DATABASE_URL.startsWith('postgres') ? 'pg' : 'sqlite';
+
+let pgPool = null;
+let sqlite = null;
+
+if (dialect === 'pg') {
+  const { Pool } = await import('pg');
+  pgPool = new Pool({ connectionString: DATABASE_URL, ssl: { rejectUnauthorized: false } });
+  console.log('[db] 使用 Postgres(Neon):', DATABASE_URL.replace(/:[^:@]+@/, ':***@'));
+} else {
+  const { DatabaseSync } = await import('node:sqlite');
+  sqlite = new DatabaseSync(path.join(dataDir, 'app.db'));
+  sqlite.exec('PRAGMA journal_mode = WAL;');
+  console.log('[db] 使用本地 SQLite:', path.join(dataDir, 'app.db'));
+}
+
+// 把 ? 占位符转成 pg 的 $1..；sqlite 直接用 ?
+function toPg(sql) {
+  let i = 0;
+  return sql.replace(/\?/g, () => '$' + ++i);
+}
+
+export async function query(sql, params = []) {
+  if (dialect === 'pg') {
+    const r = await pgPool.query(toPg(sql), params);
+    return r.rows;
+  }
+  return sqlite.prepare(sql).all(...params);
+}
+
+export async function all(sql, params = []) {
+  return query(sql, params);
+}
+
+export async function get(sql, params = []) {
+  if (dialect === 'pg') {
+    const r = await pgPool.query(toPg(sql), params);
+    return r.rows[0] || null;
+  }
+  return sqlite.prepare(sql).get(...params);
+}
+
+export async function run(sql, params = []) {
+  if (dialect === 'pg') {
+    await pgPool.query(toPg(sql), params);
+  } else {
+    sqlite.prepare(sql).run(...params);
+  }
+}
+
+// 插入并返回自增 id（兼容两种方言）
+export async function insert(sql, params = []) {
+  if (dialect === 'pg') {
+    const r = await pgPool.query(toPg(sql + ' RETURNING id'), params);
+    return r.rows[0].id;
+  }
+  sqlite.prepare(sql).run(...params);
+  return sqlite.prepare('SELECT last_insert_rowid() AS id').get().id;
+}
+
+export { pgPool, sqlite };

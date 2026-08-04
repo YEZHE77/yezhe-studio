@@ -1,0 +1,36 @@
+# Render Blueprint —— 后端服务一键部署
+# 用法：Render 控制台 → New → Blueprint → 关联本仓库 → 自动按此文件建服务。
+# 自动注入 PORT，生产用 DATABASE_URL(Postgres) 切换方言，业务代码无需改动。
+services:
+  - type: web
+    name: yezhe-studio-server
+    runtime: node
+    rootDir: server            # 仅构建 server 子目录
+    plan: free                 # 免费档；升级可去掉此行
+    buildCommand: npm install
+    startCommand: node src/index.js
+    healthCheckPath: /api/health
+    autoDeploy: true           # 推 main 分支自动重新部署
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: DATABASE_URL       # Neon Postgres 连接串（控制台填）
+        sync: false
+      - key: JWT_SECRET         # 自动生成随机密钥
+        generateValue: true
+      - key: WX_APPID           # 微信小程序 AppID（控制台填）
+        sync: false
+      - key: WX_SECRET          # 微信小程序 AppSecret（控制台填）
+        sync: false
+      - key: CORS_ORIGIN        # 网页后台公网域名，逗号分隔可写多个
+        value: https://yezhe.netlify.app
+      - key: R2_ENDPOINT        # 选填：Cloudflare R2（图片持久化，避免 Render 临时盘丢图）
+        sync: false
+      - key: R2_ACCESS_KEY
+        sync: false
+      - key: R2_SECRET_KEY
+        sync: false
+      - key: R2_BUCKET
+        sync: false
+      - key: R2_PUBLIC_URL
+        sync: false

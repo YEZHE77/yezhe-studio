@@ -1,0 +1,17 @@
+.page { padding: 20rpx 0 40rpx; }
+.cats { white-space: nowrap; padding: 16rpx 24rpx 8rpx; }
+.cats .chip { margin-right: 16rpx; }
+
+.grid { display: flex; flex-wrap: wrap; padding: 0 20rpx; }
+.grid-item { width: calc(50% - 24rpx); margin: 12rpx; }
+.grid-cover { width: 100%; height: 420rpx; display: block; background: #eee; }
+.grid-cover--ph { background: linear-gradient(135deg,#e9e9e9,#f4f4f4); }
+.grid-cap { padding: 18rpx 20rpx 22rpx; }
+.grid-title { display: block; font-size: 28rpx; font-weight: 600; }
+.grid-cat { display: block; margin-top: 4rpx; }
+
+.detail-title { font-size: 34rpx; font-weight: 600; }
+.detail-desc { margin: 10rpx 0 20rpx; }
+.detail-scroll { max-height: 64vh; }
+.detail-img { width: 100%; margin-bottom: 16rpx; border-radius: 8rpx; background: #f0f0f0; }
+.noop {}
