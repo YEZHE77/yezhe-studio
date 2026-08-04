@@ -4,9 +4,7 @@ import { get, insert, run, query } from './db.js';
 import { initSchema } from './schema.js';
 import { hashPassword } from './auth.js';
 
-async function main() {
-  await initSchema();
-
+export async function seedIfNeeded() {
   const exist = await get('SELECT id FROM users WHERE username = ?', ['admin']);
   if (!exist) {
     const hash = await hashPassword('admin123');
@@ -98,7 +96,12 @@ async function main() {
   }
 
   console.log('种子数据完成（演示套系/档期/订单+收款/作品，重启部署数据持久化不会丢失）');
-  process.exit(0);
 }
 
-main().catch((e) => { console.error(e); process.exit(1); });
+// 命令行直接执行时运行
+if (import.meta.url === `file://${process.argv[1]}`) {
+  initSchema().then(async () => {
+    await seedIfNeeded();
+    process.exit(0);
+  }).catch((e) => { console.error(e); process.exit(1); });
+}

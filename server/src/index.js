@@ -9,6 +9,7 @@ import { dialect, dataDir } from './db.js';
 import { initSchema } from './schema.js';
 import { uploadDir, saveImage } from './storage.js';
 import { authRequired } from './auth.js';
+import { seedIfNeeded } from './seed.js';
 
 import authRoutes from './routes/auth.js';
 import worksRoutes from './routes/works.js';
@@ -75,7 +76,8 @@ app.use((err, req, res, next) => {
 
 app.use((req, res) => res.status(404).json({ error: '接口不存在' }));
 
-initSchema().then(() => {
+initSchema().then(async () => {
+  await seedIfNeeded();
   app.listen(PORT, () => {
     console.log(`[server] 已启动 → http://localhost:${PORT}`);
     console.log(`[server] CORS 放行: ${CORS_ORIGIN.join(', ')}`);
