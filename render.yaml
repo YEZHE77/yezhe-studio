@@ -23,7 +23,7 @@ services:
       - key: WX_SECRET          # 微信小程序 AppSecret（控制台填）
         sync: false
       - key: CORS_ORIGIN        # 网页后台公网域名，逗号分隔可写多个
-        value: https://yezhe.netlify.app
+        value: https://yezhe-studio.netlify.app
       - key: R2_ENDPOINT        # 选填：Cloudflare R2（图片持久化，避免 Render 临时盘丢图）
         sync: false
       - key: R2_ACCESS_KEY

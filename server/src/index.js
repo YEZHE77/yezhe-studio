@@ -28,7 +28,7 @@ import adminRoutes from './routes/admin.js';
 
 const app = express();
 const PORT = process.env.PORT || 4000;
-const CORS_ORIGIN = (process.env.CORS_ORIGIN || 'https://yezhe.netlify.app').split(',').map((s) => s.trim());
+const CORS_ORIGIN = (process.env.CORS_ORIGIN || 'https://yezhe-studio.netlify.app').split(',').map((s) => s.trim());
 
 app.use(cors({ origin: CORS_ORIGIN, credentials: true }));
 app.use(express.json({ limit: '20mb' }));
