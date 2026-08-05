@@ -18,7 +18,7 @@
   <block wx:else>
     <view class="grid" wx:if="{{photos.length}}">
       <view class="cell" wx:for="{{photos}}" wx:key="index">
-        <image class="cell-img" src="{{item.photo_url}}" mode="aspectFill" bindtap="preview" data-url="{{item.photo_url}}" />
+        <image class="cell-img" src="{{item.thumb}}" mode="aspectFill" bindtap="preview" data-url="{{item.photo_url}}" />
         <view class="cell-zone" wx:if="{{item.zone === 'final'}}">精修</view>
         <view class="cell-save" wx:if="{{allowDownload}}" catchtap="save" data-url="{{item.photo_url}}">保存</view>
       </view>

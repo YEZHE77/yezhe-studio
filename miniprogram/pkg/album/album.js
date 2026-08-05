@@ -1,5 +1,6 @@
 const { CONFIG } = require('../../utils/config.js');
-const { request } = require('../../utils/req.js');
+const { requestTask } = require('../../utils/req.js');
+const { getImageUrl } = require('../../utils/imageUrl.js');
 
 function abs(u) {
   if (!u) return '';
@@ -21,6 +22,21 @@ Page({
     pwErr: '',
     pwBusy: false
   },
+  _tasks: [],
+
+  // 统一请求封装：收集 abort 句柄，供 onUnload 终止未完成请求
+  _req(path, method, data) {
+    const t = requestTask(path, method || 'GET', data || {});
+    this._tasks.push(t.abort);
+    return t.promise;
+  },
+
+  onUnload() {
+    this._tasks.forEach((ab) => { try { ab(); } catch (e) {} });
+    this._tasks = [];
+    // 释放大图内存
+    this.setData({ photos: [], title: '' });
+  },
 
   onLoad(q) {
     if (q && q.token) {
@@ -35,9 +51,10 @@ Page({
   // 客户自有订单（openid 行级隔离）
   async load() {
     try {
-      const r = await request('/api/customer/album/' + this.data.orderId);
-      this.setData({ photos: r.photos || [], allowDownload: !!r.allowDownload });
-      if ((r.photos || []).length === 0) wx.showToast({ title: '成片尚未上传', icon: 'none' });
+      const r = await this._req('/api/customer/album/' + this.data.orderId);
+      const photos = (r.photos || []).map((p) => ({ ...p, thumb: getImageUrl(p.photo_url, 'preview') }));
+      this.setData({ photos, allowDownload: !!r.allowDownload });
+      if (photos.length === 0) wx.showToast({ title: '成片尚未上传', icon: 'none' });
     } catch (e) {
       wx.showToast({ title: '加载失败', icon: 'none' });
     }
@@ -46,7 +63,7 @@ Page({
   // 分享令牌模式（只读交付，公开网关）
   async loadToken() {
     try {
-      const r = await request('/api/share/' + this.data.token);
+      const r = await this._req('/api/share/' + this.data.token);
       if (r.locked) {
         this.setData({ locked: true, title: (r.meta && r.meta.title) || '受保护的影集' });
         return;
@@ -62,7 +79,10 @@ Page({
     if (!data) { this.setData({ photos: [] }); return; }
     const photos = [];
     (data.works || []).forEach((w) => {
-      (w.photos || []).forEach((p) => photos.push({ photo_url: abs(p.url), zone: p.zone }));
+      (w.photos || []).forEach((p) => {
+        const url = abs(p.url);
+        photos.push({ photo_url: url, thumb: getImageUrl(url, 'preview'), zone: p.zone });
+      });
     });
     this.setData({
       photos,
@@ -78,7 +98,7 @@ Page({
     if (this.data.pwBusy) return;
     this.setData({ pwBusy: true, pwErr: '' });
     try {
-      const r = await request('/api/share/' + this.data.token + '/verify', 'POST', { password: this.data.pw });
+      const r = await this._req('/api/share/' + this.data.token + '/verify', 'POST', { password: this.data.pw });
       this.applyTokenData(r);
     } catch (e) {
       this.setData({ pwErr: (e && e.message) || '密码错误' });

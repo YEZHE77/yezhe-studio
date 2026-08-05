@@ -1,4 +1,4 @@
-const { request } = require('../../utils/req.js');
+const { requestTask } = require('../../utils/req.js');
 
 const STATUS = {
   unpaid: '待付定金', deposit: '已付定金', shot: '已拍摄',
@@ -10,13 +10,27 @@ const EVALUABLE = ['delivered', 'completed'];
 
 Page({
   data: { orders: [], detail: null, loadingDetail: false },
+  _tasks: [],
+
+  // 统一请求封装：收集 abort 句柄，供 onUnload 终止未完成请求
+  _req(path, method, data) {
+    const t = requestTask(path, method || 'GET', data || {});
+    this._tasks.push(t.abort);
+    return t.promise;
+  },
+
+  onUnload() {
+    this._tasks.forEach((ab) => { try { ab(); } catch (e) {} });
+    this._tasks = [];
+    this.setData({ orders: [], detail: null });
+  },
 
   onShow() { this.load(); },
   onPullDownRefresh() { this.load().then(() => wx.stopPullDownRefresh()); },
 
   async load() {
     try {
-      const list = await request('/api/customer/order/list');
+      const list = await this._req('/api/customer/order/list');
       this.setData({
         orders: (list || []).map((o) => ({
           ...o,
@@ -32,7 +46,7 @@ Page({
     const id = e.currentTarget.dataset.id;
     this.setData({ loadingDetail: true, detail: null });
     try {
-      const d = await request('/api/customer/order/' + id);
+      const d = await this._req('/api/customer/order/' + id);
       this.setData({
         detail: {
           ...d,

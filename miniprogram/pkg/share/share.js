@@ -3,7 +3,8 @@
 // 这是 5 大模块共用的分享底座：B 端生成二维码（小程序路径 pages/share/share?token=xxx），
 // 客户扫码即进入本页，校验通过后查看对应内容（影集/作品/套系/档期/账单）。
 const { CONFIG } = require('../../utils/config.js');
-const { request } = require('../../utils/req.js');
+const { requestTask } = require('../../utils/req.js');
+const { getImageUrl } = require('../../utils/imageUrl.js');
 
 // 把后端返回的相对 /uploads 路径补全为可访问的完整 URL
 function abs(u) {
@@ -19,19 +20,25 @@ function normalize(type, data) {
   if (type === 'order') {
     const works = (data.works || []).map((w) => ({
       title: w.title || '',
-      photos: (w.photos || []).map((p) => ({ url: abs(p.url), zone: p.zone }))
+      photos: (w.photos || []).map((p) => {
+        const url = abs(p.url);
+        return { url, thumb: getImageUrl(url, 'preview'), zone: p.zone };
+      })
     }));
     return { order: data.order || {}, works };
   }
   if (type === 'work') {
     return {
       work: data.work || {},
-      photos: (data.photos || []).map((p) => ({ url: abs(p.url), zone: p.zone }))
+      photos: (data.photos || []).map((p) => {
+        const url = abs(p.url);
+        return { url, thumb: getImageUrl(url, 'preview'), zone: p.zone };
+      })
     };
   }
   if (type === 'package') {
     const p = data.package || {};
-    return { package: { ...p, cover_url: abs(p.cover_url) } };
+    return { package: { ...p, cover_url: abs(p.cover_url), cover_thumb: getImageUrl(abs(p.cover_url), 'thumb') } };
   }
   if (type === 'schedule') {
     return { schedule: data.schedule || {} };
@@ -56,6 +63,21 @@ Page({
     pwBusy: false,
     ZONE_LABEL: { sample: '样片', final: '成片' }
   },
+  _tasks: [],
+
+  // 统一请求封装：收集 abort 句柄，供 onUnload 终止未完成请求
+  _req(path, method, data) {
+    const t = requestTask(path, method || 'GET', data || {});
+    this._tasks.push(t.abort);
+    return t.promise;
+  },
+
+  onUnload() {
+    this._tasks.forEach((ab) => { try { ab(); } catch (e) {} });
+    this._tasks = [];
+    // 释放大图内存
+    this.setData({ payload: null });
+  },
 
   onLoad(q) {
     const token = (q && q.token) || '';
@@ -70,7 +92,7 @@ Page({
   async load() {
     this.setData({ loading: true, error: '' });
     try {
-      const r = await request('/api/share/' + this.data.token);
+      const r = await this._req('/api/share/' + this.data.token);
       if (r.locked) {
         this.setData({ loading: false, locked: true, title: (r.meta && r.meta.title) || '受保护的分享' });
       } else {
@@ -92,7 +114,7 @@ Page({
     if (this.data.pwBusy) return;
     this.setData({ pwBusy: true, pwErr: '' });
     try {
-      const r = await request('/api/share/' + this.data.token + '/verify', 'POST', { password: this.data.pw });
+      const r = await this._req('/api/share/' + this.data.token + '/verify', 'POST', { password: this.data.pw });
       this.setData({
         locked: false,
         type: r.meta.type,

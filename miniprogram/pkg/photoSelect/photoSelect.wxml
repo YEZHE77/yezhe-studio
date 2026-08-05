@@ -7,7 +7,7 @@
   <view class="grid" wx:if="{{photos.length}}">
     <view class="cell {{item._sel ? 'cell-on' : ''}}" wx:for="{{photos}}" wx:key="id"
           bindtap="toggle" data-url="{{item.photo_url}}">
-      <image class="cell-img" src="{{item.photo_url}}" mode="aspectFill" />
+      <image class="cell-img" src="{{item.thumb}}" mode="aspectFill" />
       <view class="cell-badge" wx:if="{{item._sel}}">✓</view>
     </view>
   </view>

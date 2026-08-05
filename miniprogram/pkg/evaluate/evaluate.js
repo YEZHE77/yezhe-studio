@@ -1,4 +1,4 @@
-const { request } = require('../../utils/req.js');
+const { requestTask } = require('../../utils/req.js');
 
 const STATUS_TEXT = { pending: '审核中', approved: '已展示', rejected: '未通过' };
 
@@ -6,6 +6,20 @@ Page({
   data: {
     orderId: '', mode: 'list', stars: 5, text: '', submitting: false,
     myList: [], orders: []
+  },
+  _tasks: [],
+
+  // 统一请求封装：收集 abort 句柄，供 onUnload 终止未完成请求
+  _req(path, method, data) {
+    const t = requestTask(path, method || 'GET', data || {});
+    this._tasks.push(t.abort);
+    return t.promise;
+  },
+
+  onUnload() {
+    this._tasks.forEach((ab) => { try { ab(); } catch (e) {} });
+    this._tasks = [];
+    this.setData({ myList: [], orders: [] });
   },
 
   onLoad(q) {
@@ -19,8 +33,8 @@ Page({
   async loadList() {
     try {
       const [list, orders] = await Promise.all([
-        request('/api/customer/evaluate/list'),
-        request('/api/customer/order/list')
+        this._req('/api/customer/evaluate/list'),
+        this._req('/api/customer/order/list')
       ]);
       this.setData({
         myList: (list || []).map((e) => ({ ...e, statusText: STATUS_TEXT[e.status] || e.status })),
@@ -42,7 +56,7 @@ Page({
     if (!this.data.text.trim()) return wx.showToast({ title: '写点感受吧', icon: 'none' });
     this.setData({ submitting: true });
     try {
-      await request('/api/customer/evaluate/submit', 'POST', {
+      await this._req('/api/customer/evaluate/submit', 'POST', {
         orderId: this.data.orderId, stars: this.data.stars, text: this.data.text.trim(), images: []
       });
       wx.showToast({ title: '评价已提交', icon: 'success' });

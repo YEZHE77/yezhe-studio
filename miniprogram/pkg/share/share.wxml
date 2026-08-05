@@ -38,7 +38,7 @@
       <view wx:if="{{item.title}}" class="gtitle">{{item.title}}</view>
       <view class="grid">
         <view wx:for="{{item.photos}}" wx:for-item="p" wx:key="index" class="cell" bindtap="preview" data-url="{{p.url}}">
-          <image src="{{p.url}}" mode="aspectFill" class="img" lazy-load />
+          <image src="{{p.thumb}}" mode="aspectFill" class="img" lazy-load />
           <view class="zone">{{ZONE_LABEL[p.zone] || p.zone}}</view>
           <view class="save" catchtap="save" data-url="{{p.url}}">保存</view>
         </view>
@@ -56,7 +56,7 @@
     <view wx:if="{{payload.work.description}}" class="desc">{{payload.work.description}}</view>
     <view class="grid">
       <view wx:for="{{payload.photos}}" wx:key="index" class="cell" bindtap="preview" data-url="{{item.url}}">
-        <image src="{{item.url}}" mode="aspectFill" class="img" lazy-load />
+        <image src="{{item.thumb}}" mode="aspectFill" class="img" lazy-load />
         <view class="zone">{{ZONE_LABEL[item.zone] || item.zone}}</view>
         <view class="save" catchtap="save" data-url="{{item.url}}">保存</view>
       </view>
@@ -70,7 +70,7 @@
       <view class="h1">{{payload.package.name}}</view>
       <view class="price">¥{{payload.package.price}}</view>
     </view>
-    <image wx:if="{{payload.package.cover_url}}" src="{{payload.package.cover_url}}" mode="aspectFill" class="cover" />
+    <image wx:if="{{payload.package.cover_url}}" src="{{payload.package.cover_thumb}}" mode="aspectFill" class="cover" />
     <view wx:if="{{payload.package.description}}" class="desc">{{payload.package.description}}</view>
     <view wx:if="{{payload.package.deposit}}" class="line">定金：¥{{payload.package.deposit}}</view>
     <view wx:if="{{payload.package.retouch_count}}" class="line">精修张数：{{payload.package.retouch_count}} 张</view>

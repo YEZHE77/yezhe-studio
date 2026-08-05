@@ -1,4 +1,5 @@
-const { request } = require('../../utils/req.js');
+const { requestTask } = require('../../utils/req.js');
+const { getImageUrl } = require('../../utils/imageUrl.js');
 
 Page({
   data: {
@@ -21,12 +22,21 @@ Page({
     this.setData({ packages: [] });
   },
 
+  // 统一请求封装：收集 abort 句柄，供 onUnload 终止未完成请求
+  _req(path, method, data) {
+    const t = requestTask(path, method || 'GET', data || {});
+    this._tasks.push(t.abort);
+    return t.promise;
+  },
+
   async load() {
     this.setData({ loading: true, error: false });
     try {
-      const pkgs = await request('/api/packages/public');
-      // 仅展示已上架的套系
-      this.setData({ packages: (pkgs || []).filter((p) => p.is_public !== false), loading: false });
+      const pkgs = await this._req('/api/packages/public');
+      // 仅展示已上架的套系，并预生成缩略图地址
+      const list = (pkgs || []).filter((p) => p.is_public !== false)
+        .map((p) => ({ ...p, coverThumb: getImageUrl(p.cover_url || '', 'thumb') }));
+      this.setData({ packages: list, loading: false });
       // 缓存到全局（详情页返回时可用）
       const app = getApp();
       app.setCached('packages', pkgs || []);
@@ -37,8 +47,10 @@ Page({
 
   async refresh() {
     try {
-      const pkgs = await request('/api/packages/public');
-      this.setData({ packages: (pkgs || []).filter((p) => p.is_public !== false) });
+      const pkgs = await this._req('/api/packages/public');
+      const list = (pkgs || []).filter((p) => p.is_public !== false)
+        .map((p) => ({ ...p, coverThumb: getImageUrl(p.cover_url || '', 'thumb') }));
+      this.setData({ packages: list });
       const app = getApp();
       app.setCached('packages', pkgs || []);
     } catch (e) { /* 静默刷新 */ }

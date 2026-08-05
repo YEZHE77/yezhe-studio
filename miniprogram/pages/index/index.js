@@ -1,4 +1,5 @@
-const { request } = require('../../utils/req.js');
+const { requestTask } = require('../../utils/req.js');
+const { getImageUrl } = require('../../utils/imageUrl.js');
 
 Page({
   data: {
@@ -37,6 +38,13 @@ Page({
     this.setData({ works: [], banners: [], categories: [] });
   },
 
+  // 统一请求封装：收集 abort 句柄，供 onUnload 终止未完成请求
+  _req(path, method, data) {
+    const t = requestTask(path, method || 'GET', data || {});
+    this._tasks.push(t.abort);
+    return t.promise;
+  },
+
   onPullDownRefresh() {
     this.loadAll().then(() => wx.stopPullDownRefresh());
   },
@@ -62,14 +70,14 @@ Page({
 
   async loadBooking() {
     try {
-      const b = await request('/api/settings/booking');
+      const b = await this._req('/api/settings/booking');
       this.setData({ bookingOpen: b && b.open !== false });
     } catch (e) { /* 静默失败 */ }
   },
 
   async loadStudio() {
     try {
-      const s = await request('/api/settings/studio');
+      const s = await this._req('/api/settings/studio');
       const app = getApp();
       app.setCached('studio', s || {});
       return s || {};
@@ -78,7 +86,7 @@ Page({
 
   async loadCategories() {
     try {
-      const cats = await request('/api/categories');
+      const cats = await this._req('/api/categories');
       const app = getApp();
       app.setCached('categories', cats || []);
       return cats || [];
@@ -93,14 +101,14 @@ Page({
       const cat = this.data.activeCat;
       const params = ['page=' + page, 'pageSize=' + this.data.pageSize];
       if (cat) params.push('category=' + cat);
-      const r = await request('/api/works/public?' + params.join('&'));
-      const items = (r.items || []).map((w) => ({ ...w, cover: w.cover_url || '' }));
+      const r = await this._req('/api/works/public?' + params.join('&'));
+      const items = (r.items || []).map((w) => ({ ...w, cover: getImageUrl(w.cover_url || '', 'thumb') }));
       const merged = reset ? items : this.data.works.concat(items);
       this.setData({
         works: merged,
         page,
         hasMore: merged.length < (r.total || 0),
-        banners: reset ? items.slice(0, 3).map((w) => w.cover_url).filter(Boolean) : this.data.banners
+        banners: reset ? items.slice(0, 3).map((w) => getImageUrl(w.cover_url || '', 'thumb')).filter(Boolean) : this.data.banners
       });
     } catch (e) {
       wx.showToast({ title: '加载失败', icon: 'none' });

@@ -1,7 +1,20 @@
-const { request } = require('../../utils/req.js');
+const { requestTask } = require('../../utils/req.js');
 
 Page({
   data: { tmplId: '', subscribed: false },
+  _tasks: [],
+
+  // 统一请求封装：收集 abort 句柄，供 onUnload 终止未完成请求
+  _req(path, method, data) {
+    const t = requestTask(path, method || 'GET', data || {});
+    this._tasks.push(t.abort);
+    return t.promise;
+  },
+
+  onUnload() {
+    this._tasks.forEach((ab) => { try { ab(); } catch (e) {} });
+    this._tasks = [];
+  },
 
   onTmpl(e) { this.setData({ tmplId: e.detail.value }); },
 
@@ -13,7 +26,7 @@ Page({
       success: async (res) => {
         const openid = wx.getStorageSync('openid') || '';
         try {
-          await request('/api/wx/subscribe-msg', 'POST', { openid, templateId: tmplId, data: res });
+          await this._req('/api/wx/subscribe-msg', 'POST', { openid, templateId: tmplId, data: res });
           this.setData({ subscribed: true });
           wx.showToast({ title: '订阅成功', icon: 'success' });
         } catch (e) {

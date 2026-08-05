@@ -1,4 +1,4 @@
-const { request } = require('../../utils/req.js');
+const { requestTask } = require('../../utils/req.js');
 
 // 档期预约状态语义：pending(待确认) / confirmed(已确认生成订单) / rejected(已拒绝) / cancelled(已取消)
 const STATUS_TEXT = { pending: '待确认', confirmed: '已确认·已转单', rejected: '已拒绝', cancelled: '已取消' };
@@ -20,6 +20,20 @@ Page({
     // 拍摄问卷弹窗
     qModal: false, qAppt: null, qAnswers: {}, qSubmitting: false
   },
+  _tasks: [],
+
+  // 统一请求封装：收集 abort 句柄，供 onUnload 终止未完成请求
+  _req(path, method, data) {
+    const t = requestTask(path, method || 'GET', data || {});
+    this._tasks.push(t.abort);
+    return t.promise;
+  },
+
+  onUnload() {
+    this._tasks.forEach((ab) => { try { ab(); } catch (e) {} });
+    this._tasks = [];
+    this.setData({ packages: [], list: [] });
+  },
 
   onLoad(q) {
     this.loadPackages();
@@ -38,7 +52,7 @@ Page({
 
   async loadPackages() {
     try {
-      const pkgs = await request('/api/packages/public');
+      const pkgs = await this._req('/api/packages/public');
       this.setData({ packages: pkgs || [] });
       this.syncPkgInfo();
     } catch (e) {}
@@ -59,7 +73,7 @@ Page({
 
   async loadList() {
     try {
-      const list = await request('/api/customer/appointment/list');
+      const list = await this._req('/api/customer/appointment/list');
       const mapped = (list || []).map((a) => ({
         ...a,
         statusText: STATUS_TEXT[a.status] || a.status,
@@ -105,7 +119,7 @@ Page({
     if (!/^1\d{10}$/.test(phone.trim())) return wx.showToast({ title: '请填正确的手机号', icon: 'none' });
     this.setData({ submitting: true });
     try {
-      await request('/api/customer/appointment/submit', 'POST', {
+      await this._req('/api/customer/appointment/submit', 'POST', {
         name: name.trim(),
         phone: phone.trim(),
         packageId: pkgId || '',
@@ -127,7 +141,7 @@ Page({
     const r = await wx.showModal({ title: '取消预约', content: '确定取消该预约吗？（若已确认，档期释放需摄影师处理）' });
     if (!r.confirm) return;
     try {
-      await request('/api/customer/appointment/cancel', 'POST', { id });
+      await this._req('/api/customer/appointment/cancel', 'POST', { id });
       wx.showToast({ title: '已取消', icon: 'success' });
       this.loadList();
     } catch (err) {
@@ -154,7 +168,7 @@ Page({
     if (!qAppt || !qAppt.order_id) return;
     this.setData({ qSubmitting: true });
     try {
-      await request('/api/customer/orders/' + qAppt.order_id + '/questionnaire', 'POST', { answers: qAnswers });
+      await this._req('/api/customer/orders/' + qAppt.order_id + '/questionnaire', 'POST', { answers: qAnswers });
       wx.showToast({ title: '问卷已提交', icon: 'success' });
       this.setData({ qModal: false });
       this.loadList();

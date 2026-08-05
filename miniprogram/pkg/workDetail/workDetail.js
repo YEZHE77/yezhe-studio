@@ -1,4 +1,5 @@
 const { request, requestTask } = require('../../utils/req.js');
+const { getImageUrl } = require('../../utils/imageUrl.js');
 
 Page({
   data: {
@@ -36,7 +37,8 @@ Page({
       this._tasks = this._tasks.filter((t) => t !== abort);
       this.setData({
         work: d.work || { title: '', description: '', cover_url: '' },
-        albums: (d.albums || []).filter((a) => a.photo_url),
+        albums: (d.albums || []).filter((a) => a.photo_url)
+          .map((a) => ({ ...a, thumb: getImageUrl(a.photo_url, 'preview') })),
         loading: false
       });
       // 设置页面标题

@@ -21,7 +21,7 @@
   <!-- 正常内容 -->
   <view class="pkg-list" wx:else>
     <view class="pkg card" wx:for="{{packages}}" wx:key="id" bindtap="openPkg" data-id="{{item.id}}">
-      <image wx:if="{{item.cover_url}}" class="pkg-cover" src="{{item.cover_url}}" mode="aspectFill" lazy-load />
+      <image wx:if="{{item.coverThumb}}" class="pkg-cover" src="{{item.coverThumb}}" mode="aspectFill" lazy-load />
       <view wx:else class="pkg-cover pkg-cover--ph"></view>
       <view class="pkg-body">
         <view class="pkg-name">{{item.name}}</view>

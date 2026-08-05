@@ -1,7 +1,23 @@
-const { request } = require('../../utils/req.js');
+const { requestTask } = require('../../utils/req.js');
+const { getImageUrl } = require('../../utils/imageUrl.js');
 
 Page({
   data: { orderId: '', photos: [], selected: [], submitted: false, saving: false, submitting: false },
+  _tasks: [],
+
+  // 统一请求封装：收集 abort 句柄，供 onUnload 终止未完成请求
+  _req(path, method, data) {
+    const t = requestTask(path, method || 'GET', data || {});
+    this._tasks.push(t.abort);
+    return t.promise;
+  },
+
+  onUnload() {
+    this._tasks.forEach((ab) => { try { ab(); } catch (e) {} });
+    this._tasks = [];
+    // 释放大图内存
+    this.setData({ photos: [], selected: [] });
+  },
 
   onLoad(q) {
     if (q && q.orderId) {
@@ -12,12 +28,12 @@ Page({
 
   _merge(photos, selected) {
     const set = new Set(selected);
-    return (photos || []).map((p) => ({ ...p, _sel: set.has(p.photo_url) }));
+    return (photos || []).map((p) => ({ ...p, thumb: getImageUrl(p.photo_url, 'thumb'), _sel: set.has(p.photo_url) }));
   },
 
   async load() {
     try {
-      const r = await request('/api/customer/photo-select/' + this.data.orderId);
+      const r = await this._req('/api/customer/photo-select/' + this.data.orderId);
       const sel = (r.selection && r.selection.marks) || [];
       this.setData({
         photos: this._merge(r.photos, sel),
@@ -44,7 +60,7 @@ Page({
     if (this.data.saving) return;
     this.setData({ saving: true });
     try {
-      await request('/api/customer/photo-select/save', 'POST', { orderId: this.data.orderId, marks: this.data.selected });
+      await this._req('/api/customer/photo-select/save', 'POST', { orderId: this.data.orderId, marks: this.data.selected });
       wx.showToast({ title: '草稿已保存', icon: 'success' });
     } catch (e) {
       wx.showToast({ title: (e && e.message) || '保存失败', icon: 'none' });
@@ -58,7 +74,7 @@ Page({
     if (this.data.selected.length === 0) return wx.showToast({ title: '请先选择照片', icon: 'none' });
     this.setData({ submitting: true });
     try {
-      await request('/api/customer/photo-select/submit', 'POST', { orderId: this.data.orderId, marks: this.data.selected });
+      await this._req('/api/customer/photo-select/submit', 'POST', { orderId: this.data.orderId, marks: this.data.selected });
       this.setData({ submitted: true, submitting: false });
       wx.showToast({ title: '选片已提交', icon: 'success' });
     } catch (e) {

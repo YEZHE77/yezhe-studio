@@ -1,4 +1,5 @@
-const { request } = require('../../utils/req.js');
+const { requestTask } = require('../../utils/req.js');
+const { getImageUrl } = require('../../utils/imageUrl.js');
 
 Page({
   data: {
@@ -28,6 +29,13 @@ Page({
     this.setData({ works: [], detail: null, categories: [] });
   },
 
+  // 统一请求封装：收集 abort 句柄，供 onUnload 终止未完成请求
+  _req(path, method, data) {
+    const t = requestTask(path, method || 'GET', data || {});
+    this._tasks.push(t.abort);
+    return t.promise;
+  },
+
   async loadCats() {
     const app = getApp();
     const cached = app.getCached('categories');
@@ -36,7 +44,7 @@ Page({
       return;
     }
     try {
-      const cats = await request('/api/categories');
+      const cats = await this._req('/api/categories');
       app.setCached('categories', cats || []);
       this.setData({ categories: [{ id: 0, name: '全部' }, ...(cats || [])] });
     } catch (e) { /* 静默失败 */ }
@@ -51,8 +59,8 @@ Page({
       const cat = this.data.activeCat;
       const q = cat ? ('?category=' + cat + '&page=' + page + '&pageSize=' + this.data.pageSize)
                    : ('?page=' + page + '&pageSize=' + this.data.pageSize);
-      const r = await request('/api/works/public' + q);
-      const items = (r.items || []).map((w) => ({ ...w, cover: w.cover_url || '' }));
+      const r = await this._req('/api/works/public' + q);
+      const items = (r.items || []).map((w) => ({ ...w, cover: getImageUrl(w.cover_url || '', 'thumb') }));
       const merged = reset ? items : this.data.works.concat(items);
       this.setData({
         works: merged,

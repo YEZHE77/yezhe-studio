@@ -225,7 +225,15 @@ function toType(cat) { return CATEGORY_TO_TYPE[cat] || 'uncategorized'; }
 
 // 统一的图片上传入口：
 //   - 配置了 VITE_UPLOAD_WORKER_URL → 直传 Cloudflare 上传 Worker（密钥只在 Worker，前端绝不接触）
-//   - 否则回退 Render /api/upload（服务端用 R2 SDK 写入）
+//       图片二进制直接 POST 到该 Worker 地址，不再请求后端 /api/upload 接口，
+//       拿到返回的 CDN-URL 后再提交给后端业务接口（registerMedia 登记容量统计）。
+//   - 变量为空 / undefined → 自动回退原有逻辑，继续走 Render 的 /api/upload 中转模式，保证降级可用。
+//
+// 【Render 环境变量配置示例】（在 Render 服务 Environment 里添加，或本地 client/.env）：
+//   VITE_UPLOAD_WORKER_URL=https://yezhe-img-proxy.yezhe128627.workers.dev/upload
+//   注：该地址为上传 Worker 的独立子域（cloudflare/wrangler.upload.toml 部署），不是只读代理域名；
+//       不配置此变量时自动降级为后端中转，无需改动任何业务代码。
+//
 // 无论走哪条路径，都会在拿到 URL 后登记 media 元数据（按业务分类汇聚容量统计）。
 // opts: { category, isPublic, onProgress, signal }
 export async function uploadImage(file, opts = {}) {

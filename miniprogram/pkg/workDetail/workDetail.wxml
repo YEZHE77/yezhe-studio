@@ -34,7 +34,7 @@
       <view class="section-title">作品集</view>
       <view class="photo-grid">
         <view class="photo-item" wx:for="{{albums}}" wx:key="id" bindtap="previewImage" data-url="{{item.photo_url}}">
-          <image class="photo" src="{{item.photo_url}}" mode="aspectFill" lazy-load />
+          <image class="photo" src="{{item.thumb}}" mode="aspectFill" lazy-load />
         </view>
       </view>
     </view>
