@@ -1,31 +1,55 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import http from '../api.js';
+import Icon from '../components/Icon.jsx';
 
-// 待处理订单彩色块（横向）
+// 待处理订单彩色分段（点击直达对应状态订单列表）
 const PENDING = [
-  { key: 'unpaid', label: '未支付定金', color: 'bg-red-500' },
-  { key: 'shoot', label: '等待拍摄', color: 'bg-amber-500' },
-  { key: 'selecting', label: '待选片', color: 'bg-sky-500' },
-  { key: 'retouching', label: '待精修', color: 'bg-purple-500' },
-  { key: 'delivered', label: '未交片', color: 'bg-emerald-500' }
+  { key: 'unpaid', label: '未支付定金', bg: 'bg-red-50', tx: 'text-red-600' },
+  { key: 'shoot', label: '等待拍摄', bg: 'bg-emerald-50', tx: 'text-emerald-600' },
+  { key: 'selecting', label: '待选片', bg: 'bg-sky-50', tx: 'text-sky-600' },
+  { key: 'retouching', label: '待精修', bg: 'bg-purple-50', tx: 'text-purple-600' },
+  { key: 'delivered', label: '未交片', bg: 'bg-amber-50', tx: 'text-amber-600' }
 ];
 
-// 两行 8 个功能卡片
-const CARDS = [
-  { label: '作品库', to: '/works', icon: '▣' },
-  { label: '套系', to: '/packages', icon: '◆' },
-  { label: '档期', to: '/schedule', icon: '▤' },
-  { label: '订单中心', to: '/orders', icon: '▥' },
-  { label: '财务管理', to: '/finance', icon: '¥' },
-  { label: '预约管理', to: '/appointments', icon: '✎' },
-  { label: '评价审核', to: '/reviews', icon: '★' },
-  { label: '数据备份', to: '/', icon: '⇩' },
-  { label: '营销工具', to: '/', icon: '✉' }
+// 品牌管理（对外展示 / 获客）
+const BRAND_CARDS = [
+  { icon: 'photo', title: '作品库', desc: '上传 / 编辑对外客片，实时同步 C 端小程序', to: '/works' },
+  { icon: 'package', title: '套系管理', desc: '上下架拍摄套餐与增值项定价', to: '/packages' },
+  { icon: 'review', title: '评价审核', desc: '审核客户口碑，通过后公开展示', to: '/reviews' },
+  { icon: 'appointment', title: '预约管理', desc: '客户预约转订单，跟踪每条线索', to: '/appointments' },
+  { icon: 'link', title: '小程序 C 端', desc: '微信原生小程序（体验版预览）', onClick: () => alert('C 端为微信原生小程序：在开发者工具勾选「不校验合法域名」后编译即可真机预览；正式发布需自备备案域名。') }
 ];
+
+// 日常管理（内部运营）
+const OPS_CARDS = [
+  { icon: 'calendar', title: '档期排期', desc: '拍摄档期管理与冲突拦截', to: '/schedule' },
+  { icon: 'order', title: '订单中心', desc: '订单全生命周期与收款流水', to: '/orders' },
+  { icon: 'select', title: '在线选片', desc: '客户选片进度双向同步', to: '/orders?status=selecting' },
+  { icon: 'finance', title: '财务管理', desc: '营收汇总 / 月度对账报表', to: '/finance' },
+  { icon: 'dashboard', title: '数据看板', desc: '经营概览与待办分布', to: '/' }
+];
+
+function FuncCard({ icon, title, desc, to, onClick }) {
+  const nav = useNavigate();
+  const go = () => { if (onClick) onClick(); else if (to) nav(to); };
+  return (
+    <div onClick={go} className="group bg-panel border border-line rounded-xl2 p-5 cursor-pointer hover:-translate-y-0.5 hover:shadow-md hover:border-brand/40 transition">
+      <div className="w-10 h-10 rounded-lg bg-brand/10 text-brand flex items-center justify-center mb-3">
+        <Icon name={icon} className="w-5 h-5" />
+      </div>
+      <div className="text-[15px] font-medium text-fg">{title}</div>
+      <div className="text-xs text-muted mt-1 leading-relaxed min-h-[32px]">{desc}</div>
+      <div className="mt-3">
+        <span className="inline-block w-full text-center py-2 rounded-lg bg-brand text-white text-sm group-hover:bg-brand2 transition">进入</span>
+      </div>
+    </div>
+  );
+}
 
 export default function Dashboard() {
   const [stats, setStats] = useState(null);
+  const [showAlert, setShowAlert] = useState(true);
   const nav = useNavigate();
   const now = new Date();
   const greet = now.getHours() < 12 ? '早上好' : now.getHours() < 18 ? '下午好' : '晚上好';
@@ -35,54 +59,88 @@ export default function Dashboard() {
     http.get('/api/stats').then((r) => setStats(r.data)).catch(() => {});
   }, []);
 
-  return (
-    <div className="max-w-6xl mx-auto">
-      <h1 className="text-2xl font-semibold text-white mb-1">{greet}，叶哲</h1>
-      <p className="text-muted text-sm mb-6">{date} · 今日经营概览</p>
+  const overview = [
+    { label: '商户余额（应收）', value: stats ? stats.balance.toLocaleString() : '—' },
+    { label: '线上收入', value: stats ? stats.onlineIncome.toLocaleString() : '—' },
+    { label: '线下收入', value: stats ? stats.offlineIncome.toLocaleString() : '—' }
+  ];
 
-      {/* 经营看板 */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        <div className="bg-panel border border-line rounded-xl2 p-5">
-          <div className="text-muted text-xs mb-2">应收余额</div>
-          <div className="text-2xl font-semibold text-white">¥{stats ? stats.balance.toLocaleString() : '—'}</div>
-        </div>
-        <div className="bg-panel border border-line rounded-xl2 p-5">
-          <div className="text-muted text-xs mb-2">实收金额</div>
-          <div className="text-2xl font-semibold text-emerald-400">¥{stats ? stats.received.toLocaleString() : '—'}</div>
-        </div>
-        <div className="bg-panel border border-line rounded-xl2 p-5">
-          <div className="text-muted text-xs mb-2">线上 / 线下</div>
-          <div className="text-lg font-semibold text-sky-400">¥{stats ? stats.onlineIncome.toLocaleString() : '—'} <span className="text-muted text-sm">/ {stats ? stats.offlineIncome.toLocaleString() : '—'}</span></div>
-        </div>
-        <div className="bg-panel border border-line rounded-xl2 p-5">
-          <div className="text-muted text-xs mb-2">退款</div>
-          <div className="text-2xl font-semibold text-red-400">¥{stats ? stats.refunded.toLocaleString() : '—'}</div>
-        </div>
+  return (
+    <div className="max-w-6xl mx-auto space-y-5">
+      <div>
+        <h1 className="text-xl font-semibold text-fg">{greet}，叶哲</h1>
+        <p className="text-muted text-xs mt-0.5">{date} · 今日经营概览</p>
       </div>
 
-      {/* 待处理订单横向彩色块 */}
-      <div className="bg-panel border border-line rounded-xl2 p-5 mb-6">
-        <div className="text-sm text-white mb-4 font-medium">待处理订单</div>
-        <div className="grid grid-cols-5 gap-3">
-          {PENDING.map((b) => (
-            <div key={b.key} className="rounded-lg p-4 bg-panel2 border border-line">
-              <div className={"inline-block w-2 h-2 rounded-full " + b.color + " mb-2"} />
-              <div className="text-2xl font-semibold text-white">{stats ? (stats.pendingBlocks[b.key] || 0) : '—'}</div>
-              <div className="text-xs text-muted mt-1">{b.label}</div>
-            </div>
+      {/* 品牌头部卡片 */}
+      <div className="bg-panel border border-line rounded-xl2 p-5 flex items-center gap-4">
+        <div className="w-14 h-14 rounded-full bg-brand flex items-center justify-center text-white text-xl font-semibold shrink-0">叶</div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <span className="text-lg font-semibold text-fg">叶哲 Studio</span>
+            <span className="text-[11px] px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600">已上线</span>
+          </div>
+          <div className="text-xs text-muted mt-0.5">摄影工作室全链路管理系统 · 海口婚礼 / 人像摄影</div>
+        </div>
+        <button onClick={() => nav('/works')} className="hidden sm:block px-4 py-2 rounded-lg border border-line text-sm text-muted hover:text-brand hover:border-brand transition shrink-0">管理对外作品</button>
+      </div>
+
+      {/* 告警横幅（无付费墙，仅真实内部提醒，可关闭） */}
+      {showAlert && (
+        <div className="flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-xl2 px-5 py-3">
+          <span className="w-5 h-5 rounded-full bg-amber-500 text-white flex items-center justify-center text-xs font-bold shrink-0">!</span>
+          <div className="flex-1 text-sm text-amber-800">
+            图片存储提示：当前后端未配置永久云存储（Cloudflare R2），Render 服务重启可能导致已上传图片丢失。建议尽快配置 R2，或避免依赖临时存储。
+          </div>
+          <button onClick={() => setShowAlert(false)} className="text-amber-600 hover:text-amber-800 text-sm shrink-0">知道了</button>
+        </div>
+      )}
+
+      {/* 账户概览 3 列 */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        {overview.map((o) => (
+          <div key={o.label} className="bg-panel border border-line rounded-xl2 p-5 flex flex-col">
+            <div className="text-xs text-muted">{o.label}</div>
+            <div className="text-2xl font-bold text-fg mt-2">¥{o.value}</div>
+            <button onClick={() => nav('/finance')} className="mt-auto pt-3 text-xs text-brand hover:underline self-start">明细 →</button>
+          </div>
+        ))}
+      </div>
+
+      {/* 待处理订单分段进度条（可点筛选） */}
+      <div className="bg-panel border border-line rounded-xl2 p-5">
+        <div className="flex items-center justify-between mb-4">
+          <div className="text-[15px] font-semibold text-fg">待处理订单</div>
+          <div className="text-xs text-muted">点击节点直达对应订单列表</div>
+        </div>
+        <div className="grid grid-cols-5 overflow-hidden rounded-lg border border-line">
+          {PENDING.map((b, i) => (
+            <button
+              key={b.key}
+              onClick={() => nav('/orders?status=' + b.key)}
+              className={'py-4 px-2 text-center border-l border-line first:border-l-0 transition hover:brightness-95 ' + b.bg}
+            >
+              <div className={'text-2xl font-bold ' + b.tx}>{stats ? (stats.pendingBlocks[b.key] || 0) : '—'}</div>
+              <div className={'text-xs mt-1 ' + b.tx}>{b.label}</div>
+            </button>
           ))}
         </div>
       </div>
 
-      {/* 两行 8 个功能卡片 */}
-      <div className="grid grid-cols-4 gap-4">
-        {CARDS.map((c) => (
-          <button key={c.label} onClick={() => nav(c.to)}
-            className="bg-panel border border-line rounded-xl2 p-5 text-left hover:border-brand transition group">
-            <div className="w-9 h-9 rounded-lg bg-panel2 flex items-center justify-center text-brand mb-3 group-hover:bg-brand group-hover:text-white">{c.icon}</div>
-            <div className="text-sm text-white">{c.label}</div>
-          </button>
-        ))}
+      {/* 品牌管理（对外展示） */}
+      <div>
+        <div className="text-[15px] font-semibold text-fg mb-3">品牌管理（对外展示）</div>
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+          {BRAND_CARDS.map((c) => <FuncCard key={c.title} {...c} />)}
+        </div>
+      </div>
+
+      {/* 日常管理（内部运营） */}
+      <div>
+        <div className="text-[15px] font-semibold text-fg mb-3">日常管理（内部运营）</div>
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+          {OPS_CARDS.map((c) => <FuncCard key={c.title} {...c} />)}
+        </div>
       </div>
     </div>
   );

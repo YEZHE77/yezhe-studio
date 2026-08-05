@@ -52,6 +52,13 @@ export default function Orders() {
     // eslint-disable-next-line
   }, []);
 
+  // 工作台「待处理订单」进度条点击跳转：读取 ?status= 预筛选
+  useEffect(() => {
+    const s = params.get('status');
+    if (s) setState((x) => ({ ...x, status: s }));
+    // eslint-disable-next-line
+  }, []);
+
   const openDetail = async (id) => {
     const r = await http.get('/api/orders/' + id);
     setDetail(r.data);
