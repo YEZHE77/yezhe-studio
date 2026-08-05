@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import http, { img, debounce, uploadImage } from '../api.js';
+import http, { img, debounce, compressImage, uploadBatch } from '../api.js';
 import { useViewState } from '../tabMemory.js';
-import ImageCropper from '../components/ImageCropper.jsx';
 
 export default function Works() {
   const navigate = useNavigate();
@@ -11,7 +10,13 @@ export default function Works() {
   const [data, setData] = useState({ items: [], total: 0, pageSize: 12 });
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(emptyForm());
-  const [crop, setCrop] = useState(null);
+  const [pendingFiles, setPendingFiles] = useState([]);
+  const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadZone, setUploadZone] = useState('sample');
+  const abortRef = useRef(null);
+  const fileInputRef = useRef(null);
+  const folderInputRef = useRef(null);
 
   function emptyForm() {
     return { title: '', category_id: '', is_public: true, allow_download: false, cover: null, cover_url: '', description: '', tags: '' };
@@ -55,15 +60,73 @@ export default function Works() {
     }
   }
 
-  const openNew = () => { setForm(emptyForm()); setShowForm(true); };
+  const openNew = () => {
+    setForm(emptyForm());
+    setPendingFiles([]);
+    setUploading(false);
+    setUploadProgress(0);
+    setUploadZone('sample');
+    setShowForm(true);
+  };
+
+  function handleFiles(e) {
+    const files = Array.from(e.target.files || []).filter((f) => f.type.startsWith('image/'));
+    if (!files.length) return;
+    setPendingFiles(files);
+    e.target.value = '';
+  }
+
+  function cancelUpload() {
+    if (abortRef.current) abortRef.current.abort();
+  }
 
   async function submit(e) {
     e.preventDefault();
-    let cover_url = form.cover_url || '';
-    if (form.cover instanceof File) {
-      const r = await uploadImage(form.cover, { category: 'cover', isPublic: true });
-      cover_url = r.url;
+    let cover_url = '';
+    let uploadedUrls = [];
+
+    // 1) 批量上传照片（若有）
+    if (pendingFiles.length > 0) {
+      setUploading(true);
+      setUploadProgress(0);
+      const ac = new AbortController();
+      abortRef.current = ac;
+      try {
+        const compressed = [];
+        const list = Array.from(pendingFiles);
+        for (let i = 0; i < list.length; i += 3) {
+          const chunk = list.slice(i, i + 3);
+          const out = await Promise.all(chunk.map((f) => compressImage(f, { maxWidth: 1920, maxHeight: 1920, quality: 0.82 })));
+          compressed.push(...out);
+        }
+        const ZONE_CAT = { sample: 'client', local: 'negative', final: 'retouched' };
+        const ZONE_PUB = { sample: true, local: false, final: false };
+        const { urls, failed, aborted } = await uploadBatch(compressed, {
+          category: ZONE_CAT[uploadZone] || 'customer',
+          isPublic: ZONE_PUB[uploadZone] || false,
+          signal: ac.signal,
+          onProgress: (d, t) => setUploadProgress(Math.round((d / t) * 100))
+        });
+        if (aborted) { setUploading(false); return; }
+        uploadedUrls = urls;
+        if (uploadedUrls.length) cover_url = uploadedUrls[0];
+        if (failed.length) alert(`成功 ${uploadedUrls.length} 张，失败 ${failed.length} 张（创建后可进入作品详情重试）`);
+        if (!uploadedUrls.length) {
+          alert('照片全部上传失败，作品未创建');
+          setUploading(false);
+          return;
+        }
+      } catch (err) {
+        alert((err.response && err.response.data && err.response.data.error) || '上传失败，作品未创建');
+        setUploading(false);
+        return;
+      } finally {
+        setUploading(false);
+        setUploadProgress(0);
+      }
     }
+
+    // 2) 创建作品（第一张上传照片自动作为封面）
     const tags = (form.tags || '').split(/[、,，\s]+/).map((s) => s.trim()).filter(Boolean);
     const payload = {
       title: form.title,
@@ -76,8 +139,14 @@ export default function Works() {
     };
     try {
       const r = await http.post('/api/works', payload);
+      const workId = r.data.id;
+      // 3) 其余照片写入相册
+      if (uploadedUrls.length > 1) {
+        await http.post('/api/works/' + workId + '/albums', { urls: uploadedUrls.slice(1), zone: uploadZone });
+      }
       setShowForm(false);
-      navigate('/works/' + r.data.id);
+      setPendingFiles([]);
+      navigate('/works/' + workId);
     } catch (e) {
       alert((e.response && e.response.data && e.response.data.error) || '保存失败');
     }
@@ -174,7 +243,7 @@ export default function Works() {
 
       {/* 新建作品弹窗 */}
       {showForm && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50" onClick={() => setShowForm(false)}>
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50" onClick={() => { if (!uploading) setShowForm(false); }}>
           <form onClick={(e) => e.stopPropagation()} onSubmit={submit}
             className="w-96 bg-panel border border-line rounded-xl2 p-6">
             <div className="text-fg font-medium mb-4">新建作品组</div>
@@ -195,30 +264,55 @@ export default function Works() {
             <label className="flex items-center gap-2 text-sm text-fg mb-4">
               <input type="checkbox" checked={form.allow_download} onChange={(e) => setForm({ ...form, allow_download: e.target.checked })} /> 允许客户下载成片（小程序相册）
             </label>
-            <input type="file" accept="image/*" onChange={(e) => setCrop({ file: e.target.files[0] })}
-              className="w-full mb-2 text-xs text-muted" />
-            {(form.cover || form.cover_url) && (
-              <img src={form.cover ? URL.createObjectURL(form.cover) : img(form.cover_url)} className="w-20 h-20 object-cover rounded mb-4" alt="" />
-            )}
+
+            {/* 批量/文件夹上传 */}
+            <div className="mb-3">
+              <label className="block text-sm text-fg mb-1.5">上传照片</label>
+              <select value={uploadZone} onChange={(e) => setUploadZone(e.target.value)}
+                disabled={uploading}
+                className="w-full mb-2 px-3 py-2 rounded bg-ink border border-line text-fg text-sm outline-none disabled:opacity-60">
+                <option value="sample">样片（对外展示）</option>
+                <option value="local">原片（仅后台可见）</option>
+                <option value="final">成片（交付客户）</option>
+              </select>
+              <div className="flex gap-2 mb-2">
+                <label className="flex-1 text-center px-3 py-2 rounded bg-panel border border-line text-sm text-fg cursor-pointer hover:bg-brand/5 disabled:opacity-60">
+                  选择多张照片
+                  <input ref={fileInputRef} type="file" accept="image/*" multiple className="hidden" onChange={handleFiles} disabled={uploading} />
+                </label>
+                <label className="flex-1 text-center px-3 py-2 rounded bg-panel border border-line text-sm text-fg cursor-pointer hover:bg-brand/5 disabled:opacity-60">
+                  选择文件夹
+                  <input ref={folderInputRef} type="file" accept="image/*" webkitdirectory="" className="hidden" onChange={handleFiles} disabled={uploading} />
+                </label>
+              </div>
+              {pendingFiles.length > 0 && (
+                <div className="text-xs text-muted mb-2">
+                  已选 <span className="text-fg font-medium">{pendingFiles.length}</span> 张照片，第一张自动作为作品封面
+                </div>
+              )}
+              {uploading && (
+                <div className="mt-2">
+                  <div className="flex items-center justify-between text-xs text-muted mb-1">
+                    <span>上传中 {uploadProgress}%</span>
+                    <button type="button" onClick={cancelUpload} className="text-red-500 hover:underline">取消</button>
+                  </div>
+                  <div className="w-full h-1.5 bg-ink rounded overflow-hidden">
+                    <div className="h-full bg-brand transition-all" style={{ width: uploadProgress + '%' }} />
+                  </div>
+                </div>
+              )}
+            </div>
+
             <div className="flex gap-2 justify-end">
-              <button type="button" onClick={() => setShowForm(false)} className="px-4 py-2 rounded text-sm text-muted">取消</button>
-              <button type="submit" className="px-4 py-2 rounded bg-brand text-white text-sm">保存并上传照片</button>
+              <button type="button" onClick={() => setShowForm(false)} disabled={uploading} className="px-4 py-2 rounded text-sm text-muted disabled:opacity-60">取消</button>
+              <button type="submit" disabled={uploading} className="px-4 py-2 rounded bg-brand text-white text-sm disabled:opacity-60">
+                {uploading ? '上传中…' : '保存并上传照片'}
+              </button>
             </div>
           </form>
         </div>
       )}
 
-      {crop && (
-        <ImageCropper
-          file={crop.file}
-          aspectRatio={4 / 3}
-          outputWidth={800}
-          outputHeight={600}
-          title="裁剪作品封面（4:3）"
-          onCancel={() => setCrop(null)}
-          onConfirm={(croppedFile) => { setForm((f) => ({ ...f, cover: croppedFile })); setCrop(null); }}
-        />
-      )}
     </div>
   );
 }
