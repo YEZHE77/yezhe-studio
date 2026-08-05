@@ -7,3 +7,13 @@
 .cell-img { width: 100%; height: 380rpx; display: block; background: #eee; }
 .cell-zone { position: absolute; left: 12rpx; top: 12rpx; background: rgba(0,0,0,.6); color: #fff; font-size: 20rpx; padding: 4rpx 14rpx; border-radius: 16rpx; }
 .cell-save { position: absolute; right: 12rpx; bottom: 12rpx; background: #111; color: #fff; font-size: 22rpx; padding: 8rpx 22rpx; border-radius: 24rpx; }
+
+/* 密码校验态 */
+.center { min-height: 70vh; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 0 50rpx; }
+.emoji { font-size: 72rpx; margin-bottom: 20rpx; }
+.t { font-size: 34rpx; font-weight: 600; }
+.s { font-size: 24rpx; color: #888; margin-top: 14rpx; line-height: 1.6; }
+.pw { width: 100%; margin-top: 30rpx; background: #f2f2f2; border: 1rpx solid #ddd; color: #111; text-align: center; padding: 22rpx; border-radius: 14rpx; font-size: 30rpx; }
+.ph { color: #999; }
+.err { color: #e05a5a; font-size: 24rpx; margin-top: 16rpx; }
+.btn { margin-top: 30rpx; background: #111; color: #fff; font-size: 30rpx; padding: 22rpx; border-radius: 14rpx; width: 100%; }

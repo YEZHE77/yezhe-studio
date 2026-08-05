@@ -9,7 +9,9 @@ const GROUPS = [
     items: [
       { to: '/works', label: '作品', icon: 'photo' },
       { to: '/packages', label: '套系', icon: 'package' },
-      { to: '/schedule', label: '档期', icon: 'calendar' }
+      { to: '/schedule', label: '档期', icon: 'calendar' },
+      { to: '/settings', label: '资料设置', icon: 'settings' },
+      { to: '/customers', label: '客户管理', icon: 'customer' }
     ]
   },
   {
@@ -17,11 +19,17 @@ const GROUPS = [
     items: [
       { to: '/orders', label: '订单中心', icon: 'order' },
       { to: '/appointments', label: '预约管理', icon: 'appointment' },
-      { to: '/orders?status=selecting', label: '在线选片', icon: 'select' },
+      { to: '/selections', label: '在线选片', icon: 'select' },
       { to: '/reviews', label: '评价审核', icon: 'review' }
     ]
   },
-  { title: '数据', items: [{ to: '/finance', label: '财务管理', icon: 'finance' }] }
+  {
+    title: '获客工具',
+    items: [
+      { to: '/card', label: '生成名片', icon: 'link' }
+    ]
+  },
+  { title: '数据', items: [{ to: '/finance', label: '财务管理', icon: 'finance' }, { to: '/datacharts', label: '数据统计', icon: 'dashboard' }] }
 ];
 
 export default function Sidebar() {

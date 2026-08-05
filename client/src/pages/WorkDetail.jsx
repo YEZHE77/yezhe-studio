@@ -22,6 +22,9 @@ export default function WorkDetail() {
   const [uploading, setUploading] = useState(false);
   const [selected, setSelected] = useState(new Set());
   const [form, setForm] = useState({ title: '', category_id: '', description: '', tags: '', customer_name: '', is_public: true, allow_download: false });
+  const [draggedId, setDraggedId] = useState(null);
+  const [dragOverId, setDragOverId] = useState(null);
+  const [reordering, setReordering] = useState(false);
 
   async function loadWork() {
     try {
@@ -145,6 +148,41 @@ export default function WorkDetail() {
     } catch (err) { alert('排序更新失败'); }
   }
 
+  async function saveReorder(newOrder) {
+    if (!newOrder || newOrder.length < 2) return;
+    setReordering(true);
+    try {
+      await http.post('/api/works/' + id + '/albums/reorder', { orders: newOrder, zone });
+      await loadAlbums();
+    } catch (err) {
+      alert((err.response && err.response.data && err.response.data.error) || '排序保存失败');
+    } finally { setReordering(false); }
+  }
+
+  function handleDragStart(e, aid) {
+    setDraggedId(aid);
+    e.dataTransfer.effectAllowed = 'move';
+    // 隐藏默认拖拽幽灵图上的悬停提示
+    e.dataTransfer.setData('text/plain', String(aid));
+  }
+  function handleDragOver(e, aid) {
+    e.preventDefault();
+    if (aid !== draggedId) setDragOverId(aid);
+  }
+  function handleDrop(e, dropId) {
+    e.preventDefault();
+    if (!draggedId || draggedId === dropId) { setDraggedId(null); setDragOverId(null); return; }
+    const list = [...zoneAlbums];
+    const from = list.findIndex((a) => a.id === draggedId);
+    const to = list.findIndex((a) => a.id === dropId);
+    if (from < 0 || to < 0) { setDraggedId(null); setDragOverId(null); return; }
+    const [item] = list.splice(from, 1);
+    list.splice(to, 0, item);
+    saveReorder(list.map((a) => a.id));
+    setDraggedId(null);
+    setDragOverId(null);
+  }
+
   async function removeWork() {
     if (!confirm(`确认删除作品「${work.title}」？\n该作品下的 ${albums.length} 张照片与选片记录也会一并删除，不可恢复。`)) return;
     try {
@@ -259,10 +297,20 @@ export default function WorkDetail() {
                 该分区暂无照片，点击右上角「批量上传」添加
               </div>
             ) : (
-              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
+              <div className={`grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3 ${reordering ? 'opacity-60' : ''}`}>
                 {zoneAlbums.map((a) => (
-                  <div key={a.id} className={`group relative border rounded-xl2 overflow-hidden bg-ink ${selected.has(a.id) ? 'border-brand ring-1 ring-brand' : 'border-line'}`}>
-                    <div className="aspect-square">
+                  <div
+                    key={a.id}
+                    draggable
+                    onDragStart={(e) => handleDragStart(e, a.id)}
+                    onDragOver={(e) => handleDragOver(e, a.id)}
+                    onDrop={(e) => handleDrop(e, a.id)}
+                    onDragEnd={() => { setDraggedId(null); setDragOverId(null); }}
+                    className={`group relative border rounded-xl2 overflow-hidden bg-ink cursor-grab active:cursor-grabbing select-none
+                      ${selected.has(a.id) ? 'border-brand ring-1 ring-brand' : dragOverId === a.id ? 'border-brand ring-2 ring-brand' : 'border-line'}
+                      ${draggedId === a.id ? 'opacity-40' : ''}`}
+                  >
+                    <div className="aspect-square pointer-events-none">
                       <img src={img(a.photo_url)} loading="lazy" className="w-full h-full object-cover" alt="" />
                     </div>
                     {/* 选中遮罩 */}
@@ -284,6 +332,9 @@ export default function WorkDetail() {
                   </div>
                 ))}
               </div>
+            )}
+            {zoneAlbums.length > 1 && (
+              <div className="text-xs text-muted mt-3">💡 提示：可用鼠标拖动照片自定义排序，也可在照片底部输入排序号。</div>
             )}
           </div>
         </div>

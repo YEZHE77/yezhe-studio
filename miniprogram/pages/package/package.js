@@ -1,7 +1,7 @@
 const { request } = require('../../utils/req.js');
 
 Page({
-  data: { packages: [], detail: null },
+  data: { packages: [] },
 
   onLoad() { this.load(); },
   onPullDownRefresh() { this.load().then(() => wx.stopPullDownRefresh()); },
@@ -15,17 +15,9 @@ Page({
     }
   },
 
+  // 进入套系详情页（公开列表仅展示已上架套系）
   openPkg(e) {
     const id = e.currentTarget.dataset.id;
-    const pkg = this.data.packages.find((p) => p.id === id);
-    this.setData({ detail: pkg || null });
-  },
-  closeDetail() { this.setData({ detail: null }); },
-
-  goAppointment() {
-    const id = this.data.detail ? this.data.detail.id : '';
-    this.setData({ detail: null });
-    wx.navigateTo({ url: '/pages/appointment/appointment' + (id ? ('?packageId=' + id) : '') });
-  },
-  noop() {}
+    wx.navigateTo({ url: '/pages/packageDetail/packageDetail?id=' + id });
+  }
 });

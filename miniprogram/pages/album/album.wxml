@@ -1,16 +1,28 @@
 <view class="page">
   <view class="head">
-    <text class="head-t">成片相册</text>
-    <text class="muted small" wx:if="{{allowDownload}}">长按或点「保存」存到相册</text>
-    <text class="muted small" wx:else>仅可浏览，保存未开放</text>
+    <text class="head-t">{{title ? title : '成片相册'}}</text>
+    <text class="muted small" wx:if="{{allowDownload && !locked}}">长按或点「保存」存到相册</text>
+    <text class="muted small" wx:elif="{{!locked}}">仅可浏览，保存未开放</text>
   </view>
 
-  <view class="grid" wx:if="{{photos.length}}">
-    <view class="cell" wx:for="{{photos}}" wx:key="id">
-      <image class="cell-img" src="{{item.photo_url}}" mode="aspectFill" bindtap="preview" data-url="{{item.photo_url}}" />
-      <view class="cell-zone" wx:if="{{item.zone === 'final'}}">精修</view>
-      <view class="cell-save" wx:if="{{allowDownload}}" catchtap="save" data-url="{{item.photo_url}}">保存</view>
-    </view>
+  <!-- 密码校验（受保护分享） -->
+  <view wx:if="{{locked}}" class="center">
+    <view class="emoji">🔒</view>
+    <view class="t">{{title}}</view>
+    <view class="s">该影集已设置访问密码，请输入密码查看</view>
+    <input class="pw" password value="{{pw}}" bindinput="onPwInput" placeholder="请输入访问密码" placeholder-class="ph" />
+    <view wx:if="{{pwErr}}" class="err">{{pwErr}}</view>
+    <button class="btn" loading="{{pwBusy}}" bindtap="verify">查看影集</button>
   </view>
-  <view wx:else class="empty">还没有成片</view>
+
+  <block wx:else>
+    <view class="grid" wx:if="{{photos.length}}">
+      <view class="cell" wx:for="{{photos}}" wx:key="index">
+        <image class="cell-img" src="{{item.photo_url}}" mode="aspectFill" bindtap="preview" data-url="{{item.photo_url}}" />
+        <view class="cell-zone" wx:if="{{item.zone === 'final'}}">精修</view>
+        <view class="cell-save" wx:if="{{allowDownload}}" catchtap="save" data-url="{{item.photo_url}}">保存</view>
+      </view>
+    </view>
+    <view wx:else class="empty">还没有成片</view>
+  </block>
 </view>

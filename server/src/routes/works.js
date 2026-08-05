@@ -166,6 +166,24 @@ router.put('/albums/:id/sort', authRequired, async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// 批量拖拽排序：接收当前分区照片 id 的有序数组，按顺序重写 sort
+router.post('/:id/albums/reorder', authRequired, async (req, res) => {
+  try {
+    const { orders, zone = 'sample' } = req.body;
+    if (!Array.isArray(orders) || !orders.length) return res.status(400).json({ error: 'orders 数组不能为空' });
+    // 校验所有权：这些照片必须属于该作品且属于同一分区
+    const placeholders = orders.map(() => '?').join(',');
+    const rows = await query(`SELECT id FROM albums WHERE work_id = ? AND zone = ? AND id IN (${placeholders})`, [req.params.id, zone, ...orders]);
+    const valid = new Set(rows.map((r) => r.id));
+    for (const id of orders) if (!valid.has(id)) return res.status(400).json({ error: '存在非法照片 id' });
+    // 按传入顺序更新 sort
+    for (let i = 0; i < orders.length; i++) {
+      await run('UPDATE albums SET sort = ? WHERE id = ?', [i, orders[i]]);
+    }
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // 删除单张照片（联动删除 R2 对象）
 router.delete('/albums/:id', authRequired, async (req, res) => {
   try {

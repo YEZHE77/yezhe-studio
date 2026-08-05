@@ -1,0 +1,120 @@
+<!-- pages/share/share.wxml —— 统一分享扫码路由页（只读视图） -->
+<view class="page">
+
+  <!-- 加载中 -->
+  <view wx:if="{{loading}}" class="center">
+    <view class="spinner"></view>
+    <view class="tip">加载中…</view>
+  </view>
+
+  <!-- 错误 -->
+  <view wx:elif="{{error}}" class="center">
+    <view class="emoji">🔗</view>
+    <view class="title">{{error}}</view>
+    <view class="sub">该分享链接可能已失效、被关闭或已过期，请联系摄影师获取最新链接。</view>
+    <button class="btn-ghost" bindtap="goBack">返回</button>
+  </view>
+
+  <!-- 密码校验 -->
+  <view wx:elif="{{locked}}" class="center">
+    <view class="emoji">🔒</view>
+    <view class="title">{{title}}</view>
+    <view class="sub">该内容已设置访问密码，请输入密码查看</view>
+    <input class="pw" password value="{{pw}}" bindinput="onPwInput" placeholder="请输入访问密码" placeholder-class="ph" />
+    <view wx:if="{{pwErr}}" class="err">{{pwErr}}</view>
+    <button class="btn" loading="{{pwBusy}}" bindtap="verify">查看内容</button>
+  </view>
+
+  <!-- 订单影集 -->
+  <block wx:elif="{{type === 'order'}}">
+    <view class="head">
+      <view class="h1">{{payload.order.customer_name}} 的专属影集</view>
+      <view class="h2">{{payload.order.packageName ? payload.order.packageName + ' · ' : ''}}共 {{payload.works.length}} 组</view>
+    </view>
+    <view wx:if="{{payload.order.raw_expire_at || payload.order.retouch_expire_at}}" class="expire">
+      文件保存提醒：请尽快下载留存原片与成片。
+    </view>
+    <view wx:for="{{payload.works}}" wx:key="index" class="group">
+      <view wx:if="{{item.title}}" class="gtitle">{{item.title}}</view>
+      <view class="grid">
+        <view wx:for="{{item.photos}}" wx:for-item="p" wx:key="index" class="cell" bindtap="preview" data-url="{{p.url}}">
+          <image src="{{p.url}}" mode="aspectFill" class="img" lazy-load />
+          <view class="zone">{{ZONE_LABEL[p.zone] || p.zone}}</view>
+          <view class="save" catchtap="save" data-url="{{p.url}}">保存</view>
+        </view>
+      </view>
+    </view>
+    <view wx:if="{{payload.works.length === 0}}" class="empty">该影集暂未上传成品照片，敬请期待。</view>
+    <button class="btn-ghost mt" data-page="/pages/album/album" bindtap="goModule">在完整版中查看</button>
+  </block>
+
+  <!-- 单组作品 -->
+  <block wx:elif="{{type === 'work'}}">
+    <view class="head">
+      <view class="h1">{{payload.work.title}}</view>
+    </view>
+    <view wx:if="{{payload.work.description}}" class="desc">{{payload.work.description}}</view>
+    <view class="grid">
+      <view wx:for="{{payload.photos}}" wx:key="index" class="cell" bindtap="preview" data-url="{{item.url}}">
+        <image src="{{item.url}}" mode="aspectFill" class="img" lazy-load />
+        <view class="zone">{{ZONE_LABEL[item.zone] || item.zone}}</view>
+        <view class="save" catchtap="save" data-url="{{item.url}}">保存</view>
+      </view>
+    </view>
+    <button class="btn-ghost mt" data-page="/pages/works/works" bindtap="goModule">在完整版中查看</button>
+  </block>
+
+  <!-- 套系 -->
+  <block wx:elif="{{type === 'package'}}">
+    <view class="head">
+      <view class="h1">{{payload.package.name}}</view>
+      <view class="price">¥{{payload.package.price}}</view>
+    </view>
+    <image wx:if="{{payload.package.cover_url}}" src="{{payload.package.cover_url}}" mode="aspectFill" class="cover" />
+    <view wx:if="{{payload.package.description}}" class="desc">{{payload.package.description}}</view>
+    <view wx:if="{{payload.package.deposit}}" class="line">定金：¥{{payload.package.deposit}}</view>
+    <view wx:if="{{payload.package.retouch_count}}" class="line">精修张数：{{payload.package.retouch_count}} 张</view>
+    <view wx:if="{{payload.package.duration}}" class="line">拍摄时长：{{payload.package.duration}}</view>
+    <view wx:if="{{payload.package.specs.length}}" class="line">多规格可选：{{payload.package.specs.length}} 个版本</view>
+    <button class="btn mt" data-page="/pages/packageDetail/packageDetail" bindtap="goModule">查看套系详情并预约</button>
+  </block>
+
+  <!-- 档期 -->
+  <block wx:elif="{{type === 'schedule'}}">
+    <view class="head">
+      <view class="h1">婚礼档期</view>
+      <view class="h2">{{payload.schedule.date}}{{payload.schedule.lunar_date ? '（'+payload.schedule.lunar_date+'）' : ''}}</view>
+    </view>
+    <view class="kv"><text class="k">时段</text><text class="v">{{payload.schedule.period === 'full' ? '全天' : (payload.schedule.period === 'half' ? '半天' : payload.schedule.period)}}</text></view>
+    <view class="kv"><text class="k">新郎</text><text class="v">{{payload.schedule.groom_name || '—'}}</text></view>
+    <view class="kv"><text class="k">新娘</text><text class="v">{{payload.schedule.bride_name || '—'}}</text></view>
+    <view class="kv"><text class="k">联系方式</text><text class="v">{{payload.schedule.contact_phone || '—'}}</text></view>
+    <view class="kv"><text class="k">婚礼地址</text><text class="v">{{payload.schedule.address || '—'}}</text></view>
+    <view class="kv"><text class="k">摄影师</text><text class="v">{{payload.schedule.photographer || '—'}}</text></view>
+    <view wx:if="{{payload.schedule.note}}" class="desc">{{payload.schedule.note}}</view>
+  </block>
+
+  <!-- 账单对账 -->
+  <block wx:elif="{{type === 'bill'}}">
+    <view class="head">
+      <view class="h1">{{payload.order.customer_name}} 的账单</view>
+      <view class="h2">{{payload.order.packageName || ''}}</view>
+    </view>
+    <view class="summary">
+      <view class="s"><text>应收</text><text class="num">¥{{payload.summary.total}}</text></view>
+      <view class="s"><text>已收</text><text class="num ok">¥{{payload.summary.paid}}</text></view>
+      <view class="s"><text>已退</text><text class="num bad">¥{{payload.summary.refunded}}</text></view>
+      <view class="s"><text>待收</text><text class="num">{{payload.summary.balance_unpaid}}</text></view>
+    </view>
+    <view class="plist">
+      <view wx:for="{{payload.payments}}" wx:key="index" class="prow">
+        <view class="pt">{{item.type === 'deposit' ? '定金' : (item.type === 'balance' ? '尾款' : (item.type === 'extra' ? '加片/增值' : (item.type === 'refund' ? '退款' : item.type)))}}</view>
+        <view class="pm">{{item.method === 'online' ? '线上' : '线下'}}</view>
+        <view class="pa {{item.type === 'refund' ? 'bad' : 'ok'}}">{{item.type === 'refund' ? '-' : '+'}}¥{{item.amount}}</view>
+      </view>
+    </view>
+    <button class="btn-ghost mt" data-page="/pages/order/order" bindtap="goModule">在完整版中查看</button>
+  </block>
+
+  <view class="brand">YEZHE WORKSHOP · 海口婚礼 / 人像摄影</view>
+</view>

@@ -56,6 +56,10 @@ CREATE TABLE IF NOT EXISTS orders (
   shoot_date TEXT, executor TEXT, created_at TEXT DEFAULT CURRENT_TIMESTAMP
 );`;
 
+// 系统设置（工作室资料等键值对，公开读 / 商户写）
+const PG_SETTINGS = `CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT);`;
+const SQLITE_SETTINGS = `CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT);`;
+
 // 套系管理
 const PG_PACKAGES = `
 CREATE TABLE IF NOT EXISTS packages (
@@ -92,6 +96,30 @@ const SQLITE_PAYMENTS = `
 CREATE TABLE IF NOT EXISTS payments (
   id INTEGER PRIMARY KEY AUTOINCREMENT, order_id INTEGER, order_no TEXT, type TEXT NOT NULL DEFAULT 'deposit',
   amount REAL NOT NULL DEFAULT 0, method TEXT NOT NULL DEFAULT 'offline', note TEXT, created_at TEXT DEFAULT CURRENT_TIMESTAMP
+);`;
+
+// 统一分享内核（5 大 C 端模块共用底座）：shares 分享令牌表 + share_logs 访问留痕
+// token 为主键（公开访问标识）；type 区分 order/work/package/schedule/bill；password_hash 可选密码(bcrypt)；
+// expire_at 可选有效期(ISO日期)；disabled 启停；share_logs 记录 view/verify/deny 等动作。
+const PG_SHARE_TABLES = `
+CREATE TABLE IF NOT EXISTS shares (
+  token TEXT PRIMARY KEY, type TEXT NOT NULL DEFAULT 'order', ref_id INTEGER,
+  title TEXT, password_hash TEXT, expire_at TEXT, disabled INTEGER NOT NULL DEFAULT 0,
+  created_by TEXT, created_at TIMESTAMPTZ DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS share_logs (
+  id SERIAL PRIMARY KEY, token TEXT NOT NULL, action TEXT NOT NULL DEFAULT 'view',
+  detail TEXT, ip TEXT, ua TEXT, created_at TIMESTAMPTZ DEFAULT now()
+);`;
+const SQLITE_SHARE_TABLES = `
+CREATE TABLE IF NOT EXISTS shares (
+  token TEXT PRIMARY KEY, type TEXT NOT NULL DEFAULT 'order', ref_id INTEGER,
+  title TEXT, password_hash TEXT, expire_at TEXT, disabled INTEGER NOT NULL DEFAULT 0,
+  created_by TEXT, created_at TEXT DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS share_logs (
+  id INTEGER PRIMARY KEY AUTOINCREMENT, token TEXT NOT NULL, action TEXT NOT NULL DEFAULT 'view',
+  detail TEXT, ip TEXT, ua TEXT, created_at TEXT DEFAULT CURRENT_TIMESTAMP
 );`;
 
 // 客户侧（C 端小程序）新表：customers / appointments / photo_select / evaluates
@@ -141,7 +169,19 @@ const ORDERS_NEW_COLUMNS = [
   ['remark', 'TEXT'],
   ['logs', dialect === 'pg' ? 'TEXT' : 'TEXT'],
   ['refund_amount', 'REAL NOT NULL DEFAULT 0'],
-  ['cancelled', 'INTEGER NOT NULL DEFAULT 0']
+  ['cancelled', 'INTEGER NOT NULL DEFAULT 0'],
+  ['is_deleted', 'INTEGER NOT NULL DEFAULT 0'],
+  ['deleted_at', 'TEXT'],
+  ['raw_storage_days', 'INTEGER NOT NULL DEFAULT 30'],
+  ['retouch_storage_days', 'INTEGER NOT NULL DEFAULT 180'],
+  ['raw_expire_at', 'TEXT'],
+  ['retouch_expire_at', 'TEXT'],
+  ['share_token', 'TEXT'],
+  ['qr_url', 'TEXT'],
+  ['questionnaire_answers', 'TEXT'], // 客户拍摄问卷答案（确认后回写，与下单时刻套系快照隔离）
+  ['groom_name', 'TEXT'], // 新郎姓名
+  ['bride_name', 'TEXT'], // 新娘姓名
+  ['address', 'TEXT'] // 拍摄地址
 ];
 
 async function colsOf(table) {
@@ -174,11 +214,49 @@ export async function initSchema() {
   // 客户侧新表
   for (const s of (dialect === 'pg' ? PG_CUSTOMER_TABLES : SQLITE_CUSTOMER_TABLES).split(';').map((x) => x.trim()).filter(Boolean)) await run(s);
 
+  // 系统设置表
+  for (const s of (dialect === 'pg' ? PG_SETTINGS : SQLITE_SETTINGS).split(';').map((x) => x.trim()).filter(Boolean)) await run(s);
+
+  // 统一分享内核表（shares + share_logs）
+  for (const s of (dialect === 'pg' ? PG_SHARE_TABLES : SQLITE_SHARE_TABLES).split(';').map((x) => x.trim()).filter(Boolean)) await run(s);
+
   // orders 增量补列
   for (const [col, def] of ORDERS_NEW_COLUMNS) await ensureColumn('orders', col, def);
   // 客户绑定列 + 成片下载开关
   await ensureColumn('orders', 'openid', 'TEXT');
   await ensureColumn('works', 'allow_download', 'INTEGER NOT NULL DEFAULT 0');
+  // packages / schedules 增量补列
+  const PACKAGES_NEW_COLUMNS = [
+    ['deposit', 'REAL NOT NULL DEFAULT 0'],
+    ['retouch_count', 'INTEGER NOT NULL DEFAULT 0'],
+    ['raw_policy', 'TEXT'],
+    ['duration', 'TEXT'],
+    ['questionnaire', 'TEXT'],
+    ['specs', 'TEXT'] // 多规格配置（同一套系多个版本，独立价格/服务）
+  ];
+  for (const [col, def] of PACKAGES_NEW_COLUMNS) await ensureColumn('packages', col, def);
+  await ensureColumn('schedules', 'lunar_date', 'TEXT');
+  // 档期客户信息（婚礼场景）
+  const SCHEDULES_NEW_COLUMNS = [
+    ['groom_name', 'TEXT'],
+    ['bride_name', 'TEXT'],
+    ['contact_phone', 'TEXT'],
+    ['address', 'TEXT']
+  ];
+  for (const [col, def] of SCHEDULES_NEW_COLUMNS) await ensureColumn('schedules', col, def);
+
+  // 预约扩展列（档期预约模块：时段 period / 拒绝原因 / 来源标记 / 关联档期与订单 / 处理时间）
+  // 状态语义：pending(待确认) / confirmed(已确认生成订单) / rejected(已拒绝) / cancelled(已取消)
+  const APPOINTMENT_NEW_COLUMNS = [
+    ['period', 'TEXT'],
+    ['reject_reason', 'TEXT'],
+    ['source', 'TEXT'],
+    ['schedule_id', 'INTEGER'],
+    ['order_id', 'INTEGER'],
+    ['handled_at', 'TEXT'],
+    ['spec_id', 'INTEGER'] // 客户预约时选中的套系规格（多规格场景下定位具体版本）
+  ];
+  for (const [col, def] of APPOINTMENT_NEW_COLUMNS) await ensureColumn('appointments', col, def);
 
   console.log('[schema] 表结构已就绪');
 }

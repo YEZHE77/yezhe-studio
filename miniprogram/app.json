@@ -5,11 +5,14 @@
     "pages/package/package",
     "pages/my/my",
     "pages/appointment/appointment",
+    "pages/schedule/schedule",
     "pages/order/order",
     "pages/photoSelect/photoSelect",
     "pages/album/album",
     "pages/evaluate/evaluate",
-    "pages/subscribe/subscribe"
+    "pages/subscribe/subscribe",
+    "pages/share/share",
+    "pages/packageDetail/packageDetail"
   ],
   "window": {
     "navigationBarTitleText": "叶哲 STUDIO",

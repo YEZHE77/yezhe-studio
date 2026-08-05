@@ -34,7 +34,7 @@ function FuncCard({ icon, title, desc, to, onClick }) {
   const nav = useNavigate();
   const go = () => { if (onClick) onClick(); else if (to) nav(to); };
   return (
-    <div onClick={go} className="group bg-panel border border-line rounded-xl2 p-5 cursor-pointer hover:-translate-y-0.5 hover:shadow-sm hover:border-brand/30 transition flex flex-col items-center text-center h-full">
+    <div onClick={go} className="group bg-panel border border-line rounded-xl2 p-5 cursor-pointer hover:shadow-sm hover:border-brand/30 transition flex flex-col items-center text-center h-full">
       <div className="w-10 h-10 rounded-lg text-fg/70 flex items-center justify-center mb-3">
         <Icon name={icon} className="w-6 h-6" />
       </div>
@@ -109,10 +109,7 @@ export default function Dashboard() {
 
       {/* 待处理订单：白底等宽卡片 + 底部彩色线 + hover 高亮 */}
       <div className="bg-panel border border-line rounded-xl2 p-5">
-        <div className="flex items-center justify-between mb-4">
-          <div className="text-[15px] font-semibold text-fg">待处理订单</div>
-          <div className="text-xs text-muted">点击节点直达对应订单列表</div>
-        </div>
+        <div className="text-[15px] font-semibold text-fg mb-4">待处理订单</div>
         <div className="grid grid-cols-5 gap-3">
           {PENDING.map((b) => {
             const n = stats ? (stats.pendingBlocks[b.key] || 0) : '—';
@@ -120,7 +117,7 @@ export default function Dashboard() {
               <button
                 key={b.key}
                 onClick={() => nav('/orders?status=' + b.key)}
-                className="relative bg-panel border border-line rounded-xl2 pt-5 pb-4 text-center hover:-translate-y-0.5 hover:shadow-sm transition overflow-hidden group"
+                className="relative bg-panel border border-line rounded-xl2 pt-5 pb-4 text-center hover:shadow-sm hover:border-brand/30 transition overflow-hidden group"
               >
                 <div className={'text-2xl font-bold ' + b.tx}>{n}</div>
                 <div className="text-xs text-fg/80 mt-1.5">{b.label}</div>

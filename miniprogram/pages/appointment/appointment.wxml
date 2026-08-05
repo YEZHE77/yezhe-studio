@@ -2,6 +2,10 @@
   <view class="section"><view class="section-title"><text>预约拍摄</text></view></view>
 
   <view class="form card">
+    <view wx:if="{{pkgName}}" class="pkg-chip">
+      <text class="pc-name">{{pkgName}}</text>
+      <text wx:if="{{specName}}" class="pc-spec">· {{specName}}</text>
+    </view>
     <view class="field">
       <view class="field-label">称呼</view>
       <input class="input" placeholder="怎么称呼您" value="{{name}}" bindinput="onName" />
@@ -19,7 +23,13 @@
     <view class="field">
       <view class="field-label">期望日期</view>
       <picker mode="date" value="{{hopeDate}}" bindchange="onDate">
-        <view class="input picker">{{hopeDate || '选择日期'}} ›</view>
+        <view class="input picker">{{hopeDate || '选择日期（也可在首页日历选）'}} ›</view>
+      </picker>
+    </view>
+    <view class="field">
+      <view class="field-label">期望时段</view>
+      <picker mode="selector" range="{{periodOpts}}" range-key="label" value="{{periodIndex}}" bindchange="onPeriod">
+        <view class="input picker">{{periodLabel || '全天'}} ›</view>
       </picker>
     </view>
     <view class="field">
@@ -34,11 +44,35 @@
   <view class="appt" wx:for="{{list}}" wx:key="id">
     <view class="appt-top">
       <text class="appt-name">{{item.name}}</text>
-      <text class="appt-status">{{item.statusText}}</text>
+      <text class="appt-status st-{{item.status}}">{{item.statusText}}</text>
     </view>
     <view class="muted small" wx:if="{{item.package_name}}">套系：{{item.package_name}}</view>
-    <view class="muted small" wx:if="{{item.hope_date}}">期望：{{item.hope_date}}</view>
+    <view class="muted small" wx:if="{{item.hope_date}}">期望：{{item.hope_date}}{{item.periodLabel ? ' · ' + item.periodLabel : ''}}</view>
     <view class="muted small" wx:if="{{item.remark}}">备注：{{item.remark}}</view>
+    <view class="muted small" wx:if="{{item.status === 'rejected' && item.reject_reason}}">拒绝原因：{{item.reject_reason}}</view>
+    <view class="muted small" wx:if="{{item.status === 'confirmed'}}">已确认，订单已生成，可在「订单」中查看。</view>
+    <view class="appt-actions" wx:if="{{item.status === 'pending' || item.status === 'confirmed'}}">
+      <view class="btn-mini" bindtap="cancel" data-id="{{item.id}}">取消预约</view>
+    </view>
   </view>
   <view wx:if="{{list.length === 0}}" class="empty">还没有预约</view>
+
+  <!-- 拍摄问卷弹窗（确认后自动弹出，回写订单） -->
+  <view wx:if="{{qModal && qAppt}}" class="mask" bindtap="closeQ">
+    <view class="q-sheet" catchtap="noop">
+      <view class="q-title">拍摄需求问卷</view>
+      <view class="q-sub">为更好地准备您的拍摄，请填写以下信息</view>
+      <view class="q-list">
+        <view class="q-item" wx:for="{{qAppt.package_questionnaire}}" wx:key="index" wx:for-index="qi">
+          <view class="q-label">{{item.q}}</view>
+          <input wx:if="{{item.type !== 'bool'}}" class="q-input" value="{{qAnswers[qi]}}" data-i="{{qi}}" bindinput="onQInput" placeholder="请输入" />
+          <switch wx:else checked="{{qAnswers[qi] === '是'}}" data-i="{{qi}}" bindchange="onQInputSwitch" color="#2f7cf6" />
+        </view>
+      </view>
+      <view class="q-actions">
+        <view class="btn-mini" bindtap="closeQ">稍后填写</view>
+        <view class="btn btn-block q-submit" bindtap="submitQ" disabled="{{qSubmitting}}">提交问卷</view>
+      </view>
+    </view>
+  </view>
 </view>

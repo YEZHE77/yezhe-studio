@@ -1,0 +1,64 @@
+<view class="page">
+  <!-- 加载中 -->
+  <view wx:if="{{loading}}" class="center"><view class="spinner"></view><view class="tip">加载中…</view></view>
+
+  <!-- 错误 -->
+  <view wx:elif="{{error}}" class="center">
+    <view class="emoji">🔗</view>
+    <view class="title">{{error}}</view>
+    <view class="sub">该分享可能已失效、被关闭或已过期，请联系摄影师获取最新链接。</view>
+    <button class="btn-ghost" bindtap="back">返回</button>
+  </view>
+
+  <!-- 密码校验 -->
+  <view wx:elif="{{locked}}" class="center">
+    <view class="emoji">🔒</view>
+    <view class="title">受保护的套系分享</view>
+    <view class="sub">请输入访问密码查看</view>
+    <input class="pw" password value="{{pw}}" bindinput="onPwInput" placeholder="请输入访问密码" placeholder-class="ph" />
+    <view wx:if="{{pwErr}}" class="err">{{pwErr}}</view>
+    <button class="btn" loading="{{pwBusy}}" bindtap="verify">查看内容</button>
+  </view>
+
+  <!-- 套系详情 -->
+  <block wx:else>
+    <image wx:if="{{pkg.cover_url}}" src="{{pkg.cover_url}}" mode="aspectFill" class="hero" bindtap="preview" data-url="{{pkg.cover_url}}" />
+    <view class="block">
+      <view class="name">{{pkg.name}}</view>
+      <view class="price"><text class="sym">¥</text><text class="num">{{specPrice}}</text><text wx:if="{{pkg.specs.length}}" class="qi">起 · 多规格可选</text></view>
+      <view wx:if="{{pkg.description}}" class="desc">{{pkg.description}}</view>
+    </view>
+
+    <!-- 多规格切换 -->
+    <view wx:if="{{pkg.specs.length}}" class="block">
+      <view class="label">选择规格</view>
+      <view class="specs">
+        <view wx:for="{{pkg.specs}}" wx:key="id" class="spec {{specIndex === index ? 'on' : ''}}" data-i="{{index}}" bindtap="onSpec">
+          <view class="s-name">{{item.name}}</view>
+          <view class="s-price">¥{{item.price}}</view>
+        </view>
+      </view>
+    </view>
+
+    <!-- 服务明细 -->
+    <view class="block">
+      <view class="label">服务明细</view>
+      <view wx:if="{{pkg.deposit}}" class="kv"><text class="k">定金</text><text class="v">¥{{pkg.deposit}}</text></view>
+      <view wx:if="{{pkg.retouch_count}}" class="kv"><text class="k">精修张数</text><text class="v">{{pkg.retouch_count}} 张</text></view>
+      <view wx:if="{{pkg.duration}}" class="kv"><text class="k">拍摄时长</text><text class="v">{{pkg.duration}}</text></view>
+      <view wx:if="{{pkg.raw_policy}}" class="kv"><text class="k">底片政策</text><text class="v">{{pkg.raw_policy}}</text></view>
+      <view wx:for="{{pkg.addons}}" wx:key="name" class="kv"><text class="k">{{item.name}}</text><text class="v">+¥{{item.price}}</text></view>
+    </view>
+
+    <!-- 优惠活动 -->
+    <view wx:if="{{pkg.marketing.coupon || pkg.marketing.activity}}" class="block">
+      <view class="label">优惠活动</view>
+      <view wx:if="{{pkg.marketing.coupon}}" class="tag">🎟 {{pkg.marketing.coupon}}</view>
+      <view wx:if="{{pkg.marketing.activity}}" class="tag">🎁 {{pkg.marketing.activity}}</view>
+    </view>
+
+    <view class="bottom">
+      <button class="btn btn-block" bindtap="goAppointment">立即预约</button>
+    </view>
+  </block>
+</view>

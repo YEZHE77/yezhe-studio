@@ -50,8 +50,8 @@
   </view>
   <view style="height:40rpx"></view>
 
-  <!-- 预约入口 -->
-  <view class="cta-wrap">
+  <!-- 预约入口（对外预约开关关闭时隐藏） -->
+  <view class="cta-wrap" wx:if="{{bookingOpen}}">
     <view class="btn btn-block" bindtap="goAppointment">立即预约拍摄</view>
   </view>
   <view style="height:48rpx"></view>

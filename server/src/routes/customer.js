@@ -6,7 +6,7 @@ import { parseRow } from '../schema.js';
 import { customerRequired } from '../auth.js';
 
 const router = Router();
-const JSON_COLS = ['package_snapshot', 'addons_snapshot', 'logs'];
+const JSON_COLS = ['package_snapshot', 'addons_snapshot', 'logs', 'questionnaire_answers'];
 
 function nowISO() { return new Date().toISOString(); }
 
@@ -32,15 +32,16 @@ router.post('/appointment/submit', customerRequired, async (req, res) => {
     const name = (b.name || '').trim();
     const phone = (b.phone || '').trim();
     if (!name || !phone) return res.status(400).json({ error: '请填写称呼与联系电话' });
+    const period = ['full', 'am', 'pm', 'night'].includes(b.period) ? b.period : 'full';
     let pkgName = '';
     if (b.packageId) {
       const p = await get('SELECT name FROM packages WHERE id = ?', [b.packageId]);
       pkgName = p ? p.name : '';
     }
     const id = await insert(
-      `INSERT INTO appointments (openid, name, phone, package_id, hope_date, remark, status, created_at)
-       VALUES (?,?,?,?,?,?,?,?)`,
-      [openid, name, phone, b.packageId || null, b.hopeDate || '', b.remark || '', 'pending', nowISO()]
+      `INSERT INTO appointments (openid, name, phone, package_id, spec_id, hope_date, remark, status, period, source, created_at)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
+      [openid, name, phone, b.packageId || null, b.specId || null, b.hopeDate || '', b.remark || '', 'pending', period, 'mini', nowISO()]
     );
     res.json({ ok: true, appointmentId: id, packageName: pkgName });
   } catch (e) {
@@ -48,16 +49,47 @@ router.post('/appointment/submit', customerRequired, async (req, res) => {
   }
 });
 
-// ===== 2. 我的预约列表 =====
+// ===== 1.1 客户取消预约申请（不直接释放档期/订单，仅改状态，需 B 端处理）=====
+router.post('/appointment/cancel', customerRequired, async (req, res) => {
+  try {
+    const openid = req.customer.openid;
+    const id = req.body && req.body.id;
+    if (!id) return res.status(400).json({ error: '缺少预约 id' });
+    const a = await get('SELECT * FROM appointments WHERE id = ?', [id]);
+    if (!a) return res.status(404).json({ error: '预约不存在' });
+    if (a.openid !== openid) return res.status(403).json({ error: '无权操作该预约' });
+    if (a.status !== 'pending' && a.status !== 'confirmed') {
+      return res.status(400).json({ error: '该预约状态不可取消' });
+    }
+    await run("UPDATE appointments SET status = 'cancelled', handled_at = ? WHERE id = ?", [nowISO(), id]);
+    // 注意：已确认（含关联档期/订单）的取消不直接释放档期，需商户端处理
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ===== 2. 我的预约列表（含套系问卷模板 / 规格 / 关联订单问卷答案，供 C 端确认后弹问卷）=====
 router.get('/appointment/list', customerRequired, async (req, res) => {
   try {
     const rows = await query(
-      `SELECT a.*, p.name AS package_name FROM appointments a
+      `SELECT a.*, p.name AS package_name, p.questionnaire AS package_questionnaire, p.specs AS package_specs,
+              o.questionnaire_answers AS questionnaire_answers, o.id AS order_id
+       FROM appointments a
        LEFT JOIN packages p ON p.id = a.package_id
+       LEFT JOIN orders o ON o.id = a.order_id
        WHERE a.openid = ? ORDER BY a.id DESC`,
       [req.customer.openid]
     );
-    res.json(rows);
+    const out = rows.map((a) => {
+      let questionnaire = '', specs = [];
+      try { questionnaire = a.package_questionnaire ? JSON.parse(a.package_questionnaire) : ''; } catch { questionnaire = a.package_questionnaire || ''; }
+      try { specs = a.package_specs ? JSON.parse(a.package_specs) : []; } catch { specs = []; }
+      let answers = {};
+      try { answers = a.questionnaire_answers ? JSON.parse(a.questionnaire_answers) : {}; } catch { answers = {}; }
+      return { ...a, package_questionnaire: questionnaire, package_specs: specs, questionnaire_answers: answers, order_id: a.order_id || null };
+    });
+    res.json(out);
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
@@ -102,6 +134,20 @@ router.get('/order/:orderId', customerRequired, async (req, res) => {
       photoSelectSubmitted: !!(sel && sel.submitted),
       evaluated: !!ev, evaluateStatus: ev ? ev.status : null
     });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ===== 4.1 客户填写拍摄问卷（确认后回写订单，与下单时刻套系快照隔离）=====
+router.post('/orders/:orderId/questionnaire', customerRequired, async (req, res) => {
+  try {
+    const r = await ownOrderOrFail(req.params.orderId, req.customer.openid);
+    if (r.status) return res.status(r.status).json({ error: r.msg });
+    const answers = req.body && req.body.answers;
+    if (!answers || typeof answers !== 'object') return res.status(400).json({ error: '问卷内容无效' });
+    await run('UPDATE orders SET questionnaire_answers = ? WHERE id = ?', [JSON.stringify(answers), r.order.id]);
+    res.json({ ok: true });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }

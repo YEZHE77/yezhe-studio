@@ -7,3 +7,24 @@
 .appt-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8rpx; }
 .appt-name { font-size: 30rpx; font-weight: 600; }
 .appt-status { font-size: 24rpx; color: #111; background: #f0f0f0; padding: 6rpx 18rpx; border-radius: 20rpx; }
+.appt-status.st-pending { color: #b8870a; background: #fff7e0; }
+.appt-status.st-confirmed { color: #1a7f37; background: #e6f4ea; }
+.appt-status.st-rejected { color: #d33; background: #fde8e8; }
+.appt-status.st-cancelled { color: #999; background: #f0f0f0; }
+.appt-actions { display: flex; justify-content: flex-end; margin-top: 16rpx; }
+.btn-mini { font-size: 24rpx; color: #d33; border: 1rpx solid #f0caca; padding: 10rpx 24rpx; border-radius: 24rpx; }
+
+.pkg-chip { background: #eaf2ff; border: 1rpx solid #cfe0ff; color: #1f2329; border-radius: 12rpx; padding: 16rpx 20rpx; margin-bottom: 20rpx; font-size: 27rpx; }
+.pc-name { font-weight: 600; }
+.pc-spec { color: #2f7cf6; margin-left: 8rpx; }
+
+.mask { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: flex-end; z-index: 99; }
+.q-sheet { width: 100%; background: #fff; border-radius: 24rpx 24rpx 0 0; padding: 36rpx 32rpx 40rpx; max-height: 82vh; overflow: auto; }
+.q-title { font-size: 32rpx; font-weight: 700; color: #1f2329; text-align: center; }
+.q-sub { font-size: 24rpx; color: #8a9099; text-align: center; margin-top: 8rpx; margin-bottom: 24rpx; }
+.q-list { margin-bottom: 24rpx; }
+.q-item { margin-bottom: 22rpx; }
+.q-label { font-size: 27rpx; color: #1f2329; margin-bottom: 10rpx; }
+.q-input { background: #f5f6f8; border: 1rpx solid #e3e6ea; border-radius: 12rpx; padding: 18rpx 22rpx; font-size: 27rpx; }
+.q-actions { display: flex; align-items: center; gap: 20rpx; }
+.q-submit { flex: 1; margin: 0; }

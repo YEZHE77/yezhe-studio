@@ -1,0 +1,49 @@
+<view class="page">
+  <view class="section"><view class="section-title"><text>选择拍摄档期</text></view></view>
+
+  <view wx:if="{{!bookingOpen}}" class="banner banner-close">预约通道暂未开放，如有需要请直接联系摄影师～</view>
+
+  <view class="cal card">
+    <view class="cal-head">
+      <view class="cal-nav" bindtap="shift" data-d="-1">‹</view>
+      <view class="cal-month">{{month}}</view>
+      <view class="cal-nav" bindtap="shift" data-d="1">›</view>
+    </view>
+    <view class="cal-week">
+      <view wx:for="{{WEEK}}" wx:key="*this" class="cal-wd">{{item}}</view>
+    </view>
+    <view class="cal-grid">
+      <view wx:for="{{cells}}" wx:key="index" wx:for-item="c"
+        class="cal-cell {{c ? ('st-' + c.status) : ''}}"
+        data-date="{{c ? c.date : ''}}" bindtap="onPickDay">
+        <block wx:if="{{c}}">
+          <text class="cal-d">{{c.day}}</text>
+          <text wx:if="{{c.dot}}" class="cal-dot {{c.status === 'pending' ? 'pd' : c.status === 'closed' ? 'gy' : c.status === 'partial' ? 'pt' : ''}}">{{c.dot}}</text>
+        </block>
+      </view>
+    </view>
+    <view class="cal-legend muted small">
+      <text class="lg lg-booked">红 约满</text>
+      <text class="lg lg-pending">黄 待确认</text>
+      <text class="lg lg-closed">灰 关闭</text>
+      <text class="lg lg-free">白 空闲</text>
+    </view>
+  </view>
+
+  <!-- 时段选择 -->
+  <view wx:if="{{picking}}" class="card period-card">
+    <view class="muted small">已选日期：{{selDate}}（点击日历可重选）</view>
+    <view class="period-row">
+      <view wx:for="{{PERIODS}}" wx:key="*this" wx:for-item="p"
+        class="period-btn {{selPeriod === p ? 'on' : ''}} {{(occupied[selDate] && occupied[selDate][p]) ? 'dis' : ''}}"
+        data-period="{{p}}" bindtap="onPickPeriod">
+        {{PERIOD_LABEL[p]}}
+        <text wx:if="{{occupied[selDate] && occupied[selDate][p]}}" class="dis-tip">已约</text>
+      </view>
+    </view>
+    <view class="btn btn-block" bindtap="goFill" disabled="{{!selPeriod}}">下一步：填写预约信息</view>
+  </view>
+
+  <view class="tip muted small">提交后摄影师会与您确认档期，确认后才会正式锁定时间。</view>
+  <view class="btn btn-ghost" bindtap="goFillNoDate">不指定日期，直接填写预约</view>
+</view>

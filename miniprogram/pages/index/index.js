@@ -6,7 +6,8 @@ Page({
     packages: [],
     reviews: [],
     detail: null,      // 作品大图弹层
-    detailLoading: false
+    detailLoading: false,
+    bookingOpen: true  // 对外预约开关（B 端「资料设置」控制）
   },
 
   onLoad() { this.loadAll(); },
@@ -31,11 +32,16 @@ Page({
     } catch (e) {
       wx.showToast({ title: '加载失败', icon: 'none' });
     }
+    // 预约开关（公开读）
+    try {
+      const b = await request('/api/settings/booking');
+      this.setData({ bookingOpen: b && b.open !== false });
+    } catch (e) { this.setData({ bookingOpen: true }); }
   },
 
   goWorks() { wx.switchTab({ url: '/pages/works/works' }); },
   goPackage() { wx.switchTab({ url: '/pages/package/package' }); },
-  goAppointment() { wx.navigateTo({ url: '/pages/appointment/appointment' }); },
+  goAppointment() { wx.navigateTo({ url: '/pages/schedule/schedule' }); },
 
   async openWork(e) {
     const id = e.currentTarget.dataset.id;

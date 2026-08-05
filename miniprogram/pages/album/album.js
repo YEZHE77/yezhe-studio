@@ -1,15 +1,38 @@
+const { CONFIG } = require('../../utils/config.js');
 const { request } = require('../../utils/req.js');
 
+function abs(u) {
+  if (!u) return '';
+  if (u.indexOf('http') === 0) return u;
+  if (u.indexOf('/uploads') === 0) return CONFIG.API_BASE + u;
+  return u;
+}
+
 Page({
-  data: { orderId: '', photos: [], allowDownload: false, savingUrl: '' },
+  data: {
+    orderId: '',
+    token: '',
+    locked: false,
+    photos: [],
+    allowDownload: false,
+    savingUrl: '',
+    title: '',
+    pw: '',
+    pwErr: '',
+    pwBusy: false
+  },
 
   onLoad(q) {
-    if (q && q.orderId) {
+    if (q && q.token) {
+      this.setData({ token: q.token });
+      this.loadToken();
+    } else if (q && q.orderId) {
       this.setData({ orderId: q.orderId });
       this.load();
     }
   },
 
+  // 客户自有订单（openid 行级隔离）
   async load() {
     try {
       const r = await request('/api/customer/album/' + this.data.orderId);
@@ -17,6 +40,50 @@ Page({
       if ((r.photos || []).length === 0) wx.showToast({ title: '成片尚未上传', icon: 'none' });
     } catch (e) {
       wx.showToast({ title: '加载失败', icon: 'none' });
+    }
+  },
+
+  // 分享令牌模式（只读交付，公开网关）
+  async loadToken() {
+    try {
+      const r = await request('/api/share/' + this.data.token);
+      if (r.locked) {
+        this.setData({ locked: true, title: (r.meta && r.meta.title) || '受保护的影集' });
+        return;
+      }
+      this.applyTokenData(r);
+    } catch (e) {
+      wx.showToast({ title: '加载失败', icon: 'none' });
+    }
+  },
+
+  applyTokenData(r) {
+    const data = (r.data && r.data.works) ? r.data : null;
+    if (!data) { this.setData({ photos: [] }); return; }
+    const photos = [];
+    (data.works || []).forEach((w) => {
+      (w.photos || []).forEach((p) => photos.push({ photo_url: abs(p.url), zone: p.zone }));
+    });
+    this.setData({
+      photos,
+      allowDownload: true,
+      title: (r.meta && r.meta.title) || '',
+      locked: false
+    });
+  },
+
+  onPwInput(e) { this.setData({ pw: e.detail.value, pwErr: '' }); },
+
+  async verify() {
+    if (this.data.pwBusy) return;
+    this.setData({ pwBusy: true, pwErr: '' });
+    try {
+      const r = await request('/api/share/' + this.data.token + '/verify', 'POST', { password: this.data.pw });
+      this.applyTokenData(r);
+    } catch (e) {
+      this.setData({ pwErr: (e && e.message) || '密码错误' });
+    } finally {
+      this.setData({ pwBusy: false });
     }
   },
 

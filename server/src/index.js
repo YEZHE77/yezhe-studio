@@ -26,6 +26,9 @@ import healthRoutes from './routes/health.js';
 import wxRoutes from './routes/wx.js';
 import customerRoutes from './routes/customer.js';
 import adminRoutes from './routes/admin.js';
+import settingsRoutes from './routes/settings.js';
+import shareRoutes from './routes/share.js';
+import sharesRoutes from './routes/shares.js';
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -80,6 +83,9 @@ app.use('/api/health', healthRoutes);
 app.use('/api/wx', wxRoutes);
 app.use('/api/customer', customerRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/settings', settingsRoutes);
+app.use('/api/share', shareRoutes);
+app.use('/api/shares', sharesRoutes);
 
 // multer / 通用错误
 app.use((err, req, res, next) => {
