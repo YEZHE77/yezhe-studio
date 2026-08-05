@@ -142,38 +142,6 @@ export default function Dashboard() {
         ))}
       </div>
 
-      {/* 存储状态卡片（容量管理联动；触发告警时首页可见） */}
-      {storage && (
-        <div className="bg-panel border border-line rounded-xl2 p-5">
-          <div className="flex items-center justify-between mb-3">
-            <div className="text-[15px] font-semibold text-fg flex items-center gap-2">
-              <Icon name="storage" className="w-[18px] h-[18px] text-muted" /> 存储空间
-            </div>
-            <button onClick={() => nav('/capacity')} className="text-xs text-brand hover:underline">容量管理 →</button>
-          </div>
-          {storage.r2Enabled ? (
-            <>
-              <div className="flex items-end justify-between mb-2">
-                <div className="text-2xl font-bold text-fg">{formatBytes(storage.totalUsedBytes)}</div>
-                <div className="text-xs text-muted">额度 {formatBytes(storage.limitBytes)}{storage.totalEstimated ? '（估算）' : ''}</div>
-              </div>
-              <div className="h-2.5 rounded-full bg-ink overflow-hidden">
-                <div className={'h-full ' + storageBar + ' transition-all'} style={{ width: storagePct + '%' }} />
-              </div>
-              <div className="flex items-center justify-between mt-2 text-xs">
-                <span className={storageTx + ' font-medium'}>{storagePct}% 已用</span>
-                <span className="text-faint">Cloudflare 指标延迟 5-15 分钟，非实时</span>
-              </div>
-            </>
-          ) : (
-            <div className="text-sm text-muted flex items-center gap-2">
-              <Icon name="storage" className="w-[18px] h-[18px] text-amber-500" />
-              当前为本地临时存储（未接入 R2），无配额限制但服务重启可能丢图。建议配置 R2 永久存储。
-            </div>
-          )}
-        </div>
-      )}
-
       {/* 待处理订单：白底等宽卡片 + 底部彩色线 + hover 高亮 */}
       <div className="bg-panel border border-line rounded-xl2 p-5">
         <div className="text-[15px] font-semibold text-fg mb-4">待处理订单</div>
