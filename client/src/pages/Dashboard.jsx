@@ -3,13 +3,13 @@ import { useNavigate } from 'react-router-dom';
 import http from '../api.js';
 import Icon from '../components/Icon.jsx';
 
-// 待处理订单彩色分段（点击直达对应状态订单列表）
+// 待处理订单：白底卡片 + 底部彩色细线 + hover 高亮（参考拾光盒子）
 const PENDING = [
-  { key: 'unpaid', label: '未支付定金', bg: 'bg-red-50', tx: 'text-red-600' },
-  { key: 'shoot', label: '等待拍摄', bg: 'bg-emerald-50', tx: 'text-emerald-600' },
-  { key: 'selecting', label: '待选片', bg: 'bg-sky-50', tx: 'text-sky-600' },
-  { key: 'retouching', label: '待精修', bg: 'bg-purple-50', tx: 'text-purple-600' },
-  { key: 'delivered', label: '未交片', bg: 'bg-amber-50', tx: 'text-amber-600' }
+  { key: 'unpaid', label: '未支付定金', bar: 'bg-red-400', tx: 'text-red-500' },
+  { key: 'shoot', label: '等待拍摄', bar: 'bg-teal-400', tx: 'text-teal-500' },
+  { key: 'selecting', label: '待选片', bar: 'bg-sky-400', tx: 'text-sky-500' },
+  { key: 'retouching', label: '待精修', bar: 'bg-amber-400', tx: 'text-amber-500' },
+  { key: 'delivered', label: '未交片', bar: 'bg-orange-400', tx: 'text-orange-500' }
 ];
 
 // 品牌管理（对外展示 / 获客）
@@ -34,14 +34,14 @@ function FuncCard({ icon, title, desc, to, onClick }) {
   const nav = useNavigate();
   const go = () => { if (onClick) onClick(); else if (to) nav(to); };
   return (
-    <div onClick={go} className="group bg-panel border border-line rounded-xl2 p-5 cursor-pointer hover:-translate-y-0.5 hover:shadow-md hover:border-brand/40 transition">
-      <div className="w-10 h-10 rounded-lg bg-brand/10 text-brand flex items-center justify-center mb-3">
-        <Icon name={icon} className="w-5 h-5" />
+    <div onClick={go} className="group bg-panel border border-line rounded-xl2 p-5 cursor-pointer hover:-translate-y-0.5 hover:shadow-sm hover:border-brand/30 transition flex flex-col items-center text-center h-full">
+      <div className="w-10 h-10 rounded-lg text-fg/70 flex items-center justify-center mb-3">
+        <Icon name={icon} className="w-6 h-6" />
       </div>
-      <div className="text-[15px] font-medium text-fg">{title}</div>
-      <div className="text-xs text-muted mt-1 leading-relaxed min-h-[32px]">{desc}</div>
-      <div className="mt-3">
-        <span className="inline-block w-full text-center py-2 rounded-lg bg-brand text-white text-sm group-hover:bg-brand2 transition">进入</span>
+      <div className="text-[15px] font-semibold text-fg">{title}</div>
+      <div className="text-xs text-muted mt-1.5 leading-relaxed flex-1">{desc}</div>
+      <div className="mt-4 w-full">
+        <span className="inline-block px-4 py-1.5 rounded-full border border-brand text-brand text-xs group-hover:bg-brand/5 transition">进入</span>
       </div>
     </div>
   );
@@ -85,7 +85,7 @@ export default function Dashboard() {
         <button onClick={() => nav('/works')} className="hidden sm:block px-4 py-2 rounded-lg border border-line text-sm text-muted hover:text-brand hover:border-brand transition shrink-0">管理对外作品</button>
       </div>
 
-      {/* 告警横幅（无付费墙，仅真实内部提醒，可关闭） */}
+      {/* 告警横幅 */}
       {showAlert && (
         <div className="flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-xl2 px-5 py-3">
           <span className="w-5 h-5 rounded-full bg-amber-500 text-white flex items-center justify-center text-xs font-bold shrink-0">!</span>
@@ -107,27 +107,32 @@ export default function Dashboard() {
         ))}
       </div>
 
-      {/* 待处理订单分段进度条（可点筛选） */}
+      {/* 待处理订单：白底等宽卡片 + 底部彩色线 + hover 高亮 */}
       <div className="bg-panel border border-line rounded-xl2 p-5">
         <div className="flex items-center justify-between mb-4">
           <div className="text-[15px] font-semibold text-fg">待处理订单</div>
           <div className="text-xs text-muted">点击节点直达对应订单列表</div>
         </div>
-        <div className="grid grid-cols-5 overflow-hidden rounded-lg border border-line">
-          {PENDING.map((b, i) => (
-            <button
-              key={b.key}
-              onClick={() => nav('/orders?status=' + b.key)}
-              className={'py-4 px-2 text-center border-l border-line first:border-l-0 transition hover:brightness-95 ' + b.bg}
-            >
-              <div className={'text-2xl font-bold ' + b.tx}>{stats ? (stats.pendingBlocks[b.key] || 0) : '—'}</div>
-              <div className={'text-xs mt-1 ' + b.tx}>{b.label}</div>
-            </button>
-          ))}
+        <div className="grid grid-cols-5 gap-3">
+          {PENDING.map((b) => {
+            const n = stats ? (stats.pendingBlocks[b.key] || 0) : '—';
+            return (
+              <button
+                key={b.key}
+                onClick={() => nav('/orders?status=' + b.key)}
+                className="relative bg-panel border border-line rounded-xl2 pt-5 pb-4 text-center hover:-translate-y-0.5 hover:shadow-sm transition overflow-hidden group"
+              >
+                <div className={'text-2xl font-bold ' + b.tx}>{n}</div>
+                <div className="text-xs text-fg/80 mt-1.5">{b.label}</div>
+                <div className={'absolute bottom-0 left-0 right-0 h-1 ' + b.bar} />
+                <div className={'absolute inset-0 opacity-0 group-hover:opacity-10 transition pointer-events-none ' + b.bar.replace('bg-', 'bg-')} />
+              </button>
+            );
+          })}
         </div>
       </div>
 
-      {/* 品牌管理（对外展示） */}
+      {/* 品牌管理 */}
       <div>
         <div className="text-[15px] font-semibold text-fg mb-3">品牌管理（对外展示）</div>
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
@@ -135,7 +140,7 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* 日常管理（内部运营） */}
+      {/* 日常管理 */}
       <div>
         <div className="text-[15px] font-semibold text-fg mb-3">日常管理（内部运营）</div>
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
