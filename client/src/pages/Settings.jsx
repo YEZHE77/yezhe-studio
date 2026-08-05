@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import http, { img } from '../api.js';
+import http, { img, compressImage } from '../api.js';
 
 const EMPTY = {
   name: '叶哲 Studio', logo: '', cover: '',
@@ -75,8 +75,9 @@ export default function Settings() {
 
   async function upload(file, kind) {
     if (!file) return;
+    const compressed = await compressImage(file, { maxWidth: 1280, maxHeight: 1280, quality: 0.82 });
     const fd = new FormData();
-    fd.append('file', file);
+    fd.append('file', compressed);
     const r = await http.post('/api/upload', fd);
     set(kind, r.data.url);
   }
@@ -158,14 +159,14 @@ export default function Settings() {
           </div>
           <Field label="Logo">
             <div className="flex items-center gap-3">
-              {form.logo && <img src={img(form.logo)} alt="" className="w-14 h-14 rounded-lg object-cover border border-line" />}
+              {form.logo && <img src={img(form.logo)} alt="" loading="lazy" decoding="async" className="w-14 h-14 rounded-lg object-cover border border-line" />}
               <button onClick={() => logoRef.current.click()} className="px-3 py-1.5 rounded-lg border border-line text-sm text-muted hover:text-brand hover:border-brand">上传 Logo</button>
               <input ref={logoRef} type="file" accept="image/*" className="hidden" onChange={(e) => upload(e.target.files[0], 'logo')} />
             </div>
           </Field>
           <Field label="封面图">
             <div className="flex items-center gap-3">
-              {form.cover && <img src={img(form.cover)} alt="" className="w-24 h-16 rounded-lg object-cover border border-line" />}
+              {form.cover && <img src={img(form.cover)} alt="" loading="lazy" decoding="async" className="w-24 h-16 rounded-lg object-cover border border-line" />}
               <button onClick={() => coverRef.current.click()} className="px-3 py-1.5 rounded-lg border border-line text-sm text-muted hover:text-brand hover:border-brand">上传封面</button>
               <input ref={coverRef} type="file" accept="image/*" className="hidden" onChange={(e) => upload(e.target.files[0], 'cover')} />
             </div>
@@ -176,11 +177,11 @@ export default function Settings() {
         <div className="bg-panel border border-line rounded-xl2 p-5">
           <div className="text-xs text-muted mb-3">C 端「关于我们」预览</div>
           <div className="rounded-xl overflow-hidden border border-line">
-            {form.cover && <img src={img(form.cover)} alt="" className="w-full h-32 object-cover" />}
+            {form.cover && <img src={img(form.cover)} alt="" loading="lazy" decoding="async" className="w-full h-32 object-cover" />}
             <div className="p-5">
               <div className="flex items-center gap-3">
                 {form.logo
-                  ? <img src={img(form.logo)} className="w-12 h-12 rounded-full object-cover border border-line" />
+                  ? <img src={img(form.logo)} loading="lazy" decoding="async" className="w-12 h-12 rounded-full object-cover border border-line" />
                   : <div className="w-12 h-12 rounded-full bg-brand text-white flex items-center justify-center font-semibold">{(form.name || '叶').slice(0, 1)}</div>}
                 <div className="font-semibold text-fg text-lg">{form.name}</div>
               </div>

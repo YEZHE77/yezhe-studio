@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import http, { img } from '../api.js';
+import http, { img, compressImage } from '../api.js';
 
 const ZONES = [
   { key: 'sample', label: '样片', desc: '对外展示、C端小程序可见' },
