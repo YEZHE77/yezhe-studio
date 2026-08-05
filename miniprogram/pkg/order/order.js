@@ -50,8 +50,8 @@ Page({
   },
   closeDetail() { this.setData({ detail: null }); },
 
-  goAlbum(e) { wx.navigateTo({ url: '/pages/album/album?orderId=' + e.currentTarget.dataset.id }); },
-  goSelect(e) { wx.navigateTo({ url: '/pages/photoSelect/photoSelect?orderId=' + e.currentTarget.dataset.id }); },
-  goEvaluate(e) { wx.navigateTo({ url: '/pages/evaluate/evaluate?orderId=' + e.currentTarget.dataset.id }); },
+  goAlbum(e) { wx.navigateTo({ url: '/pkg/album/album?orderId=' + e.currentTarget.dataset.id }); },
+  goSelect(e) { wx.navigateTo({ url: '/pkg/photoSelect/photoSelect?orderId=' + e.currentTarget.dataset.id }); },
+  goEvaluate(e) { wx.navigateTo({ url: '/pkg/evaluate/evaluate?orderId=' + e.currentTarget.dataset.id }); },
   noop() {}
 });

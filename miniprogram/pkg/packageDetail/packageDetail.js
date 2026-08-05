@@ -16,6 +16,9 @@ Page({
     specIndex: 0, specPrice: 0
   },
 
+  _tasks: [],
+  onUnload() { this._tasks.forEach(function(t){ try { t.abort(); } catch(e) {} }); this.setData({ content: [] }); },
+
   onLoad(q) {
     const token = (q && q.token) || '';
     if (token) { this.setData({ token }); this.loadByToken(); }
@@ -75,7 +78,7 @@ Page({
     if (!p) return;
     const specs = p.specs || [];
     const spec = specs[this.data.specIndex];
-    const url = '/pages/appointment/appointment?packageId=' + p.id + (spec ? ('&specId=' + spec.id) : '');
+    const url = '/pkg/appointment/appointment?packageId=' + p.id + (spec ? ('&specId=' + spec.id) : '');
     wx.navigateTo({ url });
   },
 

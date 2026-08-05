@@ -45,7 +45,7 @@
       </view>
     </view>
     <view wx:if="{{payload.works.length === 0}}" class="empty">该影集暂未上传成品照片，敬请期待。</view>
-    <button class="btn-ghost mt" data-page="/pages/album/album" bindtap="goModule">在完整版中查看</button>
+    <button class="btn-ghost mt" data-page="/pkg/album/album" bindtap="goModule">在完整版中查看</button>
   </block>
 
   <!-- 单组作品 -->
@@ -76,7 +76,7 @@
     <view wx:if="{{payload.package.retouch_count}}" class="line">精修张数：{{payload.package.retouch_count}} 张</view>
     <view wx:if="{{payload.package.duration}}" class="line">拍摄时长：{{payload.package.duration}}</view>
     <view wx:if="{{payload.package.specs.length}}" class="line">多规格可选：{{payload.package.specs.length}} 个版本</view>
-    <button class="btn mt" data-page="/pages/packageDetail/packageDetail" bindtap="goModule">查看套系详情并预约</button>
+    <button class="btn mt" data-page="/pkg/packageDetail/packageDetail" bindtap="goModule">查看套系详情并预约</button>
   </block>
 
   <!-- 档期 -->
@@ -113,7 +113,7 @@
         <view class="pa {{item.type === 'refund' ? 'bad' : 'ok'}}">{{item.type === 'refund' ? '-' : '+'}}¥{{item.amount}}</view>
       </view>
     </view>
-    <button class="btn-ghost mt" data-page="/pages/order/order" bindtap="goModule">在完整版中查看</button>
+    <button class="btn-ghost mt" data-page="/pkg/order/order" bindtap="goModule">在完整版中查看</button>
   </block>
 
   <view class="brand">YEZHE WORKSHOP · 海口婚礼 / 人像摄影</view>

@@ -1,9 +1,27 @@
 <view class="page">
   <view class="section"><view class="section-title"><text>拍摄套系</text></view></view>
 
-  <view class="pkg-list">
+  <!-- 骨架屏 -->
+  <view class="pkg-list" wx:if="{{loading}}">
+    <view class="pkg card sk-shimmer" wx:for="{{[1,2,3]}}" wx:key="*this">
+      <view class="pkg-cover pkg-cover--ph"></view>
+      <view class="pkg-body">
+        <view class="sk-line sk-w70" style="height:32rpx;margin-bottom:12rpx"></view>
+        <view class="sk-line sk-w90" style="height:24rpx"></view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 错误重试 -->
+  <view wx:elif="{{error}}" class="empty">
+    <text>加载失败</text>
+    <view class="retry-btn" bindtap="retry">点击重试</view>
+  </view>
+
+  <!-- 正常内容 -->
+  <view class="pkg-list" wx:else>
     <view class="pkg card" wx:for="{{packages}}" wx:key="id" bindtap="openPkg" data-id="{{item.id}}">
-      <image wx:if="{{item.cover_url}}" class="pkg-cover" src="{{item.cover_url}}" mode="aspectFill" />
+      <image wx:if="{{item.cover_url}}" class="pkg-cover" src="{{item.cover_url}}" mode="aspectFill" lazy-load />
       <view wx:else class="pkg-cover pkg-cover--ph"></view>
       <view class="pkg-body">
         <view class="pkg-name">{{item.name}}</view>
@@ -11,6 +29,6 @@
         <view class="pkg-price"><text class="price-symbol">¥</text><text class="price">{{item.price}}</text> 起</view>
       </view>
     </view>
-    <view wx:if="{{packages.length === 0}}" class="empty">暂无套系</view>
+    <view wx:if="{{packages.length === 0 && !loading}}" class="empty">暂未上架套系</view>
   </view>
 </view>

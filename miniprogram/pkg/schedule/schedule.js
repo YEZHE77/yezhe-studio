@@ -32,11 +32,20 @@ Page({
     msg: ''
   },
 
+  _loading: false,
+  _tasks: [],
+
   onLoad() {
     const now = new Date();
     this.setData({ year: now.getFullYear(), monthIdx: now.getMonth() });
     this.loadBooking();
     this.loadAvailability();
+  },
+
+  onUnload() {
+    this._tasks.forEach((t) => { try { t.abort(); } catch (e) {} });
+    this._tasks = [];
+    this.setData({ cells: [] });
   },
 
   async loadBooking() {
@@ -117,10 +126,10 @@ Page({
   goFill() {
     const { selDate, selPeriod } = this.data;
     if (!selDate || !selPeriod) return wx.showToast({ title: '请选择日期与时段', icon: 'none' });
-    wx.navigateTo({ url: `/pages/appointment/appointment?date=${selDate}&period=${selPeriod}` });
+    wx.navigateTo({ url: `/pkg/appointment/appointment?date=${selDate}&period=${selPeriod}` });
   },
 
   goFillNoDate() {
-    wx.navigateTo({ url: '/pages/appointment/appointment' });
+    wx.navigateTo({ url: '/pkg/appointment/appointment' });
   }
 });

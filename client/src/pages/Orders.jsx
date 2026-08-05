@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import http, { img } from '../api.js';
+import http, { img, debounce } from '../api.js';
 import { useViewState } from '../tabMemory.js';
 
 const STATUS_LABEL = {
@@ -37,18 +37,32 @@ export default function Orders() {
     return { groom_name: '', bride_name: '', customer_phone: '', address: '', package_id: '', deposit: '', balance: '', deposit_method: 'offline', balance_method: 'offline', shoot_date: '', executor: '', remark: '' };
   }
 
-  const load = () => {
-    if (trash) {
-      http.get('/api/orders/recycle').then((r) => setList(r.data)).catch(() => {});
-      return;
-    }
-    const p = new URLSearchParams();
-    if (state.status) p.set('status', state.status);
-    if (state.q) p.set('q', state.q);
-    http.get('/api/orders?' + p.toString()).then((r) => setList(r.data)).catch(() => {});
-  };
-  useEffect(load, [state, trash]);
-  useEffect(() => { http.get('/api/packages?status=all').then((r) => setPkgs(r.data)).catch(() => {}); }, []);
+  const load = useRef(() => {});
+
+  // 搜索防抖 300ms（避免逐字发请求）
+  const setQ = useMemo(() => debounce((v) => setState((s) => ({ ...s, q: v }))), [setState]);
+
+  useEffect(() => {
+    const ctrl = new AbortController();
+    const fetch = () => {
+      if (trash) {
+        http.get('/api/orders/recycle', { signal: ctrl.signal }).then((r) => setList(r.data)).catch(() => {});
+        return;
+      }
+      const p = new URLSearchParams();
+      if (state.status) p.set('status', state.status);
+      if (state.q) p.set('q', state.q);
+      http.get('/api/orders?' + p.toString(), { signal: ctrl.signal }).then((r) => setList(r.data)).catch(() => {});
+    };
+    fetch();
+    load.current = fetch;
+    return () => ctrl.abort();
+  }, [state, trash]);
+  useEffect(() => {
+    const ctrl = new AbortController();
+    http.get('/api/packages?status=all', { signal: ctrl.signal }).then((r) => setPkgs(r.data)).catch(() => {});
+    return () => ctrl.abort();
+  }, []);
 
   // 套系复用开单：从 /orders?pkg= 进入自动打开新建并预选套系
   useEffect(() => {
@@ -259,7 +273,7 @@ export default function Orders() {
           <button key={s} onClick={() => setState((x) => ({ ...x, status: s }))} className={btn(state.status === s, STATUS_LABEL[s])}>{STATUS_LABEL[s]}</button>
         ))}
         <button onClick={() => { setTrash((t) => !t); setState((s) => ({ ...s, status: '', q: '' })); }} className={btn(trash, '回收站')}>回收站</button>
-        <input value={state.q} onChange={(e) => setState((s) => ({ ...s, q: e.target.value }))} placeholder="搜索客户 / 订单号"
+        <input value={state.q} onChange={(e) => setQ(e.target.value)} placeholder="搜索客户 / 订单号"
           className="ml-auto w-56 px-3 py-2 rounded bg-panel border border-line text-white text-sm outline-none" />
       </div>
 

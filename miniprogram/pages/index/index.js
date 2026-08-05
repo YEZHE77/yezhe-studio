@@ -1,4 +1,4 @@
-const { request } = require('../../utils/req.js');
+const { request, requestTask } = require('../../utils/req.js');
 
 Page({
   data: {
@@ -12,33 +12,80 @@ Page({
     loading: false,
     banners: [],
     detail: null,
-    detailLoading: false
+    detailLoading: false,
+    bookingOpen: false
+  },
+  _tasks: [],    // 可取消的请求任务
+  _loading: false, // 全局加载锁
+
+  onLoad() {
+    this.loadAll();
   },
 
-  onLoad() { this.loadAll(); },
-  onShow() { this.loadAll(); },
+  // onShow 改为静默刷新：数据未过期则跳过，避免 tab 切换重复请求
+  onShow() {
+    const app = getApp();
+    const cachedS = app.getCached('studio');
+    if (cachedS) this.setData({ studio: cachedS });
+    const cachedC = app.getCached('categories');
+    if (cachedC) this.setData({ categories: cachedC });
+    // 检查预约开关
+    this.loadBooking();
+  },
+
+  onUnload() {
+    this._tasks.forEach((t) => { try { t.abort(); } catch (e) {} });
+    this._tasks = [];
+    // 释放图片内存（detail弹窗中的大图列表）
+    this.setData({ detail: null, works: [], banners: [], categories: [] });
+  },
 
   onPullDownRefresh() {
     this.loadAll().then(() => wx.stopPullDownRefresh());
   },
 
   async loadAll() {
-    await Promise.all([this.loadStudio(), this.loadCategories()]);
-    await this.loadWorks(true);
+    if (this._loading) return;
+    this._loading = true;
+    try {
+      // 优先使用缓存
+      const app = getApp();
+      let s = app.getCached('studio');
+      let c = app.getCached('categories');
+      if (!s || !c) {
+        [s, c] = await Promise.all([this.loadStudio(), this.loadCategories()]);
+      }
+      if (s) this.setData({ studio: s });
+      if (c) this.setData({ categories: c });
+      await this.loadWorks(true);
+    } finally {
+      this._loading = false;
+    }
+  },
+
+  async loadBooking() {
+    try {
+      const b = await request('/api/settings/booking');
+      this.setData({ bookingOpen: b && b.open !== false });
+    } catch (e) { /* 静默失败 */ }
   },
 
   async loadStudio() {
     try {
       const s = await request('/api/settings/studio');
-      this.setData({ studio: s || {} });
-    } catch (e) { console.error('loadStudio err', e); }
+      const app = getApp();
+      app.setCached('studio', s || {});
+      return s || {};
+    } catch (e) { console.error('loadStudio err', e); return null; }
   },
 
   async loadCategories() {
     try {
       const cats = await request('/api/categories');
-      this.setData({ categories: cats || [] });
-    } catch (e) { console.error('loadCategories err', e); }
+      const app = getApp();
+      app.setCached('categories', cats || []);
+      return cats || [];
+    } catch (e) { console.error('loadCategories err', e); return null; }
   },
 
   async loadWorks(reset) {
@@ -76,6 +123,7 @@ Page({
     this.loadWorks(true);
   },
 
+  // 按钮即时反馈（≤150ms）: 先 UI 状态变更，再异步操作
   copyWechat() {
     const wechat = (this.data.studio.contact && this.data.studio.contact.wechat) || '';
     if (!wechat) {
@@ -99,17 +147,23 @@ Page({
 
   goWorks() { wx.switchTab({ url: '/pages/works/works' }); },
   goPackage() { wx.switchTab({ url: '/pages/package/package' }); },
-  goAppointment() { wx.navigateTo({ url: '/pages/schedule/schedule' }); },
+  goAppointment() { wx.navigateTo({ url: '/pkg/schedule/schedule' }); },
+  goAbout() { wx.navigateTo({ url: '/pkg/about/about' }); },
 
   async openWork(e) {
     const id = e.currentTarget.dataset.id;
     this.setData({ detailLoading: true, detail: { work: { title: '' }, albums: [] } });
     try {
-      const d = await request('/api/works/public/' + id);
+      const { promise, abort } = requestTask('/api/works/public/' + id);
+      this._tasks.push(abort);
+      const d = await promise;
       this.setData({ detail: d, detailLoading: false });
     } catch (err) {
+      if (err.type === 'cancel') return;
       this.setData({ detailLoading: false, detail: null });
       wx.showToast({ title: '打开失败', icon: 'none' });
+    } finally {
+      this._tasks = this._tasks.filter((t) => t !== abort);
     }
   },
 

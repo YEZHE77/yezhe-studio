@@ -2,12 +2,12 @@ page { background: #f9f8f6; }
 .page { padding-bottom: 60rpx; }
 
 /* ===== 轮播 Banner ===== */
-.banner { width: 100%; height: 900rpx; }
+.banner { width: 100%; height: 422rpx; }
 .banner-img { width: 100%; height: 100%; }
 .banner--ph {
   background: #111; color: #fff;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
-  height: 900rpx;
+  height: 422rpx;
 }
 .banner-logo { font-size: 40rpx; letter-spacing: 10rpx; opacity: .9; }
 .banner-tag { margin-top: 20rpx; font-size: 26rpx; opacity: .6; letter-spacing: 4rpx; }
@@ -48,6 +48,9 @@ page { background: #f9f8f6; }
 .btn-outline {
   background: #fff; color: #7ecdbb; border: 2rpx solid #7ecdbb;
 }
+.about-more {
+  margin-top: 36rpx; text-align: center; font-size: 26rpx; color: #7ecdbb;
+}
 
 /* ===== 作品展示 ===== */
 .gallery { margin-top: 60rpx; padding: 0 32rpx; }
@@ -78,7 +81,7 @@ page { background: #f9f8f6; }
   width: calc(50% - 20rpx); margin: 10rpx; position: relative; border-radius: 16rpx;
   overflow: hidden; background: #eee;
 }
-.grid-cover { width: 100%; height: 420rpx; display: block; }
+.grid-cover { width: 100%; aspect-ratio: 4 / 5; height: auto; display: block; }
 .grid-cap {
   position: absolute; left: 0; right: 0; bottom: 0;
   padding: 60rpx 18rpx 18rpx;

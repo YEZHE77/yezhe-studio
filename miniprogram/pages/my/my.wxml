@@ -8,16 +8,16 @@
   </view>
 
   <view class="menu card">
-    <view class="menu-item" data-url="/pages/appointment/appointment" bindtap="go">
+    <view class="menu-item" data-url="/pkg/appointment/appointment" bindtap="go">
       <text>我的预约</text><text class="muted">›</text>
     </view>
-    <view class="menu-item" data-url="/pages/order/order" bindtap="go">
+    <view class="menu-item" data-url="/pkg/order/order" bindtap="go">
       <text>我的订单</text><text class="muted">›</text>
     </view>
-    <view class="menu-item" data-url="/pages/evaluate/evaluate" bindtap="go">
+    <view class="menu-item" data-url="/pkg/evaluate/evaluate" bindtap="go">
       <text>我的评价</text><text class="muted">›</text>
     </view>
-    <view class="menu-item" data-url="/pages/subscribe/subscribe" bindtap="go">
+    <view class="menu-item" data-url="/pkg/subscribe/subscribe" bindtap="go">
       <text>拍摄提醒订阅</text><text class="muted">›</text>
     </view>
   </view>
@@ -31,8 +31,8 @@
     </view>
   </view>
 
-  <view class="about">
-    <view class="about-title">关于{{studio.name || '叶哲 STUDIO'}}</view>
+  <view class="about" bindtap="go" data-url="/pkg/about/about">
+    <view class="about-title">关于{{studio.name || '叶哲 STUDIO'}} ›</view>
     <view class="about-text muted">{{studio.intro || '海口婚礼 / 人像 / 纪实摄影。我们用光影记录你的重要时刻，从预约、拍摄、选片到成片交付，全程在小程序内完成。'}}</view>
   </view>
 </view>

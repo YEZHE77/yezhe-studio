@@ -2,16 +2,37 @@
 .cats { white-space: nowrap; padding: 16rpx 24rpx 8rpx; }
 .cats .chip { margin-right: 16rpx; }
 
-.grid { display: flex; flex-wrap: wrap; padding: 0 20rpx; }
-.grid-item { width: calc(50% - 24rpx); margin: 12rpx; }
-.grid-cover { width: 100%; height: 420rpx; display: block; background: #eee; }
+.grid { display: flex; flex-wrap: wrap; padding: 0 32rpx; gap: 16rpx; }
+.grid-item { width: calc((100% - 16rpx) / 2); }
+.grid-cover { width: 100%; aspect-ratio: 4 / 5; height: auto; display: block; background: #eee; }
 .grid-cover--ph { background: linear-gradient(135deg,#e9e9e9,#f4f4f4); }
 .grid-cap { padding: 18rpx 20rpx 22rpx; }
 .grid-title { display: block; font-size: 28rpx; font-weight: 600; }
 .grid-cat { display: block; margin-top: 4rpx; }
 
+/* 骨架屏 */
+.sk-grid { padding: 0 32rpx; }
+.sk-line { height: 24rpx; border-radius: 6rpx; margin-bottom: 10rpx; background: #e8e8e8; }
+.sk-shimmer { background: linear-gradient(90deg, #eee 25%, #f5f5f5 50%, #eee 75%); background-size: 400% 100%; animation: sk 1.2s ease-in-out infinite; }
+.sk-w60 { width: 60%; }
+.sk-w40 { width: 40%; }
+.sk-sm .sk-line { height: 18rpx; margin-top: 4rpx; }
+
+/* 分页加载指示 */
+.load-more { display: flex; align-items: center; justify-content: center; gap: 12rpx; padding: 32rpx 0; }
+.load-spin { width: 32rpx; height: 32rpx; border: 4rpx solid #eee; border-top-color: #7ecdbb; border-radius: 50%; animation: spin .8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
 .detail-title { font-size: 34rpx; font-weight: 600; }
 .detail-desc { margin: 10rpx 0 20rpx; }
-.detail-scroll { max-height: 64vh; }
-.detail-img { width: 100%; margin-bottom: 16rpx; border-radius: 8rpx; background: #f0f0f0; }
+
+/* 相册横向滑动大图 */
+.detail-scroll-x { white-space: nowrap; height: 64vh; margin-top: 12rpx; }
+.h-row { display: flex; align-items: center; }
+.h-img { height: 60vh; width: auto; margin-right: 16rpx; border-radius: 12rpx; background: #f0f0f0; }
+
+/* 相册详情骨架屏 */
+.sk-row { display: flex; gap: 16rpx; height: 60vh; margin-top: 12rpx; }
+.sk-img { flex: 0 0 42vw; height: 60vh; border-radius: 12rpx; background: linear-gradient(90deg,#eee,#f5f5f5,#eee); background-size: 400% 100%; animation: sk 1.2s ease-in-out infinite; }
+@keyframes sk { 0% { background-position: 100% 0; } 100% { background-position: -100% 0; } }
 .noop {}

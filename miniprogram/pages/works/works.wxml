@@ -6,10 +6,21 @@
           data-id="{{item.id}}" bindtap="selectCat">{{item.name}}</view>
   </scroll-view>
 
+  <!-- 骨架屏（首次加载） -->
+  <view class="grid sk-grid" wx:if="{{skeleton && !works.length}}">
+    <view class="grid-item" wx:for="{{[1,2,3,4,5,6]}}" wx:key="*this">
+      <view class="grid-cover grid-cover--ph sk-shimmer"></view>
+      <view class="grid-cap">
+        <view class="sk-line sk-w60 sk-shimmer"></view>
+        <view class="sk-line sk-w40 sk-shimmer" style="height:18rpx;margin-top:4rpx"></view>
+      </view>
+    </view>
+  </view>
+
   <!-- 作品网格 -->
   <view class="grid" wx:if="{{works.length}}">
     <view class="grid-item card" wx:for="{{works}}" wx:key="id" bindtap="openWork" data-id="{{item.id}}">
-      <image wx:if="{{item.cover}}" class="grid-cover" src="{{item.cover}}" mode="aspectFill" />
+      <image wx:if="{{item.cover}}" class="grid-cover" src="{{item.cover}}" mode="aspectFill" lazy-load />
       <view wx:else class="grid-cover grid-cover--ph"></view>
       <view class="grid-cap">
         <text class="grid-title">{{item.title}}</text>
@@ -18,8 +29,13 @@
     </view>
   </view>
 
-  <view wx:elif="{{!finished}}" class="empty">加载中…</view>
-  <view wx:else class="empty">暂无作品</view>
+  <!-- 加载更多指示 -->
+  <view class="load-more" wx:if="{{loading && works.length}}">
+    <view class="load-spin"></view>
+    <text class="muted small">加载中…</text>
+  </view>
+
+  <view wx:if="{{!skeleton && !loading && works.length === 0 && finished}}" class="empty">暂无作品</view>
 
   <!-- 大图弹层 -->
   <view wx:if="{{detail}}" class="mask" bindtap="closeDetail">
@@ -27,10 +43,14 @@
       <view class="sheet-bar"></view>
       <view class="detail-title">{{detail.work.title}}</view>
       <view class="detail-desc muted small">{{detail.work.description}}</view>
-      <view wx:if="{{detailLoading}}" class="empty">加载中…</view>
-      <scroll-view wx:else scroll-y class="detail-scroll">
-        <image wx:for="{{detail.albums}}" wx:key="id" wx:if="{{item.photo_url}}" class="detail-img" src="{{item.photo_url}}"
-               mode="widthFix" bindtap="previewImage" data-url="{{item.photo_url}}" />
+      <view wx:if="{{detailLoading}}" class="sk-row">
+        <view class="sk-img"></view><view class="sk-img"></view><view class="sk-img"></view>
+      </view>
+      <scroll-view wx:else scroll-x class="detail-scroll-x" enable-flex>
+        <view class="h-row">
+          <image wx:for="{{detail.albums}}" wx:key="id" wx:if="{{item.photo_url}}" class="h-img" src="{{item.photo_url}}"
+                 mode="heightFix" bindtap="previewImage" data-url="{{item.photo_url}}" lazy-load />
+        </view>
         <view wx:if="{{detail.albums.length === 0}}" class="empty">暂无照片</view>
       </scroll-view>
     </view>

@@ -22,6 +22,7 @@
       <button class="btn btn-primary" open-type="contact">联系我们</button>
       <button class="btn btn-outline" bindtap="copyWechat">+ 关注</button>
     </view>
+    <view class="about-more" bindtap="goAbout">查看品牌故事 ›</view>
   </view>
 
   <!-- 作品展示 Gallery -->

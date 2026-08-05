@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import http, { img } from '../api.js';
+import http, { img, debounce } from '../api.js';
 import { useViewState } from '../tabMemory.js';
 
 export default function Works() {
@@ -15,17 +15,27 @@ export default function Works() {
     return { title: '', category_id: '', is_public: true, allow_download: false, cover: null, cover_url: '', description: '', tags: '' };
   }
 
-  const reload = () => {
+  // 搜索防抖 300ms
+  const setQ = useMemo(() => debounce((v) => setState((s) => ({ ...s, q: v, page: 1 }))), [setState]);
+
+  useEffect(() => {
+    const ctrl = new AbortController();
+    http.get('/api/categories', { signal: ctrl.signal }).then((r) => setCats(r.data)).catch(() => {});
+    return () => ctrl.abort();
+  }, []);
+
+  useEffect(() => {
+    const ctrl = new AbortController();
     const p = new URLSearchParams();
     if (state.tab) p.set('category', state.tab);
     if (state.q) p.set('q', state.q);
     if (state.vis === '1') p.set('is_public', '1');
     if (state.vis === '0') p.set('is_public', '0');
     p.set('page', state.page);
-    http.get('/api/works?' + p.toString()).then((r) => setData(r.data));
-  };
-  useEffect(() => { http.get('/api/categories').then((r) => setCats(r.data)); }, []);
-  useEffect(reload, [state]);
+    p.set('pageSize', data.pageSize || 12);
+    http.get('/api/works?' + p.toString(), { signal: ctrl.signal }).then((r) => setData(r.data)).catch(() => {});
+    return () => ctrl.abort();
+  }, [state]);
 
   async function toggleDownload(w, e) {
     e.stopPropagation();
@@ -78,14 +88,18 @@ export default function Works() {
     if (!confirm(`确认删除作品「${w.title}」？\n该作品下的相册与选片记录也会一并删除，不可恢复。`)) return;
     try {
       await http.delete('/api/works/' + w.id);
-      reload();
+      // 删除后若当前页可能变空，回到第一页重新加载，避免空白
+      if (data.items.length <= 1 && state.page > 1) {
+        setState((s) => ({ ...s, page: 1 }));
+      } else {
+        reload();
+      }
     } catch (e) {
       alert((e.response && e.response.data && e.response.data.error) || '删除失败');
     }
   }
 
   const setTab = (t) => setState((s) => ({ ...s, tab: t, page: 1 }));
-  const setQ = (q) => setState((s) => ({ ...s, q, page: 1 }));
   const setVis = (v) => setState((s) => ({ ...s, vis: v, page: 1 }));
   const goPage = (p) => setState((s) => ({ ...s, page: p }));
 

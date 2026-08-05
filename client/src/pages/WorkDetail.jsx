@@ -20,6 +20,7 @@ export default function WorkDetail() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [uploadText, setUploadText] = useState('');
   const [selected, setSelected] = useState(new Set());
   const [form, setForm] = useState({ title: '', category_id: '', description: '', tags: '', customer_name: '', is_public: true, allow_download: false });
   const [draggedId, setDraggedId] = useState(null);

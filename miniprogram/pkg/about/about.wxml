@@ -1,0 +1,61 @@
+<view class="page">
+  <!-- 顶部 Banner（16:9） -->
+  <view class="banner" bindtap="previewCover" wx:if="{{studio.cover}}">
+    <image class="banner-img" src="{{studio.cover}}" mode="aspectFill" lazy-load />
+    <view class="banner-mask"></view>
+    <view class="banner-text">
+      <view class="banner-en">ABOUT US</view>
+      <view class="banner-name">{{studio.name || '叶哲 STUDIO'}}</view>
+    </view>
+  </view>
+  <view class="banner banner--ph" wx:else>
+    <view class="banner-en">ABOUT US</view>
+    <view class="banner-name">{{studio.name || '叶哲 STUDIO'}}</view>
+  </view>
+
+  <!-- 骨架屏 -->
+  <view wx:if="{{loading}}" class="card sk">
+    <view class="sk-line sk-w60"></view>
+    <view class="sk-line sk-w90"></view>
+    <view class="sk-line sk-w80"></view>
+  </view>
+
+  <block wx:else>
+    <!-- 品牌简介 -->
+    <view class="card">
+      <view class="card-en">STORY</view>
+      <view class="card-title">关于我们</view>
+      <view class="story">{{studio.intro || '海口婚礼 / 人像摄影。我们用光影记录你的重要时刻，从预约、拍摄、选片到成片交付，全程在小程序内完成。'}}</view>
+    </view>
+
+    <!-- 品牌理念 -->
+    <view class="card">
+      <view class="card-en">PHILOSOPHY</view>
+      <view class="card-title">我们的理念</view>
+      <view class="story">拍摄有温度的照片，记录平凡生活中的美好。每一张照片，都是时光的标本；每一次快门，都是一瞬间的精彩。为你停住时光的脚步，记录美好的点滴。</view>
+    </view>
+
+    <!-- 联系我们 -->
+    <view class="card">
+      <view class="card-en">CONTACT</view>
+      <view class="card-title">联系我们</view>
+      <view class="contact-line" wx:if="{{studio.contact.wechat}}">
+        <text class="c-label">微信</text>
+        <text class="c-value">{{studio.contact.wechat}}</text>
+        <text class="c-action" bindtap="copyWechat">复制</text>
+      </view>
+      <view class="contact-line" wx:if="{{studio.contact.phone}}">
+        <text class="c-label">电话</text>
+        <text class="c-value">{{studio.contact.phone}}</text>
+        <text class="c-action" bindtap="callPhone">拨打</text>
+      </view>
+      <view class="contact-line" wx:if="{{studio.contact.address}}">
+        <text class="c-label">地址</text>
+        <text class="c-value">{{studio.contact.address}}</text>
+      </view>
+      <view class="contact-empty muted" wx:if="{{!studio.contact.wechat && !studio.contact.phone && !studio.contact.address}}">暂未配置联系方式</view>
+    </view>
+  </block>
+
+  <view class="copy">叶哲 STUDIO · 用影像记录时光</view>
+</view>

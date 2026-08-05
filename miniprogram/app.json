@@ -3,17 +3,31 @@
     "pages/index/index",
     "pages/works/works",
     "pages/package/package",
-    "pages/my/my",
-    "pages/appointment/appointment",
-    "pages/schedule/schedule",
-    "pages/order/order",
-    "pages/photoSelect/photoSelect",
-    "pages/album/album",
-    "pages/evaluate/evaluate",
-    "pages/subscribe/subscribe",
-    "pages/share/share",
-    "pages/packageDetail/packageDetail"
+    "pages/my/my"
   ],
+  "subPackages": [
+    {
+      "root": "pkg",
+      "pages": [
+        "appointment/appointment",
+        "schedule/schedule",
+        "order/order",
+        "photoSelect/photoSelect",
+        "album/album",
+        "evaluate/evaluate",
+        "subscribe/subscribe",
+        "share/share",
+        "packageDetail/packageDetail",
+        "about/about"
+      ]
+    }
+  ],
+  "preloadRule": {
+    "pages/index/index": {
+      "network": "all",
+      "packages": ["pkg"]
+    }
+  },
   "window": {
     "navigationBarTitleText": "叶哲 STUDIO",
     "navigationBarBackgroundColor": "#111111",

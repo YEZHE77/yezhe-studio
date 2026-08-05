@@ -13,10 +13,18 @@ Page({
     this.loadStudio();
   },
 
-  // 拉取商家在后台「资料设置」中配置的工作室信息（B 端保存即实时同步到 C 端）
+  onUnload() {
+    this.setData({ studio: null });
+  },
+
+  // 拉取工作室信息（B 端保存即实时同步到 C 端）
   loadStudio() {
+    // 优先用缓存
+    const app = getApp();
+    const cached = app.getCached('studio');
+    if (cached) { this.setData({ studio: cached }); return; }
     request('/api/settings/studio')
-      .then((s) => this.setData({ studio: s }))
+      .then((s) => { this.setData({ studio: s }); app.setCached('studio', s || {}); })
       .catch(() => {});
   },
 

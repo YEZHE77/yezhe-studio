@@ -11,5 +11,17 @@ export default defineConfig({
       '/uploads': { target: process.env.VITE_API_TARGET || 'http://localhost:4000', changeOrigin: true }
     }
   },
-  build: { outDir: 'dist' }
+  build: {
+    outDir: 'dist',
+    rollupOptions: {
+      output: {
+        // 路由级懒加载（配合 React.lazy）自动代码分割
+        // manualChunks 把 react/axios 等稳定依赖单独打包，充分利用浏览器缓存
+        manualChunks: {
+          vendor: ['react', 'react-dom', 'react-router-dom'],
+          axios: ['axios']
+        }
+      }
+    }
+  }
 });

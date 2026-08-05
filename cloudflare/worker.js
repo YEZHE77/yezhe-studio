@@ -1,7 +1,8 @@
-// Cloudflare Worker —— 私有 R2 桶的图片只读代理
+// Cloudflare Worker —— 私有 R2 桶的图片只读代理 + 缩略图变体
 // 仅做「读取」：解析 /r2/<key> → 读绑定 R2 桶 → 返回图片 + 缓存头
 // 禁止列目录 / 禁止删除 / 禁止写入（安全边界）
-// 绑定：wrangler.toml 里 binding = "R2"（指向你的私有桶名）
+// 缩略图：上传时后端预生成 thumb_400/thumb_800 等变体，Worker 按路径返回
+// 前端在请求后追加 ?w=400 仅用于 CDN 缓存分区标识（不实际裁剪）
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
@@ -22,12 +23,24 @@ export default {
       return new Response('Bad Request', { status: 400 });
     }
 
-    let object;
-    try {
-      object = await env.R2.get(key);
-    } catch (e) {
-      return new Response('Upstream Error', { status: 502 });
+    // 缩略图策略：如果请求带 ?w= 参数，尝试查找预生成的缩略图变体
+    // 例如 /r2/biz-works/xxx.jpg?w=400 → 先查 biz-works/thumb_400/xxx.jpg
+    const targetWidth = url.searchParams.get('w');
+    let object = null;
+    if (targetWidth) {
+      const thumbKey = buildThumbKey(key, targetWidth);
+      try { object = await env.R2.get(thumbKey); } catch (e) {}
     }
+
+    // 降级：无缩略图或未请求缩略 → 原图
+    if (!object) {
+      try {
+        object = await env.R2.get(key);
+      } catch (e) {
+        return new Response('Upstream Error', { status: 502 });
+      }
+    }
+
     if (!object) return new Response('Not Found', { status: 404 });
 
     const headers = new Headers();
@@ -40,6 +53,15 @@ export default {
     return new Response(object.body, { headers });
   }
 };
+
+// 构建缩略图 key：biz-works/xxx.jpg → biz-works/thumb_400/xxx.jpg
+function buildThumbKey(key, width) {
+  const idx = key.lastIndexOf('/');
+  if (idx === -1) return `thumb_${width}/${key}`;
+  const dir = key.substring(0, idx);
+  const name = key.substring(idx + 1);
+  return `${dir}/thumb_${width}/${name}`;
+}
 
 function guessMime(key) {
   const ext = key.split('.').pop().toLowerCase();
