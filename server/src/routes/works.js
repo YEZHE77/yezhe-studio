@@ -118,15 +118,30 @@ router.put('/:id', authRequired, async (req, res) => {
 
 // 删除
 router.delete('/:id', authRequired, async (req, res) => {
+  const workId = req.params.id;
   try {
-    const rows = await query('SELECT photo_url FROM albums WHERE work_id = ?', [req.params.id]);
-    for (const r of rows) if (r.photo_url) deleteFromR2(r.photo_url);
-    await run('DELETE FROM works WHERE id = ?', [req.params.id]);
-    await run('DELETE FROM albums WHERE work_id = ?', [req.params.id]);
-    await run('DELETE FROM selections WHERE work_id = ?', [req.params.id]);
+    // 1) 先读相册 URL（用于后续清理 R2）
+    const rows = await query('SELECT photo_url FROM albums WHERE work_id = ?', [workId]);
+
+    // 2) 先删子表，再删主表；避免未来加外键时冲突，也更符合常理
+    await run('DELETE FROM albums WHERE work_id = ?', [workId]);
+    await run('DELETE FROM selections WHERE work_id = ?', [workId]);
+    await run('DELETE FROM works WHERE id = ?', [workId]);
+
+    // 3) 异步清理 R2 对象；失败只记录日志，不阻塞数据库删除
+    const r2Tasks = rows
+      .filter((r) => r.photo_url && typeof r.photo_url === 'string' && r.photo_url.trim())
+      .map((r) =>
+        deleteFromR2(r.photo_url.trim()).catch((err) =>
+          console.error('[works] 删除 R2 对象失败', r.photo_url, err && err.message)
+        )
+      );
+    await Promise.all(r2Tasks);
+
     res.json({ ok: true });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    console.error('[works] 删除作品失败 id=' + workId, e);
+    res.status(500).json({ error: e.message || '删除失败' });
   }
 });
 
