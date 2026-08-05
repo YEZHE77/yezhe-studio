@@ -1,0 +1,14 @@
+# Cloudflare Worker —— 私有 R2 桶图片只读代理
+# 已自动填入当前账号配置，直接执行：
+#   npx wrangler login
+#   npx wrangler deploy
+
+name = "yezhe-img-proxy"
+main = "worker.js"
+compatibility_date = "2024-09-23"
+account_id = "0bde736e2d9fef22b049ffc833bae06c"
+
+# 绑定私有 R2 桶
+[[r2_buckets]]
+binding = "R2"
+bucket_name = "yezhe-studio-img"

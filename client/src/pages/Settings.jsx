@@ -22,6 +22,13 @@ export default function Settings() {
   const [bookingTip, setBookingTip] = useState('');
   const DAY_LABELS = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
 
+  // 账户安全：修改密码
+  const [pwOld, setPwOld] = useState('');
+  const [pwNew, setPwNew] = useState('');
+  const [pwConfirm, setPwConfirm] = useState('');
+  const [pwSaving, setPwSaving] = useState(false);
+  const [pwTip, setPwTip] = useState('');
+
   useEffect(() => {
     http.get('/api/settings/studio').then((r) => {
       const d = r.data || {};
@@ -93,6 +100,20 @@ export default function Settings() {
     } catch (e) { setBookingTip('保存失败：' + (e.response?.data?.error || e.message)); }
     setBookingSaving(false);
     setTimeout(() => setBookingTip(''), 3000);
+  }
+
+  async function changePassword() {
+    setPwTip('');
+    if (pwNew.length < 6) { setPwTip('新密码至少 6 位'); return; }
+    if (pwNew !== pwConfirm) { setPwTip('两次输入的新密码不一致'); return; }
+    setPwSaving(true);
+    try {
+      await http.put('/api/auth/password', { oldPassword: pwOld, newPassword: pwNew });
+      setPwTip('✅ 密码修改成功，下次登录请使用新密码');
+      setPwOld(''); setPwNew(''); setPwConfirm('');
+    } catch (e) { setPwTip('修改失败：' + (e.response?.data?.error || e.message)); }
+    setPwSaving(false);
+    setTimeout(() => setPwTip(''), 3000);
   }
 
   const Field = ({ label, children }) => (
@@ -213,6 +234,30 @@ export default function Settings() {
             </div>
           </div>
         </div>
+
+      {/* 账户安全：修改密码 */}
+      <div className="mt-6">
+        <div className="mb-4">
+          <h2 className="text-lg font-semibold text-fg">账户安全</h2>
+          <p className="text-xs text-muted mt-0.5">修改当前登录账号的登录密码（需输入旧密码验证）</p>
+        </div>
+        {pwTip && <div className="mb-4 text-sm px-4 py-2 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200">{pwTip}</div>}
+        <div className="bg-panel border border-line rounded-xl2 p-5 max-w-xl">
+          <Field label="当前密码">
+            <input type="password" className={inputCls} value={pwOld} onChange={(e) => setPwOld(e.target.value)} />
+          </Field>
+          <Field label="新密码（至少 6 位）">
+            <input type="password" className={inputCls} value={pwNew} onChange={(e) => setPwNew(e.target.value)} />
+          </Field>
+          <Field label="确认新密码">
+            <input type="password" className={inputCls} value={pwConfirm} onChange={(e) => setPwConfirm(e.target.value)} />
+          </Field>
+          <button onClick={changePassword} disabled={pwSaving}
+            className="px-5 py-2 rounded-lg bg-brand text-white text-sm hover:opacity-90 disabled:opacity-50">
+            {pwSaving ? '保存中…' : '修改密码'}
+          </button>
+        </div>
+      </div>
       </div>
     </div>
   );
