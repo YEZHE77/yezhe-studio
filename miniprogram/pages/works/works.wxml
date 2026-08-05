@@ -37,22 +37,4 @@
 
   <view wx:if="{{!skeleton && !loading && works.length === 0 && finished}}" class="empty">暂无作品</view>
 
-  <!-- 大图弹层 -->
-  <view wx:if="{{detail}}" class="mask" bindtap="closeDetail">
-    <view class="sheet" catchtap="noop">
-      <view class="sheet-bar"></view>
-      <view class="detail-title">{{detail.work.title}}</view>
-      <view class="detail-desc muted small">{{detail.work.description}}</view>
-      <view wx:if="{{detailLoading}}" class="sk-row">
-        <view class="sk-img"></view><view class="sk-img"></view><view class="sk-img"></view>
-      </view>
-      <scroll-view wx:else scroll-x class="detail-scroll-x" enable-flex>
-        <view class="h-row">
-          <image wx:for="{{detail.albums}}" wx:key="id" wx:if="{{item.photo_url}}" class="h-img" src="{{item.photo_url}}"
-                 mode="heightFix" bindtap="previewImage" data-url="{{item.photo_url}}" lazy-load />
-        </view>
-        <view wx:if="{{detail.albums.length === 0}}" class="empty">暂无照片</view>
-      </scroll-view>
-    </view>
-  </view>
 </view>

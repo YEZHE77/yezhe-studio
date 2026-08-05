@@ -1,0 +1,49 @@
+<view class="page">
+  <!-- 骨架屏 -->
+  <view wx:if="{{loading}}" class="sk-wrap">
+    <view class="sk-cover sk-shimmer"></view>
+    <view class="sk-line sk-w60 sk-shimmer" style="margin-top:40rpx"></view>
+    <view class="sk-line sk-w40 sk-shimmer" style="height:24rpx;margin-top:16rpx"></view>
+    <view class="sk-grid">
+      <view wx:for="{{[1,2,3,4]}}" wx:key="*this" class="sk-img sk-shimmer"></view>
+    </view>
+  </view>
+
+  <!-- 错误态 -->
+  <view wx:elif="{{error}}" class="empty-wrap">
+    <view class="empty-icon">⚠</view>
+    <view class="empty-text">加载失败</view>
+    <button class="retry-btn" bindtap="retry">重新加载</button>
+  </view>
+
+  <!-- 内容 -->
+  <scroll-view wx:else scroll-y class="content">
+    <!-- 封面区 -->
+    <view class="cover-wrap">
+      <image wx:if="{{work.cover_url}}" class="cover" src="{{work.cover_url}}" mode="widthFix" lazy-load />
+      <view wx:else class="cover cover-ph"></view>
+      <view class="cover-gradient"></view>
+      <view class="cover-meta">
+        <view class="cover-title">{{work.title}}</view>
+        <view wx:if="{{work.description}}" class="cover-desc">{{work.description}}</view>
+      </view>
+    </view>
+
+    <!-- 相册网格 -->
+    <view class="albums" wx:if="{{albums.length}}">
+      <view class="section-title">作品集</view>
+      <view class="photo-grid">
+        <view class="photo-item" wx:for="{{albums}}" wx:key="id" bindtap="previewImage" data-url="{{item.photo_url}}">
+          <image class="photo" src="{{item.photo_url}}" mode="aspectFill" lazy-load />
+        </view>
+      </view>
+    </view>
+
+    <view wx:else class="empty-wrap">
+      <view class="empty-text">暂无照片</view>
+    </view>
+
+    <!-- 底部留白 -->
+    <view class="safe-bottom"></view>
+  </scroll-view>
+</view>

@@ -77,18 +77,4 @@
     <view class="footer-copy">叶哲 STUDIO · 用影像记录时光</view>
   </view>
 
-  <!-- 作品大图弹层 -->
-  <view wx:if="{{detail}}" class="mask" bindtap="closeDetail">
-    <view class="sheet" catchtap="noop">
-      <view class="sheet-bar"></view>
-      <view class="detail-title">{{detail.work.title}}</view>
-      <view class="detail-desc muted small">{{detail.work.description}}</view>
-      <view wx:if="{{detailLoading}}" class="empty">加载中…</view>
-      <scroll-view wx:else scroll-y class="detail-scroll">
-        <image wx:for="{{detail.albums}}" wx:key="id" class="detail-img" src="{{item.photo_url}}" mode="widthFix"
-               bindtap="previewImage" data-url="{{item.photo_url}}" wx:if="{{item.photo_url}}" lazy-load />
-        <view wx:if="{{detail.albums.length === 0}}" class="empty">暂无照片</view>
-      </scroll-view>
-    </view>
-  </view>
 </view>

@@ -49,7 +49,7 @@ function FuncCard({ icon, title, desc, to, onClick }) {
 
 export default function Dashboard() {
   const [stats, setStats] = useState(null);
-  const [showAlert, setShowAlert] = useState(true);
+  const [showAlert, setShowAlert] = useState(false);
   const nav = useNavigate();
   const now = new Date();
   const greet = now.getHours() < 12 ? '早上好' : now.getHours() < 18 ? '下午好' : '晚上好';
@@ -57,6 +57,9 @@ export default function Dashboard() {
 
   useEffect(() => {
     http.get('/api/stats').then((r) => setStats(r.data)).catch(() => {});
+    http.get('/api/admin/storage')
+      .then((r) => setShowAlert(!r.data.r2Enabled))
+      .catch(() => setShowAlert(false));
   }, []);
 
   const overview = [

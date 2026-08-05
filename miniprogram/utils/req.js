@@ -4,6 +4,22 @@ const { CONFIG } = require('./config.js');
 const TIMEOUT = 15000;  // 15 秒超时（Render 冷启动通常 3-10s）
 const RETRY_DELAY = 2000;
 
+// 真机/体验版强制校验合法域名，未配置时 wx.request 会被拒。
+// 这里做一次明确提示（5s 内去重），避免用户只看到白屏不知所措。
+let _domainWarned = 0;
+function warnDomain() {
+  const now = Date.now();
+  if (now - _domainWarned < 5000) return;
+  _domainWarned = now;
+  try { wx.showToast({ title: '服务器域名未配置', icon: 'none' }); } catch (e) {}
+  console.error(
+    '[req] 微信校验合法域名失败。请在小程序后台「开发管理 → 开发设置 → 服务器域名」中添加：\n' +
+    '  request 合法域名: ' + CONFIG.API_BASE + '\n' +
+    '  downloadFile 合法域名: ' + CONFIG.API_BASE + '\n' +
+    '  downloadFile 合法域名: https://yezhe-img-proxy.yezhe128627.workers.dev'
+  );
+}
+
 function getToken() {
   try { return wx.getStorageSync('token') || ''; } catch (e) { return ''; }
 }
@@ -40,8 +56,14 @@ function requestTask(path, method = 'GET', data = {}) {
         },
         fail: (err) => {
           if (aborted) return;
-          if (err.errMsg && err.errMsg.indexOf('timeout') !== -1) {
+          const msg = (err && err.errMsg) || '';
+          if (msg.indexOf('timeout') !== -1) {
             return reject({ type: 'timeout', message: '请求超时，请检查网络' });
+          }
+          // 真机未配置合法域名时，errMsg 含 "domain" / "合法域名"
+          if (msg.indexOf('domain') !== -1 || msg.indexOf('合法域名') !== -1) {
+            warnDomain();
+            return reject({ type: 'domain', message: '服务器域名未配置：' + CONFIG.API_BASE });
           }
           return reject({ type: 'network', message: '网络连接失败，请检查后端服务' });
         }

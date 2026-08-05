@@ -4,6 +4,7 @@ import { Router } from 'express';
 import { query, get, insert, run } from '../db.js';
 import { authRequired } from '../auth.js';
 import { lunarOf } from './schedules.js';
+import { isR2Enabled } from '../storage.js';
 
 const router = Router();
 router.use(authRequired);
@@ -360,6 +361,13 @@ router.get('/schedules/export', async (req, res) => {
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', 'attachment; filename="schedules.csv"');
     res.send('﻿' + csv);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// 存储状态（Dashboard 告警横幅依据）
+router.get('/storage', async (req, res) => {
+  try {
+    res.json({ r2Enabled: isR2Enabled() });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 

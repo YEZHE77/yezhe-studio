@@ -16,9 +16,10 @@
         "album/album",
         "evaluate/evaluate",
         "subscribe/subscribe",
-        "share/share",
-        "packageDetail/packageDetail",
-        "about/about"
+      "share/share",
+      "packageDetail/packageDetail",
+      "about/about",
+      "workDetail/workDetail"
       ]
     }
   ],

@@ -1,4 +1,4 @@
-const { request, requestTask } = require('../../utils/req.js');
+const { request } = require('../../utils/req.js');
 
 Page({
   data: {
@@ -11,8 +11,6 @@ Page({
     hasMore: true,
     loading: false,
     banners: [],
-    detail: null,
-    detailLoading: false,
     bookingOpen: false
   },
   _tasks: [],    // 可取消的请求任务
@@ -36,8 +34,7 @@ Page({
   onUnload() {
     this._tasks.forEach((t) => { try { t.abort(); } catch (e) {} });
     this._tasks = [];
-    // 释放图片内存（detail弹窗中的大图列表）
-    this.setData({ detail: null, works: [], banners: [], categories: [] });
+    this.setData({ works: [], banners: [], categories: [] });
   },
 
   onPullDownRefresh() {
@@ -150,30 +147,8 @@ Page({
   goAppointment() { wx.navigateTo({ url: '/pkg/schedule/schedule' }); },
   goAbout() { wx.navigateTo({ url: '/pkg/about/about' }); },
 
-  async openWork(e) {
+  openWork(e) {
     const id = e.currentTarget.dataset.id;
-    this.setData({ detailLoading: true, detail: { work: { title: '' }, albums: [] } });
-    try {
-      const { promise, abort } = requestTask('/api/works/public/' + id);
-      this._tasks.push(abort);
-      const d = await promise;
-      this.setData({ detail: d, detailLoading: false });
-    } catch (err) {
-      if (err.type === 'cancel') return;
-      this.setData({ detailLoading: false, detail: null });
-      wx.showToast({ title: '打开失败', icon: 'none' });
-    } finally {
-      this._tasks = this._tasks.filter((t) => t !== abort);
-    }
+    wx.navigateTo({ url: '/pkg/workDetail/workDetail?id=' + id });
   },
-
-  closeDetail() { this.setData({ detail: null }); },
-
-  previewImage(e) {
-    const url = e.currentTarget.dataset.url;
-    const urls = (this.data.detail.albums || []).map((a) => a.photo_url).filter(Boolean);
-    if (url && urls.length) wx.previewImage({ current: url, urls });
-  },
-
-  noop() {}
 });

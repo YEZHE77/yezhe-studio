@@ -1,4 +1,4 @@
-const { request, requestTask } = require('../../utils/req.js');
+const { request } = require('../../utils/req.js');
 
 Page({
   data: {
@@ -9,9 +9,7 @@ Page({
     pageSize: 12,
     finished: false,
     loading: false,
-    detail: null,
-    detailLoading: false,
-    skeleton: true   // 首次加载骨架屏
+    skeleton: true
   },
   _tasks: [],
   _loadingWorks: false,
@@ -78,26 +76,8 @@ Page({
     this.loadWorks(true);
   },
 
-  async openWork(e) {
+  openWork(e) {
     const id = e.currentTarget.dataset.id;
-    this.setData({ detailLoading: true, detail: { work: { title: '' }, albums: [] } });
-    try {
-      const { promise, abort } = requestTask('/api/works/public/' + id);
-      this._tasks.push(abort);
-      const d = await promise;
-      this.setData({ detail: d, detailLoading: false });
-      this._tasks = this._tasks.filter((t) => t !== abort);
-    } catch (err) {
-      if (err && err.type === 'cancel') return;
-      this.setData({ detail: null, detailLoading: false });
-      wx.showToast({ title: '打开失败', icon: 'none' });
-    }
-  },
-  closeDetail() { this.setData({ detail: null }); },
-  previewImage(e) {
-    const url = e.currentTarget.dataset.url;
-    const urls = (this.data.detail.albums || []).map((a) => a.photo_url).filter(Boolean);
-    if (url && urls.length) wx.previewImage({ current: url, urls });
-  },
-  noop() {}
+    wx.navigateTo({ url: '/pkg/workDetail/workDetail?id=' + id });
+  }
 });

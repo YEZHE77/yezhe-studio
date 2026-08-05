@@ -23,16 +23,3 @@
 .load-spin { width: 32rpx; height: 32rpx; border: 4rpx solid #eee; border-top-color: #7ecdbb; border-radius: 50%; animation: spin .8s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
-.detail-title { font-size: 34rpx; font-weight: 600; }
-.detail-desc { margin: 10rpx 0 20rpx; }
-
-/* 相册横向滑动大图 */
-.detail-scroll-x { white-space: nowrap; height: 64vh; margin-top: 12rpx; }
-.h-row { display: flex; align-items: center; }
-.h-img { height: 60vh; width: auto; margin-right: 16rpx; border-radius: 12rpx; background: #f0f0f0; }
-
-/* 相册详情骨架屏 */
-.sk-row { display: flex; gap: 16rpx; height: 60vh; margin-top: 12rpx; }
-.sk-img { flex: 0 0 42vw; height: 60vh; border-radius: 12rpx; background: linear-gradient(90deg,#eee,#f5f5f5,#eee); background-size: 400% 100%; animation: sk 1.2s ease-in-out infinite; }
-@keyframes sk { 0% { background-position: 100% 0; } 100% { background-position: -100% 0; } }
-.noop {}
