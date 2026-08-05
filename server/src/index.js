@@ -45,7 +45,7 @@ app.use('/uploads', express.static(UP));
 app.post('/api/upload', authRequired, upload.single('file'), async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ error: '未收到文件' });
-    const url = await saveImage(req.file);
+    const url = await saveImage(req.file, 'biz-works');
     res.json({ url });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -58,7 +58,7 @@ app.post('/api/upload-multiple', authRequired, upload.array('files', 500), async
     const urls = [];
     for (let i = 0; i < files.length; i += 3) {
       const batch = files.slice(i, i + 3);
-      const batchUrls = await Promise.all(batch.map((f) => saveImage(f)));
+      const batchUrls = await Promise.all(batch.map((f) => saveImage(f, 'customer-demo')));
       urls.push(...batchUrls);
     }
     res.json({ urls });

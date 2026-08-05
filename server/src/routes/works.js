@@ -3,6 +3,7 @@ import { Router } from 'express';
 import { query, get, insert, run } from '../db.js';
 import { parseRow } from '../schema.js';
 import { authRequired } from '../auth.js';
+import { deleteFromR2 } from '../storage.js';
 
 const router = Router();
 
@@ -118,6 +119,8 @@ router.put('/:id', authRequired, async (req, res) => {
 // 删除
 router.delete('/:id', authRequired, async (req, res) => {
   try {
+    const rows = await query('SELECT photo_url FROM albums WHERE work_id = ?', [req.params.id]);
+    for (const r of rows) if (r.photo_url) deleteFromR2(r.photo_url);
     await run('DELETE FROM works WHERE id = ?', [req.params.id]);
     await run('DELETE FROM albums WHERE work_id = ?', [req.params.id]);
     await run('DELETE FROM selections WHERE work_id = ?', [req.params.id]);
@@ -163,9 +166,11 @@ router.put('/albums/:id/sort', authRequired, async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// 删除单张照片
+// 删除单张照片（联动删除 R2 对象）
 router.delete('/albums/:id', authRequired, async (req, res) => {
   try {
+    const row = await get('SELECT photo_url FROM albums WHERE id = ?', [req.params.id]);
+    if (row && row.photo_url) deleteFromR2(row.photo_url);
     await run('DELETE FROM albums WHERE id = ?', [req.params.id]);
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }

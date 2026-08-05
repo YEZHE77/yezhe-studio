@@ -24,13 +24,13 @@ services:
         sync: false
       - key: CORS_ORIGIN        # 网页后台公网域名，逗号分隔可写多个
         value: https://yezhe-studio.netlify.app
-      - key: R2_ENDPOINT        # 选填：Cloudflare R2（图片持久化，避免 Render 临时盘丢图）
+      - key: R2_ENDPOINT        # Cloudflare R2（私有桶 + Worker 代理，图片持久化）。五项(R2_ENDPOINT/R2_BUCKET/R2_WORKER_DOMAIN/R2_ACCESS_KEY/R2_SECRET_KEY)齐全才启用。
+        sync: false
+      - key: R2_BUCKET           # R2 桶名（私有，不公开）
+        sync: false
+      - key: R2_WORKER_DOMAIN   # Worker 代理域名，如 https://yezhe-img-proxy.<sub>.workers.dev 或 https://shturl.cc/Z（数据库只存此域名，前端不直连 R2）
         sync: false
       - key: R2_ACCESS_KEY
         sync: false
       - key: R2_SECRET_KEY
-        sync: false
-      - key: R2_BUCKET
-        sync: false
-      - key: R2_PUBLIC_URL
         sync: false
