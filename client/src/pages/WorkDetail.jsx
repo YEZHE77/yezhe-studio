@@ -40,6 +40,8 @@ export default function WorkDetail() {
         is_public: !!w.is_public,
         allow_download: !!w.allow_download
       });
+      // 后端 /api/works/:id 已同时返回 albums，避免再发一次请求
+      setAlbums(r.data.albums || []);
     } catch (e) {
       alert('加载作品失败');
     }
@@ -56,7 +58,7 @@ export default function WorkDetail() {
 
   async function loadAll() {
     setLoading(true);
-    await Promise.all([loadWork(), loadAlbums()]);
+    await loadWork();
     setLoading(false);
   }
 
@@ -209,7 +211,58 @@ export default function WorkDetail() {
 
   const zoneAlbums = albums.filter((a) => a.zone === zone).sort((a, b) => (a.sort - b.sort) || (a.id - b.id));
 
-  if (loading) return <div className="p-10 text-muted">加载中…</div>;
+  if (loading) {
+    return (
+      <div className="max-w-7xl mx-auto animate-pulse">
+        <div className="flex items-center justify-between mb-5">
+          <div className="flex items-center gap-3">
+            <div className="w-28 h-9 rounded bg-ink" />
+            <div className="w-32 h-7 rounded bg-ink" />
+            <div className="w-12 h-5 rounded bg-ink" />
+          </div>
+          <div className="w-20 h-9 rounded bg-ink" />
+        </div>
+        <div className="grid lg:grid-cols-3 gap-5">
+          <div className="lg:col-span-1 space-y-5">
+            <div className="bg-panel border border-line rounded-xl2 p-5 space-y-4">
+              <div className="w-24 h-5 rounded bg-ink" />
+              <div className="h-10 rounded bg-ink" />
+              <div className="h-10 rounded bg-ink" />
+              <div className="h-10 rounded bg-ink" />
+              <div className="h-24 rounded bg-ink" />
+              <div className="h-10 rounded bg-ink" />
+              <div className="h-10 rounded bg-brand/30" />
+            </div>
+            <div className="bg-panel border border-line rounded-xl2 p-5">
+              <div className="w-20 h-5 rounded bg-ink mb-3" />
+              <div className="w-full h-40 rounded bg-ink" />
+            </div>
+          </div>
+          <div className="lg:col-span-2">
+            <div className="bg-panel border border-line rounded-xl2 p-5 min-h-[500px]">
+              <div className="flex items-center justify-between mb-4">
+                <div className="space-y-2">
+                  <div className="w-24 h-5 rounded bg-ink" />
+                  <div className="w-40 h-4 rounded bg-ink" />
+                </div>
+                <div className="w-24 h-9 rounded bg-ink" />
+              </div>
+              <div className="flex gap-2 mb-4 border-b border-line pb-3">
+                <div className="w-16 h-8 rounded bg-ink" />
+                <div className="w-16 h-8 rounded bg-ink" />
+                <div className="w-16 h-8 rounded bg-ink" />
+              </div>
+              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
+                {Array.from({ length: 10 }).map((_, i) => (
+                  <div key={i} className="aspect-square rounded-xl2 bg-ink" />
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-7xl mx-auto">
@@ -265,7 +318,7 @@ export default function WorkDetail() {
           {work.cover_url && (
             <div className="bg-panel border border-line rounded-xl2 p-5">
               <h2 className="text-base font-semibold text-fg mb-3">当前封面</h2>
-              <img src={img(work.cover_url)} className="w-full h-40 object-cover rounded" alt="封面" />
+              <img src={img(work.cover_url)} loading="lazy" decoding="async" className="w-full h-40 object-cover rounded bg-ink" alt="封面" />
             </div>
           )}
         </div>
@@ -319,7 +372,7 @@ export default function WorkDetail() {
                       ${draggedId === a.id ? 'opacity-40' : ''}`}
                   >
                     <div className="aspect-square pointer-events-none">
-                      <img src={img(a.photo_url)} loading="lazy" className="w-full h-full object-cover" alt="" />
+                      <img src={img(a.photo_url)} loading="lazy" decoding="async" className="w-full h-full object-cover bg-ink" alt="" />
                     </div>
                     {/* 选中遮罩 */}
                     {selected.has(a.id) && <div className="absolute inset-0 bg-brand/10 pointer-events-none" />}
