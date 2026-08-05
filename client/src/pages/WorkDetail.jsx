@@ -228,6 +228,20 @@ export default function WorkDetail() {
     });
   }
 
+  function toggleSelectAll() {
+    const all = new Set(zoneAlbums.map((a) => a.id));
+    const allSelected = zoneAlbums.every((a) => selected.has(a.id));
+    if (allSelected) {
+      setSelected((s) => {
+        const n = new Set(s);
+        zoneAlbums.forEach((a) => n.delete(a.id));
+        return n;
+      });
+    } else {
+      setSelected((s) => new Set([...s, ...all]));
+    }
+  }
+
   const zoneAlbums = albums.filter((a) => a.zone === zone).sort((a, b) => (a.sort - b.sort) || (a.id - b.id));
 
   if (loading) {
@@ -351,9 +365,6 @@ export default function WorkDetail() {
                 <p className="text-xs text-muted mt-0.5">共 {albums.length} 张照片 · 当前分区 {zoneAlbums.length} 张</p>
               </div>
               <div className="flex items-center gap-2">
-                {selected.size > 0 && (
-                  <button onClick={deleteSelected} className="px-3 py-1.5 rounded border border-red-200 text-red-500 text-sm hover:bg-red-50">删除选中({selected.size})</button>
-                )}
                 <input ref={fileRef} type="file" accept="image/*" multiple className="hidden" onChange={batchUpload} />
                 <button onClick={() => fileRef.current && fileRef.current.click()} disabled={uploading} className="px-4 py-2 rounded bg-brand text-white text-sm hover:opacity-90 disabled:opacity-60">{uploading ? `上传中 ${uploadProgress}%` : '+ 批量上传'}</button>
                 {uploading && (
@@ -378,6 +389,24 @@ export default function WorkDetail() {
               ))}
             </div>
             <p className="text-xs text-muted mb-3">{ZONES.find((z) => z.key === zone).desc}</p>
+
+            {/* 全选工具栏 */}
+            {zoneAlbums.length > 0 && (
+              <div className="flex items-center justify-between mb-3">
+                <label className="flex items-center gap-2 text-sm text-fg cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={zoneAlbums.length > 0 && zoneAlbums.every((a) => selected.has(a.id))}
+                    onChange={toggleSelectAll}
+                    className="w-4 h-4 accent-brand"
+                  />
+                  全选 <span className="text-muted">({selected.size}/{zoneAlbums.length})</span>
+                </label>
+                {selected.size > 0 && (
+                  <button onClick={deleteSelected} className="px-3 py-1.5 rounded border border-red-200 text-red-500 text-sm hover:bg-red-50">删除选中({selected.size})</button>
+                )}
+              </div>
+            )}
 
             {/* 相册网格 */}
             {zoneAlbums.length === 0 ? (
