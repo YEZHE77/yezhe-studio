@@ -4,7 +4,10 @@ import { Router } from 'express';
 import { query, get, insert, run } from '../db.js';
 import { authRequired } from '../auth.js';
 import { lunarOf } from './schedules.js';
-import { isR2Enabled } from '../storage.js';
+import { isR2Enabled, deleteMediaByUrl } from '../storage.js';
+import { cfConfigured, getR2Egress } from '../cf.js';
+import { getR2Storage } from '../r2Metrics.js';
+import { buildFullBackup, writeBackupToR2 } from '../backup.js';
 
 const router = Router();
 router.use(authRequired);
@@ -368,6 +371,214 @@ router.get('/schedules/export', async (req, res) => {
 router.get('/storage', async (req, res) => {
   try {
     res.json({ r2Enabled: isR2Enabled() });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ===== 7. 容量管理 =====
+// 业务分类标签（与上传时传入的 type 对应；保留旧命名以兼容历史 media 行）
+const CATEGORY_LABELS = {
+  // 新枚举（T-07）：服务端 Worker 直传与前端统一使用
+  'negative': '底片',
+  'retouch': '精修片',
+  'client': '客片',
+  'cover': '封面套系样片',
+  'set': '套系样片',
+  'backup': '系统备份',
+  // 旧命名（历史兼容）
+  'raw-negative': '底片',
+  'retouched': '精修片',
+  'customer': '客片',
+  'cover-sample': '封面套系样片',
+  'system-backup': '系统备份',
+  'uncategorized': '未分类'
+};
+const R2_FREE_STORAGE = 10 * 1024 * 1024 * 1024; // R2 免费额度 10GB
+const R2_FREE_EGRESS = 100 * 1024 * 1024 * 1024; // 免费额度 100GB/月 出流量
+
+// 按业务分类汇总（来自 media 元数据表，零 R2 遍历）
+async function categoryBreakdown() {
+  const rows = await query(
+    `SELECT category, COUNT(*) c, COALESCE(SUM(bytes),0) b, MAX(is_public) pub
+     FROM media GROUP BY category ORDER BY b DESC`
+  );
+  return rows.map((r) => ({
+    category: r.category,
+    label: CATEGORY_LABELS[r.category] || r.category,
+    count: Number(r.c),
+    bytes: Number(r.b),
+    isPublic: !!Number(r.pub)
+  }));
+}
+
+// 存储用量统计（Tab1）
+router.get('/storage/stats', async (req, res) => {
+  try {
+    const r2 = isR2Enabled();
+    const cfOk = cfConfigured();
+    const categories = await categoryBreakdown();
+
+    // 总量：接入 R2 → 直接读取「真实桶大小」（用已配置的 R2 凭据，零额外令牌，每 5 分钟刷新）。
+    // 未接 R2（本地模式）→ 回退 media 汇总并标注为估算。
+    let totalUsedBytes = categories.reduce((s, c) => s + c.bytes, 0);
+    let totalEstimated = !r2;
+    let objectCount = null;
+    let updatedAt = new Date().toISOString();
+    let delayNote = '按 R2 真实桶大小统计（每 5 分钟刷新一次）。';
+    if (r2) {
+      const st = await getR2Storage();
+      if (st) {
+        totalUsedBytes = st.totalBytes;
+        objectCount = st.objectCount;
+        totalEstimated = false;
+        updatedAt = st.fetchedAt;
+      } else {
+        // R2 已配置但读取失败（如凭据临时失效）：退回 media 估算并提示
+        delayNote = '真实桶大小读取失败，暂按已登记媒资估算。';
+      }
+    }
+
+    // 出流量（可选增强）：配置了 CF analytics 令牌才显示
+    let egress = null;
+    if (r2 && cfOk) {
+      const eg = await getR2Egress();
+      if (eg) egress = { usedBytes: eg.bytes, limitBytes: R2_FREE_EGRESS, delayNote: eg.note };
+    }
+
+    res.json({
+      provider: r2 ? 'r2' : 'local',
+      r2Enabled: r2,
+      cfConfigured: cfOk,
+      limitBytes: r2 ? R2_FREE_STORAGE : null, // 本地无配额概念
+      totalUsedBytes,
+      totalEstimated,
+      objectCount,
+      categories,
+      egress,
+      delayNote,
+      updatedAt
+    });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// 图片流量（Tab2）—— CDN 出流量（近似，需 CF analytics 令牌）
+router.get('/storage/traffic', async (req, res) => {
+  try {
+    const r2 = isR2Enabled();
+    const cfOk = cfConfigured();
+    let usedBytes = null;
+    let fetchedAt = null;
+    let note = null;
+    if (r2 && cfOk) {
+      const eg = await getR2Egress();
+      if (eg) { usedBytes = eg.bytes; fetchedAt = eg.fetchedAt; note = eg.note; }
+    }
+    res.json({
+      provider: r2 ? 'r2' : 'local',
+      r2Enabled: r2,
+      cfConfigured: cfOk,
+      limitBytes: R2_FREE_EGRESS,
+      usedBytes,
+      delayNote: note || '统计当月累计出流量；需配置 CF_API_TOKEN + CF_ACCOUNT_ID（仅只读 analytics 权限）方可显示。',
+      updatedAt: fetchedAt
+    });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// 废弃图片清单（未被任何作品/套系封面或相册引用）—— 供「快速清理空间」勾选
+router.get('/storage/orphans', async (req, res) => {
+  try {
+    const limit = Math.min(parseInt(req.query.limit, 10) || 200, 500);
+    const rows = await query(
+      `SELECT m.id, m.url, m.category, m.bytes, m.is_public, m.created_at
+       FROM media m
+       WHERE m.url NOT IN (
+         SELECT cover_url FROM works WHERE cover_url IS NOT NULL AND cover_url <> ''
+         UNION SELECT cover_url FROM packages WHERE cover_url IS NOT NULL AND cover_url <> ''
+         UNION SELECT photo_url FROM albums WHERE photo_url IS NOT NULL AND photo_url <> ''
+       )
+       ORDER BY m.bytes DESC LIMIT ?`,
+      [limit]
+    );
+    const list = rows.map((r) => ({
+      id: r.id,
+      url: r.url,
+      category: r.category,
+      label: CATEGORY_LABELS[r.category] || r.category,
+      bytes: Number(r.bytes),
+      isPublic: !!Number(r.is_public),
+      createdAt: r.created_at
+    }));
+    res.json({
+      list,
+      totalBytes: list.reduce((s, x) => s + x.bytes, 0),
+      note: '以下图片未被任何封面/相册引用，可安全清理；删除前请确认无业务依赖（公开图片尤其谨慎）。'
+    });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// 显式删除（容量清理用）：仅接受管理员勾选的 URL 列表，绝不自动后台删除
+router.post('/storage/delete', async (req, res) => {
+  try {
+    const urls = Array.isArray(req.body && req.body.urls) ? req.body.urls.slice(0, 200) : [];
+    if (!urls.length) return res.status(400).json({ error: '未提供任何待删除 URL' });
+    const results = [];
+    for (const u of urls) {
+      if (typeof u !== 'string' || !u) continue;
+      results.push(await deleteMediaByUrl(u));
+    }
+    res.json({
+      ok: true,
+      deleted: results.filter((r) => r.ok).length,
+      failed: results.filter((r) => !r.ok).length,
+      results
+    });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// 上传令牌下发（管理员登录后）；仅用于直传 Worker 闸门，不等于 R2 凭证。未配置则返回 null。
+router.get('/upload-token', async (req, res) => {
+  try {
+    res.json({ token: process.env.UPLOAD_TOKEN || null });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// 媒资元数据登记（Worker 直传路径绕过了 /api/upload，需前端回调登记；唯一索引保证幂等）
+router.post('/media/register', async (req, res) => {
+  try {
+    const { url, category, bytes, isPublic } = req.body || {};
+    if (!url) return res.status(400).json({ error: '缺少 url' });
+    await run(
+      `INSERT INTO media (url, category, bytes, is_public, created_at) VALUES (?, ?, ?, ?, ?)`,
+      [url, category || 'uncategorized', Number(bytes) || 0, isPublic ? 1 : 0, new Date().toISOString()]
+    );
+    res.json({ ok: true });
+  } catch (e) {
+    // 唯一冲突（重复登记）等一律视为成功，保证幂等
+    console.error('[admin] media/register 忽略', e.message);
+    res.json({ ok: true });
+  }
+});
+
+// ===== 17. 双重备份 =====
+// 17.1 手动导出全量业务 JSON（管理员下载到本地）。绝不含任何明文密钥。
+router.get('/backup/export', async (req, res) => {
+  try {
+    const data = await buildFullBackup();
+    const json = JSON.stringify(data, null, 2);
+    const fname = `yezhe-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${fname}"`);
+    res.send(json);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// 17.2 立即触发一次 R2 /backup 目录写入（定时任务之外的手动兜底）
+router.post('/backup/run', async (req, res) => {
+  try {
+    if (!isR2Enabled()) return res.status(400).json({ error: 'R2 未配置，无法写入云端备份' });
+    const r = await writeBackupToR2();
+    if (r.ok) res.json(r);
+    else res.status(500).json({ error: r.reason });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 

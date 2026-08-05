@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import http, { img, compressImage } from '../api.js';
+import http, { img, compressImage, uploadBatch } from '../api.js';
 
 const ZONES = [
   { key: 'sample', label: '样片', desc: '对外展示、C端小程序可见' },
@@ -21,6 +21,8 @@ export default function WorkDetail() {
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadText, setUploadText] = useState('');
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const abortRef = useRef(null);
   const [selected, setSelected] = useState(new Set());
   const [form, setForm] = useState({ title: '', category_id: '', description: '', tags: '', customer_name: '', is_public: true, allow_download: false });
   const [draggedId, setDraggedId] = useState(null);
@@ -96,6 +98,9 @@ export default function WorkDetail() {
     const files = e.target.files;
     if (!files || !files.length) return;
     setUploading(true);
+    setUploadProgress(0);
+    const ac = new AbortController();
+    abortRef.current = ac;
     try {
       // 批量压缩：并发 3 张一组，避免 UI 卡死
       const compressed = [];
@@ -105,21 +110,34 @@ export default function WorkDetail() {
         const out = await Promise.all(chunk.map((f) => compressImage(f, { maxWidth: 1920, maxHeight: 1920, quality: 0.82 })));
         compressed.push(...out);
       }
-      const fd = new FormData();
-      for (const f of compressed) fd.append('files', f);
-      const up = await http.post('/api/upload-multiple', fd, { timeout: 300000 });
-      const urls = up.data.urls || [];
+      // 按相册分区映射业务分类，供容量统计（样片=客片公开 / 原片=底片 / 成片=精修）
+      const ZONE_CAT = { sample: 'client', local: 'negative', final: 'retouched' };
+      const ZONE_PUB = { sample: true, local: false, final: false };
+      const { urls, failed, aborted } = await uploadBatch(compressed, {
+        category: ZONE_CAT[zone] || 'customer',
+        isPublic: ZONE_PUB[zone] || false,
+        signal: ac.signal,
+        onProgress: (d, t) => setUploadProgress(Math.round((d / t) * 100))
+      });
+      if (aborted) { setUploadText('已取消上传'); return; }
       if (urls.length) {
         await http.post('/api/works/' + id + '/albums', { urls, zone });
         await loadAlbums();
       }
-      alert(`成功上传 ${urls.length} 张照片`);
+      if (failed.length) alert(`成功 ${urls.length} 张，失败 ${failed.length} 张（可重试）`);
+      else alert(`成功上传 ${urls.length} 张照片`);
     } catch (err) {
       alert((err.response && err.response.data && err.response.data.error) || '上传失败');
     } finally {
       setUploading(false);
+      setUploadProgress(0);
       if (fileRef.current) fileRef.current.value = '';
     }
+  }
+
+  function cancelUpload() {
+    if (abortRef.current) abortRef.current.abort();
+    setUploadText('正在取消…');
   }
 
   async function setCover(url) {
@@ -133,7 +151,7 @@ export default function WorkDetail() {
   }
 
   async function deletePhoto(aid) {
-    if (!confirm('确认删除这张照片？')) return;
+    if (!confirm('确认后将永久删除，建议先做好本地备份，确定继续？')) return;
     try {
       await http.delete('/api/albums/' + aid);
       await loadAlbums();
@@ -337,7 +355,15 @@ export default function WorkDetail() {
                   <button onClick={deleteSelected} className="px-3 py-1.5 rounded border border-red-200 text-red-500 text-sm hover:bg-red-50">删除选中({selected.size})</button>
                 )}
                 <input ref={fileRef} type="file" accept="image/*" multiple className="hidden" onChange={batchUpload} />
-                <button onClick={() => fileRef.current && fileRef.current.click()} disabled={uploading} className="px-4 py-2 rounded bg-brand text-white text-sm hover:opacity-90 disabled:opacity-60">{uploading ? '上传中…' : '+ 批量上传'}</button>
+                <button onClick={() => fileRef.current && fileRef.current.click()} disabled={uploading} className="px-4 py-2 rounded bg-brand text-white text-sm hover:opacity-90 disabled:opacity-60">{uploading ? `上传中 ${uploadProgress}%` : '+ 批量上传'}</button>
+                {uploading && (
+                  <button onClick={cancelUpload} className="px-3 py-2 rounded border border-line text-sm text-muted hover:text-red-500">取消</button>
+                )}
+                {uploading && (
+                  <div className="w-full mt-2 h-1.5 bg-ink rounded overflow-hidden">
+                    <div className="h-full bg-brand transition-all" style={{ width: uploadProgress + '%' }} />
+                  </div>
+                )}
               </div>
             </div>
 

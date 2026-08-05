@@ -7,6 +7,12 @@ const TIMEOUT = 15000; // 15 秒超时
 
 const http = axios.create({ baseURL: BASE, timeout: TIMEOUT });
 
+// 对 GET 请求做 1 次自动重试，缓解 Render Free 休眠冷启动导致的首次超时
+http.interceptors.request.use((cfg) => {
+  cfg.__retryCount = cfg.__retryCount || 0;
+  return cfg;
+});
+
 http.interceptors.request.use((cfg) => {
   const t = localStorage.getItem('token');
   if (t) cfg.headers.Authorization = 'Bearer ' + t;
@@ -26,8 +32,21 @@ let offlineWarned = false;
 
 http.interceptors.response.use(
   (r) => r,
-  (err) => {
+  async (err) => {
+    const cfg = err.config;
     if (axios.isCancel(err)) return Promise.reject({ type: 'cancel', message: '请求已取消' });
+
+    // 自动重试：GET 请求在超时/网关错误/无响应时最多重试 1 次
+    if (cfg && cfg.method === 'get' && cfg.__retryCount < 1) {
+      const shouldRetry = !err.response || err.code === 'ECONNABORTED' || [502, 503, 504].includes(err.response?.status);
+      if (shouldRetry) {
+        cfg.__retryCount += 1;
+        await new Promise((resolve) => setTimeout(resolve, 1500));
+        if (!silentMode) toast('服务器正在启动，正在重试…');
+        return http(cfg);
+      }
+    }
+
     if (err.code === 'ECONNABORTED') {
       if (!silentMode) toast('请求超时，请检查网络连接');
       return Promise.reject({ type: 'timeout', message: '请求超时' });
@@ -163,6 +182,153 @@ export function compressImage(file, { maxWidth = 1920, maxHeight = 1920, quality
     };
     image.src = src;
   });
+}
+
+// 字节数格式化（容量管理展示用）
+export function formatBytes(bytes, decimals = 1) {
+  if (!bytes || bytes <= 0) return '0 B';
+  const k = 1024;
+  const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  const idx = Math.min(i, units.length - 1);
+  return (bytes / Math.pow(k, idx)).toFixed(idx === 0 ? 0 : decimals) + ' ' + units[idx];
+}
+
+// 媒资元数据登记（幂等：唯一索引去重）
+export async function registerMedia(url, category, bytes, isPublic) {
+  try {
+    await http.post('/api/media/register', { url, category, bytes, isPublic: !!isPublic });
+  } catch (e) { /* 最佳努力，失败不影响主流程 */ }
+}
+
+// 直传 Worker 所需的上传令牌（管理员登录后由后端下发，仅用于上传闸门，不等于 R2 凭证）
+let _uploadToken = null;
+let _uploadTokenPromise = null;
+async function getUploadToken() {
+  if (_uploadToken) return _uploadToken;
+  if (_uploadTokenPromise) return _uploadTokenPromise;
+  _uploadTokenPromise = http.get('/api/admin/upload-token')
+    .then((r) => { _uploadToken = r.data.token || null; return _uploadToken; })
+    .catch(() => { _uploadToken = null; return null; })
+    .finally(() => { _uploadTokenPromise = null; });
+  return _uploadTokenPromise;
+}
+
+// 业务分类 → Worker type 枚举（T-07）：negative 底片 / retouch 精修 / client 客片 / cover 封面 / set 套系样片 / backup 系统备份
+const CATEGORY_TO_TYPE = {
+  'raw-negative': 'negative', 'retouched': 'retouched', 'customer': 'client',
+  'cover-sample': 'cover', 'system-backup': 'backup',
+  'negative': 'negative', 'retouch': 'retouched', 'client': 'client',
+  'cover': 'cover', 'set': 'set', 'backup': 'backup', 'uncategorized': 'uncategorized'
+};
+function toType(cat) { return CATEGORY_TO_TYPE[cat] || 'uncategorized'; }
+
+// 统一的图片上传入口：
+//   - 配置了 VITE_UPLOAD_WORKER_URL → 直传 Cloudflare 上传 Worker（密钥只在 Worker，前端绝不接触）
+//   - 否则回退 Render /api/upload（服务端用 R2 SDK 写入）
+// 无论走哪条路径，都会在拿到 URL 后登记 media 元数据（按业务分类汇聚容量统计）。
+// opts: { category, isPublic, onProgress, signal }
+export async function uploadImage(file, opts = {}) {
+  const { category = 'uncategorized', isPublic = false, onProgress, signal } = opts;
+  const type = toType(category);
+  const workerUrl = import.meta.env.VITE_UPLOAD_WORKER_URL;
+  let url;
+  if (workerUrl) {
+    const token = await getUploadToken();
+    const fd = new FormData();
+    fd.append('file', file);
+    fd.append('type', type); // Worker 强制业务类型前缀（用于分类统计，T-07 枚举）
+    url = await new Promise((resolve, reject) => {
+      if (signal && signal.aborted) return reject(new DOMException('上传已取消', 'AbortError'));
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', workerUrl);
+      if (token) xhr.setRequestHeader('Authorization', 'Bearer ' + token);
+      xhr.upload.onprogress = (e) => {
+        if (onProgress && e.lengthComputable) onProgress(Math.round((e.loaded / e.total) * 100));
+      };
+      const onAbort = () => xhr.abort();
+      if (signal) signal.addEventListener('abort', onAbort);
+      xhr.onload = () => {
+        if (signal) signal.removeEventListener('abort', onAbort);
+        if (xhr.status >= 200 && xhr.status < 300) {
+          try { resolve(JSON.parse(xhr.responseText).url); }
+          catch { reject(new Error('上传返回解析失败')); }
+        } else { reject(new Error('上传失败(' + xhr.status + ')')); }
+      };
+      xhr.onerror = () => {
+        if (signal) signal.removeEventListener('abort', onAbort);
+        reject(new Error('上传网络错误'));
+      };
+      xhr.send(fd);
+    });
+  } else {
+    const fd = new FormData();
+    fd.append('file', file);
+    fd.append('category', type);
+    fd.append('isPublic', isPublic ? '1' : '0');
+    const { data } = await http.post('/api/upload', fd, {
+      timeout: 300000,
+      signal,
+      headers: { 'Content-Type': 'multipart/form-data' },
+      onUploadProgress: (e) => {
+        if (onProgress && e.total) onProgress(Math.round((e.loaded / e.total) * 100));
+      }
+    });
+    url = data.url;
+  }
+  // 用规范枚举登记 media，保证容量统计分类一致
+  await registerMedia(url, type, file.size, isPublic);
+  return { url };
+}
+
+// 手动导出全量业务 JSON 备份（管理员下载到本地）。后端已过滤明文密钥。
+export async function downloadBackup() {
+  const { data } = await http.get('/api/admin/backup/export', { responseType: 'blob' });
+  const fname = `yezhe-backup-${new Date().toISOString().slice(0, 10)}.json`;
+  const url = URL.createObjectURL(data);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = fname;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+// 并发受限的批量上传（默认 3 张一组，避免短时间大量写入压垮免费数据库 / 卡死页面）。
+// 支持传入 AbortSignal 中途取消。onProgress(totalDone, total) 回传整体进度。
+// 返回 { urls, failed } —— 失败的单项不丢记录，便于前端重试。
+export async function uploadBatch(files, opts = {}) {
+  const { category = 'uncategorized', isPublic = false, concurrency = 3, signal, onProgress } = opts;
+  const list = Array.from(files || []);
+  const urls = [];
+  const failed = [];
+  let done = 0;
+  let cursor = 0;
+
+  const worker = async () => {
+    while (cursor < list.length) {
+      if (signal && signal.aborted) return;
+      const idx = cursor++;
+      try {
+        const { url } = await uploadImage(list[idx], { category, isPublic, signal });
+        urls[idx] = url;
+      } catch (e) {
+        if (signal && signal.aborted) return;
+        failed[idx] = e.message || '上传失败';
+      } finally {
+        done++;
+        if (onProgress) onProgress(done, list.length);
+      }
+    }
+  };
+
+  const pool = [];
+  for (let i = 0; i < Math.min(concurrency, list.length); i++) pool.push(worker());
+  await Promise.all(pool);
+
+  if (signal && signal.aborted) return { urls: urls.filter(Boolean), failed, aborted: true };
+  return { urls: urls.filter(Boolean), failed };
 }
 
 export default http;

@@ -151,7 +151,7 @@ export default function Orders() {
     } catch (e2) { alert((e2.response && e2.response.data && e2.response.data.error) || '恢复失败'); }
   }
   async function purgeOrder() {
-    if (!confirm('确认彻底删除该订单？\n将永久删除订单及其收款流水、选片记录，不可恢复！')) return;
+    if (!confirm('确认后将永久删除，建议先做好本地备份，确定继续？')) return;
     try {
       await http.post('/api/orders/' + detail.id + '/purge');
       setDetail(null); load();

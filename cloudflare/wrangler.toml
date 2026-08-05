@@ -12,3 +12,9 @@ account_id = "0bde736e2d9fef22b049ffc833bae06c"
 [[r2_buckets]]
 binding = "R2"
 bucket_name = "yezhe-studio-img"
+
+# 防盗链 Referer 白名单（逗号分隔）。默认放行 Netlify 商家后台域名；
+# 微信小程序 wx.request 不发送 Referer → 直接放行；其他带 Referer 的外部域名 → 403。
+# 若已绑定自定义 CDN 域名（如 img.yezhe.studio），请在此追加该域名。
+[vars]
+ALLOWED_REFERERS = "yezhe-studio.netlify.app"

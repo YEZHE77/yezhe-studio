@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import http, { img, compressImage } from '../api.js';
+import http, { img, compressImage, uploadImage, downloadBackup } from '../api.js';
+import ImageCropper from '../components/ImageCropper.jsx';
 
 const EMPTY = {
   name: '叶哲 Studio', logo: '', cover: '',
@@ -25,6 +26,7 @@ export default function Settings() {
   const [tip, setTip] = useState('');
   const logoRef = useRef();
   const coverRef = useRef();
+  const [crop, setCrop] = useState(null);
 
   // 对外预约设置：开放开关 + 每周可约日（0=周日 … 6=周六）
   const [booking, setBooking] = useState({ open: true, openDays: [0, 1, 2, 3, 4, 5, 6] });
@@ -39,6 +41,21 @@ export default function Settings() {
   const [pwConfirm, setPwConfirm] = useState('');
   const [pwSaving, setPwSaving] = useState(false);
   const [pwTip, setPwTip] = useState('');
+
+  // 数据备份：手动导出全量业务 JSON
+  const [backupBusy, setBackupBusy] = useState(false);
+  const [backupTip, setBackupTip] = useState('');
+  async function doBackup() {
+    if (backupBusy) return;
+    setBackupBusy(true);
+    setBackupTip('正在生成备份…');
+    try {
+      await downloadBackup();
+      setBackupTip('已导出完整业务 JSON 到本地（图片二进制已在 R2，不在备份内）');
+    } catch (e) {
+      setBackupTip('导出失败：' + (e.response?.data?.error || e.message));
+    } finally { setBackupBusy(false); }
+  }
 
   useEffect(() => {
     http.get('/api/settings/studio').then((r) => {
@@ -76,10 +93,18 @@ export default function Settings() {
   async function upload(file, kind) {
     if (!file) return;
     const compressed = await compressImage(file, { maxWidth: 1280, maxHeight: 1280, quality: 0.82 });
-    const fd = new FormData();
-    fd.append('file', compressed);
-    const r = await http.post('/api/upload', fd);
-    set(kind, r.data.url);
+    const r = await uploadImage(compressed, { category: 'backup', isPublic: true });
+    set(kind, r.url);
+  }
+
+  function startCrop(file, kind, aspectRatio, outputWidth, outputHeight) {
+    setCrop({ file, kind, aspectRatio, outputWidth, outputHeight });
+  }
+
+  async function onCropped(croppedFile) {
+    if (!crop) return;
+    await upload(croppedFile, crop.kind);
+    setCrop(null);
   }
 
   async function save() {
@@ -161,14 +186,14 @@ export default function Settings() {
             <div className="flex items-center gap-3">
               {form.logo && <img src={img(form.logo)} alt="" loading="lazy" decoding="async" className="w-14 h-14 rounded-lg object-cover border border-line" />}
               <button onClick={() => logoRef.current.click()} className="px-3 py-1.5 rounded-lg border border-line text-sm text-muted hover:text-brand hover:border-brand">上传 Logo</button>
-              <input ref={logoRef} type="file" accept="image/*" className="hidden" onChange={(e) => upload(e.target.files[0], 'logo')} />
+              <input ref={logoRef} type="file" accept="image/*" className="hidden" onChange={(e) => startCrop(e.target.files[0], 'logo', 1, 400, 400)} />
             </div>
           </Field>
           <Field label="封面图">
             <div className="flex items-center gap-3">
               {form.cover && <img src={img(form.cover)} alt="" loading="lazy" decoding="async" className="w-24 h-16 rounded-lg object-cover border border-line" />}
               <button onClick={() => coverRef.current.click()} className="px-3 py-1.5 rounded-lg border border-line text-sm text-muted hover:text-brand hover:border-brand">上传封面</button>
-              <input ref={coverRef} type="file" accept="image/*" className="hidden" onChange={(e) => upload(e.target.files[0], 'cover')} />
+              <input ref={coverRef} type="file" accept="image/*" className="hidden" onChange={(e) => startCrop(e.target.files[0], 'cover', 16 / 9, 1200, 675)} />
             </div>
           </Field>
         </div>
@@ -195,6 +220,18 @@ export default function Settings() {
           </div>
         </div>
       </div>
+
+      {crop && (
+        <ImageCropper
+          file={crop.file}
+          aspectRatio={crop.aspectRatio}
+          outputWidth={crop.outputWidth}
+          outputHeight={crop.outputHeight}
+          title={crop.kind === 'logo' ? '裁剪 Logo（正方形）' : '裁剪封面图（16:9）'}
+          onCancel={() => setCrop(null)}
+          onConfirm={onCropped}
+        />
+      )}
 
       {/* 对外预约设置 */}
       <div className="mt-6">
@@ -259,6 +296,22 @@ export default function Settings() {
           <button onClick={changePassword} disabled={pwSaving}
             className="px-5 py-2 rounded-lg bg-brand text-white text-sm hover:opacity-90 disabled:opacity-50">
             {pwSaving ? '保存中…' : '修改密码'}
+          </button>
+        </div>
+      </div>
+
+      {/* 数据备份：双重备份能力（手动导出 + R2 定时写入） */}
+      <div className="mt-6">
+        <div className="mb-4">
+          <h2 className="text-lg font-semibold text-fg">数据备份</h2>
+          <p className="text-xs text-muted mt-0.5">手动导出全量业务 JSON 到本地电脑；系统每日 03:10 还会自动写入 R2 /backup 目录一份。</p>
+        </div>
+        {backupTip && <div className="mb-4 text-sm px-4 py-2 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200">{backupTip}</div>}
+        <div className="bg-panel border border-line rounded-xl2 p-5 max-w-xl">
+          <p className="text-sm text-muted mb-4">备份包含全部订单、客户、相册、作品、设置等结构化数据（不含明文密钥）。图片二进制已存于 R2，无需重复备份。</p>
+          <button onClick={doBackup} disabled={backupBusy}
+            className="px-5 py-2 rounded-lg bg-brand text-white text-sm hover:opacity-90 disabled:opacity-50">
+            {backupBusy ? '导出中…' : '导出 JSON 备份'}
           </button>
         </div>
       </div>

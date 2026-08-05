@@ -122,6 +122,24 @@ CREATE TABLE IF NOT EXISTS share_logs (
   detail TEXT, ip TEXT, ua TEXT, created_at TEXT DEFAULT CURRENT_TIMESTAMP
 );`;
 
+// 媒资元数据表（容量管理模块）：按业务分类记录每张图片的 URL / 字节数 / 是否公开
+// 用于存储空间「按业务分类统计」——走 SQL 聚合，绝不整桶遍历 R2（约束 3）。
+// totalUsed 的实际桶大小由 Cloudflare API 提供（接入 R2 时），本地模式则回退到本表汇总 + 目录扫描。
+const PG_MEDIA = `
+CREATE TABLE IF NOT EXISTS media (
+  id SERIAL PRIMARY KEY, url TEXT NOT NULL, category TEXT NOT NULL DEFAULT 'uncategorized',
+  r2_key TEXT, bytes BIGINT NOT NULL DEFAULT 0, is_public INTEGER NOT NULL DEFAULT 0,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_media_url ON media(url);`;
+const SQLITE_MEDIA = `
+CREATE TABLE IF NOT EXISTS media (
+  id INTEGER PRIMARY KEY AUTOINCREMENT, url TEXT NOT NULL, category TEXT NOT NULL DEFAULT 'uncategorized',
+  r2_key TEXT, bytes INTEGER NOT NULL DEFAULT 0, is_public INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_media_url ON media(url);`;
+
 // 客户侧（C 端小程序）新表：customers / appointments / photo_select / evaluates
 // 双方言 DDL；首次启动自动创建；向前兼容用 ensureColumn 给 orders/works 补列。
 const PG_CUSTOMER_TABLES = `
@@ -219,6 +237,9 @@ export async function initSchema() {
 
   // 统一分享内核表（shares + share_logs）
   for (const s of (dialect === 'pg' ? PG_SHARE_TABLES : SQLITE_SHARE_TABLES).split(';').map((x) => x.trim()).filter(Boolean)) await run(s);
+
+  // 媒资元数据表（容量管理：按业务分类汇总）
+  for (const s of (dialect === 'pg' ? PG_MEDIA : SQLITE_MEDIA).split(';').map((x) => x.trim()).filter(Boolean)) await run(s);
 
   // orders 增量补列
   for (const [col, def] of ORDERS_NEW_COLUMNS) await ensureColumn('orders', col, def);

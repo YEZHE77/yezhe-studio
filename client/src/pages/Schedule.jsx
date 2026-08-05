@@ -81,7 +81,7 @@ export default function Schedule() {
   }
   async function remove() {
     if (!editing.id) return;
-    if (!confirm('确认删除该档期？')) return;
+    if (!confirm('确认后将永久删除，建议先做好本地备份，确定继续？')) return;
     await http.delete('/api/schedules/' + editing.id);
     setEditing(null);
     load();

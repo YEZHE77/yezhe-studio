@@ -34,3 +34,9 @@ services:
         sync: false
       - key: R2_SECRET_KEY
         sync: false
+      - key: CF_API_TOKEN        # Cloudflare API 令牌（只读 analytics，用于容量/流量统计）。可选；填了才显示真实用量。
+        sync: false
+      - key: CF_ACCOUNT_ID       # Cloudflare 账号 ID（与 CF_API_TOKEN 配套）
+        sync: false
+      - key: UPLOAD_TOKEN        # 上传 Worker 令牌；启用直传 Worker 时必填，需与 Worker 的 UPLOAD_TOKEN 一致
+        sync: false

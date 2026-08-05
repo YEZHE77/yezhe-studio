@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import http from '../api.js';
+import http, { formatBytes } from '../api.js';
 import Icon from '../components/Icon.jsx';
 
 // 待处理订单：白底卡片 + 底部彩色细线 + hover 高亮（参考拾光盒子）
@@ -49,18 +49,31 @@ function FuncCard({ icon, title, desc, to, onClick }) {
 
 export default function Dashboard() {
   const [stats, setStats] = useState(null);
+  const [storage, setStorage] = useState(null);
   const [showAlert, setShowAlert] = useState(false);
+  const [loading, setLoading] = useState(true);
   const nav = useNavigate();
   const now = new Date();
   const greet = now.getHours() < 12 ? '早上好' : now.getHours() < 18 ? '下午好' : '晚上好';
   const date = now.toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' });
 
   useEffect(() => {
-    http.get('/api/stats').then((r) => setStats(r.data)).catch(() => {});
-    http.get('/api/admin/storage')
-      .then((r) => setShowAlert(!r.data.r2Enabled))
-      .catch(() => setShowAlert(false));
+    setLoading(true);
+    Promise.all([
+      http.get('/api/stats').then((r) => setStats(r.data)).catch(() => {}),
+      http.get('/api/admin/storage/stats')
+        .then((r) => { setStorage(r.data); setShowAlert(!r.data.r2Enabled); })
+        .catch(() => { setStorage(null); setShowAlert(false); })
+    ]).finally(() => setLoading(false));
   }, []);
+
+  // 存储容量告警等级：≥90% 严重（持续红）/ 70-90% 警示（黄）/ <70% 正常
+  const storageRatio = storage && storage.limitBytes ? storage.totalUsedBytes / storage.limitBytes : 0;
+  const storagePct = Math.min(100, Math.round(storageRatio * 100));
+  const storageCritical = !!(storage && storage.r2Enabled && storageRatio >= 0.9);
+  const storageLevel = storageCritical ? 'critical' : storageRatio >= 0.7 ? 'warning' : 'normal';
+  const storageBar = storageLevel === 'critical' ? 'bg-red-500' : storageLevel === 'warning' ? 'bg-amber-400' : 'bg-emerald-500';
+  const storageTx = storageLevel === 'critical' ? 'text-red-600' : storageLevel === 'warning' ? 'text-amber-600' : 'text-emerald-600';
 
   const overview = [
     { label: '商户余额（应收）', value: stats ? stats.balance.toLocaleString() : '—' },
@@ -88,8 +101,19 @@ export default function Dashboard() {
         <button onClick={() => nav('/works')} className="hidden sm:block px-4 py-2 rounded-lg border border-line text-sm text-muted hover:text-brand hover:border-brand transition shrink-0">管理对外作品</button>
       </div>
 
-      {/* 告警横幅 */}
-      {showAlert && (
+      {/* 告警横幅：存储严重超额（≥90%，持续） */}
+      {storageCritical && (
+        <div className="flex items-center gap-3 bg-red-50 border border-red-200 rounded-xl2 px-5 py-3">
+          <span className="w-5 h-5 rounded-full bg-red-500 text-white flex items-center justify-center text-xs font-bold shrink-0">!</span>
+          <div className="flex-1 text-sm text-red-800">
+            存储容量告警：R2 已用 {storagePct}%（{formatBytes(storage.totalUsedBytes)} / {formatBytes(storage.limitBytes)}）。免费额度仅 10GB，请尽快清理废弃图片或归档历史客片，避免超出免费额度产生费用。
+          </div>
+          <button onClick={() => nav('/capacity')} className="text-red-600 hover:text-red-800 text-sm shrink-0 font-medium">去清理 →</button>
+        </div>
+      )}
+
+      {/* 告警横幅：未配置 R2（可关闭） */}
+      {showAlert && !storageCritical && (
         <div className="flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-xl2 px-5 py-3">
           <span className="w-5 h-5 rounded-full bg-amber-500 text-white flex items-center justify-center text-xs font-bold shrink-0">!</span>
           <div className="flex-1 text-sm text-amber-800">
@@ -99,8 +123,16 @@ export default function Dashboard() {
         </div>
       )}
 
+      {/* 加载中占位 */}
+      {loading && (
+        <div className="bg-panel border border-line rounded-xl2 p-8 text-center text-muted text-sm">
+          <div className="inline-block w-5 h-5 border-2 border-brand/30 border-t-brand rounded-full animate-spin mr-2 align-middle"></div>
+          正在连接服务器，首次启动约需 10 秒…
+        </div>
+      )}
+
       {/* 账户概览 3 列 */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className={'grid grid-cols-1 sm:grid-cols-3 gap-4 ' + (loading ? 'opacity-50' : '')}>
         {overview.map((o) => (
           <div key={o.label} className="bg-panel border border-line rounded-xl2 p-5 flex flex-col">
             <div className="text-xs text-muted">{o.label}</div>
@@ -109,6 +141,38 @@ export default function Dashboard() {
           </div>
         ))}
       </div>
+
+      {/* 存储状态卡片（容量管理联动；触发告警时首页可见） */}
+      {storage && (
+        <div className="bg-panel border border-line rounded-xl2 p-5">
+          <div className="flex items-center justify-between mb-3">
+            <div className="text-[15px] font-semibold text-fg flex items-center gap-2">
+              <Icon name="storage" className="w-[18px] h-[18px] text-muted" /> 存储空间
+            </div>
+            <button onClick={() => nav('/capacity')} className="text-xs text-brand hover:underline">容量管理 →</button>
+          </div>
+          {storage.r2Enabled ? (
+            <>
+              <div className="flex items-end justify-between mb-2">
+                <div className="text-2xl font-bold text-fg">{formatBytes(storage.totalUsedBytes)}</div>
+                <div className="text-xs text-muted">额度 {formatBytes(storage.limitBytes)}{storage.totalEstimated ? '（估算）' : ''}</div>
+              </div>
+              <div className="h-2.5 rounded-full bg-ink overflow-hidden">
+                <div className={'h-full ' + storageBar + ' transition-all'} style={{ width: storagePct + '%' }} />
+              </div>
+              <div className="flex items-center justify-between mt-2 text-xs">
+                <span className={storageTx + ' font-medium'}>{storagePct}% 已用</span>
+                <span className="text-faint">Cloudflare 指标延迟 5-15 分钟，非实时</span>
+              </div>
+            </>
+          ) : (
+            <div className="text-sm text-muted flex items-center gap-2">
+              <Icon name="storage" className="w-[18px] h-[18px] text-amber-500" />
+              当前为本地临时存储（未接入 R2），无配额限制但服务重启可能丢图。建议配置 R2 永久存储。
+            </div>
+          )}
+        </div>
+      )}
 
       {/* 待处理订单：白底等宽卡片 + 底部彩色线 + hover 高亮 */}
       <div className="bg-panel border border-line rounded-xl2 p-5">

@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import http, { img, debounce } from '../api.js';
+import http, { img, debounce, uploadImage } from '../api.js';
 import { useViewState } from '../tabMemory.js';
+import ImageCropper from '../components/ImageCropper.jsx';
 
 export default function Works() {
   const navigate = useNavigate();
@@ -10,6 +11,7 @@ export default function Works() {
   const [data, setData] = useState({ items: [], total: 0, pageSize: 12 });
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(emptyForm());
+  const [crop, setCrop] = useState(null);
 
   function emptyForm() {
     return { title: '', category_id: '', is_public: true, allow_download: false, cover: null, cover_url: '', description: '', tags: '' };
@@ -58,11 +60,9 @@ export default function Works() {
   async function submit(e) {
     e.preventDefault();
     let cover_url = form.cover_url || '';
-    if (form.cover) {
-      const fd = new FormData();
-      fd.append('file', form.cover);
-      const r = await http.post('/api/upload', fd);
-      cover_url = r.data.url;
+    if (form.cover instanceof File) {
+      const r = await uploadImage(form.cover, { category: 'cover', isPublic: true });
+      cover_url = r.url;
     }
     const tags = (form.tags || '').split(/[、,，\s]+/).map((s) => s.trim()).filter(Boolean);
     const payload = {
@@ -195,15 +195,29 @@ export default function Works() {
             <label className="flex items-center gap-2 text-sm text-fg mb-4">
               <input type="checkbox" checked={form.allow_download} onChange={(e) => setForm({ ...form, allow_download: e.target.checked })} /> 允许客户下载成片（小程序相册）
             </label>
-            <input type="file" accept="image/*" onChange={(e) => setForm({ ...form, cover: e.target.files[0] })}
+            <input type="file" accept="image/*" onChange={(e) => setCrop({ file: e.target.files[0] })}
               className="w-full mb-2 text-xs text-muted" />
-            {form.cover_url && <img src={img(form.cover_url)} className="w-20 h-20 object-cover rounded mb-4" alt="" />}
+            {(form.cover || form.cover_url) && (
+              <img src={form.cover ? URL.createObjectURL(form.cover) : img(form.cover_url)} className="w-20 h-20 object-cover rounded mb-4" alt="" />
+            )}
             <div className="flex gap-2 justify-end">
               <button type="button" onClick={() => setShowForm(false)} className="px-4 py-2 rounded text-sm text-muted">取消</button>
               <button type="submit" className="px-4 py-2 rounded bg-brand text-white text-sm">保存并上传照片</button>
             </div>
           </form>
         </div>
+      )}
+
+      {crop && (
+        <ImageCropper
+          file={crop.file}
+          aspectRatio={4 / 3}
+          outputWidth={800}
+          outputHeight={600}
+          title="裁剪作品封面（4:3）"
+          onCancel={() => setCrop(null)}
+          onConfirm={(croppedFile) => { setForm((f) => ({ ...f, cover: croppedFile })); setCrop(null); }}
+        />
       )}
     </div>
   );

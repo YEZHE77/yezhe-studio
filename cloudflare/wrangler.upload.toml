@@ -1,0 +1,30 @@
+# Cloudflare 上传 Worker —— 直传 R2（仅写）
+# 与只读代理 yezhe-img-proxy 分开部署（独立子域），二者绑定同一 R2 桶 yezhe-studio-img。
+#
+# 部署步骤：
+#   cp wrangler.upload.toml wrangler.upload.local.toml   # 可选，避免误改
+#   npx wrangler login
+#   npx wrangler deploy -c cloudflare/wrangler.upload.toml
+#
+# 部署后，在 Netlify 环境变量加：VITE_UPLOAD_WORKER_URL=https://yezhe-img-upload.<your-sub>.workers.dev
+# 在 Render 环境变量加：UPLOAD_TOKEN=<一段随机字符串，与下方一致>
+# 在只读代理开启 Referer 防盗链（仅放行 yezhe-studio.netlify.app 与你的 Worker 域名）。
+
+name = "yezhe-img-upload"
+main = "upload-worker.js"
+compatibility_date = "2024-09-23"
+account_id = "0bde736e2d9fef22b049ffc833bae06c"
+
+# 绑定同一私有 R2 桶
+[[r2_buckets]]
+binding = "R2"
+bucket_name = "yezhe-studio-img"
+
+# Worker 环境变量（密钥只在这里，前端绝不接触 R2 凭证）
+[vars]
+# 上传令牌：必须设置，否则所有上传被 401 拒绝（安全默认）
+UPLOAD_TOKEN = "请替换为一段随机长字符串，例如 openssl rand -hex 32"
+# 读代理域名（上传后返回的 URL 用它，保证同一 URL 可读）
+PUBLIC_CDN = "https://yezhe-img-proxy.yezhe128627.workers.dev"
+# 允许的跨域来源（前端部署域名）；留 * 则不限制（不建议生产）
+ALLOWED_ORIGIN = "https://yezhe-studio.netlify.app"

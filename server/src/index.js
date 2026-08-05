@@ -7,7 +7,8 @@ import path from 'node:path';
 import fs from 'node:fs';
 import { dialect, dataDir } from './db.js';
 import { initSchema } from './schema.js';
-import { uploadDir, saveImage } from './storage.js';
+import { saveImage } from './storage.js';
+import { scheduleDailyBackup } from './backup.js';
 import { authRequired } from './auth.js';
 import { seedIfNeeded } from './seed.js';
 
@@ -37,18 +38,22 @@ const CORS_ORIGIN = (process.env.CORS_ORIGIN || 'https://yezhe-studio.netlify.ap
 app.use(cors({ origin: CORS_ORIGIN, credentials: true }));
 app.use(express.json({ limit: '20mb' }));
 
-// 上传（磁盘临时 + 单文件 15MB 硬上限，原片超阈值被拦截）
+// 上传（仅临时落盘做中转，单文件 15MB 硬上限；T-01：Render 本地不持久化任何图片，最终落入 R2）
 const tmpDir = path.join(dataDir, 'tmp');
 fs.mkdirSync(tmpDir, { recursive: true });
 const upload = multer({ dest: tmpDir, limits: { fileSize: 15 * 1024 * 1024 } });
-const UP = uploadDir();
-fs.mkdirSync(UP, { recursive: true });
-app.use('/uploads', express.static(UP));
 
 app.post('/api/upload', authRequired, upload.single('file'), async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ error: '未收到文件' });
-    const url = await saveImage(req.file, 'biz-works');
+    // 单图上传多为封面/样片（默认公开）；前端可显式传 category（type 枚举）/ isPublic
+    const meta = {
+      category: req.body.category || 'cover',
+      isPublic: req.body.isPublic === undefined
+        ? true
+        : (req.body.isPublic === '1' || req.body.isPublic === 'true' || req.body.isPublic === true)
+    };
+    const url = await saveImage(req.file, 'biz-works', meta);
     res.json({ url });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -58,10 +63,15 @@ app.post('/api/upload-multiple', authRequired, upload.array('files', 500), async
   try {
     const files = req.files || [];
     if (!files.length) return res.status(400).json({ error: '未收到文件' });
+    // 批量多为客片/底片/精修（默认非公开）；前端可显式传 category（type 枚举）/ isPublic
+    const meta = {
+      category: req.body.category || 'client',
+      isPublic: req.body.isPublic === '1' || req.body.isPublic === 'true' || req.body.isPublic === true
+    };
     const urls = [];
     for (let i = 0; i < files.length; i += 3) {
       const batch = files.slice(i, i + 3);
-      const batchUrls = await Promise.all(batch.map((f) => saveImage(f, 'customer-demo')));
+      const batchUrls = await Promise.all(batch.map((f) => saveImage(f, 'customer-demo', meta)));
       urls.push(...batchUrls);
     }
     res.json({ urls });
@@ -99,6 +109,8 @@ app.use((req, res) => res.status(404).json({ error: '接口不存在' }));
 
 initSchema().then(async () => {
   await seedIfNeeded();
+  // 双重备份：启动后调度每日 R2 /backup 写入（Render 免费档重启会自动重新调度）
+  try { scheduleDailyBackup(); } catch (e) { console.error('[backup] 调度失败', e.message); }
   app.listen(PORT, () => {
     console.log(`[server] 已启动 → http://localhost:${PORT}`);
     console.log(`[server] CORS 放行: ${CORS_ORIGIN.join(', ')}`);

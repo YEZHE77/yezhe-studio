@@ -23,6 +23,7 @@ const DataCharts = React.lazy(() => import('./pages/DataCharts.jsx'));
 const BusinessCard = React.lazy(() => import('./pages/BusinessCard.jsx'));
 const SelectionAdmin = React.lazy(() => import('./pages/SelectionAdmin.jsx'));
 const ShareAlbum = React.lazy(() => import('./pages/ShareAlbum.jsx'));
+const CapacityManagement = React.lazy(() => import('./pages/CapacityManagement.jsx'));
 
 // 通用加载占位
 function PageLoader() {
@@ -56,6 +57,7 @@ function AppShell() {
               <Route path="/card" element={<BusinessCard />} />
               <Route path="/selections" element={<SelectionAdmin />} />
               <Route path="/finance" element={<Finance />} />
+              <Route path="/capacity" element={<CapacityManagement />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </Suspense>

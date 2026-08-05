@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import http, { img } from '../api.js';
+import http, { img, uploadImage } from '../api.js';
 import { useViewState } from '../tabMemory.js';
 
 export default function Packages() {
@@ -64,10 +64,8 @@ export default function Packages() {
     e.preventDefault();
     let cover_url = form.cover_url || '';
     if (form.cover) {
-      const fd = new FormData();
-      fd.append('file', form.cover);
-      const r = await http.post('/api/upload', fd);
-      cover_url = r.data.url;
+      const r = await uploadImage(form.cover, { category: 'cover', isPublic: true });
+      cover_url = r.url;
     }
     const payload = {
       name: form.name, price: parseFloat(form.price) || 0, description: form.description,
@@ -87,7 +85,7 @@ export default function Packages() {
   }
 
   const del = async (id) => {
-    if (!confirm('确认删除该套系？')) return;
+    if (!confirm('确认后将永久删除，建议先做好本地备份，确定继续？')) return;
     await http.delete('/api/packages/' + id);
     load();
   };
@@ -366,7 +364,7 @@ function ShareModal({ pkg, onClose, refresh }) {
     loadShares(); if (refresh) refresh();
   }
   async function remove(s) {
-    if (!confirm('删除该分享链接？')) return;
+    if (!confirm('确认后将永久删除，建议先做好本地备份，确定继续？')) return;
     await http.delete('/api/shares/' + s.token);
     loadShares(); if (refresh) refresh();
   }

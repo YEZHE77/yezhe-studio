@@ -29,6 +29,12 @@ const GROUPS = [
       { to: '/card', label: '生成名片', icon: 'link' }
     ]
   },
+  {
+    title: '容量管理',
+    items: [
+      { to: '/capacity', label: '容量管理', icon: 'storage' }
+    ]
+  },
   { title: '数据', items: [{ to: '/finance', label: '财务管理', icon: 'finance' }, { to: '/datacharts', label: '数据统计', icon: 'dashboard' }] }
 ];
 

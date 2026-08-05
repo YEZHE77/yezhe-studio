@@ -27,7 +27,7 @@ export default function Reviews() {
   }
 
   async function remove(id) {
-    if (!confirm('确认删除该评价？此操作不可恢复。')) return;
+    if (!confirm('确认后将永久删除，建议先做好本地备份，确定继续？')) return;
     try {
       await http.delete('/api/admin/evaluates/' + id);
       load();

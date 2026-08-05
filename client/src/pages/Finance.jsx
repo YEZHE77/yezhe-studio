@@ -14,11 +14,15 @@ export default function Finance() {
   const [ledger, setLedger] = useState([]);
 
   useEffect(() => {
+    const y = Number(state.year) || new Date().getFullYear();
+    // 强制时间筛选：资金流水必须带 from/to 范围（默认当前年），禁止无条件拉全库在前端计算
+    const from = `${y}-01-01`;
+    const to = `${y}-12-31`;
     http.get('/api/finance/summary').then((r) => setSummary(r.data)).catch(() => {});
     http.get('/api/finance/by-month?year=' + state.year).then((r) => setMonths(r.data)).catch(() => {});
     http.get('/api/finance/staff').then((r) => setStaff(r.data)).catch(() => {});
     http.get('/api/finance/packages').then((r) => setPkgs(r.data)).catch(() => {});
-    http.get('/api/finance/ledger').then((r) => setLedger(r.data)).catch(() => {});
+    http.get('/api/finance/ledger?from=' + from + '&to=' + to).then((r) => setLedger(r.data)).catch(() => {});
   }, [state.year]);
 
   const maxMonth = months.reduce((m, x) => Math.max(m, x.net), 0) || 1;

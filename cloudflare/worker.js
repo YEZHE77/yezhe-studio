@@ -17,6 +17,21 @@ export default {
       return new Response('Not Found', { status: 404 });
     }
 
+    // 防盗链（Referer 白名单）：拒绝其他外部站点盗用图片
+    // 小程序 wx.request 不发送 Referer，直接放行；同源/白名单域名放行；其他带 Referer 的外部域名 → 403
+    const referer = request.headers.get('Referer');
+    if (referer) {
+      let host = '';
+      try { host = new URL(referer).host; } catch (e) { host = ''; }
+      if (host) {
+        const allowed = (env.ALLOWED_REFERERS || 'yezhe-studio.netlify.app')
+          .split(',').map((s) => s.trim().toLowerCase()).filter(Boolean);
+        allowed.push(url.host.toLowerCase()); // 同源始终放行
+        const ok = allowed.some((a) => host === a || host.endsWith('.' + a));
+        if (!ok) return new Response('Forbidden', { status: 403 });
+      }
+    }
+
     // 提取 key（去掉 /r2/ 前缀），解码并拦截目录穿越
     const key = decodeURIComponent(url.pathname.slice('/r2/'.length));
     if (!key || key.includes('..') || key.startsWith('/')) {
