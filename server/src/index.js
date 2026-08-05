@@ -50,6 +50,21 @@ app.post('/api/upload', authRequired, upload.single('file'), async (req, res) =>
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// 批量上传（作品相册等场景，3 张并发一组，避免压垮服务器）
+app.post('/api/upload-multiple', authRequired, upload.array('files', 500), async (req, res) => {
+  try {
+    const files = req.files || [];
+    if (!files.length) return res.status(400).json({ error: '未收到文件' });
+    const urls = [];
+    for (let i = 0; i < files.length; i += 3) {
+      const batch = files.slice(i, i + 3);
+      const batchUrls = await Promise.all(batch.map((f) => saveImage(f)));
+      urls.push(...batchUrls);
+    }
+    res.json({ urls });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 app.use('/api/auth', authRoutes);
 app.use('/api/works', worksRoutes);
 app.use('/api/categories', categoriesRoutes);

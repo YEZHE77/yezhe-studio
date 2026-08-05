@@ -6,6 +6,7 @@ import Topbar from './layout/Topbar.jsx';
 import Login from './pages/Login.jsx';
 import Dashboard from './pages/Dashboard.jsx';
 import Works from './pages/Works.jsx';
+import WorkDetail from './pages/WorkDetail.jsx';
 import Packages from './pages/Packages.jsx';
 import Schedule from './pages/Schedule.jsx';
 import Orders from './pages/Orders.jsx';
@@ -33,6 +34,7 @@ export default function App() {
           <Routes>
             <Route path="/" element={<Dashboard />} />
             <Route path="/works" element={<Works />} />
+            <Route path="/works/:id" element={<WorkDetail />} />
             <Route path="/packages" element={<Packages />} />
             <Route path="/schedule" element={<Schedule />} />
             <Route path="/orders" element={<Orders />} />

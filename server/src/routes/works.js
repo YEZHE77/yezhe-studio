@@ -127,4 +127,57 @@ router.delete('/:id', authRequired, async (req, res) => {
   }
 });
 
+// ===== 相册管理（支持 500 张批量） =====
+// 查询某作品全部相册
+router.get('/:id/albums', authRequired, async (req, res) => {
+  try {
+    const albums = await query('SELECT * FROM albums WHERE work_id = ? ORDER BY zone, sort, id', [req.params.id]);
+    res.json({ items: albums });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// 批量添加照片到作品相册
+router.post('/:id/albums', authRequired, async (req, res) => {
+  try {
+    const { urls, zone = 'sample' } = req.body;
+    if (!Array.isArray(urls) || !urls.length) return res.status(400).json({ error: 'urls 数组不能为空' });
+    // 取当前最大 sort，追加到末尾
+    const max = await get('SELECT COALESCE(MAX(sort), -1) AS m FROM albums WHERE work_id = ? AND zone = ?', [req.params.id, zone]);
+    let sort = (max.m ?? -1) + 1;
+    const inserted = [];
+    for (const url of urls) {
+      const id = await insert('INSERT INTO albums (work_id, zone, photo_url, sort) VALUES (?,?,?,?)', [req.params.id, zone, url, sort++]);
+      inserted.push(id);
+    }
+    res.json({ ok: true, ids: inserted });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// 更新单张照片排序
+router.put('/albums/:id/sort', authRequired, async (req, res) => {
+  try {
+    const { sort } = req.body;
+    if (typeof sort !== 'number') return res.status(400).json({ error: 'sort 必须为数字' });
+    await run('UPDATE albums SET sort = ? WHERE id = ?', [sort, req.params.id]);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// 删除单张照片
+router.delete('/albums/:id', authRequired, async (req, res) => {
+  try {
+    await run('DELETE FROM albums WHERE id = ?', [req.params.id]);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// 设置作品封面
+router.put('/:id/cover', authRequired, async (req, res) => {
+  try {
+    const { cover_url } = req.body;
+    await run('UPDATE works SET cover_url = ? WHERE id = ?', [cover_url || '', req.params.id]);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 export default router;
