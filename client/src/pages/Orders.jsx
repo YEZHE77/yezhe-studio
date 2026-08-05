@@ -1,7 +1,8 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import http, { img, debounce } from '../api.js';
 import { useViewState } from '../tabMemory.js';
+import OrderCreateModal from '../components/OrderCreateModal.jsx';
 
 const STATUS_LABEL = {
   unpaid: '待付定金', deposit: '已付定金', shot: '已拍摄', selecting: '选片中',
@@ -23,7 +24,7 @@ export default function Orders() {
   const [sel, setSel] = useState(null); // 选片结果 {selection, photos}
   const [selSaving, setSelSaving] = useState(false);
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState(emptyForm());
+  const [initialPkg, setInitialPkg] = useState(null);
   const [pay, setPay] = useState(null); // {type, amount, method, note}
   const [err, setErr] = useState('');
   const [trash, setTrash] = useState(false);
@@ -33,31 +34,37 @@ export default function Orders() {
   const [shareModal, setShareModal] = useState(false);
   const [shareBusy, setShareBusy] = useState(false);
 
-  function emptyForm() {
-    return { groom_name: '', bride_name: '', customer_phone: '', address: '', package_id: '', deposit: '', balance: '', deposit_method: 'offline', balance_method: 'offline', shoot_date: '', executor: '', remark: '' };
-  }
-
-  const load = useRef(() => {});
+  const abortRef = useRef(null);
 
   // 搜索防抖 300ms（避免逐字发请求）
   const setQ = useMemo(() => debounce((v) => setState((s) => ({ ...s, q: v }))), [setState]);
 
-  useEffect(() => {
+  // 刷新订单列表：重新拉取接口并更新 list state（不做 location.reload）
+  const refreshOrderList = useCallback(async () => {
+    if (abortRef.current) abortRef.current.abort();
     const ctrl = new AbortController();
-    const fetch = () => {
+    abortRef.current = ctrl;
+    try {
       if (trash) {
-        http.get('/api/orders/recycle', { signal: ctrl.signal }).then((r) => setList(r.data)).catch(() => {});
-        return;
+        const r = await http.get('/api/orders/recycle', { signal: ctrl.signal });
+        setList(r.data);
+      } else {
+        const p = new URLSearchParams();
+        if (state.status) p.set('status', state.status);
+        if (state.q) p.set('q', state.q);
+        const r = await http.get('/api/orders?' + p.toString(), { signal: ctrl.signal });
+        setList(r.data);
       }
-      const p = new URLSearchParams();
-      if (state.status) p.set('status', state.status);
-      if (state.q) p.set('q', state.q);
-      http.get('/api/orders?' + p.toString(), { signal: ctrl.signal }).then((r) => setList(r.data)).catch(() => {});
-    };
-    fetch();
-    load.current = fetch;
-    return () => ctrl.abort();
+    } catch (e) {
+      if (e.name !== 'AbortError') { /* 忽略请求中断外的错误 */ }
+    }
   }, [state, trash]);
+
+  useEffect(() => {
+    refreshOrderList();
+  }, [refreshOrderList]);
+
+  useEffect(() => () => { if (abortRef.current) abortRef.current.abort(); }, []);
   useEffect(() => {
     const ctrl = new AbortController();
     http.get('/api/packages?status=all', { signal: ctrl.signal }).then((r) => setPkgs(r.data)).catch(() => {});
@@ -68,7 +75,7 @@ export default function Orders() {
   useEffect(() => {
     const pkg = params.get('pkg');
     if (pkg) {
-      setForm({ ...emptyForm(), package_id: pkg });
+      setInitialPkg(pkg);
       setShowForm(true);
       params.delete('pkg');
       setParams(params, { replace: true });
@@ -114,7 +121,7 @@ export default function Orders() {
     }
   };
 
-  const openNew = () => { setForm(emptyForm()); setErr(''); setShowForm(true); };
+  const openNew = () => { setInitialPkg(null); setShowForm(true); };
 
   // 编辑订单（基本信息；金额通过收款/退款调整，不在本处改）
   const [edit, setEdit] = useState(null);
@@ -133,48 +140,29 @@ export default function Orders() {
     try {
       await http.put('/api/orders/' + detail.id, editForm);
       setEdit(false);
-      openDetail(detail.id); load();
+      openDetail(detail.id); refreshOrderList();
     } catch (e2) { alert((e2.response && e2.response.data && e2.response.data.error) || '保存失败'); }
   }
   async function removeOrder() {
     if (!confirm('确认删除该订单？\n将移入回收站，可在回收站恢复（不破坏收款流水与选片记录）。')) return;
     try {
       await http.delete('/api/orders/' + detail.id);
-      setDetail(null); load();
+      setDetail(null); refreshOrderList();
     } catch (e2) { alert((e2.response && e2.response.data && e2.response.data.error) || '删除失败'); }
   }
   async function restoreOrder() {
     if (!confirm('确认恢复该订单？')) return;
     try {
       await http.post('/api/orders/' + detail.id + '/restore');
-      setDetail(null); load();
+      setDetail(null); refreshOrderList();
     } catch (e2) { alert((e2.response && e2.response.data && e2.response.data.error) || '恢复失败'); }
   }
   async function purgeOrder() {
     if (!confirm('确认后将永久删除，建议先做好本地备份，确定继续？')) return;
     try {
       await http.post('/api/orders/' + detail.id + '/purge');
-      setDetail(null); load();
+      setDetail(null); refreshOrderList();
     } catch (e2) { alert((e2.response && e2.response.data && e2.response.data.error) || '彻底删除失败'); }
-  }
-
-  async function submit(e) {
-    e.preventDefault();
-    setErr('');
-    const pkg = pkgs.find((p) => String(p.id) === String(form.package_id));
-    const payload = {
-      groom_name: form.groom_name, bride_name: form.bride_name, customer_phone: form.customer_phone, address: form.address,
-      package_id: form.package_id || null,
-      deposit: parseFloat(form.deposit) || 0, balance: parseFloat(form.balance) || 0,
-      deposit_method: form.deposit_method, balance_method: form.balance_method,
-      shoot_date: form.shoot_date, executor: form.executor, remark: form.remark
-    };
-    if (!pkg) { setErr('请选择套系（或填写定金/尾款金额）'); return; }
-    try {
-      await http.post('/api/orders', payload);
-      setShowForm(false);
-      load();
-    } catch (e) { setErr((e.response && e.response.data && e.response.data.error) || '创建失败'); }
   }
 
   async function advance() {
@@ -184,30 +172,30 @@ export default function Orders() {
     const next = STAGE_SEQ[idx + 1];
     await http.put('/api/orders/' + detail.id, { status: next });
     openDetail(detail.id);
-    load();
+    refreshOrderList();
   }
   async function setStatus(s) {
     await http.put('/api/orders/' + detail.id, { status: s });
-    openDetail(detail.id); load();
+    openDetail(detail.id); refreshOrderList();
   }
   async function cancel() {
     const reason = prompt('作废原因（选填）');
     if (reason === null) return;
     await http.post('/api/orders/' + detail.id + '/cancel', { reason });
-    openDetail(detail.id); load();
+    openDetail(detail.id); refreshOrderList();
   }
   async function refund() {
     const amt = prompt('退款金额');
     if (amt === null || !amt) return;
     await http.post('/api/orders/' + detail.id + '/refund', { amount: parseFloat(amt), note: '手动退款' });
-    openDetail(detail.id); load();
+    openDetail(detail.id); refreshOrderList();
   }
   async function savePay() {
     setErr('');
     try {
       await http.post('/api/orders/' + detail.id + '/payments', pay);
       setPay(null);
-      openDetail(detail.id); load();
+      openDetail(detail.id); refreshOrderList();
     } catch (e) { setErr((e.response && e.response.data && e.response.data.error) || '登记失败'); }
   }
 
@@ -223,7 +211,7 @@ export default function Orders() {
     try {
       await http.post('/api/orders/' + detail.id + '/storage', storageForm);
       setStorage(false);
-      openDetail(detail.id); load();
+      openDetail(detail.id); refreshOrderList();
     } catch (e) { alert((e.response && e.response.data && e.response.data.error) || '保存失败'); }
   }
 
@@ -245,7 +233,7 @@ export default function Orders() {
     try {
       await http.post('/api/orders/' + detail.id + '/unshare');
       setShare(null); setShareModal(false);
-      openDetail(detail.id); load();
+      openDetail(detail.id); refreshOrderList();
     } catch (e) { alert((e.response && e.response.data && e.response.data.error) || '操作失败'); }
   }
   function copyShare() {
@@ -476,58 +464,14 @@ export default function Orders() {
         </div>
       )}
 
-      {/* 新建订单弹窗 */}
-      {showForm && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[60] p-4" onClick={() => setShowForm(false)}>
-          <form onClick={(e) => e.stopPropagation()} onSubmit={submit} className="w-full max-w-lg bg-panel border border-line rounded-xl2 p-6 max-h-[90vh] overflow-auto">
-            <div className="text-white font-medium mb-4">新建订单</div>
-            <div className="grid grid-cols-2 gap-3">
-              <input value={form.groom_name} onChange={(e) => setForm({ ...form, groom_name: e.target.value })} placeholder="新郎姓名"
-                className="px-3 py-2 rounded bg-panel2 border border-line text-white text-sm outline-none" />
-              <input value={form.bride_name} onChange={(e) => setForm({ ...form, bride_name: e.target.value })} placeholder="新娘姓名"
-                className="px-3 py-2 rounded bg-panel2 border border-line text-white text-sm outline-none" />
-            </div>
-            <div className="grid grid-cols-2 gap-3 mt-3">
-              <input value={form.customer_phone} onChange={(e) => setForm({ ...form, customer_phone: e.target.value })} placeholder="联系电话"
-                className="px-3 py-2 rounded bg-panel2 border border-line text-white text-sm outline-none" />
-              <input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} placeholder="拍摄地址"
-                className="px-3 py-2 rounded bg-panel2 border border-line text-white text-sm outline-none" />
-            </div>
-            <select value={form.package_id} onChange={(e) => setForm({ ...form, package_id: e.target.value })} required
-              className="w-full mt-3 px-3 py-2 rounded bg-panel2 border border-line text-white text-sm outline-none">
-              <option value="">选择套系</option>
-              {pkgs.map((p) => <option key={p.id} value={p.id}>{p.name} · ¥{p.price}</option>)}
-            </select>
-            <div className="grid grid-cols-2 gap-3 mt-3">
-              <input value={form.deposit} onChange={(e) => setForm({ ...form, deposit: e.target.value })} type="number" placeholder="定金"
-                className="px-3 py-2 rounded bg-panel2 border border-line text-white text-sm outline-none" />
-              <input value={form.balance} onChange={(e) => setForm({ ...form, balance: e.target.value })} type="number" placeholder="尾款"
-                className="px-3 py-2 rounded bg-panel2 border border-line text-white text-sm outline-none" />
-            </div>
-            <div className="grid grid-cols-2 gap-3 mt-3">
-              <select value={form.deposit_method} onChange={(e) => setForm({ ...form, deposit_method: e.target.value })} className="px-3 py-2 rounded bg-panel2 border border-line text-white text-sm outline-none">
-                <option value="offline">定金·线下</option><option value="online">定金·线上</option>
-              </select>
-              <select value={form.balance_method} onChange={(e) => setForm({ ...form, balance_method: e.target.value })} className="px-3 py-2 rounded bg-panel2 border border-line text-white text-sm outline-none">
-                <option value="offline">尾款·线下</option><option value="online">尾款·线上</option>
-              </select>
-            </div>
-            <div className="grid grid-cols-2 gap-3 mt-3">
-              <input value={form.shoot_date} onChange={(e) => setForm({ ...form, shoot_date: e.target.value })} type="date" placeholder="拍摄日期"
-                className="px-3 py-2 rounded bg-panel2 border border-line text-white text-sm outline-none" />
-              <input value={form.executor} onChange={(e) => setForm({ ...form, executor: e.target.value })} placeholder="执行人"
-                className="px-3 py-2 rounded bg-panel2 border border-line text-white text-sm outline-none" />
-            </div>
-            <input value={form.remark} onChange={(e) => setForm({ ...form, remark: e.target.value })} placeholder="备注"
-              className="w-full mt-3 px-3 py-2 rounded bg-panel2 border border-line text-white text-sm outline-none" />
-            {err && <div className="text-xs text-red-400 mt-2">{err}</div>}
-            <div className="flex gap-2 justify-end mt-4">
-              <button type="button" onClick={() => setShowForm(false)} className="px-4 py-2 rounded text-sm text-muted">取消</button>
-              <button type="submit" className="px-4 py-2 rounded bg-brand text-white text-sm">创建</button>
-            </div>
-          </form>
-        </div>
-      )}
+      {/* 新建订单弹窗（抽离为独立组件，创建成功后刷新列表） */}
+      <OrderCreateModal
+        visible={showForm}
+        packages={pkgs}
+        initialPackageId={initialPkg}
+        onClose={() => setShowForm(false)}
+        onAfterCreate={refreshOrderList}
+      />
 
       {/* 收款弹窗 */}
       {pay && detail && (
