@@ -2,12 +2,17 @@ const { request } = require('../../utils/req.js');
 
 Page({
   data: {
+    studio: { name: '', logo: '', intro: '', contact: {} },
+    categories: [],
+    activeCat: 0,
     works: [],
-    packages: [],
-    reviews: [],
-    detail: null,      // 作品大图弹层
-    detailLoading: false,
-    bookingOpen: true  // 对外预约开关（B 端「资料设置」控制）
+    page: 1,
+    pageSize: 8,
+    hasMore: true,
+    loading: false,
+    banners: [],
+    detail: null,
+    detailLoading: false
   },
 
   onLoad() { this.loadAll(); },
@@ -18,25 +23,78 @@ Page({
   },
 
   async loadAll() {
+    await Promise.all([this.loadStudio(), this.loadCategories()]);
+    await this.loadWorks(true);
+  },
+
+  async loadStudio() {
     try {
-      const [works, pkgs, reviews] = await Promise.all([
-        request('/api/works/public?pageSize=6'),
-        request('/api/packages/public'),
-        request('/api/customer/evaluate/public')
-      ]);
+      const s = await request('/api/settings/studio');
+      this.setData({ studio: s || {} });
+    } catch (e) { console.error('loadStudio err', e); }
+  },
+
+  async loadCategories() {
+    try {
+      const cats = await request('/api/categories');
+      this.setData({ categories: cats || [] });
+    } catch (e) { console.error('loadCategories err', e); }
+  },
+
+  async loadWorks(reset) {
+    if (this.data.loading) return;
+    this.setData({ loading: true });
+    try {
+      const page = reset ? 1 : this.data.page + 1;
+      const cat = this.data.activeCat;
+      const params = ['page=' + page, 'pageSize=' + this.data.pageSize];
+      if (cat) params.push('category=' + cat);
+      const r = await request('/api/works/public?' + params.join('&'));
+      const items = (r.items || []).map((w) => ({ ...w, cover: w.cover_url || '' }));
+      const merged = reset ? items : this.data.works.concat(items);
       this.setData({
-        works: (works.items || []).map((w) => ({ ...w, cover: w.cover_url || '' })),
-        packages: (pkgs || []).slice(0, 4),
-        reviews: (reviews || []).slice(0, 3)
+        works: merged,
+        page,
+        hasMore: merged.length < (r.total || 0),
+        banners: reset ? items.slice(0, 3).map((w) => w.cover_url).filter(Boolean) : this.data.banners
       });
     } catch (e) {
       wx.showToast({ title: '加载失败', icon: 'none' });
+    } finally {
+      this.setData({ loading: false });
     }
-    // 预约开关（公开读）
-    try {
-      const b = await request('/api/settings/booking');
-      this.setData({ bookingOpen: b && b.open !== false });
-    } catch (e) { this.setData({ bookingOpen: true }); }
+  },
+
+  loadMore() {
+    if (this.data.hasMore && !this.data.loading) this.loadWorks(false);
+  },
+
+  selectCat(e) {
+    const id = Number(e.currentTarget.dataset.id) || 0;
+    if (id === this.data.activeCat) return;
+    this.setData({ activeCat: id, works: [], page: 1, hasMore: true });
+    this.loadWorks(true);
+  },
+
+  copyWechat() {
+    const wechat = (this.data.studio.contact && this.data.studio.contact.wechat) || '';
+    if (!wechat) {
+      wx.showToast({ title: '未配置微信', icon: 'none' });
+      return;
+    }
+    wx.setClipboardData({
+      data: wechat,
+      success: () => wx.showToast({ title: '已复制微信号', icon: 'none' })
+    });
+  },
+
+  callPhone() {
+    const phone = (this.data.studio.contact && this.data.studio.contact.phone) || '';
+    if (!phone) {
+      wx.showToast({ title: '未配置电话', icon: 'none' });
+      return;
+    }
+    wx.makePhoneCall({ phoneNumber: phone });
   },
 
   goWorks() { wx.switchTab({ url: '/pages/works/works' }); },
@@ -54,11 +112,14 @@ Page({
       wx.showToast({ title: '打开失败', icon: 'none' });
     }
   },
+
   closeDetail() { this.setData({ detail: null }); },
 
   previewImage(e) {
     const url = e.currentTarget.dataset.url;
     const urls = (this.data.detail.albums || []).map((a) => a.photo_url).filter(Boolean);
     if (url && urls.length) wx.previewImage({ current: url, urls });
-  }
+  },
+
+  noop() {}
 });

@@ -1,35 +1,146 @@
-.page { padding-bottom: 40rpx; }
-.hero {
-  padding: 90rpx 40rpx 70rpx;
-  background: #111111; color: #fff; text-align: center;
+page { background: #f9f8f6; }
+.page { padding-bottom: 60rpx; }
+
+/* ===== 轮播 Banner ===== */
+.banner { width: 100%; height: 900rpx; }
+.banner-img { width: 100%; height: 100%; }
+.banner--ph {
+  background: #111; color: #fff;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  height: 900rpx;
 }
-.hero-en { font-size: 30rpx; letter-spacing: 8rpx; opacity: .85; }
-.hero-cn { font-size: 64rpx; font-weight: 700; letter-spacing: 6rpx; margin-top: 16rpx; }
-.hero-tag { margin-top: 20rpx; font-size: 24rpx; opacity: .6; letter-spacing: 2rpx; }
+.banner-logo { font-size: 40rpx; letter-spacing: 10rpx; opacity: .9; }
+.banner-tag { margin-top: 20rpx; font-size: 26rpx; opacity: .6; letter-spacing: 4rpx; }
 
-.grid { display: flex; flex-wrap: wrap; padding: 0 20rpx; }
-.grid-item { width: calc(50% - 24rpx); margin: 12rpx; }
-.grid-cover { width: 100%; height: 360rpx; display: block; background: #eee; }
-.grid-cover--ph { background: linear-gradient(135deg,#e9e9e9,#f4f4f4); }
-.grid-cap { padding: 18rpx 20rpx 22rpx; }
-.grid-title { display: block; font-size: 28rpx; font-weight: 600; }
-.grid-cat { display: block; margin-top: 4rpx; }
+/* ===== 关于我们 ===== */
+.about {
+  background: #fff; margin: 40rpx 32rpx 0; padding: 60rpx 40rpx;
+  border-radius: 24rpx; text-align: center;
+  box-shadow: 0 8rpx 40rpx rgba(0,0,0,0.04);
+}
+.about-en {
+  font-size: 22rpx; letter-spacing: 6rpx; color: #999;
+  text-transform: uppercase;
+}
+.about-title {
+  margin-top: 16rpx; font-size: 44rpx; font-weight: 600; color: #2c2c2c; letter-spacing: 4rpx;
+}
+.about-logo {
+  width: 120rpx; height: 120rpx; margin: 30rpx auto 0; border-radius: 50%;
+  overflow: hidden; border: 2rpx solid #eee;
+}
+.about-logo image { width: 100%; height: 100%; }
+.about-slogan {
+  margin-top: 34rpx; font-size: 26rpx; line-height: 1.9; color: #666;
+}
+.about-actions {
+  margin-top: 44rpx; display: flex; justify-content: center; gap: 24rpx;
+}
+.btn {
+  min-width: 200rpx; height: 76rpx; line-height: 76rpx;
+  font-size: 26rpx; border-radius: 8rpx; text-align: center;
+  padding: 0 28rpx; margin: 0;
+}
+.btn::after { border: none; }
+.btn-primary {
+  background: #7ecdbb; color: #fff;
+}
+.btn-outline {
+  background: #fff; color: #7ecdbb; border: 2rpx solid #7ecdbb;
+}
 
-.pkg-list { padding: 0 32rpx; }
-.pkg { padding: 28rpx; margin-bottom: 20rpx; }
-.pkg-name { font-size: 32rpx; font-weight: 600; }
-.pkg-desc { margin: 10rpx 0 16rpx; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
-.pkg-price { font-size: 28rpx; }
+/* ===== 作品展示 ===== */
+.gallery { margin-top: 60rpx; padding: 0 32rpx; }
+.gallery-en {
+  text-align: center; font-size: 22rpx; letter-spacing: 6rpx; color: #999;
+  text-transform: uppercase;
+}
+.gallery-title {
+  text-align: center; margin-top: 12rpx; font-size: 40rpx; font-weight: 600; color: #2c2c2c; letter-spacing: 4rpx;
+}
 
-.review { margin: 0 32rpx 20rpx; padding: 28rpx; background: #fff; border-radius: 16rpx; }
-.review-stars { font-size: 24rpx; color: #111; letter-spacing: 4rpx; }
-.review-text { margin: 12rpx 0; font-size: 28rpx; }
-.review-name { text-align: right; }
+/* 分类标签 */
+.cat-bar { margin-top: 36rpx; white-space: nowrap; }
+.cat-wrap { display: inline-flex; gap: 24rpx; padding: 4rpx 4rpx 20rpx; }
+.cat-item {
+  display: inline-block; font-size: 26rpx; color: #888; padding: 10rpx 6rpx;
+  position: relative; transition: color .2s;
+}
+.cat-item.active { color: #2c2c2c; font-weight: 600; }
+.cat-item.active::after {
+  content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 4rpx;
+  background: #7ecdbb; border-radius: 4rpx;
+}
 
-.cta-wrap { padding: 24rpx 32rpx 0; }
+/* 作品网格 */
+.grid { display: flex; flex-wrap: wrap; margin: 8rpx -10rpx 0; }
+.grid-item {
+  width: calc(50% - 20rpx); margin: 10rpx; position: relative; border-radius: 16rpx;
+  overflow: hidden; background: #eee;
+}
+.grid-cover { width: 100%; height: 420rpx; display: block; }
+.grid-cap {
+  position: absolute; left: 0; right: 0; bottom: 0;
+  padding: 60rpx 18rpx 18rpx;
+  background: linear-gradient(to top, rgba(0,0,0,0.55), transparent);
+}
+.grid-title {
+  display: block; color: #fff; font-size: 26rpx; font-weight: 500;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.grid-tag {
+  display: block; margin-top: 6rpx; color: rgba(255,255,255,0.85); font-size: 22rpx;
+}
+.live-badge {
+  position: absolute; top: 16rpx; right: 16rpx;
+  background: rgba(126,205,187,0.95); color: #fff;
+  font-size: 20rpx; padding: 6rpx 14rpx; border-radius: 6rpx;
+}
 
-.detail-title { font-size: 34rpx; font-weight: 600; }
-.detail-desc { margin: 10rpx 0 20rpx; }
-.detail-scroll { max-height: 64vh; }
-.detail-img { width: 100%; margin-bottom: 16rpx; border-radius: 8rpx; background: #f0f0f0; }
-.noop {}
+/* MORE / 空态 */
+.more-btn {
+  margin: 44rpx auto 0; width: 260rpx; height: 76rpx; line-height: 76rpx;
+  text-align: center; border: 2rpx solid #ccc; color: #666; font-size: 26rpx;
+  border-radius: 8rpx;
+}
+.more-end {
+  margin-top: 44rpx; text-align: center; color: #bbb; font-size: 24rpx;
+}
+.empty { padding: 80rpx 0; text-align: center; color: #999; font-size: 26rpx; }
+
+/* ===== 底部联系 ===== */
+.footer {
+  margin: 70rpx 32rpx 0; padding: 48rpx 40rpx 36rpx;
+  background: #2c2c2c; border-radius: 24rpx; color: #fff;
+}
+.footer-title {
+  text-align: center; font-size: 32rpx; font-weight: 600; letter-spacing: 4rpx; margin-bottom: 30rpx;
+}
+.footer-line {
+  display: flex; align-items: center; margin-bottom: 18rpx; font-size: 26rpx;
+}
+.footer-label { width: 80rpx; color: #aaa; }
+.footer-value { flex: 1; color: #fff; }
+.footer-action {
+  margin-left: 16rpx; color: #7ecdbb; font-size: 24rpx;
+}
+.footer-copy {
+  margin-top: 30rpx; text-align: center; font-size: 22rpx; color: #777;
+}
+
+/* ===== 弹层 ===== */
+.mask {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.75);
+  z-index: 100; display: flex; align-items: flex-end;
+}
+.sheet {
+  width: 100%; max-height: 84vh; background: #fff; border-radius: 32rpx 32rpx 0 0;
+  padding: 24rpx 32rpx 40rpx;
+}
+.sheet-bar {
+  width: 80rpx; height: 6rpx; background: #ddd; border-radius: 4rpx; margin: 0 auto 24rpx;
+}
+.detail-title { font-size: 34rpx; font-weight: 600; color: #2c2c2c; }
+.detail-desc { margin: 10rpx 0 20rpx; color: #888; font-size: 26rpx; }
+.detail-scroll { max-height: 58vh; }
+.detail-img { width: 100%; margin-bottom: 16rpx; border-radius: 12rpx; background: #f0f0f0; }

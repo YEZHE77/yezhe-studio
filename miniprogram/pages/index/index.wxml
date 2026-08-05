@@ -1,60 +1,80 @@
 <view class="page">
-  <!-- 首屏 -->
-  <view class="hero">
-    <view class="hero-en">YEZHE STUDIO</view>
-    <view class="hero-cn">叶哲 · 影像志</view>
-    <view class="hero-tag">婚礼 / 写真 / 纪实摄影</view>
+  <!-- 顶部轮播 Banner -->
+  <swiper class="banner" indicator-dots autoplay circular interval="4000" duration="500" wx:if="{{banners.length}}">
+    <swiper-item wx:for="{{banners}}" wx:key="*this">
+      <image class="banner-img" src="{{item}}" mode="aspectFill" lazy-load />
+    </swiper-item>
+  </swiper>
+  <view wx:else class="banner banner--ph">
+    <view class="banner-logo">YEZHE STUDIO</view>
+    <view class="banner-tag">海口婚礼 / 人像摄影</view>
   </view>
 
-  <!-- 精选客片 -->
-  <view class="section">
-    <view class="section-title">
-      <text>精选客片</text>
-      <text class="section-sub" bindtap="goWorks">全部 ›</text>
+  <!-- 关于我们 -->
+  <view class="about">
+    <view class="about-en">About Us</view>
+    <view class="about-title">{{studio.name || '叶哲 STUDIO'}}</view>
+    <view class="about-logo" wx:if="{{studio.logo}}">
+      <image src="{{studio.logo}}" mode="aspectFill" />
+    </view>
+    <view class="about-slogan">{{studio.intro || '拍摄有温度的照片，记录平凡生活中的美好。'}}</view>
+    <view class="about-actions">
+      <button class="btn btn-primary" open-type="contact">联系我们</button>
+      <button class="btn btn-outline" bindtap="copyWechat">+ 关注</button>
     </view>
   </view>
-  <view class="grid">
-    <view class="grid-item card" wx:for="{{works}}" wx:key="id" bindtap="openWork" data-id="{{item.id}}">
-      <image wx:if="{{item.cover}}" class="grid-cover" src="{{item.cover}}" mode="aspectFill" />
-      <view wx:else class="grid-cover grid-cover--ph"></view>
-      <view class="grid-cap">
-        <text class="grid-title">{{item.title}}</text>
-        <text class="grid-cat muted small">{{item.category_name || ''}}</text>
+
+  <!-- 作品展示 Gallery -->
+  <view class="gallery">
+    <view class="gallery-en">GALLERY</view>
+    <view class="gallery-title">作品展示</view>
+
+    <!-- 分类标签 -->
+    <scroll-view class="cat-bar" scroll-x scroll-with-animation>
+      <view class="cat-wrap">
+        <view class="cat-item {{activeCat === 0 ? 'active' : ''}}" bindtap="selectCat" data-id="0">全部</view>
+        <view wx:for="{{categories}}" wx:key="id" class="cat-item {{activeCat === item.id ? 'active' : ''}}" bindtap="selectCat" data-id="{{item.id}}">{{item.name}}</view>
+      </view>
+    </scroll-view>
+
+    <!-- 作品网格 -->
+    <view class="grid" wx:if="{{works.length}}">
+      <view class="grid-item" wx:for="{{works}}" wx:key="id" bindtap="openWork" data-id="{{item.id}}">
+        <image class="grid-cover" src="{{item.cover}}" mode="aspectFill" lazy-load />
+        <view wx:if="{{item.live}}" class="live-badge">图片直播</view>
+        <view class="grid-cap">
+          <text class="grid-title">{{item.customer_name || item.title}}</text>
+          <text class="grid-tag">#{{item.category_name || '作品'}}</text>
+        </view>
       </view>
     </view>
+
+    <view wx:elif="{{!loading}}" class="empty">暂无作品</view>
+
+    <!-- 加载更多 -->
+    <view wx:if="{{works.length && hasMore}}" class="more-btn" bindtap="loadMore">MORE</view>
+    <view wx:if="{{works.length && !hasMore}}" class="more-end">— 没有更多了 —</view>
   </view>
 
-  <!-- 热门套系 -->
-  <view class="section">
-    <view class="section-title">
-      <text>热门套系</text>
-      <text class="section-sub" bindtap="goPackage">全部 ›</text>
+  <!-- 底部联系信息 -->
+  <view class="footer">
+    <view class="footer-title">联系我们</view>
+    <view class="footer-line" wx:if="{{studio.contact.wechat}}">
+      <text class="footer-label">微信</text>
+      <text class="footer-value">{{studio.contact.wechat}}</text>
+      <text class="footer-action" bindtap="copyWechat">复制</text>
     </view>
-  </view>
-  <view class="pkg-list">
-    <view class="pkg card" wx:for="{{packages}}" wx:key="id" bindtap="goPackage">
-      <view class="pkg-name">{{item.name}}</view>
-      <view class="pkg-desc muted small">{{item.description}}</view>
-      <view class="pkg-price"><text class="price-symbol">¥</text><text class="price">{{item.price}}</text> 起</view>
+    <view class="footer-line" wx:if="{{studio.contact.phone}}">
+      <text class="footer-label">电话</text>
+      <text class="footer-value">{{studio.contact.phone}}</text>
+      <text class="footer-action" bindtap="callPhone">拨打</text>
     </view>
+    <view class="footer-line" wx:if="{{studio.contact.address}}">
+      <text class="footer-label">地址</text>
+      <text class="footer-value">{{studio.contact.address}}</text>
+    </view>
+    <view class="footer-copy">叶哲 STUDIO · 用影像记录时光</view>
   </view>
-
-  <!-- 客户说 -->
-  <view class="section" wx:if="{{reviews.length}}">
-    <view class="section-title"><text>客户说</text></view>
-  </view>
-  <view class="review" wx:for="{{reviews}}" wx:key="id">
-    <view class="review-stars">{{item.stars}} 星</view>
-    <view class="review-text">{{item.text}}</view>
-    <view class="review-name muted small">{{item.customer_name || '匿名客户'}}</view>
-  </view>
-  <view style="height:40rpx"></view>
-
-  <!-- 预约入口（对外预约开关关闭时隐藏） -->
-  <view class="cta-wrap" wx:if="{{bookingOpen}}">
-    <view class="btn btn-block" bindtap="goAppointment">立即预约拍摄</view>
-  </view>
-  <view style="height:48rpx"></view>
 
   <!-- 作品大图弹层 -->
   <view wx:if="{{detail}}" class="mask" bindtap="closeDetail">
@@ -65,7 +85,7 @@
       <view wx:if="{{detailLoading}}" class="empty">加载中…</view>
       <scroll-view wx:else scroll-y class="detail-scroll">
         <image wx:for="{{detail.albums}}" wx:key="id" class="detail-img" src="{{item.photo_url}}" mode="widthFix"
-               bindtap="previewImage" data-url="{{item.photo_url}}" wx:if="{{item.photo_url}}" />
+               bindtap="previewImage" data-url="{{item.photo_url}}" wx:if="{{item.photo_url}}" lazy-load />
         <view wx:if="{{detail.albums.length === 0}}" class="empty">暂无照片</view>
       </scroll-view>
     </view>
