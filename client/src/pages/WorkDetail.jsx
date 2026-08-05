@@ -94,8 +94,16 @@ export default function WorkDetail() {
     if (!files || !files.length) return;
     setUploading(true);
     try {
+      // 批量压缩：并发 3 张一组，避免 UI 卡死
+      const compressed = [];
+      const list = Array.from(files);
+      for (let i = 0; i < list.length; i += 3) {
+        const chunk = list.slice(i, i + 3);
+        const out = await Promise.all(chunk.map((f) => compressImage(f, { maxWidth: 1920, maxHeight: 1920, quality: 0.82 })));
+        compressed.push(...out);
+      }
       const fd = new FormData();
-      for (const f of files) fd.append('files', f);
+      for (const f of compressed) fd.append('files', f);
       const up = await http.post('/api/upload-multiple', fd, { timeout: 300000 });
       const urls = up.data.urls || [];
       if (urls.length) {
