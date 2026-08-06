@@ -86,7 +86,7 @@
     <view class="footer-copy">叶哲 STUDIO · 用影像记录时光</view>
   </view>
 
-  <!-- 右侧固定悬浮按钮组：right:40rpx / bottom:100rpx(右下角) / 间距24rpx / 圆形120rpx / 图标在上文字在下 -->
+  <!-- 右侧固定悬浮按钮组：right:40rpx / bottom:100rpx(右下角) / 间距16rpx / 圆形96rpx / 图标在上文字在下 -->
   <view class="fab-group">
     <view class="fab fab-white" hover-class="fab-hover" bindtap="copyWechat">
       <view class="fab-ico fab-ico-heart"></view>

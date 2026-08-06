@@ -215,14 +215,23 @@ export default function Works() {
         <button onClick={openNew} className="px-4 py-2 rounded bg-brand text-white text-sm hover:opacity-90">+ 新建作品组</button>
       </div>
 
-      {/* 分类 Tab */}
-      <div className="flex gap-2 mb-3 overflow-x-auto">
+      {/* 分类 Tab + 管理入口 */}
+      <div className="flex items-center gap-2 mb-3 overflow-x-auto">
         <button onClick={() => setTab('')}
           className={'px-4 py-2 rounded-full text-sm border ' + (state.tab === '' ? 'bg-brand text-white border-brand' : 'bg-panel border-line text-muted')}>全部</button>
         {cats.map((c) => (
           <button key={c.id} onClick={() => setTab(String(c.id))}
             className={'px-4 py-2 rounded-full text-sm border ' + (state.tab === String(c.id) ? 'bg-brand text-white border-brand' : 'bg-panel border-line text-muted')}>{c.name}</button>
         ))}
+        <button onClick={() => navigate('/categories')}
+          className="ml-1 flex items-center gap-1 px-3 py-2 rounded-full text-sm border border-dashed border-line text-muted hover:text-brand hover:border-brand bg-panel shrink-0"
+          title="管理分类">
+          <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" />
+            <circle cx="7" cy="7" r="1.5" fill="currentColor" stroke="none" />
+          </svg>
+          管理
+        </button>
       </div>
 
       {/* 搜索 + 公开筛选 */}

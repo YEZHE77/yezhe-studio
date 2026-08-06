@@ -148,7 +148,7 @@ page { background: #f9f8f6; }
   margin-top: 30rpx; text-align: center; font-size: 22rpx; color: #777;
 }
 
-/* ===== 右侧悬浮按钮组（右下角，120rpx 圆形，图标在上文字在下） ===== */
+/* ===== 右侧悬浮按钮组（右下角，96rpx 圆形，图标在上文字在下） ===== */
 .fab-group {
   position: fixed;
   right: 40rpx;
@@ -156,24 +156,24 @@ page { background: #f9f8f6; }
   z-index: 90;
   display: flex;
   flex-direction: column;
-  gap: 24rpx;
+  gap: 16rpx;
 }
 .fab {
-  width: 120rpx;
-  height: 120rpx;
+  width: 96rpx;
+  height: 96rpx;
   border-radius: 50%;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 6rpx 22rpx rgba(0,0,0,0.16);
+  box-shadow: 0 4rpx 16rpx rgba(0,0,0,0.14);
 }
 .fab::after { border: none; }
 .fab-white { background: #fff; }
 .fab-primary { background: #48c8c0; }
 .fab-ico {
-  width: 40rpx;
-  height: 40rpx;
+  width: 32rpx;
+  height: 32rpx;
   background-size: contain;
   background-repeat: no-repeat;
   background-position: center;
@@ -191,8 +191,8 @@ page { background: #f9f8f6; }
   background-image: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23666666' stroke-width='1.6' stroke-linecap='round'><circle cx='12' cy='8' r='3.2'/><path d='M5 20a7 7 0 0 1 14 0'/></svg>");
 }
 .fab-label {
-  margin-top: 6rpx;
-  font-size: 24rpx;
+  margin-top: 4rpx;
+  font-size: 20rpx;
   line-height: 1;
 }
 .fab-white .fab-label { color: #666666; }
