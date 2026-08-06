@@ -16,6 +16,13 @@ function safeWork(w) {
   return { ...rest, album_password_set: !!album_password };
 }
 
+// 规范化多分类入参：数组或逗号字符串 → 逗号分隔字符串（去空、保序）。空值返回 ''。
+function normalizeCategoryIds(v) {
+  if (Array.isArray(v)) return v.map((x) => String(x).trim()).filter(Boolean).join(',');
+  if (typeof v === 'string') return v.split(',').map((x) => x.trim()).filter(Boolean).join(',');
+  return '';
+}
+
 // 解析并校验相册级配置（自定义文案 / 密码开关 / 6 位数字密码 / 可选有效期）
 // existingHash：更新时传入旧密码哈希——前端未传新密码则沿用旧值；新建时为 null。
 // 校验失败抛出带中文说明的错误，由调用方转成 400。
@@ -48,7 +55,10 @@ router.get('/', async (req, res) => {
     const { category, q, is_public, page = 1, pageSize = 12 } = req.query;
     const where = [];
     const params = [];
-    if (category) { where.push('category_id = ?'); params.push(category); }
+    if (category) {
+      where.push(`(category_id = ? OR ',' || COALESCE(category_ids,'') || ',' LIKE '%,' || ? || ',%')`);
+      params.push(category, category);
+    }
     if (is_public !== undefined && is_public !== '') { where.push('is_public = ?'); params.push(is_public); }
     if (q) { where.push('(title LIKE ? OR customer_name LIKE ?)'); params.push('%' + q + '%', '%' + q + '%'); }
     const w = where.length ? 'WHERE ' + where.join(' AND ') : '';
@@ -72,7 +82,10 @@ router.get('/public', async (req, res) => {
     const { category, q, page = 1, pageSize = 12 } = req.query;
     const where = ['w.is_public = 1'];
     const params = [];
-    if (category) { where.push('w.category_id = ?'); params.push(category); }
+    if (category) {
+      where.push(`(w.category_id = ? OR ',' || COALESCE(w.category_ids,'') || ',' LIKE '%,' || ? || ',%')`);
+      params.push(category, category);
+    }
     if (q) { where.push('(w.title LIKE ? OR w.customer_name LIKE ?)'); params.push('%' + q + '%', '%' + q + '%'); }
     const w = 'WHERE ' + where.join(' AND ');
     const total = (await get('SELECT COUNT(*) AS c FROM works w ' + w, params)).c;
@@ -164,10 +177,12 @@ router.post('/', authRequired, async (req, res) => {
     let album;
     try { album = await resolveAlbumFields(b, null); }
     catch (err) { return res.status(400).json({ error: err.message }); }
+    const categoryIds = normalizeCategoryIds(b.category_ids);
+    const categoryId = categoryIds ? Number(categoryIds.split(',')[0]) : (b.category_id || null);
     const id = await insert(
-      'INSERT INTO works (title, category_id, is_public, is_private, cover_url, description, blessing, tags, live, customer_name, order_id, allow_download, album_copy, album_password_enabled, album_password, album_expires_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
+      'INSERT INTO works (title, category_id, category_ids, is_public, is_private, cover_url, description, blessing, tags, live, customer_name, order_id, allow_download, album_copy, album_password_enabled, album_password, album_expires_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
       [
-        b.title, b.category_id || null, b.is_public ? 1 : 0, b.is_private ? 1 : 0,
+        b.title, categoryId, categoryIds, b.is_public ? 1 : 0, b.is_private ? 1 : 0,
         b.cover_url || '', b.description || '', b.blessing || '',
         JSON.stringify(b.tags || []), b.live ? 1 : 0, b.customer_name || '', b.order_id || null, b.allow_download ? 1 : 0,
         album.album_copy, album.album_password_enabled, album.album_password, album.album_expires_at
@@ -187,10 +202,12 @@ router.put('/:id', authRequired, async (req, res) => {
     let album;
     try { album = await resolveAlbumFields(b, existing ? existing.album_password : null); }
     catch (err) { return res.status(400).json({ error: err.message }); }
+    const categoryIds = normalizeCategoryIds(b.category_ids);
+    const categoryId = categoryIds ? Number(categoryIds.split(',')[0]) : (b.category_id || null);
     await run(
-      `UPDATE works SET title=?, category_id=?, is_public=?, is_private=?, cover_url=?, description=?, blessing=?, tags=?, live=?, customer_name=?, order_id=?, allow_download=?, album_copy=?, album_password_enabled=?, album_password=?, album_expires_at=? WHERE id=?`,
+      `UPDATE works SET title=?, category_id=?, category_ids=?, is_public=?, is_private=?, cover_url=?, description=?, blessing=?, tags=?, live=?, customer_name=?, order_id=?, allow_download=?, album_copy=?, album_password_enabled=?, album_password=?, album_expires_at=? WHERE id=?`,
       [
-        b.title, b.category_id || null, b.is_public ? 1 : 0, b.is_private ? 1 : 0,
+        b.title, categoryId, categoryIds, b.is_public ? 1 : 0, b.is_private ? 1 : 0,
         b.cover_url || '', b.description || '', b.blessing || '',
         JSON.stringify(b.tags || []), b.live ? 1 : 0, b.customer_name || '', b.order_id || null, b.allow_download ? 1 : 0,
         album.album_copy, album.album_password_enabled, album.album_password, album.album_expires_at, req.params.id

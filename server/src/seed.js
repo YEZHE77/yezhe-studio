@@ -15,10 +15,21 @@ export async function seedIfNeeded() {
 
   const catCount = await get('SELECT COUNT(*) AS c FROM categories');
   if (Number(catCount.c) === 0) {
-    for (const [name, kind] of [['婚礼', 'work'], ['领证', 'work'], ['孕妇照', 'work'], ['写真', 'work']]) {
-      await insert('INSERT INTO categories (name, kind, sort) VALUES (?,?,?)', [name, kind, 0]);
+    // 预设初始分类（改名/禁用可调，不可直接删除），按 sort 升序渲染
+    const presets = [['婚礼', 1], ['领证', 2], ['写真', 3], ['家庭纪实', 4]];
+    for (const [name, sort] of presets) {
+      await insert('INSERT INTO categories (name, kind, sort, is_active, deleted, preset) VALUES (?,?,?,1,0,1)',
+        [name, 'work', sort]);
     }
-    console.log('✓ 已创建作品分类');
+    console.log('✓ 已创建预设作品分类（婚礼/领证/写真/家庭纪实）');
+  } else {
+    // 一次性迁移：旧库「孕妇照」重命名为「家庭纪实」并置为预设
+    const hasMaternity = await get("SELECT id FROM categories WHERE name='孕妇照' AND deleted=0");
+    const hasFamily = await get("SELECT id FROM categories WHERE name='家庭纪实' AND deleted=0");
+    if (hasMaternity && !hasFamily) {
+      await run("UPDATE categories SET name='家庭纪实', preset=1 WHERE id=?", [hasMaternity.id]);
+      console.log('✓ 已迁移分类：孕妇照 → 家庭纪实（置为预设）');
+    }
   }
 
   // 套系（2 条）
@@ -87,9 +98,9 @@ export async function seedIfNeeded() {
   if (Number(wCount.c) === 0) {
     const cid = (await get("SELECT id FROM categories WHERE name = '婚礼'")).id;
     const wid = await insert(
-      `INSERT INTO works (title, category_id, is_public, is_private, cover_url, description, tags, customer_name)
-       VALUES (?,?,?,?,?,?,?,?)`,
-      ['海边婚礼客片', cid, 1, 0, '', '2026 夏季海边婚礼纪实', JSON.stringify(['婚礼', '海景']), 'demo客户']
+      `INSERT INTO works (title, category_id, category_ids, is_public, is_private, cover_url, description, tags, customer_name)
+       VALUES (?,?,?,?,?,?,?,?,?)`,
+      ['海边婚礼客片', cid, String(cid), 1, 0, '', '2026 夏季海边婚礼纪实', JSON.stringify(['婚礼', '海景']), 'demo客户']
     );
     await insert('INSERT INTO albums (work_id, zone, photo_url, sort) VALUES (?,?,?,?)', [wid, 'sample', '', 0]);
     console.log('✓ 已创建演示作品');

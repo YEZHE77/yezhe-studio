@@ -86,16 +86,19 @@
     <view class="footer-copy">叶哲 STUDIO · 用影像记录时光</view>
   </view>
 
-  <!-- 右侧固定悬浮按钮组：关注(白底浅灰心形) → 预约(青绿底白气泡) → 我的(白底浅灰头像)，仅图标无文字 -->
+  <!-- 右侧固定悬浮按钮组：right:40rpx / top:160rpx / 间距32rpx / 圆形160rpx / 图标在上文字在下 -->
   <view class="fab-group">
-    <view class="fab fab-white" bindtap="copyWechat">
-      <text class="fab-icon">♡</text>
+    <view class="fab fab-white" hover-class="fab-hover" bindtap="copyWechat">
+      <view class="fab-ico fab-ico-heart"></view>
+      <text class="fab-label">关注</text>
     </view>
-    <view class="fab fab-primary" bindtap="goAppointment">
-      <text class="fab-icon">✉</text>
+    <view class="fab fab-primary" hover-class="fab-hover" bindtap="goAppointment">
+      <view class="fab-ico fab-ico-chat"></view>
+      <text class="fab-label">预约</text>
     </view>
-    <view class="fab fab-white" bindtap="goMy">
-      <text class="fab-icon">👤</text>
+    <view class="fab fab-white" hover-class="fab-hover" bindtap="goMy">
+      <view class="fab-ico fab-ico-user"></view>
+      <text class="fab-label">我的</text>
     </view>
   </view>
 

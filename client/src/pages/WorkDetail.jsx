@@ -26,7 +26,7 @@ export default function WorkDetail() {
   const [uploadProgress, setUploadProgress] = useState(0);
   const abortRef = useRef(null);
   const [selected, setSelected] = useState(new Set());
-  const [form, setForm] = useState({ title: '', category_id: '', tags: '', album_copy: '', is_public: true, allow_download: false, album_password_enabled: false, album_password: '', album_expires_at: '' });
+  const [form, setForm] = useState({ title: '', category_ids: [], tags: '', album_copy: '', is_public: true, allow_download: false, album_password_enabled: false, album_password: '', album_expires_at: '' });
   const [draggedId, setDraggedId] = useState(null);
   const [dragOverId, setDragOverId] = useState(null);
   const [reordering, setReordering] = useState(false);
@@ -40,7 +40,7 @@ export default function WorkDetail() {
       setWork(w);
       setForm({
         title: w.title || '',
-        category_id: w.category_id || '',
+        category_ids: w.category_ids ? w.category_ids.split(',').map((x) => x.trim()).filter(Boolean) : [],
         tags: Array.isArray(w.tags) ? w.tags.join('、') : (w.tags || ''),
         album_copy: w.album_copy || '',
         is_public: !!w.is_public,
@@ -81,7 +81,7 @@ export default function WorkDetail() {
       const tags = (form.tags || '').split(/[、,，\s]+/).map((s) => s.trim()).filter(Boolean);
       await http.put('/api/works/' + id, {
         title: form.title,
-        category_id: form.category_id || null,
+        category_ids: form.category_ids,
         is_public: form.is_public,
         allow_download: form.allow_download,
         cover_url: work.cover_url || '',
@@ -340,11 +340,27 @@ export default function WorkDetail() {
                 <input required value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} className="w-full px-3 py-2 rounded bg-ink border border-line text-fg text-sm outline-none" />
               </div>
               <div>
-                <label className="block text-xs text-muted mb-1">分类</label>
-                <select value={form.category_id} onChange={(e) => setForm({ ...form, category_id: e.target.value })} className="w-full px-3 py-2 rounded bg-ink border border-line text-fg text-sm outline-none">
-                  <option value="">未分类</option>
-                  {cats.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-                </select>
+                <label className="block text-xs text-muted mb-1">作品分类（可多选）</label>
+                {cats.length === 0 ? (
+                  <div className="text-xs text-muted">暂无分类，可在「分类管理」中新增</div>
+                ) : (
+                  <div className="flex flex-wrap gap-2">
+                    {cats.map((c) => {
+                      const on = form.category_ids.map(String).includes(String(c.id));
+                      return (
+                        <button type="button" key={c.id}
+                          onClick={() => setForm((f) => {
+                            const set = new Set(f.category_ids.map(String));
+                            if (set.has(String(c.id))) set.delete(String(c.id)); else set.add(String(c.id));
+                            return { ...f, category_ids: Array.from(set) };
+                          })}
+                          className={'px-3 py-1.5 rounded-full text-sm border transition ' + (on ? 'bg-brand text-white border-brand' : 'bg-ink border-line text-muted hover:border-brand')}>
+                          {c.name}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
               <div>
                 <label className="block text-xs text-muted mb-1">相册文案（自定义正文）</label>

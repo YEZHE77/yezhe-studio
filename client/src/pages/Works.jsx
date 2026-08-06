@@ -20,7 +20,16 @@ export default function Works() {
   const [workShare, setWorkShare] = useState(null); // 作品分享相册 {open, workId, title, result, busy}
 
   function emptyForm() {
-    return { title: '', category_id: '', is_public: true, allow_download: false, cover: null, cover_url: '', description: '', tags: '' };
+    return { title: '', category_ids: [], is_public: true, allow_download: false, cover: null, cover_url: '', description: '', tags: '' };
+  }
+
+  // 切换作品分类勾选（可多选）
+  function toggleCat(id) {
+    setForm((f) => {
+      const set = new Set(f.category_ids.map(String));
+      if (set.has(String(id))) set.delete(String(id)); else set.add(String(id));
+      return { ...f, category_ids: Array.from(set) };
+    });
   }
 
   // 作品分享相册：生成公开分享令牌（type=work）→ 沉浸式相册二维码 + 链接
@@ -72,7 +81,8 @@ export default function Works() {
     e.stopPropagation();
     try {
       await http.put('/api/works/' + w.id, {
-        title: w.title, category_id: w.category_id || null, is_public: !!w.is_public,
+        title: w.title, category_id: w.category_id || null, category_ids: w.category_ids || '',
+        is_public: !!w.is_public,
         is_private: !!w.is_private, cover_url: w.cover_url || '', description: w.description || '',
         blessing: w.blessing || '', tags: w.tags || [], live: !!w.live,
         customer_name: w.customer_name || '', order_id: w.order_id || null,
@@ -154,7 +164,7 @@ export default function Works() {
     const tags = (form.tags || '').split(/[、,，\s]+/).map((s) => s.trim()).filter(Boolean);
     const payload = {
       title: form.title,
-      category_id: form.category_id || null,
+      category_ids: form.category_ids,
       is_public: form.is_public,
       allow_download: form.allow_download,
       cover_url,
@@ -274,11 +284,24 @@ export default function Works() {
             <div className="text-fg font-medium mb-4">新建作品组</div>
             <input required value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })}
               placeholder="作品标题" className="w-full mb-3 px-3 py-2 rounded bg-ink border border-line text-fg text-sm outline-none" />
-            <select value={form.category_id} onChange={(e) => setForm({ ...form, category_id: e.target.value })}
-              className="w-full mb-3 px-3 py-2 rounded bg-ink border border-line text-fg text-sm outline-none">
-              <option value="">选择分类</option>
-              {cats.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
+            <div className="mb-3">
+              <div className="text-sm text-fg mb-1.5">作品分类（可多选）</div>
+              {cats.length === 0 ? (
+                <div className="text-xs text-muted">暂无分类，可在「分类管理」中新增</div>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  {cats.map((c) => {
+                    const on = form.category_ids.map(String).includes(String(c.id));
+                    return (
+                      <button type="button" key={c.id} onClick={() => toggleCat(c.id)}
+                        className={'px-3 py-1.5 rounded-full text-sm border transition ' + (on ? 'bg-brand text-white border-brand' : 'bg-ink border-line text-muted hover:border-brand')}>
+                        {c.name}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
             <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="作品描述（选填）"
               className="w-full mb-3 px-3 py-2 rounded bg-ink border border-line text-fg text-sm outline-none h-16" />
             <input value={form.tags} onChange={(e) => setForm({ ...form, tags: e.target.value })} placeholder="标签，用顿号分隔（选填）"

@@ -148,35 +148,54 @@ page { background: #f9f8f6; }
   margin-top: 30rpx; text-align: center; font-size: 22rpx; color: #777;
 }
 
-/* ===== 右侧悬浮按钮组（120rpx 圆形，仅图标无文字） ===== */
+/* ===== 右侧悬浮按钮组（160rpx 圆形，图标在上文字在下） ===== */
 .fab-group {
   position: fixed;
-  right: 24rpx;
-  bottom: 100rpx;
+  right: 40rpx;
+  top: 160rpx;
   z-index: 90;
   display: flex;
   flex-direction: column;
-  gap: 24rpx;
+  gap: 32rpx;
 }
 .fab {
-  width: 120rpx;
-  height: 120rpx;
+  width: 160rpx;
+  height: 160rpx;
   border-radius: 50%;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
   box-shadow: 0 6rpx 22rpx rgba(0,0,0,0.16);
 }
 .fab::after { border: none; }
-.fab-white {
-  background: #fff;
-  color: #999;
+.fab-white { background: #fff; }
+.fab-primary { background: #48c8c0; }
+.fab-ico {
+  width: 56rpx;
+  height: 56rpx;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
 }
-.fab-primary {
-  background: #7ecdbb;
-  color: #fff;
+/* 空心爱心（灰 #666666） */
+.fab-ico-heart {
+  background-image: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23666666' stroke-width='1.6' stroke-linejoin='round'><path d='M12 20.3l-1.45-1.32C5.4 14.24 2 11.16 2 7.5 2 4.42 4.42 2 7.5 2c1.74 0 3.41.81 4.5 2.09C13.09 2.81 14.76 2 16.5 2 19.58 2 22 4.42 22 7.5c0 3.66-3.4 6.74-8.55 11.49L12 20.3z'/></svg>");
 }
-.fab-icon {
-  font-size: 48rpx;
+/* 对话气泡带三点（白） */
+.fab-ico-chat {
+  background-image: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23ffffff' stroke-width='1.6' stroke-linejoin='round'><path d='M4 5h16a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H10l-4 3v-3H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z'/><circle cx='9' cy='11' r='1' fill='%23ffffff' stroke='none'/><circle cx='12' cy='11' r='1' fill='%23ffffff' stroke='none'/><circle cx='15' cy='11' r='1' fill='%23ffffff' stroke='none'/></svg>");
+}
+/* 用户人形轮廓（灰 #666666） */
+.fab-ico-user {
+  background-image: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23666666' stroke-width='1.6' stroke-linecap='round'><circle cx='12' cy='8' r='3.2'/><path d='M5 20a7 7 0 0 1 14 0'/></svg>");
+}
+.fab-label {
+  margin-top: 10rpx;
+  font-size: 28rpx;
   line-height: 1;
 }
+.fab-white .fab-label { color: #666666; }
+.fab-primary .fab-label { color: #ffffff; }
+/* 点击轻微缩放反馈 */
+.fab-hover { transform: scale(0.95); }
