@@ -1,4 +1,5 @@
 <view class="page">
+  <customNav title="套系" />
   <view class="section"><view class="section-title"><text>拍摄套系</text></view></view>
 
   <!-- 骨架屏 -->

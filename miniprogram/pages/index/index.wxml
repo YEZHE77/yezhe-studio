@@ -1,4 +1,7 @@
 <view class="page">
+  <!-- 自定义顶部导航 + 抽屉菜单 -->
+  <customNav title="叶哲 STUDIO" />
+
   <!-- 顶部轮播 Banner -->
   <swiper class="banner" indicator-dots autoplay circular interval="4000" duration="500" wx:if="{{banners.length}}">
     <swiper-item wx:for="{{banners}}" wx:key="*this">
@@ -10,19 +13,18 @@
     <view class="banner-tag">海口婚礼 / 人像摄影</view>
   </view>
 
-  <!-- 关于我们 -->
-  <view class="about">
-    <view class="about-en">About Us</view>
-    <view class="about-title">{{studio.name || '叶哲 STUDIO'}}</view>
-    <view class="about-logo" wx:if="{{studio.logo}}">
+  <!-- 品牌简介（扁平紧凑，无大卡片包裹） -->
+  <view class="brand">
+    <view class="brand-logo" wx:if="{{studio.logo}}">
       <image src="{{studio.logo}}" mode="aspectFill" />
     </view>
-    <view class="about-slogan">{{studio.intro || '拍摄有温度的照片，记录平凡生活中的美好。'}}</view>
-    <view class="about-actions">
+    <view class="brand-name">{{studio.name || '叶哲 STUDIO'}}</view>
+    <view class="brand-slogan">{{studio.intro || '拍摄有温度的照片，记录平凡生活中的美好。'}}</view>
+    <view class="brand-actions">
       <button class="btn btn-primary" open-type="contact">联系我们</button>
       <button class="btn btn-outline" bindtap="copyWechat">+ 关注</button>
     </view>
-    <view class="about-more" bindtap="goAbout">查看品牌故事 ›</view>
+    <view class="brand-more" bindtap="goAbout">查看品牌故事 ></view>
   </view>
 
   <!-- 作品展示 Gallery -->
@@ -75,6 +77,19 @@
       <text class="footer-value">{{studio.contact.address}}</text>
     </view>
     <view class="footer-copy">叶哲 STUDIO · 用影像记录时光</view>
+  </view>
+
+  <!-- 右侧固定悬浮按钮 -->
+  <view class="fab-group">
+    <view class="fab" bindtap="copyWechat">
+      <text class="fab-text">关注</text>
+    </view>
+    <view class="fab" bindtap="goAppointment">
+      <text class="fab-text">预约</text>
+    </view>
+    <view class="fab" bindtap="goMy">
+      <text class="fab-text">我的</text>
+    </view>
   </view>
 
 </view>

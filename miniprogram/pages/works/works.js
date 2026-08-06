@@ -15,7 +15,12 @@ Page({
   _tasks: [],
   _loadingWorks: false,
 
-  onLoad() { this.loadCats(); this.loadWorks(true); },
+  onLoad(options) {
+    const cat = Number(options && options.cat) || 0;
+    this.setData({ activeCat: cat });
+    this.loadCats();
+    this.loadWorks(true);
+  },
   onPullDownRefresh() { this.loadWorks(true).then(() => wx.stopPullDownRefresh()); },
 
   onReachBottom() {

@@ -160,10 +160,9 @@ Page({
     wx.makePhoneCall({ phoneNumber: phone });
   },
 
-  goWorks() { wx.switchTab({ url: '/pages/works/works' }); },
-  goPackage() { wx.switchTab({ url: '/pages/package/package' }); },
   goAppointment() { wx.navigateTo({ url: '/pkg/schedule/schedule' }); },
   goAbout() { wx.navigateTo({ url: '/pkg/about/about' }); },
+  goMy() { wx.reLaunch({ url: '/pages/my/my' }); },
 
   openWork(e) {
     const id = e.currentTarget.dataset.id;

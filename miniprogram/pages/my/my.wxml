@@ -1,4 +1,5 @@
 <view class="page">
+  <customNav title="我的" />
   <view class="profile">
     <view class="avatar">叶</view>
     <view class="profile-info">

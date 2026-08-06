@@ -63,7 +63,7 @@ Page({
 
   cast() { this.showToast('请下拉控制中心 → 屏幕镜像投屏到电视'); },
 
-  goMore() { wx.switchTab({ url: '/pages/index/index' }); },
+  goMore() { wx.reLaunch({ url: '/pages/index/index' }); },
 
   goBack() { wx.navigateBack({ delta: 1 }); },
 

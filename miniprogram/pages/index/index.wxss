@@ -12,34 +12,33 @@ page { background: #f9f8f6; }
 .banner-logo { font-size: 40rpx; letter-spacing: 10rpx; opacity: .9; }
 .banner-tag { margin-top: 20rpx; font-size: 26rpx; opacity: .6; letter-spacing: 4rpx; }
 
-/* ===== 关于我们 ===== */
-.about {
-  background: #fff; margin: 40rpx 32rpx 0; padding: 60rpx 40rpx;
-  border-radius: 24rpx; text-align: center;
-  box-shadow: 0 8rpx 40rpx rgba(0,0,0,0.04);
+/* ===== 品牌简介（扁平紧凑，无大卡片） ===== */
+.brand {
+  text-align: center;
+  padding: 28rpx 32rpx 20rpx;
+  background: transparent;
 }
-.about-en {
-  font-size: 22rpx; letter-spacing: 6rpx; color: #999;
-  text-transform: uppercase;
+.brand-logo {
+  width: 120rpx; height: 120rpx; margin: 0 auto;
+  border-radius: 50%; overflow: hidden;
+  background: #eee; border: 1rpx solid #e5e5e5;
 }
-.about-title {
-  margin-top: 16rpx; font-size: 44rpx; font-weight: 600; color: #2c2c2c; letter-spacing: 4rpx;
+.brand-logo image { width: 100%; height: 100%; }
+.brand-name {
+  margin-top: 18rpx; font-size: 40rpx; font-weight: 600;
+  color: #2c2c2c; letter-spacing: 4rpx;
 }
-.about-logo {
-  width: 120rpx; height: 120rpx; margin: 30rpx auto 0; border-radius: 50%;
-  overflow: hidden; border: 2rpx solid #eee;
+.brand-slogan {
+  margin-top: 12rpx; font-size: 24rpx;
+  line-height: 1.6; color: #888;
 }
-.about-logo image { width: 100%; height: 100%; }
-.about-slogan {
-  margin-top: 34rpx; font-size: 26rpx; line-height: 1.9; color: #666;
+.brand-actions {
+  margin-top: 24rpx; display: flex; justify-content: center; gap: 20rpx;
 }
-.about-actions {
-  margin-top: 44rpx; display: flex; justify-content: center; gap: 24rpx;
-}
-.btn {
-  min-width: 200rpx; height: 76rpx; line-height: 76rpx;
-  font-size: 26rpx; border-radius: 8rpx; text-align: center;
-  padding: 0 28rpx; margin: 0;
+.brand-actions .btn {
+  min-width: 180rpx; height: 64rpx; line-height: 64rpx;
+  font-size: 24rpx; border-radius: 6rpx; text-align: center;
+  padding: 0 24rpx; margin: 0;
 }
 .btn::after { border: none; }
 .btn-primary {
@@ -48,22 +47,23 @@ page { background: #f9f8f6; }
 .btn-outline {
   background: #fff; color: #7ecdbb; border: 2rpx solid #7ecdbb;
 }
-.about-more {
-  margin-top: 36rpx; text-align: center; font-size: 26rpx; color: #7ecdbb;
+.brand-more {
+  margin-top: 18rpx; text-align: center;
+  font-size: 24rpx; color: #7ecdbb;
 }
 
 /* ===== 作品展示 ===== */
-.gallery { margin-top: 60rpx; padding: 0 32rpx; }
+.gallery { margin-top: 28rpx; padding: 0 32rpx; }
 .gallery-en {
   text-align: center; font-size: 22rpx; letter-spacing: 6rpx; color: #999;
   text-transform: uppercase;
 }
 .gallery-title {
-  text-align: center; margin-top: 12rpx; font-size: 40rpx; font-weight: 600; color: #2c2c2c; letter-spacing: 4rpx;
+  text-align: center; margin-top: 10rpx; font-size: 40rpx; font-weight: 600; color: #2c2c2c; letter-spacing: 4rpx;
 }
 
 /* 分类标签 */
-.cat-bar { margin-top: 36rpx; white-space: nowrap; }
+.cat-bar { margin-top: 28rpx; white-space: nowrap; }
 .cat-wrap { display: inline-flex; gap: 24rpx; padding: 4rpx 4rpx 20rpx; }
 .cat-item {
   display: inline-block; font-size: 26rpx; color: #888; padding: 10rpx 6rpx;
@@ -129,4 +129,30 @@ page { background: #f9f8f6; }
 }
 .footer-copy {
   margin-top: 30rpx; text-align: center; font-size: 22rpx; color: #777;
+}
+
+/* ===== 右侧悬浮按钮组 ===== */
+.fab-group {
+  position: fixed;
+  right: 24rpx;
+  bottom: 180rpx;
+  z-index: 90;
+  display: flex;
+  flex-direction: column;
+  gap: 20rpx;
+}
+.fab {
+  width: 96rpx;
+  height: 96rpx;
+  border-radius: 50%;
+  background: #111111;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4rpx 20rpx rgba(0,0,0,0.18);
+}
+.fab-text {
+  font-size: 22rpx;
+  font-weight: 500;
 }

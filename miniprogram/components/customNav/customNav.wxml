@@ -1,0 +1,44 @@
+<!-- 顶部自定义导航栏 + 侧边抽屉菜单 -->
+<view class="nav-header" style="padding-top: {{statusBarHeight}}px; height: {{totalHeight}}px;">
+  <view class="nav-bar" style="height: {{navHeight}}px;">
+    <view class="nav-left">
+      <image wx:if="{{studio.logo}}" class="nav-logo" src="{{studio.logo}}" mode="aspectFill" />
+      <text class="nav-title">{{title || studio.name || '叶哲 STUDIO'}}</text>
+    </view>
+    <view class="nav-right" bindtap="openDrawer">
+      <view class="hamburger">
+        <view class="h-line"></view>
+        <view class="h-line"></view>
+        <view class="h-line"></view>
+      </view>
+    </view>
+  </view>
+</view>
+<view class="nav-placeholder" style="height: {{totalHeight}}px;"></view>
+
+<!-- 抽屉遮罩与菜单 -->
+<view class="drawer-mask {{showDrawer ? 'show' : ''}}" bindtap="closeDrawer" catchtouchmove="preventMove">
+  <view class="drawer {{showDrawer ? 'open' : ''}}" catchtap="preventBubble">
+    <view class="drawer-header" style="padding-top: {{statusBarHeight}}px;">
+      <image wx:if="{{studio.logo}}" class="drawer-logo" src="{{studio.logo}}" mode="aspectFill" />
+      <view class="drawer-title">{{studio.name || '叶哲 STUDIO'}}</view>
+    </view>
+    <scroll-view class="drawer-body" scroll-y>
+      <view class="menu-item" bindtap="goHome">主页</view>
+
+      <view class="menu-item has-sub {{subOpen ? 'open' : ''}}" bindtap="toggleSub">
+        <text>作品</text>
+        <text class="sub-arrow">▼</text>
+      </view>
+      <view class="sub-menu" wx:if="{{subOpen}}">
+        <view class="sub-item" bindtap="goWorks" data-cat="0">全部</view>
+        <view wx:for="{{subCategories}}" wx:key="id" class="sub-item" bindtap="goWorks" data-cat="{{item.id}}">{{item.name}}</view>
+      </view>
+
+      <view class="menu-item" bindtap="goPackage">套系</view>
+      <view class="menu-item" bindtap="goEvaluate">评价</view>
+      <view class="menu-item" bindtap="goAbout">关于</view>
+      <view class="menu-item" bindtap="goMy">我的</view>
+    </scroll-view>
+  </view>
+</view>

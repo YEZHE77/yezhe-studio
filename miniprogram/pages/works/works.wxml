@@ -1,4 +1,6 @@
 <view class="page">
+  <customNav title="作品" />
+
   <!-- 分类筛选 -->
   <scroll-view scroll-x class="cats" wx:if="{{categories.length}}">
     <view wx:for="{{categories}}" wx:key="id"

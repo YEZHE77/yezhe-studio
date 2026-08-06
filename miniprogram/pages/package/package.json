@@ -1,4 +1,7 @@
 {
-  "navigationBarTitleText": "套餐",
-  "enablePullDownRefresh": true
+  "navigationStyle": "custom",
+  "enablePullDownRefresh": true,
+  "usingComponents": {
+    "customNav": "/components/customNav/customNav"
+  }
 }

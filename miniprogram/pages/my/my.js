@@ -41,7 +41,7 @@ Page({
   openAdmin() {
     wx.showModal({
       title: '商家后台',
-      content: '管理端请在浏览器打开：' + CONFIG.webAdmin,
+      content: '管理端请在浏览器打开：' + CONFIG.WEB_ADMIN,
       confirmText: '复制地址',
       success: (r) => { if (r.confirm) wx.setClipboardData({ data: CONFIG.WEB_ADMIN }); }
     });

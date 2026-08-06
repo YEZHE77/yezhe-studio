@@ -1,4 +1,7 @@
 {
-  "navigationBarTitleText": "叶哲 STUDIO",
-  "enablePullDownRefresh": true
+  "navigationStyle": "custom",
+  "enablePullDownRefresh": true,
+  "usingComponents": {
+    "customNav": "/components/customNav/customNav"
+  }
 }

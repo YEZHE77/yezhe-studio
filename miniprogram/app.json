@@ -36,18 +36,6 @@
     "navigationBarTextStyle": "white",
     "backgroundColor": "#f7f7f5"
   },
-  "tabBar": {
-    "color": "#9a9a9a",
-    "selectedColor": "#111111",
-    "backgroundColor": "#ffffff",
-    "borderStyle": "white",
-    "list": [
-      { "pagePath": "pages/index/index", "text": "首页" },
-      { "pagePath": "pages/works/works", "text": "作品" },
-      { "pagePath": "pages/package/package", "text": "套餐" },
-      { "pagePath": "pages/my/my", "text": "我的" }
-    ]
-  },
   "sitemapLocation": "sitemap.json",
   "style": "v2"
 }
