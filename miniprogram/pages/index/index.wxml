@@ -8,7 +8,7 @@
   <view class="swiper-wrap">
     <swiper class="banner" indicator-dots autoplay circular interval="4000" duration="500" wx:if="{{banners.length}}">
       <swiper-item wx:for="{{banners}}" wx:key="*this">
-        <image class="banner-img" src="{{item}}" mode="aspectFill" lazy-load />
+        <image class="banner-img" src="{{item}}" mode="aspectFit" lazy-load />
       </swiper-item>
     </swiper>
     <view wx:else class="banner banner--ph">
