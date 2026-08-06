@@ -36,8 +36,9 @@ Page({
   _tasks: [],
 
   onLoad(options) {
-    const sys = wx.getSystemInfoSync();
-    const statusBarHeight = sys.statusBarHeight || 20;
+    // 使用微信推荐的新 API 替代已废弃的 wx.getSystemInfoSync
+    const win = wx.getWindowInfo();
+    const statusBarHeight = win.statusBarHeight || 20;
     const navHeight = 44;
     this.setData({ statusBarHeight, navHeight });
 

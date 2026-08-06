@@ -9,8 +9,8 @@
     </swiper-item>
   </swiper>
   <view wx:else class="banner banner--ph">
-    <view class="banner-logo">YEZHE STUDIO</view>
-    <view class="banner-tag">海口婚礼 / 人像摄影</view>
+    <view class="banner-logo">{{studio.name || '叶哲 STUDIO'}}</view>
+    <view class="banner-tag" wx:if="{{studio.intro}}">{{studio.intro}}</view>
   </view>
 
   <!-- 品牌简介（扁平紧凑，无大卡片包裹） -->
@@ -83,7 +83,8 @@
       <text class="footer-label">地址</text>
       <text class="footer-value">{{studio.contact.address}}</text>
     </view>
-    <view class="footer-copy">叶哲 STUDIO · 用影像记录时光</view>
+    <view class="footer-copy" wx:if="{{studio.slogan}}">{{studio.name || '叶哲 STUDIO'}} · {{studio.slogan}}</view>
+    <view class="footer-copy" wx:else>{{studio.name || '叶哲 STUDIO'}}</view>
   </view>
 
   <!-- 右侧固定悬浮按钮组：right:40rpx / bottom:100rpx(右下角) / 间距16rpx / 圆形96rpx / 图标在上文字在下 -->

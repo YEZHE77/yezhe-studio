@@ -26,14 +26,15 @@ Component({
 
   lifetimes: {
     attached() {
-      const sys = wx.getSystemInfoSync();
-      const statusBarHeight = sys.statusBarHeight || 20;
+      // 使用微信推荐的新 API 替代已废弃的 wx.getSystemInfoSync
+      const win = wx.getWindowInfo();
+      const statusBarHeight = win.statusBarHeight || 20;
       const navHeight = 44; // 对应 88rpx 在 375px 屏
       // 预留右侧空间避让微信胶囊（getMenuButtonBoundingClientRect 取得胶囊左边界，汉堡置于其左侧）
       let navBarPadRight = 180;
       try {
         const mb = wx.getMenuButtonBoundingClientRect();
-        const winW = sys.windowWidth || 375;
+        const winW = win.windowWidth || 375;
         if (mb && mb.left) {
           // 汉堡右边缘留在 (胶囊左边界 - 16px) 处，换算为 rpx
           navBarPadRight = Math.ceil((winW - mb.left + 16) * 750 / winW);
