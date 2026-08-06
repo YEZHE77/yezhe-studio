@@ -38,11 +38,12 @@
   <block wx:else>
     <!-- 相册内容（未锁定时展示） -->
     <block wx:if="{{!locked}}">
-      <!-- 封面图 + 右上悬浮分享胶囊 -->
+      <!-- 右上角悬浮分享按钮 -->
+      <view class="share-float-btn" bindtap="openShareSheet">分享</view>
+
+      <!-- 封面图 -->
       <view class="cover-wrap">
         <image class="cover-img" src="{{cover}}" mode="aspectFill" lazy-load binderror="onImgError" />
-        <button wx:if="{{canInteract}}" class="share-capsule" hover-class="share-capsule-hover" hover-stay-time="100" bindtap="openShare">分享</button>
-        <view wx:else class="share-capsule disabled">分享</view>
       </view>
 
       <!-- 相册信息区 -->
@@ -108,39 +109,20 @@
     </block>
   </block>
 
-      <!-- 分享操作菜单（底部滑入）：转发微信好友 / 生成朋友圈海报 / 下载小程序码 / 取消 -->
-      <view wx:if="{{shareOpen}}" class="share-mask" bindtap="closeShare">
-        <view class="share-sheet" catchtap="noop">
-          <view class="share-title">分享相册</view>
-          <view class="share-menu">
-            <button class="share-menu-item" open-type="share" hover-class="share-menu-hover">
-              <view class="smi-ico" style="background:#07c160;">💬</view>
-              <view class="smi-label">转发微信好友</view>
+      <!-- 底部分享弹窗：微信好友 / 下载二维码 / 取消 -->
+      <view wx:if="{{showSharePopup}}" class="share-mask" catchtap="closeShareSheet">
+        <view class="share-panel" catchtap="noop">
+          <view class="share-row">
+            <button class="share-item" open-type="share" catchtap="shareToFriend">
+              <view class="icon wechat">💬</view>
+              <text>微信好友</text>
             </button>
-            <view class="share-menu-item" hover-class="share-menu-hover" bindtap="openPoster">
-              <view class="smi-ico" style="background:#ed5b60;">🖼️</view>
-              <view class="smi-label">生成朋友圈海报</view>
-            </view>
-            <view class="share-menu-item" hover-class="share-menu-hover" bindtap="downloadQR">
-              <view class="smi-ico" style="background:#2c2c2c;">📲</view>
-              <view class="smi-label">下载小程序码</view>
+            <view class="share-item" catchtap="downloadAlbumQrcode">
+              <view class="icon qrcode">▦</view>
+              <text>下载二维码</text>
             </view>
           </view>
-          <view class="share-cancel" bindtap="closeShare">取消</view>
-        </view>
-      </view>
-
-      <!-- 客片海报弹窗（canvas 合成） -->
-      <view wx:if="{{posterOpen}}" class="poster-mask">
-        <view class="poster-close" bindtap="closePoster">✕</view>
-        <view class="poster-head">客片海报</view>
-        <view class="poster-body">
-          <view class="poster-card">
-            <image wx:if="{{posterImage && !posterLoading}}" class="poster-img" src="{{posterImage}}" mode="widthFix" />
-            <view wx:if="{{posterLoading}}" class="poster-loading">正在生成海报…</view>
-            <canvas type="2d" id="posterCanvas" class="poster-canvas"></canvas>
-          </view>
-          <view class="poster-save {{posterLoading ? 'poster-save-disabled' : ''}}" hover-class="poster-save-hover" bindtap="savePoster">保存到本地</view>
+          <view class="cancel-btn" catchtap="closeShareSheet">取消</view>
         </view>
       </view>
 

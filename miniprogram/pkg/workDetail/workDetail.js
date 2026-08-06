@@ -30,11 +30,7 @@ Page({
     pw: '',
     pwErr: '',
     pwBusy: false,
-    shareOpen: false, // 分享操作菜单
-    // 客片海报弹窗
-    posterOpen: false,
-    posterLoading: false,
-    posterImage: '',
+    showSharePopup: false, // 底部分享弹窗
     canInteract: true // 锁定时置灰分享、视图切换、播放、投屏
   },
   _tasks: [],
@@ -175,213 +171,27 @@ Page({
 
   goBack() { wx.navigateBack(); },
 
-  // 打开分享操作菜单
-  openShare() {
+  // 打开底部分享弹窗
+  openShareSheet() {
     if (!this.data.canInteract) return;
-    this.setData({ shareOpen: true });
+    this.setData({ showSharePopup: true });
   },
-  closeShare() { this.setData({ shareOpen: false }); },
+  closeShareSheet() {
+    this.setData({ showSharePopup: false });
+  },
   noop() {},
 
-  // 生成朋友圈海报：关闭菜单 → 打开海报弹窗 → 自动 canvas 合成
-  openPoster() {
-    this.setData({ shareOpen: false });
+  // 转发微信好友：关闭弹窗并启用转发能力（点击由 button open-type="share" 唤起原生分享面板）
+  shareToFriend() {
+    this.closeShareSheet();
+    if (wx.showShareMenu) wx.showShareMenu({ withShareTicket: true });
+  },
+
+  // 下载小程序码（二维码指向当前相册详情页）并保存到相册
+  async downloadAlbumQrcode() {
+    this.closeShareSheet();
     if (!this.data.canInteract) return;
-    this.setData({ posterOpen: true, posterLoading: true, posterImage: '' });
-    // 等 canvas 节点渲染后再绘制
-    setTimeout(() => this.genPoster(), 300);
-  },
-
-  closePoster() {
-    // 关闭时清空，canvas 节点随 wx:if 移除即销毁释放内存
-    this.setData({ posterOpen: false, posterLoading: false, posterImage: '' });
-  },
-
-  // 下载图片到本地临时路径（供 canvas 使用）
-  _dl(url) {
-    return new Promise((resolve) => {
-      if (!url) return resolve('');
-      wx.downloadFile({
-        url,
-        success: (r) => resolve(r.statusCode === 200 ? r.tempFilePath : ''),
-        fail: () => resolve('')
-      });
-    });
-  },
-
-  // 二维码 base64 → 本地临时文件
-  _qrToLocal(dataUrl) {
-    return new Promise((resolve) => {
-      if (!dataUrl) return resolve('');
-      try {
-        const fs = wx.getFileSystemManager();
-        const filePath = wx.env.USER_DATA_PATH + '/poster-qr-' + Date.now() + '.png';
-        fs.writeFile({
-          filePath,
-          data: dataUrl.split(',')[1] || '',
-          encoding: 'base64',
-          success: () => resolve(filePath),
-          fail: () => resolve('')
-        });
-      } catch (e) { resolve(''); }
-    });
-  },
-
-  // Canvas 2D 的 Image 对象（异步加载）
-  _loadImage(canvas, path) {
-    return new Promise((resolve) => {
-      if (!path) return resolve(null);
-      const img = canvas.createImage();
-      img.onload = () => resolve(img);
-      img.onerror = () => resolve(null);
-      img.src = path;
-    });
-  },
-
-  // 圆角矩形路径
-  _roundRect(ctx, x, y, w, h, r) {
-    ctx.beginPath();
-    ctx.moveTo(x + r, y);
-    ctx.arcTo(x + w, y, x + w, y + h, r);
-    ctx.arcTo(x + w, y + h, x, y + h, r);
-    ctx.arcTo(x, y + h, x, y, r);
-    ctx.arcTo(x, y, x + w, y, r);
-    ctx.closePath();
-  },
-
-  // 文本超长截断（按像素宽度）
-  _clipText(ctx, text, x, y, maxW) {
-    text = (text || '').toString();
-    if (ctx.measureText(text).width <= maxW) { ctx.fillText(text, x, y); return; }
-    let t = text;
-    while (t.length > 1 && ctx.measureText(t + '…').width > maxW) t = t.slice(0, -1);
-    ctx.fillText(t + '…', x, y);
-  },
-
-  // 封面图按比例居中裁剪绘制
-  _drawCover(ctx, img, x, y, w, h) {
-    const iw = img.width, ih = img.height;
-    if (!iw || !ih) { ctx.fillStyle = '#f0f0f0'; ctx.fillRect(x, y, w, h); return; }
-    const scale = Math.max(w / iw, h / ih);
-    const dw = iw * scale, dh = ih * scale;
-    const dx = x + (w - dw) / 2, dy = y + (h - dh) / 2;
-    ctx.drawImage(img, dx, dy, dw, dh);
-  },
-
-  // 用 Canvas 2D 合成海报（禁止 DOM 截图，全部 canvas 绘制）
-  genPoster() {
-    const d = this.data;
-    const count = d.photos.length;
-    const W = 620, H = 880; // 设计坐标（px），再按 dpr 放大保清晰
-    wx.createSelectorQuery().select('#posterCanvas').fields({ node: true, size: true }).exec((res) => {
-      if (!res || !res[0] || !res[0].node) {
-        this.setData({ posterLoading: false });
-        wx.showToast({ title: '生成失败', icon: 'none' });
-        return;
-      }
-      const canvas = res[0].node;
-      const ctx = canvas.getContext('2d');
-      const dpr = (wx.getWindowInfo().pixelRatio || 2);
-      canvas.width = W * dpr;
-      canvas.height = H * dpr;
-      ctx.scale(dpr, dpr);
-
-      // 并行准备素材：封面、logo、小程序跳转码
-      const h5Url = 'https://yezhe-studio.pages.dev/w/' + d.id;
-      const qrTask = requestTask('/api/qrcode?text=' + encodeURIComponent(h5Url));
-      this._tasks.push(qrTask.abort);
-      Promise.all([
-        this._dl(d.cover),
-        this._dl(d.brand.logo),
-        qrTask.promise.then((r) => this._qrToLocal((r && r.dataUrl) || '')).catch(() => '')
-      ]).then((paths) => {
-        this._tasks = this._tasks.filter((x) => x !== qrTask.abort);
-        return Promise.all([
-          this._loadImage(canvas, paths[0]),
-          this._loadImage(canvas, paths[1]),
-          this._loadImage(canvas, paths[2])
-        ]).then((imgs) => {
-          const [coverImg, logoImg, qrImg] = imgs;
-
-          // 白底圆角卡片
-          this._roundRect(ctx, 0, 0, W, H, 24);
-          ctx.fillStyle = '#ffffff';
-          ctx.fill();
-
-          // 左上 logo + 右侧标题/工作室名
-          if (logoImg) {
-            ctx.save();
-            this._roundRect(ctx, 30, 30, 64, 64, 12);
-            ctx.clip();
-            ctx.drawImage(logoImg, 30, 30, 64, 64);
-            ctx.restore();
-          }
-          ctx.fillStyle = '#2c2c2c';
-          ctx.font = '600 30px sans-serif';
-          ctx.textBaseline = 'middle';
-          this._clipText(ctx, d.title || '作品相册', 110, 50, 470);
-          ctx.fillStyle = '#999999';
-          ctx.font = '22px sans-serif';
-          this._clipText(ctx, d.brand.name || 'YEZHE WORKSHOP', 110, 86, 470);
-
-          // 中间封面大图（560×420）
-          if (coverImg) this._drawCover(ctx, coverImg, 30, 120, 560, 420);
-          else { ctx.fillStyle = '#f0f0f0'; ctx.fillRect(30, 120, 560, 420); }
-
-          // 下方居中小程序跳转码（130×130）
-          if (qrImg) ctx.drawImage(qrImg, (W - 130) / 2, 580, 130, 130);
-
-          // 小程序码下方文字：长按二维码识别 查看全部 N 张照片
-          ctx.fillStyle = '#666666';
-          ctx.font = '24px sans-serif';
-          ctx.textAlign = 'center';
-          ctx.textBaseline = 'middle';
-          ctx.fillText('长按二维码识别 查看全部' + count + '张照片', W / 2, 770);
-          ctx.textAlign = 'left';
-
-          // 导出为临时图片（保存源来自 canvas 绘制）
-          wx.canvasToTempFilePath({
-            canvas,
-            success: (r) => this.setData({ posterImage: r.tempFilePath, posterLoading: false }),
-            fail: () => { this.setData({ posterLoading: false }); wx.showToast({ title: '生成失败', icon: 'none' }); }
-          });
-        });
-      }).catch(() => {
-        this.setData({ posterLoading: false });
-        wx.showToast({ title: '生成失败', icon: 'none' });
-      });
-    });
-  },
-
-  // 保存海报到相册
-  savePoster() {
-    if (this.data.posterLoading || !this.data.posterImage) return;
-    wx.saveImageToPhotosAlbum({
-      filePath: this.data.posterImage,
-      success: () => wx.showToast({ title: '海报已保存到相册，可以前往朋友圈发布', icon: 'none', duration: 2200 }),
-      fail: (e) => {
-        const msg = (e && e.errMsg) || '';
-        // 用户主动取消：不提示；权限被拒：友好引导
-        if (msg.indexOf('cancel') !== -1) return;
-        if (msg.indexOf('auth') !== -1 || msg.indexOf('deny') !== -1) {
-          wx.showModal({
-            title: '需要相册权限',
-            content: '保存海报需要相册权限，请在设置中允许后重试',
-            showCancel: false,
-            confirmText: '知道了'
-          });
-          return;
-        }
-        wx.showToast({ title: '保存失败', icon: 'none' });
-      }
-    });
-  },
-
-  // 下载小程序码到相册
-  async downloadQR() {
-    this.setData({ shareOpen: false });
-    if (!this.data.canInteract) return;
-    wx.showLoading({ title: '生成中' });
+    wx.showLoading({ title: '生成小程序码...' });
     try {
       const url = 'https://yezhe-studio.pages.dev/w/' + this.data.id;
       const t = requestTask('/api/qrcode?text=' + encodeURIComponent(url));
@@ -389,25 +199,17 @@ Page({
       const r = await t.promise;
       this._tasks = this._tasks.filter((x) => x !== t.abort);
       const dataUrl = (r && r.dataUrl) || '';
+      if (!dataUrl) throw new Error('empty');
       const fs = wx.getFileSystemManager();
       const filePath = wx.env.USER_DATA_PATH + '/work-qr-' + this.data.id + '.png';
       await new Promise((res, rej) => fs.writeFile({ filePath, data: dataUrl.split(',')[1], encoding: 'base64', success: res, fail: rej }));
-      wx.saveImageToPhotosAlbum({
-        filePath,
-        success: () => wx.showToast({ title: '小程序码已保存到相册', duration: 1800 }),
-        fail: (e) => {
-          const msg = (e && e.errMsg) || '';
-          if (msg.indexOf('cancel') !== -1) return;
-          if (msg.indexOf('auth') !== -1 || msg.indexOf('deny') !== -1) {
-            wx.showModal({ title: '需要相册权限', content: '保存图片需要相册权限，请在设置中允许后重试', showCancel: false, confirmText: '知道了' });
-            return;
-          }
-          wx.showToast({ title: '保存失败', icon: 'none' });
-        }
-      });
+      await new Promise((res, rej) => wx.saveImageToPhotosAlbum({ filePath, success: res, fail: rej }));
+      wx.showToast({ title: '小程序码已保存至相册', duration: 1800 });
     } catch (e) {
-      wx.showToast({ title: '生成失败', icon: 'none' });
-    } finally { wx.hideLoading(); }
+      wx.showToast({ title: '保存失败', icon: 'none' });
+    } finally {
+      wx.hideLoading();
+    }
   },
 
   // 点击网格缩略图：直接打开对应大图并定位

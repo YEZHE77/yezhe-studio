@@ -59,35 +59,24 @@
 .retry-btn { margin-top: 32rpx; display: inline-block; padding: 16rpx 48rpx; font-size: 28rpx; color: #fff; background: #111; border-radius: 999rpx; }
 .retry-btn::after { border: none; }
 
-/* ===== 封面 + 右侧垂直居中悬浮分享胶囊 ===== */
+/* ===== 封面 + 右上角悬浮分享按钮 ===== */
 .cover-wrap { position: relative; width: 100%; height: 520rpx; }
 .cover-img { width: 100%; height: 100%; display: block; }
-/* 分享按钮：absolute 叠加在封面图内部，右 24rpx、垂直居中；圆角胶囊 #54b8a1；浮于图片之上 z-index:99 */
-.share-capsule {
-  position: absolute;
-  top: 50%;
-  right: 24rpx;
-  transform: translateY(-50%);
+/* 分享按钮：fixed 悬浮在封面大图右上角（top:190rpx right:30rpx），胶囊 #70bcb0 */
+.share-float-btn {
+  position: fixed;
+  top: 190rpx;
+  right: 30rpx;
   z-index: 99;
-  padding: 16rpx 32rpx;
-  border-radius: 999rpx;
-  background: #54b8a1;
+  width: 140rpx;
+  height: 70rpx;
+  line-height: 70rpx;
+  text-align: center;
+  background: #70bcb0;
   color: #ffffff;
   font-size: 28rpx;
-  font-weight: normal;
-  line-height: 1;
-  text-align: center;
-  box-shadow: 0 6rpx 16rpx rgba(0,0,0,0.18);
-  transition: transform .12s ease;
-}
-.share-capsule::after { border: none; }
-/* 按压态：垂直居中 + 轻微缩放（合并 transform 避免丢失居中） */
-.share-capsule-hover { transform: translateY(-50%) scale(0.96); }
-.share-capsule.disabled {
-  background: #c9c9c9;
-  color: #f0f0f0;
-  box-shadow: none;
-  transform: translateY(-50%);
+  border-radius: 35rpx;
+  box-shadow: 0 2rpx 8rpx rgba(0,0,0,0.1);
 }
 
 /* ===== 相册信息区 ===== */
@@ -234,20 +223,21 @@
 }
 .lock-btn::after { border: none; }
 
-/* ===== 分享弹窗（底部滑入） ===== */
+/* ===== 底部分享弹窗 ===== */
 .share-mask {
   position: fixed;
-  top: 0; left: 0; right: 0; bottom: 0;
+  left: 0; top: 0; right: 0; bottom: 0;
   background: rgba(0,0,0,0.4);
-  z-index: 300;
   display: flex;
-  align-items: flex-end;
+  flex-direction: column;
+  justify-content: flex-end;
+  z-index: 300;
 }
-.share-sheet {
-  width: 100%;
+.share-panel {
   background: #fff;
-  border-radius: 24rpx 24rpx 0 0;
-  padding: 40rpx 32rpx;
+  border-top-left-radius: 24rpx;
+  border-top-right-radius: 24rpx;
+  padding: 40rpx 30rpx;
   padding-bottom: calc(40rpx + constant(safe-area-inset-bottom));
   padding-bottom: calc(40rpx + env(safe-area-inset-bottom));
   box-sizing: border-box;
@@ -257,106 +247,37 @@
   from { transform: translateY(100%); }
   to { transform: translateY(0); }
 }
-.share-title {
-  text-align: center;
-  font-size: 30rpx;
-  font-weight: 600;
-  color: #2c2c2c;
-  margin-bottom: 32rpx;
-}
-/* 分享操作菜单：垂直列表（转发微信好友 / 生成朋友圈海报 / 下载小程序码） */
-.share-menu {
+.share-row { display: flex; }
+.share-item {
+  flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 8rpx;
-  margin-bottom: 32rpx;
+  align-items: center;
+  background: transparent;
+  padding: 0;
+  margin: 0;
+  line-height: 1.4;
 }
-.share-menu-item {
+/* button 形态的分享项需去掉默认样式 */
+.share-item::after { border: none; }
+.share-item .icon {
+  width: 120rpx;
+  height: 120rpx;
+  border-radius: 50%;
   display: flex;
   align-items: center;
-  background: #f7f7f7;
-  border-radius: 14rpx;
-  padding: 24rpx 28rpx;
-  margin: 0;
-  line-height: 1;
-  transition: transform .12s ease;
-}
-.share-menu-item::after { border: none; }
-.smi-ico {
-  width: 72rpx; height: 72rpx; border-radius: 50%;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 36rpx; margin-right: 24rpx; flex-shrink: 0;
-}
-.smi-label { font-size: 30rpx; color: #2c2c2c; }
-.share-menu-hover { transform: scale(0.97); opacity: 0.92; }
-.share-cancel {
-  text-align: center;
-  padding: 28rpx 0;
-  background: #f4f4f4;
-  border-radius: 14rpx;
-  font-size: 30rpx;
-  color: #555;
-}
-
-/* ===== 客片海报弹窗 ===== */
-.poster-mask {
-  position: fixed; left: 0; right: 0; top: 0; bottom: 0;
-  background: rgba(0,0,0,0.7);
-  z-index: 1000;
-}
-.poster-close {
-  position: fixed;
-  top: 32rpx; right: 32rpx;
-  width: 48rpx; height: 48rpx;
-  font-size: 40rpx; line-height: 48rpx; text-align: center;
-  color: #fff; z-index: 1001;
-}
-.poster-head {
-  position: fixed;
-  top: 40rpx; left: 0; right: 0;
-  text-align: center;
-  font-size: 32rpx; color: #fff; font-weight: 500;
-  z-index: 1001;
-}
-.poster-body {
-  position: absolute;
-  top: 140rpx; left: 0; right: 0;
-  display: flex; flex-direction: column; align-items: center;
-  padding-bottom: calc(60rpx + constant(safe-area-inset-bottom));
-  padding-bottom: calc(60rpx + env(safe-area-inset-bottom));
-}
-.poster-card {
-  position: relative;
-  width: 620rpx;
-  background: #fff;
-  border-radius: 24rpx;
-  box-shadow: 0 8rpx 24rpx rgba(0,0,0,0.12);
-  overflow: hidden;
-  min-height: 200rpx;
-}
-.poster-img { width: 620rpx; display: block; }
-.poster-loading {
-  padding: 200rpx 0; text-align: center;
-  font-size: 28rpx; color: #999;
-}
-/* canvas 离屏绘制：移出可视区但不 display:none（保证可绘制与导出） */
-.poster-canvas {
-  position: fixed;
-  left: -9999rpx; top: 0;
-  width: 620rpx; height: 880rpx;
-}
-.poster-save {
-  width: 620rpx;
-  height: 100rpx;
-  margin-top: 80rpx;
-  border-radius: 50rpx;
-  background: #ed5b60;
+  justify-content: center;
   color: #fff;
-  font-size: 32rpx;
-  line-height: 100rpx;
-  text-align: center;
-  box-shadow: 0 8rpx 20rpx rgba(237,91,96,0.35);
-  transition: transform .12s ease;
+  font-size: 52rpx;
 }
-.poster-save-hover { transform: scale(0.96); }
-.poster-save-disabled { opacity: 0.5; }
+.share-item .icon.wechat { background: #07C160; }
+.share-item .icon.qrcode { background: #f27052; }
+.share-item text { margin-top: 16rpx; font-size: 26rpx; color: #555; }
+.cancel-btn {
+  margin-top: 40rpx;
+  text-align: center;
+  height: 96rpx;
+  line-height: 96rpx;
+  font-size: 30rpx;
+  color: #333;
+}
