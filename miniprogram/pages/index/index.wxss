@@ -1,4 +1,4 @@
-page { background: #f9f8f6; }
+page { background: #f8f6f2; }
 .page { padding-bottom: 60rpx; }
 
 /* ===== 自定义顶部标题栏（白底黑字「叶哲 STUDIO」居中，固定置顶，避让系统状态栏） ===== */
@@ -25,16 +25,17 @@ page { background: #f9f8f6; }
   text-overflow: ellipsis;
 }
 
-/* ===== 轮播 Banner（页面已用动态 navHeight 整体下偏移，避让固定导航栏；轮播高度不变） ===== */
+/* ===== 轮播 Banner（页面已用动态 navHeight 整体下偏移，避让状态栏与原生胶囊；高度固定屏幕 32%） ===== */
 .swiper-wrap { width: 100%; }
-/* 16:9 比例，750rpx 宽对应 422rpx 高，按 aspect-ratio 自适应，全机型不变形。
-   图片使用 aspectFit：保持原比例完整显示，不裁切人物头部/主体画面（竖构图两侧留白由页面底色填充）。 */
-.banner { width: 100%; height: 56.25vw; aspect-ratio: 16 / 9; background: transparent; }
+/* 高度占屏幕 32%（32vh），不撑满大半屏，一眼可见下方作品区；
+   图片 aspectFit 完整显示，不裁切人物头部/主体画面。
+   页面 padding-top: navHeight 已为顶部胶囊预留安全内边距，人脸不会被子系统 UI 遮挡。 */
+.banner { width: 100%; height: 32vh; background: transparent; }
 .banner-img { width: 100%; height: 100%; object-fit: contain; display: block; }
 .banner--ph {
   background: #111; color: #fff;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
-  height: 56.25vw; aspect-ratio: 16 / 9;
+  height: 32vh;
 }
 .banner-logo { font-size: 40rpx; letter-spacing: 10rpx; opacity: .9; }
 .banner-tag { margin-top: 20rpx; font-size: 26rpx; opacity: .6; letter-spacing: 4rpx; }
@@ -42,21 +43,20 @@ page { background: #f9f8f6; }
 /* ===== 品牌简介（扁平流式，间距全部用 margin，禁止容器 padding 制造空白） ===== */
 .brand {
   text-align: center;
-  /* 仅保留横向内边距用于内容缩进；垂直间距一律用 margin（见下）
-     轮播底部 → 圆形头像顶部：50rpx */
+  /* 收紧整块垂直留白：轮播底部 → 圆形头像顶部 36rpx */
   padding: 0 32rpx;
-  margin-top: 50rpx;
+  margin-top: 36rpx;
   background: transparent;
 }
 .brand-logo {
-  width: 120rpx; height: 120rpx; margin: 0 auto;
+  width: 96rpx; height: 96rpx; margin: 0 auto;
   border-radius: 50%; overflow: hidden;
   background: #eee; border: 1rpx solid #e5e5e5;
 }
 .brand-logo image { width: 100%; height: 100%; }
-/* 头像底部 → 工作室名称：32rpx */
+/* 头像底部 → 工作室名称：20rpx（收紧 logo 上下空白） */
 .brand-name {
-  margin-top: 32rpx; font-size: 40rpx; font-weight: 600;
+  margin-top: 20rpx; font-size: 40rpx; font-weight: 600; line-height: 1.2;
   color: #2c2c2c; letter-spacing: 4rpx;
 }
 .brand-address {
@@ -70,23 +70,29 @@ page { background: #f9f8f6; }
   line-height: 1.5; color: #888;
 }
 .brand-actions {
-  margin-top: 24rpx; display: flex; justify-content: center; gap: 20rpx;
+  /* 主转化按钮占 62%、描边按钮占 34%，中间留少量间距；整体限制宽度避免大屏过宽 */
+  margin: 28rpx auto 0; display: flex; align-items: stretch; gap: 24rpx;
+  max-width: 600rpx;
 }
 .brand-actions .btn {
-  min-width: 200rpx; height: 68rpx; line-height: 68rpx;
-  font-size: 26rpx; border-radius: 8rpx; text-align: center;
-  padding: 0 28rpx; margin: 0;
+  height: 76rpx; line-height: 76rpx;
+  font-size: 28rpx; border-radius: 12rpx; text-align: center;
+  padding: 0; margin: 0; flex: 1 1 0; min-width: 0;
 }
 .btn::after { border: none; }
+/* 左：主薄荷绿填充按钮（占 62%，主转化） */
 .btn-primary {
+  flex: 62 1 0;
   background: var(--brand-green); color: var(--text-on-green);
 }
+/* 右：描边按钮（占 34%） */
 .btn-outline {
+  flex: 34 1 0;
   background: #fff; color: var(--brand-green); border: 2rpx solid var(--brand-green);
 }
-/* 工作室名称 → 查看品牌故事：下移 20rpx（16→36rpx）；查看品牌故事底部 → 资料区块结束：64rpx */
+/* 按钮 → 查看品牌故事：紧挨下方（16rpx）；底部 → 资料区块结束：40rpx */
 .brand-more {
-  margin-top: 36rpx; margin-bottom: 64rpx; text-align: center;
+  margin-top: 16rpx; margin-bottom: 40rpx; text-align: center;
   font-size: 24rpx; color: var(--brand-green);
 }
 
@@ -97,13 +103,13 @@ page { background: #f9f8f6; }
   background: #eee;
 }
 
-/* 分割线底部 → 作品展示标题顶部：100rpx */
-.gallery { margin-top: 100rpx; padding: 0 32rpx; }
+/* 分割线底部 → 作品展示标题顶部：64rpx（收紧） */
+.gallery { margin-top: 64rpx; padding: 0 32rpx; }
 .gallery-title {
   text-align: center; font-size: 40rpx; font-weight: 600; color: #2c2c2c; letter-spacing: 4rpx;
 }
 .gallery-sub {
-  text-align: center; margin-top: 6rpx; font-size: 22rpx; letter-spacing: 2rpx; color: #bbb;
+  text-align: center; margin-top: 4rpx; font-size: 20rpx; letter-spacing: 2rpx; color: #bbb; line-height: 1.2;
 }
 
 /* 分类标签 */
@@ -119,13 +125,15 @@ page { background: #f9f8f6; }
   background: var(--brand-green); border-radius: 4rpx;
 }
 
-/* 作品网格 */
-.grid { display: flex; flex-wrap: wrap; margin: 8rpx -10rpx 0; }
+/* 作品网格：两列瀑布流（按索引奇偶分列，高度自适应，照片保持原比例不裁切） */
+.masonry { display: flex; align-items: flex-start; margin: 8rpx -8rpx 0; }
+.masonry-col { flex: 1 1 0; min-width: 0; padding: 0 8rpx; display: flex; flex-direction: column; }
 .grid-item {
-  width: calc(50% - 20rpx); margin: 10rpx; position: relative; border-radius: 16rpx;
+  width: 100%; margin-bottom: 16rpx; position: relative; border-radius: 16rpx;
   overflow: hidden; background: #eee;
 }
-.grid-cover { width: 100%; aspect-ratio: 4 / 5; height: auto; display: block; }
+/* widthFix：按图片原始比例展示，不裁切摄影画面；统一间距 16rpx */
+.grid-cover { width: 100%; display: block; }
 .grid-cap {
   position: absolute; left: 0; right: 0; bottom: 0;
   padding: 60rpx 18rpx 18rpx;
@@ -175,32 +183,35 @@ page { background: #f9f8f6; }
   margin-top: 30rpx; text-align: center; font-size: 22rpx; color: #777;
 }
 
-/* ===== 右侧悬浮按钮组（右下角，96rpx 圆形，图标在上文字在下） ===== */
+/* ===== 右侧悬浮按钮组（固定右侧不随滚动；右距 32rpx；底部预留安全距离 + 避开 iPhone 底部小黑条） ===== */
 .fab-group {
   position: fixed;
-  right: 40rpx;
-  bottom: 100rpx;
+  right: 32rpx;
+  bottom: calc(40rpx + constant(safe-area-inset-bottom));
+  bottom: calc(40rpx + env(safe-area-inset-bottom));
   z-index: 90;
   display: flex;
   flex-direction: column;
-  gap: 16rpx;
+  gap: 40rpx;
 }
 .fab {
-  width: 96rpx;
-  height: 96rpx;
+  width: 112rpx;
+  height: 112rpx;
   border-radius: 50%;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 4rpx 16rpx rgba(0,0,0,0.14);
+  /* 文字距圆形内边缘保留安全边距：整体居中，靠内边距防止贴边 */
+  padding: 0 8rpx;
+  box-shadow: 0 6rpx 20rpx rgba(0,0,0,0.16);
 }
 .fab::after { border: none; }
 .fab-white { background: #fff; }
 .fab-primary { background: var(--brand-green); }
 .fab-ico {
-  width: 32rpx;
-  height: 32rpx;
+  width: 40rpx;
+  height: 40rpx;
   background-size: contain;
   background-repeat: no-repeat;
   background-position: center;
@@ -218,7 +229,7 @@ page { background: #f9f8f6; }
   background-image: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23666666' stroke-width='1.6' stroke-linecap='round'><circle cx='12' cy='8' r='3.2'/><path d='M5 20a7 7 0 0 1 14 0'/></svg>");
 }
 .fab-label {
-  margin-top: 4rpx;
+  margin-top: 6rpx;
   font-size: 20rpx;
   line-height: 1;
 }

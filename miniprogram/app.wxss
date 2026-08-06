@@ -1,6 +1,6 @@
 /* app.wxss —— 黑白简约摄影风（大量留白 / 大图优先 / 黑底白字导航栏） */
 page {
-  background: #f7f7f5;
+  background: #f8f6f2;
   color: #111111;
   font-family: -apple-system, "PingFang SC", "Helvetica Neue", Helvetica, sans-serif;
   font-size: 28rpx;
