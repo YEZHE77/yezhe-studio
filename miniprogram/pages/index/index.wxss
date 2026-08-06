@@ -27,14 +27,14 @@ page { background: #f9f8f6; }
 
 /* ===== 轮播 Banner（页面已用动态 navHeight 整体下偏移，避让固定导航栏；轮播高度不变） ===== */
 .swiper-wrap { width: 100%; }
-/* 4:3 比例，750rpx 宽对应 562rpx 高，按 aspect-ratio 自适应，全机型不变形。
+/* 16:9 比例，750rpx 宽对应 422rpx 高，按 aspect-ratio 自适应，全机型不变形。
    图片使用 aspectFit：保持原比例完整显示，不裁切人物头部/主体画面（竖构图两侧留白由页面底色填充）。 */
-.banner { width: 100%; aspect-ratio: 16 / 9; background: transparent; }
+.banner { width: 100%; height: 56.25vw; aspect-ratio: 16 / 9; background: transparent; }
 .banner-img { width: 100%; height: 100%; object-fit: contain; display: block; }
 .banner--ph {
   background: #111; color: #fff;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
-  aspect-ratio: 16 / 9;
+  height: 56.25vw; aspect-ratio: 16 / 9;
 }
 .banner-logo { font-size: 40rpx; letter-spacing: 10rpx; opacity: .9; }
 .banner-tag { margin-top: 20rpx; font-size: 26rpx; opacity: .6; letter-spacing: 4rpx; }
