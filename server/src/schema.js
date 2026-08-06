@@ -301,6 +301,10 @@ export async function initSchema() {
   await ensureColumn('works', 'album_expires_at', 'TEXT');
   // 多分类支持：category_ids 以逗号分隔存储分类 id；不为旧数据回填（category_id→category_ids）
   await ensureColumn('works', 'category_ids', 'TEXT');
+  // 相册照片去重检测：存原始文件名 + 字节数，组合签名 key = `${original_name}_${original_size}`
+  // 小程序端无真实文件名（临时路径），由 wx.getFileInfo 取 size+digest，original_name 存 digest。
+  await ensureColumn('albums', 'original_name', 'TEXT');
+  await ensureColumn('albums', 'original_size', dialect === 'pg' ? 'BIGINT' : 'INTEGER');
 
   // categories 增量补列（is_active 启用/禁用、deleted 软删、preset 预设保护）
   await ensureColumn('categories', 'is_active', 'INTEGER NOT NULL DEFAULT 1');

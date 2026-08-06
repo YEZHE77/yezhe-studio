@@ -1,0 +1,112 @@
+/* 扁平风格：页面底色 #f9f8f6，青绿强调色 #7ecdbb（与项目双端视觉约定一致） */
+.page {
+  min-height: 100vh;
+  background: #f9f8f6;
+  padding: 24rpx;
+  box-sizing: border-box;
+}
+
+.header {
+  margin-bottom: 24rpx;
+}
+.title {
+  display: block;
+  font-size: 34rpx;
+  font-weight: 600;
+  color: #1f1f1f;
+}
+.sub {
+  display: block;
+  margin-top: 8rpx;
+  font-size: 24rpx;
+  color: #8a8a8a;
+}
+
+.toolbar {
+  display: flex;
+  gap: 16rpx;
+  margin-bottom: 20rpx;
+}
+.btn {
+  flex: 1;
+  font-size: 28rpx;
+  border-radius: 12rpx;
+  padding: 18rpx 0;
+  line-height: 1.2;
+}
+.btn-choose {
+  background: #ffffff;
+  color: #1f1f1f;
+  border: 1rpx solid #d9d9d9;
+}
+.btn-confirm {
+  background: #7ecdbb;
+  color: #ffffff;
+  border: none;
+}
+.btn[disabled] {
+  opacity: 0.5;
+}
+
+.progress {
+  height: 8rpx;
+  background: #ececec;
+  border-radius: 4rpx;
+  overflow: hidden;
+  margin-bottom: 20rpx;
+}
+.bar {
+  height: 100%;
+  background: #7ecdbb;
+  transition: width 0.2s ease;
+}
+
+.grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16rpx;
+}
+.cell {
+  position: relative;
+  width: calc((100% - 48rpx) / 4);
+  height: calc((100% - 48rpx) / 4);
+  border-radius: 12rpx;
+  overflow: hidden;
+  background: #ececec;
+}
+.thumb {
+  width: 100%;
+  height: 100%;
+}
+/* 重复项：灰色半透明蒙层 + 置灰，禁止选中（点击无响应，已过滤出上传队列） */
+.cell--dup .thumb {
+  filter: grayscale(1);
+}
+.mask {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+}
+.tag {
+  position: absolute;
+  top: 8rpx;
+  left: 8rpx;
+  padding: 2rpx 10rpx;
+  border-radius: 8rpx;
+  font-size: 20rpx;
+  color: #ffffff;
+  background: rgba(0, 0, 0, 0.7);
+}
+.tag--ok {
+  background: #7ecdbb;
+}
+.tag--warn {
+  background: #e0a458;
+}
+
+.empty {
+  margin-top: 120rpx;
+  text-align: center;
+  color: #8a8a8a;
+  font-size: 26rpx;
+}

@@ -21,7 +21,8 @@
         "about/about",
         "workDetail/workDetail",
         "gallery/gallery",
-        "qrcode/qrcode"
+        "qrcode/qrcode",
+        "albumUpload/albumUpload"
       ]
     }
   ],

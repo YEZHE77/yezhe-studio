@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import http, { img, compressImage, uploadBatch } from '../api.js';
+import http, { img, compressImage, uploadBatch, getExistSigns } from '../api.js';
 import bgm from '../bgm.js';
 import Slideshow from '../components/Slideshow.jsx';
 
@@ -30,6 +30,10 @@ export default function WorkDetail() {
   const [draggedId, setDraggedId] = useState(null);
   const [dragOverId, setDragOverId] = useState(null);
   const [reordering, setReordering] = useState(false);
+  // 上传去重弹窗状态
+  const [uploadOpen, setUploadOpen] = useState(false);
+  const [uploadPreviews, setUploadPreviews] = useState([]); // { file, name, size, sign, dup, url, error }
+  const [preparing, setPreparing] = useState(false);
   const [slideOpen, setSlideOpen] = useState(false);
   const [slidePhotos, setSlidePhotos] = useState([]);
 
@@ -102,50 +106,92 @@ export default function WorkDetail() {
     } finally { setSaving(false); }
   }
 
-  async function batchUpload(e) {
+  // 选图后立即：①拉取本相册已存在签名；②读取每张原图 name+size 生成签名；③标记重复项；④打开预览弹窗
+  async function onPickFiles(e) {
     const files = e.target.files;
+    if (!fileRef.current) return;
     if (!files || !files.length) return;
+    setPreparing(true);
+    try {
+      // 第一时间请求后端，拿到本相册 existSignList（原有图片签名集合）
+      const existSet = await getExistSigns(id);
+      // H5 直接读取 File 真实原始文件名与字节（压缩前），不拿临时路径名
+      const previews = [];
+      for (const f of Array.from(files)) {
+        let name = f.name, size = f.size, error = false;
+        if (!name || !size) { error = true; name = name || 'unknown'; size = size || 0; } // 读取失败 → 放行（防误拦）
+        const sign = `${name}_${size}`;
+        previews.push({ file: f, name, size, sign, dup: !error && existSet.has(sign), error, url: URL.createObjectURL(f) });
+      }
+      setUploadPreviews(previews);
+      setUploadOpen(true);
+    } catch (err) {
+      alert('准备上传失败：' + (err.message || err));
+    } finally {
+      setPreparing(false);
+      fileRef.current.value = ''; // 清空，允许再次选择同一批文件
+    }
+  }
+
+  function closeUpload() {
+    if (uploading) return;
+    setUploadOpen(false);
+    uploadPreviews.forEach((p) => URL.revokeObjectURL(p.url));
+    setUploadPreviews([]);
+  }
+
+  function cancelUpload() {
+    if (abortRef.current) abortRef.current.abort();
+  }
+
+  // 确认上传：仅上传非重复项，重复项直接过滤（不发起网络请求）
+  async function confirmUpload() {
+    const toUpload = uploadPreviews.filter((p) => !p.dup);
+    if (!toUpload.length) { setUploadOpen(false); return; }
     setUploading(true);
     setUploadProgress(0);
     const ac = new AbortController();
     abortRef.current = ac;
+    const ZONE_CAT = { sample: 'client', local: 'negative', final: 'retouched' };
+    const ZONE_PUB = { sample: true, local: false, final: false };
     try {
-      // 批量压缩：并发 3 张一组，避免 UI 卡死
+      // 压缩（仅对待上传文件），但保留压缩前的原始 name/size 供去重签名
       const compressed = [];
-      const list = Array.from(files);
-      for (let i = 0; i < list.length; i += 3) {
-        const chunk = list.slice(i, i + 3);
-        const out = await Promise.all(chunk.map((f) => compressImage(f, { maxWidth: 1920, maxHeight: 1920, quality: 0.82 })));
+      for (let i = 0; i < toUpload.length; i += 3) {
+        const chunk = toUpload.slice(i, i + 3);
+        const out = await Promise.all(chunk.map((p) => compressImage(p.file, { maxWidth: 1920, maxHeight: 1920, quality: 0.82 })));
         compressed.push(...out);
       }
-      // 按相册分区映射业务分类，供容量统计（样片=客片公开 / 原片=底片 / 成片=精修）
-      const ZONE_CAT = { sample: 'client', local: 'negative', final: 'retouched' };
-      const ZONE_PUB = { sample: true, local: false, final: false };
-      const { urls, failed, aborted } = await uploadBatch(compressed, {
+      const metas = toUpload.map((p, i) => ({ file: compressed[i], name: p.name, size: p.size }));
+      const { items, failed, aborted } = await uploadBatch(metas, {
         category: ZONE_CAT[zone] || 'customer',
         isPublic: ZONE_PUB[zone] || false,
         signal: ac.signal,
         onProgress: (d, t) => setUploadProgress(Math.round((d / t) * 100))
       });
       if (aborted) { setUploadText('已取消上传'); return; }
-      if (urls.length) {
-        await http.post('/api/works/' + id + '/albums', { urls, zone });
+      // 按索引对齐拼接 originalName/size，投递后端（后端据此存签名，下次可识别为重复）
+      const bodyItems = [];
+      toUpload.forEach((p, i) => {
+        const it = items[i];
+        if (it && it.url) bodyItems.push({ url: it.url, originalName: p.name, size: p.size });
+      });
+      if (bodyItems.length) {
+        await http.post('/api/works/' + id + '/albums', { zone, items: bodyItems });
         await loadAlbums();
       }
-      if (failed.length) alert(`成功 ${urls.length} 张，失败 ${failed.length} 张（可重试）`);
-      else alert(`成功上传 ${urls.length} 张照片`);
+      const dupCount = uploadPreviews.length - toUpload.length;
+      if (failed.filter(Boolean).length) alert(`成功 ${bodyItems.length} 张，已自动跳过重复 ${dupCount} 张，失败 ${failed.filter(Boolean).length} 张`);
+      else alert(`成功上传 ${bodyItems.length} 张（已自动跳过 ${dupCount} 张重复照片）`);
     } catch (err) {
       alert((err.response && err.response.data && err.response.data.error) || '上传失败');
     } finally {
       setUploading(false);
       setUploadProgress(0);
-      if (fileRef.current) fileRef.current.value = '';
+      setUploadOpen(false);
+      uploadPreviews.forEach((p) => URL.revokeObjectURL(p.url));
+      setUploadPreviews([]);
     }
-  }
-
-  function cancelUpload() {
-    if (abortRef.current) abortRef.current.abort();
-    setUploadText('正在取消…');
   }
 
   async function setCover(url) {
@@ -420,8 +466,8 @@ export default function WorkDetail() {
               </div>
               <div className="flex items-center gap-2">
                 <button onClick={openSlide} disabled={!zoneAlbums.length} className="px-4 py-2 rounded border border-line text-sm text-fg hover:text-brand hover:border-brand disabled:opacity-40">▶ 播放幻灯片</button>
-                <input ref={fileRef} type="file" accept="image/*" multiple className="hidden" onChange={batchUpload} />
-                <button onClick={() => fileRef.current && fileRef.current.click()} disabled={uploading} className="px-4 py-2 rounded bg-brand text-white text-sm hover:opacity-90 disabled:opacity-60">{uploading ? `上传中 ${uploadProgress}%` : '+ 批量上传'}</button>
+                <input ref={fileRef} type="file" accept="image/*" multiple className="hidden" onChange={onPickFiles} />
+                <button onClick={() => fileRef.current && fileRef.current.click()} disabled={uploading || preparing} className="px-4 py-2 rounded bg-brand text-white text-sm hover:opacity-90 disabled:opacity-60">{uploading ? `上传中 ${uploadProgress}%` : preparing ? '准备中…' : '+ 批量上传'}</button>
                 {uploading && (
                   <button onClick={cancelUpload} className="px-3 py-2 rounded border border-line text-sm text-muted hover:text-red-500">取消</button>
                 )}
@@ -511,6 +557,62 @@ export default function WorkDetail() {
           </div>
         </div>
       </div>
+      {/* 上传去重预览弹窗：选图后展示缩略图，重复项灰色蒙层 + 【已存在】标签，仅上传新照片 */}
+      {uploadOpen && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" onClick={() => !uploading && closeUpload()}>
+          <div className="bg-panel border border-line rounded-xl2 w-full max-w-3xl max-h-[85vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-4 border-b border-line">
+              <div>
+                <h3 className="text-base font-semibold text-fg">上传到「{ZONES.find((z) => z.key === zone).label}」相册</h3>
+                <p className="text-xs text-muted mt-0.5">
+                  待上传 {uploadPreviews.filter((p) => !p.dup).length} 张 · 已存在 {uploadPreviews.filter((p) => p.dup).length} 张（自动跳过，不发起上传）
+                </p>
+              </div>
+              <button onClick={closeUpload} disabled={uploading} className="text-muted hover:text-fg text-sm disabled:opacity-40">✕</button>
+            </div>
+            <div className="p-4 overflow-y-auto">
+              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
+                {uploadPreviews.map((p, i) => (
+                  <div key={i} className={'relative aspect-square rounded-xl2 overflow-hidden bg-ink border ' + (p.dup ? 'border-line' : 'border-brand/40')}>
+                    <img src={p.url} className="w-full h-full object-cover" alt={p.name} />
+                    {p.dup && (
+                      <>
+                        <div className="absolute inset-0 bg-black/55" />
+                        <span className="absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded bg-black/70 text-white text-[10px]">已存在</span>
+                        <span className="absolute bottom-1.5 right-1.5 text-white/80 text-[10px]">已跳过</span>
+                      </>
+                    )}
+                    {!p.dup && (
+                      <span className={'absolute bottom-1.5 left-1.5 px-1.5 py-0.5 rounded text-white text-[10px] ' + (p.error ? 'bg-amber-500/80' : 'bg-brand/80')}>待上传</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+            {uploading && (
+              <div className="px-4 pb-3">
+                <div className="h-1.5 bg-ink rounded overflow-hidden">
+                  <div className="h-full bg-brand transition-all" style={{ width: uploadProgress + '%' }} />
+                </div>
+              </div>
+            )}
+            <div className="p-4 border-t border-line flex items-center justify-between gap-3">
+              <span className="text-xs text-muted">已自动过滤重复照片，仅上传新照片</span>
+              <div className="flex gap-2">
+                {uploading ? (
+                  <button onClick={cancelUpload} className="px-4 py-2 rounded border border-line text-sm text-red-500 hover:border-red-300">取消上传</button>
+                ) : (
+                  <button onClick={closeUpload} className="px-4 py-2 rounded border border-line text-sm text-fg hover:border-brand">取消</button>
+                )}
+                <button onClick={confirmUpload} disabled={uploading || uploadPreviews.filter((p) => !p.dup).length === 0}
+                  className="px-4 py-2 rounded bg-brand text-white text-sm hover:opacity-90 disabled:opacity-60">
+                  {uploading ? `上传中 ${uploadProgress}%` : `上传 ${uploadPreviews.filter((p) => !p.dup).length} 张`}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       <Slideshow photos={slidePhotos} open={slideOpen} onClose={closeSlide} title={work ? work.title : ''} />
     </div>
   );

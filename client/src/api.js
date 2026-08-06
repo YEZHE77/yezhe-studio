@@ -251,7 +251,7 @@ function toType(cat) { return CATEGORY_TO_TYPE[cat] || 'uncategorized'; }
 // 无论走哪条路径，都会在拿到 URL 后登记 media 元数据（按业务分类汇聚容量统计）。
 // opts: { category, isPublic, onProgress, signal }
 export async function uploadImage(file, opts = {}) {
-  const { category = 'uncategorized', isPublic = false, onProgress, signal } = opts;
+  const { category = 'uncategorized', isPublic = false, onProgress, signal, metaName, metaSize } = opts;
   const type = toType(category);
   const workerUrl = import.meta.env.VITE_UPLOAD_WORKER_URL;
   let url;
@@ -311,7 +311,22 @@ export async function uploadImage(file, opts = {}) {
   }
   // 用规范枚举登记 media，保证容量统计分类一致
   await registerMedia(url, type, file.size, isPublic);
-  return { url };
+  // 返回文件名 + 字节数，供前端去重签名（originalName_size）使用。
+  // 压缩会改变文件名（如 .png→.jpg）与字节数，故允许调用方传入 metaName/metaSize
+  // 携带【压缩前】的原始文件名与字节，确保去重签名与首次上传时存库的一致。
+  return { url, name: metaName ?? file.name, size: metaSize ?? file.size };
+}
+
+// 拉取某相册已存在图片的签名集合（originalName_size），用于上传前重复检测。
+// 失败时返回空集合（降级：不拦截，避免误伤正常上传）。
+export async function getExistSigns(workId) {
+  try {
+    const { data } = await http.get('/api/works/' + workId + '/albums/exist-signs');
+    return new Set(data.existSignList || []);
+  } catch (e) {
+    console.warn('[dedup] 获取已存在签名失败，降级为不拦截：', e.message);
+    return new Set();
+  }
 }
 
 // 手动导出全量业务 JSON 备份（管理员下载到本地）。后端已过滤明文密钥。
@@ -330,12 +345,20 @@ export async function downloadBackup() {
 
 // 并发受限的批量上传（默认 3 张一组，避免短时间大量写入压垮免费数据库 / 卡死页面）。
 // 支持传入 AbortSignal 中途取消。onProgress(totalDone, total) 回传整体进度。
-// 返回 { urls, failed } —— 失败的单项不丢记录，便于前端重试。
+// files 支持两种形态：
+//   - File[] （兼容旧调用）：直接上传，返回名/字节为压缩后的值。
+//   - { file, name, size }[]：name/size 为【压缩前】原始文件名与字节，
+//     透传给 uploadImage 作为去重签名，确保与首次上传存库时一致。
+// 返回：
+//   - urls：紧凑数组（压缩后 URL 字符串），兼容 Works.jsx 等旧调用。
+//   - items：与入参等长、按索引对齐，每项 { url, name, size } 或失败留 null，
+//     便于调用方按原始顺序拼接 originalName/size 投递后端去重接口。
+//   - failed：按索引对齐的错误信息数组（成功项为空）。
 export async function uploadBatch(files, opts = {}) {
   const { category = 'uncategorized', isPublic = false, concurrency = 3, signal, onProgress } = opts;
-  const list = Array.from(files || []);
-  const urls = [];
-  const failed = [];
+  const list = Array.from(files || []).map((f) => (f && f.file ? f : { file: f, name: f && f.name, size: f && f.size }));
+  const items = new Array(list.length).fill(null);
+  const failed = new Array(list.length).fill(undefined);
   let done = 0;
   let cursor = 0;
 
@@ -344,8 +367,9 @@ export async function uploadBatch(files, opts = {}) {
       if (signal && signal.aborted) return;
       const idx = cursor++;
       try {
-        const { url } = await uploadImage(list[idx], { category, isPublic, signal });
-        urls[idx] = url;
+        const item = list[idx];
+        const r = await uploadImage(item.file, { category, isPublic, signal, metaName: item.name, metaSize: item.size });
+        items[idx] = r;
       } catch (e) {
         if (signal && signal.aborted) return;
         failed[idx] = e.message || '上传失败';
@@ -360,8 +384,9 @@ export async function uploadBatch(files, opts = {}) {
   for (let i = 0; i < Math.min(concurrency, list.length); i++) pool.push(worker());
   await Promise.all(pool);
 
-  if (signal && signal.aborted) return { urls: urls.filter(Boolean), failed, aborted: true };
-  return { urls: urls.filter(Boolean), failed };
+  const urls = items.filter(Boolean).map((it) => it.url);
+  if (signal && signal.aborted) return { urls, items, failed, aborted: true };
+  return { urls, items, failed };
 }
 
 export default http;

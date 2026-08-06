@@ -1,0 +1,32 @@
+<view class="page">
+  <view class="header">
+    <text class="title">上传到相册</text>
+    <text class="sub">分区：{{zone}} · 待上传 {{toUploadCount}} 张 · 已存在 {{dupCount}} 张</text>
+  </view>
+
+  <view class="toolbar">
+    <button class="btn btn-choose" bindtap="onChoose" disabled="{{uploading}}">+ 选择照片</button>
+    <button class="btn btn-confirm" bindtap="onConfirm"
+      disabled="{{uploading || toUploadCount === 0}}">
+      {{uploading ? '上传中 ' + uploadProgress + '%' : '上传 ' + toUploadCount + ' 张'}}
+    </button>
+  </view>
+
+  <view wx:if="{{uploading}}" class="progress">
+    <view class="bar" style="width:{{uploadProgress}}%"></view>
+  </view>
+
+  <view class="grid" wx:if="{{previews.length}}">
+    <view wx:for="{{previews}}" wx:key="index" class="cell {{item.dup ? 'cell--dup' : ''}}">
+      <image src="{{item.tempFilePath}}" mode="aspectFill" class="thumb" />
+      <view wx:if="{{item.dup}}" class="mask"></view>
+      <text wx:if="{{item.dup}}" class="tag">已存在</text>
+      <text wx:if="{{!item.dup && item.error}}" class="tag tag--warn">待上传</text>
+      <text wx:if="{{!item.dup && !item.error}}" class="tag tag--ok">待上传</text>
+    </view>
+  </view>
+
+  <view wx:else class="empty">
+    <text>点击「选择照片」，已上传过的照片会自动置灰并跳过</text>
+  </view>
+</view>

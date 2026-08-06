@@ -180,7 +180,7 @@ router.post('/', authRequired, async (req, res) => {
     const categoryIds = normalizeCategoryIds(b.category_ids);
     const categoryId = categoryIds ? Number(categoryIds.split(',')[0]) : (b.category_id || null);
     const id = await insert(
-      'INSERT INTO works (title, category_id, category_ids, is_public, is_private, cover_url, description, blessing, tags, live, customer_name, order_id, allow_download, album_copy, album_password_enabled, album_password, album_expires_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
+      'INSERT INTO works (title, category_id, category_ids, is_public, is_private, cover_url, description, blessing, tags, live, customer_name, order_id, allow_download, album_copy, album_password_enabled, album_password, album_expires_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
       [
         b.title, categoryId, categoryIds, b.is_public ? 1 : 0, b.is_private ? 1 : 0,
         b.cover_url || '', b.description || '', b.blessing || '',
@@ -258,19 +258,50 @@ router.get('/:id/albums', authRequired, async (req, res) => {
 });
 
 // 批量添加照片到作品相册
+// 入参二选一：
+//   items: [{ url, originalName?, size? }]  —— 携带去重签名元数据（推荐）
+//   urls:  [url, ...]                        —— 仅 URL（旧调用 / 兼容）
 router.post('/:id/albums', authRequired, async (req, res) => {
   try {
-    const { urls, zone = 'sample' } = req.body;
-    if (!Array.isArray(urls) || !urls.length) return res.status(400).json({ error: 'urls 数组不能为空' });
+    let items = req.body.items;
+    const zone = req.body.zone || 'sample';
+    if (!Array.isArray(items)) {
+      const urls = req.body.urls;
+      if (!Array.isArray(urls) || !urls.length) return res.status(400).json({ error: 'urls / items 数组不能为空' });
+      items = urls.map((u) => (typeof u === 'string' ? { url: u } : u));
+    }
+    if (!items.length) return res.status(400).json({ error: 'items 数组不能为空' });
     // 取当前最大 sort，追加到末尾
     const max = await get('SELECT COALESCE(MAX(sort), -1) AS m FROM albums WHERE work_id = ? AND zone = ?', [req.params.id, zone]);
     let sort = (max.m ?? -1) + 1;
     const inserted = [];
-    for (const url of urls) {
-      const id = await insert('INSERT INTO albums (work_id, zone, photo_url, sort) VALUES (?,?,?,?)', [req.params.id, zone, url, sort++]);
+    for (const it of items) {
+      const url = typeof it === 'string' ? it : it.url;
+      if (!url) continue;
+      const originalName = (it && it.originalName != null) ? String(it.originalName) : null;
+      const originalSize = (it && it.size != null) ? Number(it.size) : null;
+      const id = await insert(
+        'INSERT INTO albums (work_id, zone, photo_url, sort, original_name, original_size) VALUES (?,?,?,?,?,?)',
+        [req.params.id, zone, url, sort++, originalName, originalSize]
+      );
       inserted.push(id);
     }
     res.json({ ok: true, ids: inserted });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// 去重签名列表：传入相册（作品）ID，返回该相册全部已上传图片签名数组
+// 签名 key = `${original_name}_${original_size}`；小程序端 original_name 为文件 digest。
+router.get('/:id/albums/exist-signs', authRequired, async (req, res) => {
+  try {
+    const rows = await query(
+      'SELECT original_name, original_size FROM albums WHERE work_id = ? AND original_name IS NOT NULL',
+      [req.params.id]
+    );
+    const existSignList = rows
+      .filter((r) => r.original_name)
+      .map((r) => `${r.original_name}_${r.original_size != null ? r.original_size : ''}`);
+    res.json({ existSignList });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 

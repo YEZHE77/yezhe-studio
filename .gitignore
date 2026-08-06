@@ -16,3 +16,6 @@ server/.env
 # 日志
 *.log
 .DS_Store
+
+# 本地保活工作流（仅本地运行，绝不入库提交）
+.github/workflows/keepalive.yml
