@@ -15,7 +15,7 @@ page { background: #f9f8f6; }
 /* ===== 品牌简介（扁平紧凑，无大卡片） ===== */
 .brand {
   text-align: center;
-  padding: 18rpx 32rpx 10rpx;
+  padding: 14rpx 32rpx 6rpx;
   background: transparent;
 }
 .brand-logo {
@@ -25,20 +25,27 @@ page { background: #f9f8f6; }
 }
 .brand-logo image { width: 100%; height: 100%; }
 .brand-name {
-  margin-top: 18rpx; font-size: 40rpx; font-weight: 600;
+  margin-top: 14rpx; font-size: 40rpx; font-weight: 600;
   color: #2c2c2c; letter-spacing: 4rpx;
 }
+.brand-address {
+  margin-top: 10rpx; font-size: 24rpx; color: #999;
+  display: flex; align-items: center; justify-content: center;
+  line-height: 1.4;
+}
+.addr-icon { margin-right: 6rpx; font-size: 22rpx; }
 .brand-slogan {
-  margin-top: 12rpx; font-size: 24rpx;
-  line-height: 1.6; color: #888;
+  margin-top: 10rpx; font-size: 24rpx;
+  line-height: 1.5; color: #888;
+  padding: 0 40rpx;
 }
 .brand-actions {
-  margin-top: 24rpx; display: flex; justify-content: center; gap: 20rpx;
+  margin-top: 22rpx; display: flex; justify-content: center; gap: 20rpx;
 }
 .brand-actions .btn {
-  min-width: 180rpx; height: 64rpx; line-height: 64rpx;
-  font-size: 24rpx; border-radius: 6rpx; text-align: center;
-  padding: 0 24rpx; margin: 0;
+  min-width: 200rpx; height: 68rpx; line-height: 68rpx;
+  font-size: 26rpx; border-radius: 8rpx; text-align: center;
+  padding: 0 28rpx; margin: 0;
 }
 .btn::after { border: none; }
 .btn-primary {
@@ -48,7 +55,7 @@ page { background: #f9f8f6; }
   background: #fff; color: #7ecdbb; border: 2rpx solid #7ecdbb;
 }
 .brand-more {
-  margin-top: 18rpx; text-align: center;
+  margin-top: 14rpx; text-align: center;
   font-size: 24rpx; color: #7ecdbb;
 }
 
@@ -135,24 +142,39 @@ page { background: #f9f8f6; }
 .fab-group {
   position: fixed;
   right: 24rpx;
-  bottom: 180rpx;
+  bottom: 50%;
+  transform: translateY(50%);
   z-index: 90;
   display: flex;
   flex-direction: column;
-  gap: 20rpx;
+  gap: 24rpx;
 }
 .fab {
   width: 96rpx;
   height: 96rpx;
   border-radius: 50%;
-  background: #111111;
-  color: #fff;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 4rpx 20rpx rgba(0,0,0,0.18);
+  box-shadow: 0 6rpx 22rpx rgba(0,0,0,0.16);
+}
+.fab::after { border: none; }
+.fab-white {
+  background: #fff;
+  color: #2c2c2c;
+}
+.fab-primary {
+  background: #7ecdbb;
+  color: #fff;
+}
+.fab-icon {
+  font-size: 30rpx;
+  line-height: 1;
+  margin-bottom: 4rpx;
 }
 .fab-text {
-  font-size: 22rpx;
+  font-size: 20rpx;
   font-weight: 500;
+  line-height: 1;
 }

@@ -9,20 +9,26 @@ Page({
     // 自定义顶栏高度
     statusBarHeight: 20,
     navHeight: 44,
-    // 视图：grid 两列网格 / flow 流式大图
-    view: 'grid',
+    // 视图：flow 纵向长图流式（默认） / grid 缩略图网格
+    view: 'flow',
+    // 滚动位置记忆
+    scrollTop: 0,
     // 相册内容
     title: '',
     category: '',
     albumCopy: '',
     cover: '',
-    photos: [], // [{ url, thumb, preview }]
+    photos: [], // [{ id, url, thumb, preview }]
+    brand: { name: '', slogan: '', logo: '' },
+    // 播放状态
+    playing: false,
+    playTimer: null,
     // 相册密码锁
     locked: false,
     pw: '',
     pwErr: '',
     pwBusy: false,
-    canShare: true // 锁定时置灰分享按钮
+    canInteract: true // 锁定时置灰分享、视图切换、播放、投屏
   },
   _tasks: [],
 
@@ -30,7 +36,8 @@ Page({
     const sys = wx.getSystemInfoSync();
     const statusBarHeight = sys.statusBarHeight || 20;
     const navHeight = 44;
-    this.setData({ statusBarHeight, navHeight });
+    const shareTop = statusBarHeight + navHeight + 12;
+    this.setData({ statusBarHeight, navHeight, shareTop });
 
     const id = options && options.id ? Number(options.id) : 0;
     if (!id) {
@@ -45,10 +52,13 @@ Page({
   onUnload() {
     this._tasks.forEach((t) => { try { t.abort(); } catch (e) {} });
     this._tasks = [];
+    this.stopPlay();
     this.setData({ photos: [] });
   },
 
-  // 转发分享（右下角悬浮按钮触发）
+  onHide() { this.stopPlay(); },
+
+  // 转发分享（封面右上悬浮胶囊按钮触发）
   onShareAppMessage() {
     const d = this.data;
     return {
@@ -73,8 +83,8 @@ Page({
       this._tasks = this._tasks.filter((x) => x !== t.abort);
 
       if (r.locked && r.albumLock) {
-        // 相册已开启密码：全屏密码校验，分享按钮置灰
-        this.setData({ loading: false, locked: true, canShare: false });
+        // 相册已开启密码：全屏密码校验，所有交互置灰
+        this.setData({ loading: false, locked: true, canInteract: false });
         return;
       }
       if (!r.gallery) {
@@ -100,12 +110,17 @@ Page({
     this.setData({
       loading: false,
       locked: false,
-      canShare: true,
+      canInteract: true,
       title: g.title || '',
       category: g.category || g.subtitle || '',
       albumCopy: g.albumCopy || '',
-      cover: getImageUrl(g.cover_url || '', 'thumb'),
-      photos
+      cover: getImageUrl(g.cover_url || (g.photos && g.photos[0]) || '', 'preview'),
+      photos,
+      brand: {
+        name: g.brand_name || '',
+        slogan: g.brand_slogan || '',
+        logo: g.brand_logo || ''
+      }
     });
   },
 
@@ -113,19 +128,72 @@ Page({
     if (this.data.id) this.loadAlbum(this.data.id);
   },
 
+  // 切换视图并尽量保留滚动位置
   setView(e) {
-    this.setData({ view: e.currentTarget.dataset.v });
+    if (!this.data.canInteract) return;
+    const view = e.currentTarget.dataset.v;
+    if (view === this.data.view) return;
+    // 记录当前滚动位置
+    const query = wx.createSelectorQuery().in(this);
+    query.select('.content').scrollOffset();
+    query.exec((res) => {
+      const offset = (res && res[0]) ? res[0].scrollTop : 0;
+      this._lastScrollTop = offset;
+      this.setData({ view, scrollTop: this._lastScrollTop || 0 }, () => {
+        // DOM 更新后恢复滚动位置（取近似值）
+        setTimeout(() => {
+          this.setData({ scrollTop: this._lastScrollTop || 0 });
+        }, 50);
+      });
+    });
   },
 
   goBack() { wx.navigateBack(); },
 
-  // 点击图片：原生大图查看（支持左右滑动）
+  // 点击网格缩略图：直接打开对应大图并定位
   previewImage(e) {
+    if (!this.data.canInteract) return;
     const idx = e.currentTarget.dataset.idx;
     const urls = this.data.photos.map((p) => p.preview || p.url).filter(Boolean);
     const current = (this.data.photos[idx] && (this.data.photos[idx].preview || this.data.photos[idx].url)) || urls[0];
     if (current && urls.length) wx.previewImage({ current, urls });
   },
+
+  // 幻灯片播放：自动向下滚动
+  togglePlay() {
+    if (!this.data.canInteract || !this.data.photos.length) return;
+    if (this.data.playing) {
+      this.stopPlay();
+      return;
+    }
+    this.setData({ playing: true });
+    this._playTimer = setInterval(() => {
+      const query = wx.createSelectorQuery().in(this);
+      query.select('.content').scrollOffset();
+      query.select('.content').boundingClientRect();
+      query.exec((res) => {
+        if (!res || !res[0] || !res[1]) return;
+        const offset = res[0].scrollTop;
+        const viewH = res[1].height;
+        const next = offset + viewH * 0.88;
+        this.setData({ scrollTop: next });
+      });
+    }, 2200);
+  },
+
+  stopPlay() {
+    if (this._playTimer) { clearInterval(this._playTimer); this._playTimer = null; }
+    this.setData({ playing: false });
+  },
+
+  // 投屏提示
+  cast() {
+    if (!this.data.canInteract) return;
+    wx.showToast({ title: '请下拉控制中心 → 屏幕镜像到电视', icon: 'none', duration: 2800 });
+  },
+
+  // 预约服务
+  goAppointment() { wx.navigateTo({ url: '/pages/schedule/schedule' }); },
 
   onPwInput(e) { this.setData({ pw: e.detail.value, pwErr: '' }); },
 

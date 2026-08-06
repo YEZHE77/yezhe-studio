@@ -97,11 +97,22 @@ export function debounce(fn, delay = 300) {
 }
 
 // 图片地址补全（本地 /uploads 在开发期由代理处理；生产需拼 Render 地址）
-export function img(url) {
+// 支持 mode 取压缩版本：thumb ?w=420 / preview ?w=1080（仅 R2 Worker 代理域名）
+export function img(url, mode) {
   if (!url) return '';
-  if (url.startsWith('http')) return url;
-  if (url.startsWith('/uploads')) return BASE + url;
-  return url;
+  let src = url;
+  if (src.startsWith('/uploads')) src = BASE + src;
+  if (!src.startsWith('http')) return src;
+  if (!mode) return src;
+  try {
+    const u = new URL(src);
+    u.searchParams.delete('w');
+    if (mode === 'thumb') u.searchParams.set('w', '420');
+    else if (mode === 'preview') u.searchParams.set('w', '1080');
+    return u.toString();
+  } catch (e) {
+    return src;
+  }
 }
 
 // 获取缩略图 URL（支持 CDN 裁剪参数，Worker 支持后生效）

@@ -19,9 +19,13 @@
       <image src="{{studio.logo}}" mode="aspectFill" />
     </view>
     <view class="brand-name">{{studio.name || '叶哲 STUDIO'}}</view>
+    <view class="brand-address" wx:if="{{studio.address}}">
+      <text class="addr-icon">📍</text>
+      <text>{{studio.address}}</text>
+    </view>
     <view class="brand-slogan">{{studio.intro || '拍摄有温度的照片，记录平凡生活中的美好。'}}</view>
     <view class="brand-actions">
-      <button class="btn btn-primary" open-type="contact">联系我们</button>
+      <button class="btn btn-primary" bindtap="goAppointment">预约咨询</button>
       <button class="btn btn-outline" bindtap="copyWechat">+ 关注</button>
     </view>
     <view class="brand-more" bindtap="goAbout">查看品牌故事 ></view>
@@ -81,13 +85,16 @@
 
   <!-- 右侧固定悬浮按钮 -->
   <view class="fab-group">
-    <view class="fab" bindtap="copyWechat">
+    <view class="fab fab-white" bindtap="copyWechat">
+      <text class="fab-icon">♡</text>
       <text class="fab-text">关注</text>
     </view>
-    <view class="fab" bindtap="goAppointment">
+    <view class="fab fab-primary" bindtap="goAppointment">
+      <text class="fab-icon">✉</text>
       <text class="fab-text">预约</text>
     </view>
-    <view class="fab" bindtap="goMy">
+    <view class="fab fab-white" bindtap="goMy">
+      <text class="fab-icon">☺</text>
       <text class="fab-text">我的</text>
     </view>
   </view>

@@ -98,8 +98,10 @@ export default function GalleryAlbum({ gallery, startIndex = 0, onClose }) {
         <div className="text-center flex-1">
           <div className="text-sm font-medium truncate">{subtitle || title}</div>
         </div>
-        <button onClick={share}
-          className="w-9 h-9 rounded-full bg-black/30 flex items-center justify-center text-white/90 text-base">↗</button>
+        {!onClose && (
+          <button onClick={share}
+            className="w-9 h-9 rounded-full bg-black/30 flex items-center justify-center text-white/90 text-base">↗</button>
+        )}
       </div>
 
       {/* 沉浸式上下滑动照片 */}
@@ -111,7 +113,7 @@ export default function GalleryAlbum({ gallery, startIndex = 0, onClose }) {
         )}
         {photos.map((p, i) => (
           <div key={i} className="h-screen w-full snap-start flex items-center justify-center bg-black relative">
-            <img src={img(p)} alt="" className="max-w-full max-h-full object-contain" loading={i <= 1 ? 'eager' : 'lazy'} />
+            <img src={img(p, 'preview')} alt="" className="max-w-full max-h-full object-contain" loading={i <= 1 ? 'eager' : 'lazy'} />
             {/* 首屏叠加：新人名字 + 分类 + 自定义文案模块 */}
             {i === 0 && (title || category || copy) && (
               <div className="absolute inset-x-0 bottom-0 px-6 pb-28 pt-24 bg-gradient-to-t from-black/80 via-black/20 to-transparent text-center">
@@ -168,11 +170,13 @@ export default function GalleryAlbum({ gallery, startIndex = 0, onClose }) {
         </div>
       </div>
 
-      {/* 右下角常驻悬浮分享按钮（H5 点击弹窗，复制相册链接兜底） */}
-      <button onClick={() => setShowShare(true)}
-        className="fixed bottom-28 right-4 z-50 flex items-center justify-center px-6 h-11 rounded-full bg-white text-neutral-900 text-sm font-semibold shadow-lg">
-        分享
-      </button>
+      {/* 右下角常驻悬浮分享按钮（H5 点击弹窗，复制相册链接兜底）；overlay 模式已在外层提供分享入口，故隐藏 */}
+      {!onClose && (
+        <button onClick={() => setShowShare(true)}
+          className="fixed bottom-28 right-4 z-50 flex items-center justify-center px-6 h-11 rounded-full bg-white text-neutral-900 text-sm font-semibold shadow-lg">
+          分享
+        </button>
+      )}
 
       {/* 分享弹窗：复制相册链接 */}
       {showShare && (

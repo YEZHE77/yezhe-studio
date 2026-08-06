@@ -1,12 +1,16 @@
 <view class="page">
-  <!-- 自定义顶部栏：返回 + 标题 + 网格/大图切换 -->
+  <!-- 自定义顶部栏：返回 + 标题 + 播放/投屏 -->
   <view class="topbar" style="padding-top: {{statusBarHeight}}px;">
     <view class="tb-bar" style="height: {{navHeight}}px;">
       <view class="tb-back" bindtap="goBack">‹</view>
       <view class="tb-title">{{title || '作品相册'}}</view>
-      <view class="tb-toggle">
-        <view class="seg {{view==='grid' ? 'on' : ''}}" data-v="grid" bindtap="setView">网格</view>
-        <view class="seg {{view==='flow' ? 'on' : ''}}" data-v="flow" bindtap="setView">大图</view>
+      <view class="tb-actions">
+        <view class="tb-icon {{canInteract ? '' : 'disabled'}}" bindtap="togglePlay">
+          <text class="tb-icon-symbol">{{playing ? '⏸' : '▶'}}</text>
+        </view>
+        <view class="tb-icon {{canInteract ? '' : 'disabled'}}" bindtap="cast">
+          <text class="tb-icon-symbol">⍟</text>
+        </view>
       </view>
     </view>
   </view>
@@ -14,8 +18,13 @@
 
   <!-- 骨架屏 -->
   <view wx:if="{{loading}}" class="sk-wrap">
-    <view class="sk-grid">
-      <view wx:for="{{[1,2,3,4]}}" wx:key="*this" class="sk-img sk-shimmer"></view>
+    <view class="sk-cover sk-shimmer"></view>
+    <view class="sk-info">
+      <view class="sk-line sk-shimmer" style="width: 50%;"></view>
+      <view class="sk-line sk-shimmer" style="width: 30%; margin-top: 16rpx;"></view>
+    </view>
+    <view class="sk-flow">
+      <view wx:for="{{[1,2,3]}}" wx:key="*this" class="sk-img sk-shimmer"></view>
     </view>
   </view>
 
@@ -28,31 +37,75 @@
 
   <block wx:else>
     <!-- 相册内容（未锁定时展示） -->
-    <scroll-view wx:if="{{!locked}}" scroll-y class="content">
-      <!-- 自定义相册文案模块 -->
-      <view wx:if="{{albumCopy}}" class="album-copy">{{albumCopy}}</view>
-
-      <!-- 两列网格视图 -->
-      <view wx:if="{{view==='grid'}}" class="photo-grid">
-        <view class="photo-item" wx:for="{{photos}}" wx:key="id" wx:for-index="idx" bindtap="previewImage" data-idx="{{idx}}">
-          <image class="photo" src="{{item.thumb}}" mode="aspectFill" lazy-load />
-        </view>
+    <block wx:if="{{!locked}}">
+      <!-- 封面图 + 右上悬浮分享胶囊 -->
+      <view class="cover-wrap">
+        <image class="cover-img" src="{{cover}}" mode="aspectFill" lazy-load />
+        <button wx:if="{{canInteract}}" class="share-capsule" style="top: {{shareTop}}px;" open-type="share">分享</button>
+        <view wx:else class="share-capsule disabled" style="top: {{shareTop}}px;">分享</view>
       </view>
 
-      <!-- 流式大图视图 -->
-      <view wx:else class="photo-flow">
-        <view class="flow-item" wx:for="{{photos}}" wx:key="id" wx:for-index="idx" bindtap="previewImage" data-idx="{{idx}}">
-          <image class="flow-img" src="{{item.preview}}" mode="widthFix" lazy-load />
+      <!-- 相册信息区 -->
+      <view class="info-wrap">
+        <view class="info-head">
+          <view class="info-title">{{title || '作品相册'}}</view>
+          <view class="view-toggle {{canInteract ? '' : 'disabled'}}">
+            <view class="vt-item {{view==='flow' ? 'on' : ''}}" data-v="flow" bindtap="setView">
+              <text class="vt-icon vt-flow">≡</text>
+            </view>
+            <view class="vt-item {{view==='grid' ? 'on' : ''}}" data-v="grid" bindtap="setView">
+              <text class="vt-icon vt-grid">▦</text>
+            </view>
+          </view>
         </view>
+        <view wx:if="{{category}}" class="info-tag">{{category}}</view>
+        <view wx:if="{{albumCopy}}" class="info-copy">{{albumCopy}}</view>
       </view>
 
-      <view wx:if="{{!photos.length}}" class="empty-text">暂无照片</view>
-      <view class="safe-bottom"></view>
-    </scroll-view>
+      <!-- 照片内容：流式/网格 -->
+      <scroll-view scroll-y class="content" scroll-top="{{scrollTop}}" scroll-with-animation="{{playing}}">
+        <!-- 纵向长图流式模式（默认） -->
+        <view wx:if="{{view==='flow'}}" class="photo-flow">
+          <view class="flow-item" wx:for="{{photos}}" wx:key="id" wx:for-index="idx" bindtap="previewImage" data-idx="{{idx}}">
+            <image class="flow-img" src="{{item.preview}}" mode="widthFix" lazy-load />
+          </view>
+        </view>
 
-    <!-- 右下角常驻悬浮青绿色【分享】按钮（锁定态置灰不可点击） -->
-    <button wx:if="{{!locked && canShare}}" class="float-share" open-type="share">分享</button>
-    <view wx:elif="{{!locked}}" class="float-share disabled">分享</view>
+        <!-- 缩略图网格模式 -->
+        <view wx:else class="photo-grid">
+          <view class="photo-item" wx:for="{{photos}}" wx:key="id" wx:for-index="idx" bindtap="previewImage" data-idx="{{idx}}">
+            <image class="photo" src="{{item.thumb}}" mode="aspectFill" lazy-load />
+          </view>
+        </view>
+
+        <view wx:if="{{!photos.length}}" class="empty-text">暂无照片</view>
+        <view class="safe-bottom"></view>
+      </scroll-view>
+
+      <!-- 底部品牌工具栏 -->
+      <view class="brand-bar">
+        <view class="brand-left">
+          <image wx:if="{{brand.logo}}" class="brand-logo" src="{{brand.logo}}" mode="aspectFill" />
+          <view class="brand-text">
+            <view class="brand-name">{{brand.name || 'YEZHE WORKSHOP'}}</view>
+            <view class="brand-slogan">{{brand.slogan || '记录时光中的最美瞬间'}}</view>
+          </view>
+        </view>
+        <view class="brand-tools">
+          <view class="tool {{canInteract ? '' : 'disabled'}}" bindtap="togglePlay">
+            <text class="tool-icon">{{playing ? '⏸' : '▶'}}</text>
+            <text class="tool-label">{{playing ? '暂停' : '播放'}}</text>
+          </view>
+          <view class="tool {{canInteract ? '' : 'disabled'}}" bindtap="cast">
+            <text class="tool-icon">⍟</text>
+            <text class="tool-label">投屏</text>
+          </view>
+          <view class="tool tool-primary" bindtap="goAppointment">
+            <text class="tool-label">预约服务</text>
+          </view>
+        </view>
+      </view>
+    </block>
   </block>
 
   <!-- 相册密码锁：全屏校验 -->
