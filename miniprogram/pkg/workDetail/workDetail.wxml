@@ -96,6 +96,10 @@
             <text class="tool-icon">{{playing ? '⏸' : '▶'}}</text>
             <text class="tool-label">{{playing ? '暂停' : '播放'}}</text>
           </view>
+          <view class="tool {{canInteract ? '' : 'disabled'}}" bindtap="toggleMusic">
+            <text class="tool-icon">{{musicOn ? '🔔' : '🔕'}}</text>
+            <text class="tool-label">{{musicOn ? '音乐' : '静音'}}</text>
+          </view>
           <view class="tool {{canInteract ? '' : 'disabled'}}" bindtap="cast">
             <text class="tool-icon">⍟</text>
             <text class="tool-label">投屏</text>

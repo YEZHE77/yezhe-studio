@@ -1,22 +1,51 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { img } from '../api.js';
 import GalleryAlbum from './GalleryAlbum.jsx';
 
+const TEAL = '#7ecdbb';
+// 背景音乐占位（静音 WAV）。请替换为真实轻音乐 HTTPS URL，例如上传至 R2 后通过 Worker 代理的地址。
+const BGM_URL = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQQAAAAAAA==';
+
 // 客片电子相册（纵向长图流式 / 缩略图网格 双视图）—— 与小程序「相册详情页」UI/交互保持一致
-// 封面右上悬浮青绿色胶囊「分享」；标题栏右侧视图切换；底部品牌工具栏（播放/投屏/预约服务）
-export default function AlbumGrid({ gallery }) {
+// 封面右上悬浮青绿色「分享」按钮；标题栏右侧视图切换；底部品牌工具栏（播放/音乐/投屏/预约服务）
+export default function AlbumGrid({ gallery, onBack }) {
   const { title, subtitle, category, albumCopy, cover_url, photos = [], brand_name, brand_slogan, brand_logo } = gallery;
   const [view, setView] = useState('flow'); // flow 纵向长图（默认） | grid 缩略网格
   const [full, setFull] = useState(-1);     // >=0 打开全屏查看的起始索引
   const [toast, setToast] = useState('');
   const [playing, setPlaying] = useState(false);
+  const [musicOn, setMusicOn] = useState(true);
   const playTimerRef = useRef(null);
+  const audioRef = useRef(null);
 
   useEffect(() => {
-    if (!toast) return;
+    if (toast) return;
     const t = setTimeout(() => setToast(''), 2200);
     return () => clearTimeout(t);
   }, [toast]);
+
+  // 初始化背景音乐（仅客户端）
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const audio = new Audio(BGM_URL);
+    audio.loop = true;
+    audioRef.current = audio;
+    return () => {
+      audio.pause();
+      audio.src = '';
+    };
+  }, []);
+
+  // 幻灯片播放状态变化时同步背景音乐
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    if (playing && musicOn) {
+      audio.play().catch(() => {});
+    } else {
+      audio.pause();
+    }
+  }, [playing, musicOn]);
 
   // 幻灯片播放：自动向下滚动
   useEffect(() => {
@@ -33,7 +62,19 @@ export default function AlbumGrid({ gallery }) {
     return () => { if (playTimerRef.current) clearInterval(playTimerRef.current); };
   }, [playing, photos.length]);
 
+  // 退出页面：停止播放与音乐
+  useEffect(() => {
+    return () => {
+      if (playTimerRef.current) { clearInterval(playTimerRef.current); playTimerRef.current = null; }
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.currentTime = 0;
+      }
+    };
+  }, []);
+
   const goBack = () => {
+    if (onBack) { onBack(); return; }
     if (window.history.length > 1) window.history.back();
     else window.location.href = window.location.origin + '/';
   };
@@ -55,12 +96,19 @@ export default function AlbumGrid({ gallery }) {
     window.location.href = window.location.origin + '/schedule';
   };
 
+  const toggleMusic = () => {
+    setMusicOn((v) => !v);
+  };
+
+  const togglePlay = () => {
+    setPlaying((v) => !v);
+  };
+
   // 切换视图并尽量保留滚动位置（整页滚动，用 window.scrollY）
   const switchView = (v) => {
     if (v === view) return;
     const lastTop = typeof window !== 'undefined' ? window.scrollY : 0;
     setView(v);
-    // DOM 更新后恢复近似滚动位置
     requestAnimationFrame(() => {
       setTimeout(() => {
         if (typeof window !== 'undefined') window.scrollTo({ top: lastTop, behavior: 'auto' });
@@ -77,7 +125,7 @@ export default function AlbumGrid({ gallery }) {
         <button onClick={goBack} className="w-10 h-10 flex items-center justify-center text-3xl leading-none">‹</button>
         <div className="flex-1 text-center text-sm font-medium truncate px-2">{title || subtitle || '作品相册'}</div>
         <div className="flex items-center gap-1">
-          <button onClick={() => setPlaying(!playing)} className="w-10 h-10 flex items-center justify-center text-lg leading-none">
+          <button onClick={togglePlay} className="w-10 h-10 flex items-center justify-center text-lg leading-none">
             {playing ? '⏸' : '▶'}
           </button>
           <button onClick={castScreen} className="w-10 h-10 flex items-center justify-center text-lg leading-none">⍟</button>
@@ -85,11 +133,12 @@ export default function AlbumGrid({ gallery }) {
       </div>
       <div className="h-14" />
 
-      {/* 封面图 + 右上悬浮分享胶囊 */}
+      {/* 封面图 + 右上悬浮分享按钮（适中圆角，青绿底白字） */}
       <div className="relative w-full h-[65vw] max-h-[520px] bg-neutral-200">
         {cover && <img src={img(cover)} alt="" className="w-full h-full object-cover" />}
         <button onClick={copyLink}
-          className="fixed top-20 right-4 z-40 h-9 px-6 rounded-full bg-brand text-white text-sm font-medium shadow-lg active:opacity-90">
+          className="fixed top-[72px] right-4 z-40 h-8 px-4 rounded-lg text-white text-sm font-medium shadow-lg active:opacity-90"
+          style={{ background: TEAL }}>
           分享
         </button>
       </div>
@@ -113,19 +162,19 @@ export default function AlbumGrid({ gallery }) {
         {albumCopy && <div className="mt-3 text-sm leading-7 text-neutral-600 whitespace-pre-line">{albumCopy}</div>}
       </div>
 
-      {/* 照片内容：流式 / 网格 */}
+      {/* 照片内容：流式 / 网格（上下增加白色呼吸间距） */}
       <div>
         {view === 'flow' ? (
           <div className="px-0">
             {photos.map((p, i) => (
               <button key={i} onClick={() => setFull(i)}
-                className="block w-full mb-2 bg-neutral-200 active:opacity-90">
+                className="block w-full mb-4 bg-neutral-200 active:opacity-90">
                 <img src={img(p)} alt="" className="w-full block" loading="lazy" />
               </button>
             ))}
           </div>
         ) : (
-          <div className="grid grid-cols-3 gap-1.5 px-2">
+          <div className="grid grid-cols-3 gap-2.5 px-2">
             {photos.map((p, i) => (
               <button key={i} onClick={() => setFull(i)}
                 className="block aspect-[3/4] overflow-hidden bg-neutral-200 active:opacity-90">
@@ -143,7 +192,7 @@ export default function AlbumGrid({ gallery }) {
           {brand_logo ? (
             <img src={img(brand_logo)} alt="" className="w-10 h-10 rounded-full object-cover bg-white shrink-0" />
           ) : (
-            <div className="w-10 h-10 rounded-full bg-brand flex items-center justify-center text-white text-xs font-semibold shrink-0">YE</div>
+            <div className="w-10 h-10 rounded-full flex items-center justify-center text-white text-xs font-semibold shrink-0" style={{ background: TEAL }}>YE</div>
           )}
           <div className="ml-3 min-w-0">
             <div className="text-sm font-medium text-white truncate">{brand_name || 'YEZHE WORKSHOP'}</div>
@@ -151,16 +200,21 @@ export default function AlbumGrid({ gallery }) {
           </div>
         </div>
         <div className="flex items-center gap-4 shrink-0">
-          <button onClick={() => setPlaying(!playing)} className="flex flex-col items-center text-white/90 min-w-[48px]">
+          <button onClick={togglePlay} className="flex flex-col items-center text-white/90 min-w-[48px]">
             <span className="text-lg leading-none">{playing ? '⏸' : '▶'}</span>
             <span className="text-[10px] mt-0.5">{playing ? '暂停' : '播放'}</span>
+          </button>
+          <button onClick={toggleMusic} className="flex flex-col items-center min-w-[48px]" style={{ color: musicOn ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.45)' }}>
+            <span className="text-lg leading-none">{musicOn ? '🔔' : '🔕'}</span>
+            <span className="text-[10px] mt-0.5">{musicOn ? '音乐' : '静音'}</span>
           </button>
           <button onClick={castScreen} className="flex flex-col items-center text-white/90 min-w-[48px]">
             <span className="text-lg leading-none">⍟</span>
             <span className="text-[10px] mt-0.5">投屏</span>
           </button>
           <button onClick={goAppointment}
-            className="h-9 px-4 rounded-md bg-brand text-white text-sm font-medium active:opacity-90">
+            className="h-9 px-4 rounded-md text-white text-sm font-medium active:opacity-90"
+            style={{ background: TEAL }}>
             预约服务
           </button>
         </div>

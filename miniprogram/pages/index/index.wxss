@@ -142,8 +142,7 @@ page { background: #f9f8f6; }
 .fab-group {
   position: fixed;
   right: 24rpx;
-  bottom: 50%;
-  transform: translateY(50%);
+  bottom: 240rpx;
   z-index: 90;
   display: flex;
   flex-direction: column;

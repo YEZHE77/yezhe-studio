@@ -1,6 +1,9 @@
 const { requestTask } = require('../../utils/req.js');
 const { getImageUrl } = require('../../utils/imageUrl.js');
 
+// 背景音乐占位（静音 WAV）。请替换为真实轻音乐 HTTPS URL，例如上传至 R2 后通过 Worker 代理的地址。
+const BGM_URL = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQQAAAAAAA==';
+
 Page({
   data: {
     id: null,
@@ -23,6 +26,8 @@ Page({
     // 播放状态
     playing: false,
     playTimer: null,
+    // 背景音乐开关
+    musicOn: true,
     // 相册密码锁
     locked: false,
     pw: '',
@@ -31,13 +36,20 @@ Page({
     canInteract: true // 锁定时置灰分享、视图切换、播放、投屏
   },
   _tasks: [],
+  innerAudioContext: null,
 
   onLoad(options) {
     const sys = wx.getSystemInfoSync();
     const statusBarHeight = sys.statusBarHeight || 20;
     const navHeight = 44;
-    const shareTop = statusBarHeight + navHeight + 12;
+    const shareTop = statusBarHeight + navHeight + 8;
     this.setData({ statusBarHeight, navHeight, shareTop });
+
+    // 初始化背景音乐
+    const audio = wx.createInnerAudioContext();
+    audio.src = BGM_URL;
+    audio.loop = true;
+    this.innerAudioContext = audio;
 
     const id = options && options.id ? Number(options.id) : 0;
     if (!id) {
@@ -53,10 +65,18 @@ Page({
     this._tasks.forEach((t) => { try { t.abort(); } catch (e) {} });
     this._tasks = [];
     this.stopPlay();
+    if (this.innerAudioContext) {
+      this.innerAudioContext.stop();
+      this.innerAudioContext.destroy();
+      this.innerAudioContext = null;
+    }
     this.setData({ photos: [] });
   },
 
-  onHide() { this.stopPlay(); },
+  onHide() {
+    this.stopPlay();
+    if (this.innerAudioContext) this.innerAudioContext.pause();
+  },
 
   // 转发分享（封面右上悬浮胶囊按钮触发）
   onShareAppMessage() {
@@ -159,7 +179,7 @@ Page({
     if (current && urls.length) wx.previewImage({ current, urls });
   },
 
-  // 幻灯片播放：自动向下滚动
+  // 幻灯片播放：自动向下滚动，同步背景音乐
   togglePlay() {
     if (!this.data.canInteract || !this.data.photos.length) return;
     if (this.data.playing) {
@@ -167,6 +187,7 @@ Page({
       return;
     }
     this.setData({ playing: true });
+    if (this.data.musicOn && this.innerAudioContext) this.innerAudioContext.play();
     this._playTimer = setInterval(() => {
       const query = wx.createSelectorQuery().in(this);
       query.select('.content').scrollOffset();
@@ -184,6 +205,16 @@ Page({
   stopPlay() {
     if (this._playTimer) { clearInterval(this._playTimer); this._playTimer = null; }
     this.setData({ playing: false });
+    if (this.innerAudioContext) this.innerAudioContext.pause();
+  },
+
+  // 背景音乐开关
+  toggleMusic() {
+    const musicOn = !this.data.musicOn;
+    this.setData({ musicOn });
+    if (!this.innerAudioContext) return;
+    if (musicOn && this.data.playing) this.innerAudioContext.play();
+    else this.innerAudioContext.pause();
   },
 
   // 投屏提示
