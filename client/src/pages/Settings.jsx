@@ -250,7 +250,7 @@ export default function Settings() {
               </button>
               <input ref={heroRef} type="file" accept="image/*" multiple className="hidden" onChange={(e) => addHeroFiles(e.target.files)} />
             </div>
-            <p className="text-xs text-muted mt-2">支持一次选多张；从左到右的顺序即为小程序首页轮播顺序；第一张建议为品牌主视觉。删除：鼠标移到图片上点右上角 ×。</p>
+            <p className="text-xs text-muted mt-2">建议上传 4:3 比例照片；支持一次选多张；从左到右的顺序即为小程序首页轮播顺序；第一张建议为品牌主视觉。删除：鼠标移到图片上点右上角 ×。</p>
           </Field>
         </div>
 

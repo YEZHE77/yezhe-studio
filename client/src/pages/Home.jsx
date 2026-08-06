@@ -7,9 +7,10 @@ const PAGE_BG = '#f9f8f6'; // 与小程序首页底色一致
 
 // 扁平风格 H5 客户首页 —— 结构与小程序 pages/index 完全一致
 // 改动点（按需求）：
-//  ① 品牌「查看品牌故事」到「作品展示」标题之间固定 80rpx(40px) 垂直外边距，仅露底色
+//  ① 分割线 →「作品展示」标题固定 100rpx(50px) 垂直外边距，仅露底色
 //  ② 删除 GALLERY，作品展示下方居中新增浅灰小字 Works Exhibition
 //  ③ 右下角悬浮按钮组 right:12px(24rpx) / bottom:50px(100rpx) / 间距12px(24rpx)
+//  ④「查看品牌故事」相对按钮下移 20rpx(10px)
 export default function Home() {
   const nav = useNavigate();
   const [studio, setStudio] = useState({ name: '', logo: '', intro: '', contact: {} });
@@ -150,7 +151,7 @@ export default function Home() {
             + 关注
           </button>
         </div>
-        <div className="mb-8 mt-3 cursor-pointer text-sm" style={{ color: TEAL }} onClick={() => setStoryOpen(true)}>
+        <div className="mb-8 mt-[22px] cursor-pointer text-sm" style={{ color: TEAL }} onClick={() => setStoryOpen(true)}>
           查看品牌故事 &gt;
         </div>
       </div>
@@ -158,8 +159,8 @@ export default function Home() {
       {/* 资料区块结束后的浅灰色分割线（高度 8rpx=4px，通栏） */}
       <div className="h-1 w-full bg-gray-100" />
 
-      {/* 作品展示 —— 与上方品牌故事之间固定 80rpx(40px) 垂直外边距，仅露底色 */}
-      <div id="gallery-section" className="mt-10 px-8">
+      {/* 作品展示 —— 与上方分割线之间固定 100rpx(50px) 垂直外边距，仅露底色 */}
+      <div id="gallery-section" className="mt-[50px] px-8">
         <div className="text-center text-2xl font-semibold tracking-[4px]">作品展示</div>
         <div className="mt-1 text-center text-xs tracking-[2px] text-gray-400">Works Exhibition</div>
 
