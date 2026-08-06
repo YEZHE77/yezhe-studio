@@ -63,21 +63,27 @@
 .cover-wrap { position: relative; width: 100%; height: 520rpx; }
 .cover-img { width: 100%; height: 100%; display: block; }
 /* 分享按钮：fixed 悬浮在封面大图右上角（top:190rpx right:30rpx），胶囊 #70bcb0 */
+/* 分享按钮：靠右贴边异形长胶囊（左大圆角/右小圆角），薄荷青扁平，浮于封面中上 */
 .share-float-btn {
   position: fixed;
-  top: 190rpx;
-  right: 30rpx;
+  top: 240rpx;
+  right: 0rpx;
   z-index: 99;
-  width: 140rpx;
-  height: 70rpx;
-  line-height: 70rpx;
+  width: 320rpx;
+  height: 110rpx;
+  line-height: 110rpx;
   text-align: center;
-  background: #70bcb0;
+  background: #60c4aa;
   color: #ffffff;
-  font-size: 28rpx;
-  border-radius: 35rpx;
-  box-shadow: 0 2rpx 8rpx rgba(0,0,0,0.1);
+  font-size: 44rpx;
+  font-weight: bold;
+  border-top-left-radius: 55rpx;
+  border-bottom-left-radius: 55rpx;
+  border-top-right-radius: 12rpx;
+  border-bottom-right-radius: 12rpx;
+  transition: transform .12s ease;
 }
+.share-float-btn:active { transform: scale(0.97); }
 
 /* ===== 相册信息区 ===== */
 .info-wrap { padding: 28rpx 32rpx 20rpx; background: #f7f7f5; }

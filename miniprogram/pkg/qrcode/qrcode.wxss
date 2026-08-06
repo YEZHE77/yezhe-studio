@@ -1,0 +1,81 @@
+.page {
+  min-height: 100vh;
+  background: #f5f5f3;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0 40rpx;
+  box-sizing: border-box;
+}
+
+/* 半透明相册封面头部 */
+.header {
+  position: relative;
+  width: 100%;
+  height: 360rpx;
+  margin-top: 40rpx;
+  border-radius: 20rpx;
+  overflow: hidden;
+}
+.header-cover {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.header-mask {
+  position: absolute;
+  left: 0; top: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.45);
+}
+.header-info {
+  position: absolute;
+  left: 32rpx; right: 32rpx; bottom: 32rpx;
+}
+.h-title {
+  color: #fff;
+  font-size: 40rpx;
+  font-weight: bold;
+  text-shadow: 0 2rpx 8rpx rgba(0,0,0,0.4);
+}
+.h-sub {
+  margin-top: 12rpx;
+  color: rgba(255,255,255,0.85);
+  font-size: 26rpx;
+}
+
+/* 居中小程序码 */
+.qr-wrap {
+  margin-top: 56rpx;
+  width: 480rpx;
+  height: 480rpx;
+  background: #fff;
+  border-radius: 24rpx;
+  box-shadow: 0 8rpx 24rpx rgba(0,0,0,0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 30rpx;
+  box-sizing: border-box;
+}
+.qr-img { width: 100%; height: 100%; }
+.qr-loading { color: #999; font-size: 28rpx; text-align: center; }
+
+/* 黑色下载按钮 */
+.dl-btn {
+  margin-top: 56rpx;
+  width: 100%;
+  height: 96rpx;
+  line-height: 96rpx;
+  text-align: center;
+  background: #111111;
+  color: #fff;
+  font-size: 32rpx;
+  border-radius: 48rpx;
+  transition: transform .12s ease, opacity .12s ease;
+}
+.dl-btn-hover { opacity: 0.88; transform: scale(0.98); }
+.dl-btn-busy { opacity: 0.6; }
+
+/* 底部两行提示 */
+.tips { margin-top: 40rpx; text-align: center; }
+.tip-line { color: #999; font-size: 24rpx; line-height: 40rpx; }

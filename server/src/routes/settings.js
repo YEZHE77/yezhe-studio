@@ -41,12 +41,16 @@ router.get('/studio', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// 生成分享二维码（公开）：GET /api/qrcode?text=URL  → 返回 PNG dataURL
+// 生成分享二维码（公开）：GET /api/qrcode?text=URL 或 ?albumId=ID  → 返回 PNG dataURL
 // 二维码内容即当前相册详情访问地址，扫码直达 H5 相册页
 router.get('/qrcode', async (req, res) => {
   try {
-    const text = (req.query.text || '').toString();
-    if (!text) return res.status(400).json({ error: 'missing text' });
+    let text = (req.query.text || '').toString();
+    // 兼容小程序端：传 albumId 时由后端拼装相册 H5 地址
+    if (!text && req.query.albumId) {
+      text = 'https://yezhe-studio.pages.dev/w/' + req.query.albumId;
+    }
+    if (!text) return res.status(400).json({ error: 'missing text or albumId' });
     const dataUrl = await QRCode.toDataURL(text, { width: 480, margin: 2, color: { dark: '#1a1a1a', light: '#ffffff' } });
     res.json({ dataUrl });
   } catch (e) { res.status(500).json({ error: e.message }); }

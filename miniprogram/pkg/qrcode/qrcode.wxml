@@ -1,0 +1,27 @@
+<view class="page">
+  <!-- 半透明相册封面头部 -->
+  <view class="header">
+    <image wx:if="{{cover}}" class="header-cover" src="{{cover}}" mode="aspectFill" binderror="onImgError" />
+    <view class="header-mask"></view>
+    <view class="header-info">
+      <view class="h-title">{{title || '作品相册'}}</view>
+      <view wx:if="{{category}}" class="h-sub">{{category}}</view>
+    </view>
+  </view>
+
+  <!-- 居中小程序码 -->
+  <view class="qr-wrap">
+    <image wx:if="{{qrPath}}" class="qr-img" src="{{qrPath}}" mode="aspectFit" binderror="onImgError" />
+    <view wx:elif="{{qrLoading}}" class="qr-loading">二维码生成中…</view>
+    <view wx:else class="qr-loading">二维码加载失败</view>
+  </view>
+
+  <!-- 黑色下载按钮 -->
+  <view class="dl-btn {{saving ? 'dl-btn-busy' : ''}}" hover-class="dl-btn-hover" bindtap="onDownload">下载二维码</view>
+
+  <!-- 底部两行提示 -->
+  <view class="tips">
+    <view class="tip-line">长按或保存二维码，分享给好友</view>
+    <view class="tip-line">好友扫码即可查看本套作品相册</view>
+  </view>
+</view>

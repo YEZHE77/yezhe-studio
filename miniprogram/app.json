@@ -20,7 +20,8 @@
         "packageDetail/packageDetail",
         "about/about",
         "workDetail/workDetail",
-        "gallery/gallery"
+        "gallery/gallery",
+        "qrcode/qrcode"
       ]
     }
   ],

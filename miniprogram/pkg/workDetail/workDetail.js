@@ -187,29 +187,18 @@ Page({
     if (wx.showShareMenu) wx.showShareMenu({ withShareTicket: true });
   },
 
-  // 下载小程序码（二维码指向当前相册详情页）并保存到相册
-  async downloadAlbumQrcode() {
+  // 下载二维码：关闭弹窗，跳转二维码预览页（携带 albumId / 标题 / 封面 / 事件类型）
+  downloadAlbumQrcode() {
     this.closeShareSheet();
     if (!this.data.canInteract) return;
-    wx.showLoading({ title: '生成小程序码...' });
-    try {
-      const url = 'https://yezhe-studio.pages.dev/w/' + this.data.id;
-      const t = requestTask('/api/qrcode?text=' + encodeURIComponent(url));
-      this._tasks.push(t.abort);
-      const r = await t.promise;
-      this._tasks = this._tasks.filter((x) => x !== t.abort);
-      const dataUrl = (r && r.dataUrl) || '';
-      if (!dataUrl) throw new Error('empty');
-      const fs = wx.getFileSystemManager();
-      const filePath = wx.env.USER_DATA_PATH + '/work-qr-' + this.data.id + '.png';
-      await new Promise((res, rej) => fs.writeFile({ filePath, data: dataUrl.split(',')[1], encoding: 'base64', success: res, fail: rej }));
-      await new Promise((res, rej) => wx.saveImageToPhotosAlbum({ filePath, success: res, fail: rej }));
-      wx.showToast({ title: '小程序码已保存至相册', duration: 1800 });
-    } catch (e) {
-      wx.showToast({ title: '保存失败', icon: 'none' });
-    } finally {
-      wx.hideLoading();
-    }
+    const d = this.data;
+    const q = [
+      'id=' + d.id,
+      'title=' + encodeURIComponent(d.title || ''),
+      'cover=' + encodeURIComponent(d.cover || ''),
+      'category=' + encodeURIComponent(d.category || '')
+    ].join('&');
+    wx.navigateTo({ url: '/pkg/qrcode/qrcode?' + q });
   },
 
   // 点击网格缩略图：直接打开对应大图并定位
