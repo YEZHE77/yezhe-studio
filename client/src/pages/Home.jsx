@@ -24,6 +24,7 @@ export default function Home() {
   const [contactOpen, setContactOpen] = useState(false);
   const [storyOpen, setStoryOpen] = useState(false);
   const [toast, setToast] = useState('');
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   useEffect(() => {
     http.get('/api/settings/studio').then((r) => {
@@ -80,10 +81,37 @@ export default function Home() {
     if (p) window.location.href = 'tel:' + p;
   };
 
+  // 抽屉菜单：滚动到指定区块（H5 公共端无独立作品/套系页，作品/联系滚动到对应区块）
+  const scrollTo = (id) => {
+    setDrawerOpen(false);
+    const el = document.getElementById(id);
+    if (el) el.scrollIntoView({ behavior: 'smooth' });
+  };
+
   return (
     <div className="min-h-screen" style={{ background: PAGE_BG, color: '#2c2c2c' }}>
-      {/* 顶部轮播 Banner */}
-      <div className="w-full h-[300px] overflow-hidden">
+      {/* 顶部黑色自定义导航栏（对齐小程序；H5 无微信胶囊，汉堡贴右） */}
+      <div className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between h-14 px-4 bg-[#111111] text-white">
+        <div className="flex items-center min-w-0">
+          <svg className="w-5 h-4 mr-2 shrink-0" viewBox="0 0 24 20" fill="none" stroke="#fff" strokeWidth="2">
+            <rect x="1" y="4" width="22" height="14" rx="3" />
+            <path d="M8 1.5h8v3.5" />
+            <circle cx="12" cy="11" r="4" />
+          </svg>
+          <span className="text-base font-medium tracking-wide truncate">{studio.name || '叶哲 STUDIO'}</span>
+        </div>
+        <button onClick={() => setDrawerOpen(true)} className="p-2 -mr-2" aria-label="菜单">
+          <div className="w-5 flex flex-col gap-1">
+            <span className="block h-0.5 bg-white rounded"></span>
+            <span className="block h-0.5 bg-white rounded"></span>
+            <span className="block h-0.5 bg-white rounded"></span>
+          </div>
+        </button>
+      </div>
+      <div className="h-14" />
+
+      {/* 顶部轮播 Banner（4:3 比例） */}
+      <div className="w-full aspect-[4/3] overflow-hidden">
         {banners.length ? (
           <div className="flex h-full overflow-x-auto snap-x snap-mandatory">
             {banners.map((b, i) => (
@@ -111,9 +139,9 @@ export default function Home() {
             <span className="mr-1">📍</span>{studio.address}
           </div>
         )}
-        <div className="mt-2 px-8 text-xs leading-relaxed text-gray-400">
-          {studio.intro || '拍摄有温度的照片，记录平凡生活中的美好。'}
-        </div>
+        {studio.slogan && (
+          <div className="mt-2 px-8 text-xs leading-relaxed text-gray-400">{studio.slogan}</div>
+        )}
         <div className="mt-4 flex justify-center gap-3">
           <button onClick={() => setContactOpen(true)} className="h-[44px] min-w-[120px] rounded-lg text-sm" style={{ background: TEAL, color: '#fff' }}>
             预约咨询
@@ -128,7 +156,7 @@ export default function Home() {
       </div>
 
       {/* 作品展示 —— 与上方品牌故事之间固定 80rpx(40px) 垂直外边距，仅露底色 */}
-      <div className="mt-10 px-8">
+      <div id="gallery-section" className="mt-10 px-8">
         <div className="text-center text-2xl font-semibold tracking-[4px]">作品展示</div>
         <div className="mt-1 text-center text-xs tracking-[2px] text-gray-400">Works Exhibition</div>
 
@@ -172,7 +200,7 @@ export default function Home() {
       </div>
 
       {/* 底部联系 */}
-      <div className="m-8 mt-[70px] rounded-3xl p-10 text-white" style={{ background: '#2c2c2c' }}>
+      <div id="footer-section" className="m-8 mt-[70px] rounded-3xl p-10 text-white" style={{ background: '#2c2c2c' }}>
         <div className="mb-6 text-center text-lg font-semibold tracking-[4px]">联系我们</div>
         {studio.contact && studio.contact.wechat && (
           <div className="mb-3 flex items-center text-sm">
@@ -197,19 +225,16 @@ export default function Home() {
         <div className="mt-6 text-center text-[11px] text-gray-500">叶哲 STUDIO · 用影像记录时光</div>
       </div>
 
-      {/* 右侧固定悬浮按钮组 right:12px(24rpx) / bottom:50px(100rpx) / 间距12px(24rpx) */}
+      {/* 右侧固定悬浮按钮组 right:12px(24rpx) / bottom:50px(100rpx) / 间距12px(24rpx) / 圆形60px(120rpx) 仅图标 */}
       <div className="fixed bottom-[50px] right-3 z-50 flex flex-col gap-3">
-        <button onClick={copyWechat} className="flex h-12 w-12 flex-col items-center justify-center rounded-full bg-white text-[#2c2c2c] shadow-lg">
-          <span className="mb-1 text-base leading-none">♡</span>
-          <span className="text-[10px] font-medium leading-none">关注</span>
+        <button onClick={copyWechat} className="flex h-[60px] w-[60px] items-center justify-center rounded-full bg-white text-gray-400 shadow-lg">
+          <span className="text-2xl leading-none">♡</span>
         </button>
-        <button onClick={() => setContactOpen(true)} className="flex h-12 w-12 flex-col items-center justify-center rounded-full shadow-lg" style={{ background: TEAL, color: '#fff' }}>
-          <span className="mb-1 text-base leading-none">✉</span>
-          <span className="text-[10px] font-medium leading-none">预约</span>
+        <button onClick={() => setContactOpen(true)} className="flex h-[60px] w-[60px] items-center justify-center rounded-full shadow-lg" style={{ background: TEAL, color: '#fff' }}>
+          <span className="text-2xl leading-none">✉</span>
         </button>
-        <button onClick={() => nav('/my')} className="flex h-12 w-12 flex-col items-center justify-center rounded-full bg-white text-[#2c2c2c] shadow-lg">
-          <span className="mb-1 text-base leading-none">☺</span>
-          <span className="text-[10px] font-medium leading-none">我的</span>
+        <button onClick={() => nav('/my')} className="flex h-[60px] w-[60px] items-center justify-center rounded-full bg-white text-gray-400 shadow-lg">
+          <span className="text-2xl leading-none">👤</span>
         </button>
       </div>
 
@@ -246,6 +271,26 @@ export default function Home() {
           </div>
         </div>
       )}
+
+      {/* 侧边抽屉菜单（右侧滑出，与小程序一致） */}
+      <div className="fixed inset-0 z-[60] pointer-events-none">
+        <div
+          className={'absolute inset-0 bg-black/45 transition-opacity duration-300 ' + (drawerOpen ? 'opacity-100' : 'opacity-0')}
+          style={{ pointerEvents: drawerOpen ? 'auto' : 'none' }}
+          onClick={() => setDrawerOpen(false)}
+        />
+        <div className={'absolute top-0 right-0 bottom-0 w-[280px] bg-[#1a1a1a] text-white flex flex-col transition-transform duration-300 ' + (drawerOpen ? 'translate-x-0' : 'translate-x-full')}>
+          <div className="px-6 py-6 border-b border-white/10 flex items-center">
+            <span className="text-base font-medium truncate">{studio.name || '叶哲 STUDIO'}</span>
+          </div>
+          <nav className="flex-1">
+            <button onClick={() => { setDrawerOpen(false); nav('/'); }} className="w-full text-left px-6 py-4 border-b border-white/5">主页</button>
+            <button onClick={() => scrollTo('gallery-section')} className="w-full text-left px-6 py-4 border-b border-white/5">作品</button>
+            <button onClick={() => { setDrawerOpen(false); nav('/my'); }} className="w-full text-left px-6 py-4 border-b border-white/5">我的</button>
+            <button onClick={() => scrollTo('footer-section')} className="w-full text-left px-6 py-4 border-b border-white/5">联系我们</button>
+          </nav>
+        </div>
+      </div>
     </div>
   );
 }

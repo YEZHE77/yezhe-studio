@@ -23,7 +23,7 @@
       <text class="addr-icon">📍</text>
       <text>{{studio.address}}</text>
     </view>
-    <view class="brand-slogan">{{studio.intro || '拍摄有温度的照片，记录平凡生活中的美好。'}}</view>
+    <view wx:if="{{studio.slogan}}" class="brand-slogan">{{studio.slogan}}</view>
     <view class="brand-actions">
       <button class="btn btn-primary" bindtap="goAppointment">预约咨询</button>
       <button class="btn btn-outline" bindtap="copyWechat">+ 关注</button>
@@ -83,19 +83,16 @@
     <view class="footer-copy">叶哲 STUDIO · 用影像记录时光</view>
   </view>
 
-  <!-- 右侧固定悬浮按钮 -->
+  <!-- 右侧固定悬浮按钮组：关注(白底浅灰心形) → 预约(青绿底白气泡) → 我的(白底浅灰头像)，仅图标无文字 -->
   <view class="fab-group">
     <view class="fab fab-white" bindtap="copyWechat">
       <text class="fab-icon">♡</text>
-      <text class="fab-text">关注</text>
     </view>
     <view class="fab fab-primary" bindtap="goAppointment">
       <text class="fab-icon">✉</text>
-      <text class="fab-text">预约</text>
     </view>
     <view class="fab fab-white" bindtap="goMy">
-      <text class="fab-icon">☺</text>
-      <text class="fab-text">我的</text>
+      <text class="fab-icon">👤</text>
     </view>
   </view>
 

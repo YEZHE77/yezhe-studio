@@ -4,6 +4,7 @@
 import { Router } from 'express';
 import { get, insert, run } from '../db.js';
 import { authRequired } from '../auth.js';
+import QRCode from 'qrcode';
 
 const router = Router();
 
@@ -13,6 +14,8 @@ const DEFAULT_STUDIO = {
   cover: '',
   heroImages: [],
   intro: '海口婚礼 / 人像摄影 · YEZHE WORKSHOP',
+  // 品牌 Slogan（首页工作室名称下方浅灰小字；为空时客户端不渲染该行）
+  slogan: '拍摄有温度的照片，记录平凡生活中的美好。',
   contact: { phone: '', wechat: '', address: '' },
   tabs: [
     { id: 'home', label: '首页', visible: true },
@@ -30,8 +33,19 @@ function safeParse(v) {
 router.get('/studio', async (req, res) => {
   try {
     const r = await get("SELECT value FROM settings WHERE key = 'studio'");
-    const data = safeParse(r && r.value) || DEFAULT_STUDIO;
+    const data = { ...DEFAULT_STUDIO, ...(safeParse(r && r.value) || {}) };
     res.json(data);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// 生成分享二维码（公开）：GET /api/qrcode?text=URL  → 返回 PNG dataURL
+// 二维码内容即当前相册详情访问地址，扫码直达 H5 相册页
+router.get('/qrcode', async (req, res) => {
+  try {
+    const text = (req.query.text || '').toString();
+    if (!text) return res.status(400).json({ error: 'missing text' });
+    const dataUrl = await QRCode.toDataURL(text, { width: 480, margin: 2, color: { dark: '#1a1a1a', light: '#ffffff' } });
+    res.json({ dataUrl });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 

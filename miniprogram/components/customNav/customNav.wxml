@@ -2,7 +2,7 @@
 <view class="nav-header" style="padding-top: {{statusBarHeight}}px; height: {{totalHeight}}px;">
   <view class="nav-bar" style="height: {{navHeight}}px;">
     <view class="nav-left">
-      <image wx:if="{{studio.logo}}" class="nav-logo" src="{{studio.logo}}" mode="aspectFill" />
+      <view class="nav-camera"></view>
       <text class="nav-title">{{title || studio.name || '叶哲 STUDIO'}}</text>
     </view>
     <view class="nav-right" bindtap="openDrawer">

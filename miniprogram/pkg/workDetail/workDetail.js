@@ -1,8 +1,10 @@
 const { requestTask } = require('../../utils/req.js');
 const { getImageUrl } = require('../../utils/imageUrl.js');
 
-// 背景音乐占位（静音 WAV）。请替换为真实轻音乐 HTTPS URL，例如上传至 R2 后通过 Worker 代理的地址。
-const BGM_URL = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQQAAAAAAA==';
+// 幻灯片背景音乐：《梦中的婚礼》钢琴曲。
+// 请替换为真实 HTTPS URL（建议上传 MP3 至 R2 私有桶，通过 yezhe-img-proxy.yezhe128627.workers.dev 代理；
+// 并在微信公众平台 downloadFile 合法域名添加该域名）。留空则不播放声音，播放/暂停/退出逻辑保持完整。
+const BGM_URL = '';
 
 Page({
   data: {
@@ -26,13 +28,12 @@ Page({
     // 播放状态
     playing: false,
     playTimer: null,
-    // 背景音乐开关
-    musicOn: true,
     // 相册密码锁
     locked: false,
     pw: '',
     pwErr: '',
     pwBusy: false,
+    shareOpen: false, // 分享弹窗
     canInteract: true // 锁定时置灰分享、视图切换、播放、投屏
   },
   _tasks: [],
@@ -45,11 +46,13 @@ Page({
     const shareTop = statusBarHeight + navHeight + 8;
     this.setData({ statusBarHeight, navHeight, shareTop });
 
-    // 初始化背景音乐
-    const audio = wx.createInnerAudioContext();
-    audio.src = BGM_URL;
-    audio.loop = true;
-    this.innerAudioContext = audio;
+    // 初始化背景音乐（配置了 BGM_URL 才创建；留空则无声音但逻辑完整）
+    if (BGM_URL) {
+      const audio = wx.createInnerAudioContext();
+      audio.src = BGM_URL;
+      audio.loop = true;
+      this.innerAudioContext = audio;
+    }
 
     const id = options && options.id ? Number(options.id) : 0;
     if (!id) {
@@ -170,6 +173,60 @@ Page({
 
   goBack() { wx.navigateBack(); },
 
+  // 分享弹窗
+  openShare() {
+    if (!this.data.canInteract) return;
+    this.setData({ shareOpen: true });
+  },
+  closeShare() { this.setData({ shareOpen: false }); },
+  noop() {},
+
+  // 朋友圈：生成相册二维码后唤起微信"分享图片到朋友圈"
+  async shareTimeline() {
+    this.setData({ shareOpen: false });
+    if (!this.data.canInteract) return;
+    wx.showLoading({ title: '生成中' });
+    try {
+      const url = 'https://yezhe-studio.pages.dev/w/' + this.data.id;
+      const t = requestTask('/api/qrcode?text=' + encodeURIComponent(url));
+      this._tasks.push(t.abort);
+      const r = await t.promise;
+      this._tasks = this._tasks.filter((x) => x !== t.abort);
+      const dataUrl = (r && r.dataUrl) || '';
+      const fs = wx.getFileSystemManager();
+      const filePath = wx.env.USER_DATA_PATH + '/album-qr.png';
+      await new Promise((res, rej) => fs.writeFile({ filePath, data: dataUrl.split(',')[1], encoding: 'base64', success: res, fail: rej }));
+      wx.showShareImageMenu({ path: filePath, fail: () => wx.showToast({ title: '已取消', icon: 'none' }) });
+    } catch (e) {
+      wx.showToast({ title: '生成失败', icon: 'none' });
+    } finally { wx.hideLoading(); }
+  },
+
+  // 下载二维码到相册
+  async downloadQR() {
+    this.setData({ shareOpen: false });
+    if (!this.data.canInteract) return;
+    wx.showLoading({ title: '生成中' });
+    try {
+      const url = 'https://yezhe-studio.pages.dev/w/' + this.data.id;
+      const t = requestTask('/api/qrcode?text=' + encodeURIComponent(url));
+      this._tasks.push(t.abort);
+      const r = await t.promise;
+      this._tasks = this._tasks.filter((x) => x !== t.abort);
+      const dataUrl = (r && r.dataUrl) || '';
+      const fs = wx.getFileSystemManager();
+      const filePath = wx.env.USER_DATA_PATH + '/album-qr.png';
+      await new Promise((res, rej) => fs.writeFile({ filePath, data: dataUrl.split(',')[1], encoding: 'base64', success: res, fail: rej }));
+      wx.saveImageToPhotosAlbum({
+        filePath,
+        success: () => wx.showToast({ title: '已保存到相册' }),
+        fail: () => wx.showToast({ title: '保存失败', icon: 'none' })
+      });
+    } catch (e) {
+      wx.showToast({ title: '生成失败', icon: 'none' });
+    } finally { wx.hideLoading(); }
+  },
+
   // 点击网格缩略图：直接打开对应大图并定位
   previewImage(e) {
     if (!this.data.canInteract) return;
@@ -187,7 +244,7 @@ Page({
       return;
     }
     this.setData({ playing: true });
-    if (this.data.musicOn && this.innerAudioContext) this.innerAudioContext.play();
+    if (this.innerAudioContext) this.innerAudioContext.play();
     this._playTimer = setInterval(() => {
       const query = wx.createSelectorQuery().in(this);
       query.select('.content').scrollOffset();
@@ -206,15 +263,6 @@ Page({
     if (this._playTimer) { clearInterval(this._playTimer); this._playTimer = null; }
     this.setData({ playing: false });
     if (this.innerAudioContext) this.innerAudioContext.pause();
-  },
-
-  // 背景音乐开关
-  toggleMusic() {
-    const musicOn = !this.data.musicOn;
-    this.setData({ musicOn });
-    if (!this.innerAudioContext) return;
-    if (musicOn && this.data.playing) this.innerAudioContext.play();
-    else this.innerAudioContext.pause();
   },
 
   // 投屏提示

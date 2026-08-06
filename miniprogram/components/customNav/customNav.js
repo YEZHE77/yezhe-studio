@@ -12,6 +12,8 @@ Component({
     statusBarHeight: 20,
     navHeight: 44,
     totalHeight: 64,
+    // 汉堡菜单右侧预留宽度（避免被微信胶囊遮挡）：默认 180rpx，attached 中按胶囊位置动态计算
+    navBarPadRight: 180,
     studio: { name: '叶哲 STUDIO', logo: '' },
     subCategories: []
   },
@@ -21,10 +23,21 @@ Component({
       const sys = wx.getSystemInfoSync();
       const statusBarHeight = sys.statusBarHeight || 20;
       const navHeight = 44; // 对应 88rpx 在 375px 屏
+      // 预留右侧空间避让微信胶囊（getMenuButtonBoundingClientRect 取得胶囊左边界，汉堡置于其左侧）
+      let navBarPadRight = 180;
+      try {
+        const mb = wx.getMenuButtonBoundingClientRect();
+        const winW = sys.windowWidth || 375;
+        if (mb && mb.left) {
+          // 汉堡右边缘留在 (胶囊左边界 - 16px) 处，换算为 rpx
+          navBarPadRight = Math.ceil((winW - mb.left + 16) * 750 / winW);
+        }
+      } catch (e) { /* 个别环境无此 API，沿用默认 180rpx */ }
       this.setData({
         statusBarHeight,
         navHeight,
-        totalHeight: statusBarHeight + navHeight
+        totalHeight: statusBarHeight + navHeight,
+        navBarPadRight
       });
       this.loadCache();
     }
@@ -59,7 +72,7 @@ Component({
     },
 
     setSubCategories(categories) {
-      const wanted = ['婚礼', '写真', '家庭纪实'];
+      const wanted = ['婚礼', '领证', '孕妇照', '写真'];
       const map = new Map((categories || []).map((c) => [c.name, c]));
       const subCategories = wanted.map((name) => map.get(name)).filter(Boolean);
       this.setData({ subCategories });

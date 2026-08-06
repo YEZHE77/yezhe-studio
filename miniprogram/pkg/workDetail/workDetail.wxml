@@ -41,7 +41,7 @@
       <!-- 封面图 + 右上悬浮分享胶囊 -->
       <view class="cover-wrap">
         <image class="cover-img" src="{{cover}}" mode="aspectFill" lazy-load />
-        <button wx:if="{{canInteract}}" class="share-capsule" style="top: {{shareTop}}px;" open-type="share">分享</button>
+        <button wx:if="{{canInteract}}" class="share-capsule" style="top: {{shareTop}}px;" bindtap="openShare">分享</button>
         <view wx:else class="share-capsule disabled" style="top: {{shareTop}}px;">分享</view>
       </view>
 
@@ -96,10 +96,6 @@
             <text class="tool-icon">{{playing ? '⏸' : '▶'}}</text>
             <text class="tool-label">{{playing ? '暂停' : '播放'}}</text>
           </view>
-          <view class="tool {{canInteract ? '' : 'disabled'}}" bindtap="toggleMusic">
-            <text class="tool-icon">{{musicOn ? '🔔' : '🔕'}}</text>
-            <text class="tool-label">{{musicOn ? '音乐' : '静音'}}</text>
-          </view>
           <view class="tool {{canInteract ? '' : 'disabled'}}" bindtap="cast">
             <text class="tool-icon">⍟</text>
             <text class="tool-label">投屏</text>
@@ -112,8 +108,30 @@
     </block>
   </block>
 
-  <!-- 相册密码锁：全屏校验 -->
-  <view wx:if="{{locked}}" class="lock-mask">
+      <!-- 分享弹窗（底部滑入） -->
+      <view wx:if="{{shareOpen}}" class="share-mask" bindtap="closeShare">
+        <view class="share-sheet" catchtap="noop">
+          <view class="share-title">分享相册</view>
+          <view class="share-opts">
+            <button class="share-opt" open-type="share">
+              <view class="opt-icon" style="background:#7ecdbb;">💬</view>
+              <view class="opt-label">微信好友</view>
+            </button>
+            <view class="share-opt" bindtap="shareTimeline">
+              <view class="opt-icon" style="background:#1aad19;">🌈</view>
+              <view class="opt-label">朋友圈</view>
+            </view>
+            <view class="share-opt" bindtap="downloadQR">
+              <view class="opt-icon" style="background:#2c2c2c;">📷</view>
+              <view class="opt-label">下载二维码</view>
+            </view>
+          </view>
+          <view class="share-cancel" bindtap="closeShare">取消</view>
+        </view>
+      </view>
+
+      <!-- 相册密码锁：全屏校验 -->
+      <view wx:if="{{locked}}" class="lock-mask">
     <view class="lock-card">
       <view class="lock-emoji">🔒</view>
       <view class="lock-title">{{title || '受保护的相册'}}</view>

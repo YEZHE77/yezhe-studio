@@ -5,6 +5,8 @@ import ImageCropper from '../components/ImageCropper.jsx';
 const EMPTY = {
   name: '叶哲 Studio', logo: '', cover: '', heroImages: [],
   intro: '海口婚礼 / 人像摄影 · YEZHE WORKSHOP',
+  // 品牌 Slogan：首页工作室名称下方浅灰小字（为空则不渲染）
+  slogan: '拍摄有温度的照片，记录平凡生活中的美好。',
   contact: { phone: '', wechat: '', address: '' }
 };
 
@@ -67,6 +69,7 @@ export default function Settings() {
         logo: d.logo || '', cover: d.cover || '',
         heroImages: Array.isArray(d.heroImages) ? d.heroImages : [],
         intro: d.intro || EMPTY.intro,
+        slogan: d.slogan !== undefined ? d.slogan : EMPTY.slogan,
         contact: { phone: (d.contact && d.contact.phone) || '', wechat: (d.contact && d.contact.wechat) || '', address: (d.contact && d.contact.address) || '' }
       });
       setLoaded(true);
@@ -199,7 +202,10 @@ export default function Settings() {
           <Field label="工作室名称">
             <input className={inputCls} value={form.name} onChange={(e) => set('name', e.target.value)} />
           </Field>
-          <Field label="简介 / Slogan">
+          <Field label="品牌 Slogan（首页工作室名称下方浅灰小字 · 留空则不显示）">
+            <input className={inputCls} value={form.slogan} onChange={(e) => set('slogan', e.target.value)} placeholder="拍摄有温度的照片，记录平凡生活中的美好。" />
+          </Field>
+          <Field label="简介 / 品牌故事（关于我们页正文）">
             <textarea className={inputCls + ' h-20 resize-none'} value={form.intro} onChange={(e) => set('intro', e.target.value)} />
           </Field>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">

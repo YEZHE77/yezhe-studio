@@ -3,18 +3,20 @@ import { img } from '../api.js';
 import GalleryAlbum from './GalleryAlbum.jsx';
 
 const TEAL = '#7ecdbb';
-// 背景音乐占位（静音 WAV）。请替换为真实轻音乐 HTTPS URL，例如上传至 R2 后通过 Worker 代理的地址。
-const BGM_URL = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQQAAAAAAA==';
+// 幻灯片背景音乐：《梦中的婚礼》钢琴曲。
+// 请替换为真实 HTTPS URL（建议上传 MP3 至 R2 私有桶，通过 yezhe-img-proxy.yezhe128627.workers.dev 代理；
+// 小程序端需在微信公众平台 downloadFile 合法域名添加该域名）。留空则不播放声音，但播放/暂停/退出逻辑保持完整。
+const BGM_URL = '';
 
 // 客片电子相册（纵向长图流式 / 缩略图网格 双视图）—— 与小程序「相册详情页」UI/交互保持一致
-// 封面右上悬浮青绿色「分享」按钮；标题栏右侧视图切换；底部品牌工具栏（播放/音乐/投屏/预约服务）
-export default function AlbumGrid({ gallery, onBack }) {
+// 封面右上悬浮青绿色「分享」按钮；标题栏右侧视图切换；底部品牌工具栏（播放/投屏/预约服务）
+export default function AlbumGrid({ gallery, onBack, albumId }) {
   const { title, subtitle, category, albumCopy, cover_url, photos = [], brand_name, brand_slogan, brand_logo } = gallery;
   const [view, setView] = useState('flow'); // flow 纵向长图（默认） | grid 缩略网格
   const [full, setFull] = useState(-1);     // >=0 打开全屏查看的起始索引
   const [toast, setToast] = useState('');
+  const [shareOpen, setShareOpen] = useState(false);
   const [playing, setPlaying] = useState(false);
-  const [musicOn, setMusicOn] = useState(true);
   const playTimerRef = useRef(null);
   const audioRef = useRef(null);
 
@@ -24,9 +26,9 @@ export default function AlbumGrid({ gallery, onBack }) {
     return () => clearTimeout(t);
   }, [toast]);
 
-  // 初始化背景音乐（仅客户端）
+  // 初始化背景音乐（仅客户端，且已配置 BGM_URL 时）
   useEffect(() => {
-    if (typeof window === 'undefined') return;
+    if (typeof window === 'undefined' || !BGM_URL) return;
     const audio = new Audio(BGM_URL);
     audio.loop = true;
     audioRef.current = audio;
@@ -36,16 +38,17 @@ export default function AlbumGrid({ gallery, onBack }) {
     };
   }, []);
 
-  // 幻灯片播放状态变化时同步背景音乐
+  // 幻灯片播放状态变化时同步背景音乐：播放→自动响 BGM；暂停/退出→停止
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
-    if (playing && musicOn) {
+    if (playing) {
       audio.play().catch(() => {});
     } else {
       audio.pause();
+      audio.currentTime = 0;
     }
-  }, [playing, musicOn]);
+  }, [playing]);
 
   // 幻灯片播放：自动向下滚动
   useEffect(() => {
@@ -88,16 +91,36 @@ export default function AlbumGrid({ gallery, onBack }) {
     }
   };
 
+  // 分享弹窗：微信好友/朋友圈（H5 受浏览器限制，引导在微信内操作）；下载二维码（扫码直达相册）
+  const shareUrl = (typeof window !== 'undefined')
+    ? (albumId ? window.location.origin + '/w/' + albumId : window.location.href)
+    : '';
+  const openShare = () => setShareOpen(true);
+  const closeShare = () => setShareOpen(false);
+  const shareToWx = () => {
+    setShareOpen(false);
+    setToast('请在微信中打开本页，点击右上角「···」分享给好友或朋友圈');
+  };
+  const downloadQR = async () => {
+    try {
+      const r = await http.get('/api/qrcode?text=' + encodeURIComponent(shareUrl));
+      const a = document.createElement('a');
+      a.href = r.data.dataUrl;
+      a.download = 'album-qr.png';
+      document.body.appendChild(a); a.click(); a.remove();
+      setToast('二维码已下载');
+    } catch {
+      setToast('二维码生成失败');
+    }
+    setShareOpen(false);
+  };
+
   const castScreen = () => {
     setToast('请下拉/上滑手机控制中心 → 屏幕镜像 → 投屏到电视');
   };
 
   const goAppointment = () => {
     window.location.href = window.location.origin + '/schedule';
-  };
-
-  const toggleMusic = () => {
-    setMusicOn((v) => !v);
   };
 
   const togglePlay = () => {
@@ -136,7 +159,7 @@ export default function AlbumGrid({ gallery, onBack }) {
       {/* 封面图 + 右上悬浮分享按钮（适中圆角，青绿底白字） */}
       <div className="relative w-full h-[65vw] max-h-[520px] bg-neutral-200">
         {cover && <img src={img(cover)} alt="" className="w-full h-full object-cover" />}
-        <button onClick={copyLink}
+        <button onClick={openShare}
           className="fixed top-[72px] right-4 z-40 h-8 px-4 rounded-lg text-white text-sm font-medium shadow-lg active:opacity-90"
           style={{ background: TEAL }}>
           分享
@@ -204,10 +227,6 @@ export default function AlbumGrid({ gallery, onBack }) {
             <span className="text-lg leading-none">{playing ? '⏸' : '▶'}</span>
             <span className="text-[10px] mt-0.5">{playing ? '暂停' : '播放'}</span>
           </button>
-          <button onClick={toggleMusic} className="flex flex-col items-center min-w-[48px]" style={{ color: musicOn ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.45)' }}>
-            <span className="text-lg leading-none">{musicOn ? '🔔' : '🔕'}</span>
-            <span className="text-[10px] mt-0.5">{musicOn ? '音乐' : '静音'}</span>
-          </button>
           <button onClick={castScreen} className="flex flex-col items-center text-white/90 min-w-[48px]">
             <span className="text-lg leading-none">⍟</span>
             <span className="text-[10px] mt-0.5">投屏</span>
@@ -224,6 +243,30 @@ export default function AlbumGrid({ gallery, onBack }) {
       {toast && (
         <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[60] bg-black/80 text-white text-xs px-4 py-2.5 rounded-lg max-w-[80%] text-center">
           {toast}
+        </div>
+      )}
+
+      {/* 分享弹窗（底部滑入） */}
+      {shareOpen && (
+        <div className="fixed inset-0 z-[70] flex items-end justify-center bg-black/40" onClick={closeShare}>
+          <div className="w-full max-w-md rounded-t-2xl bg-white p-6" onClick={(e) => e.stopPropagation()}>
+            <div className="mb-5 text-center text-base font-medium text-[#2c2c2c]">分享相册</div>
+            <div className="mb-5 flex justify-around">
+              <button onClick={shareToWx} className="flex flex-col items-center">
+                <div className="flex h-14 w-14 items-center justify-center rounded-full text-2xl text-white" style={{ background: TEAL }}>💬</div>
+                <div className="mt-2 text-xs text-gray-500">微信好友</div>
+              </button>
+              <button onClick={shareToWx} className="flex flex-col items-center">
+                <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[#1aad19] text-2xl text-white">🌈</div>
+                <div className="mt-2 text-xs text-gray-500">朋友圈</div>
+              </button>
+              <button onClick={downloadQR} className="flex flex-col items-center">
+                <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[#2c2c2c] text-2xl text-white">📷</div>
+                <div className="mt-2 text-xs text-gray-500">下载二维码</div>
+              </button>
+            </div>
+            <button onClick={closeShare} className="w-full rounded-lg bg-gray-100 py-3 text-sm text-gray-600">取消</button>
+          </div>
         </div>
       )}
 
