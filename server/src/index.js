@@ -31,6 +31,7 @@ import settingsRoutes from './routes/settings.js';
 import shareRoutes from './routes/share.js';
 import sharesRoutes from './routes/shares.js';
 import galleriesRoutes from './routes/galleries.js';
+import uploadChunkRoutes from './routes/uploadChunk.js';
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -98,6 +99,7 @@ app.use('/api/settings', settingsRoutes);
 app.use('/api/share', shareRoutes);
 app.use('/api/shares', sharesRoutes);
 app.use('/api/galleries', galleriesRoutes);
+app.use('/api/upload', uploadChunkRoutes);
 
 // multer / 通用错误
 app.use((err, req, res, next) => {
@@ -113,21 +115,24 @@ initSchema().then(async () => {
   await seedIfNeeded();
   // 双重备份：启动后调度每日 R2 /backup 写入（Render 免费档重启会自动重新调度）
   try { scheduleDailyBackup(); } catch (e) { console.error('[backup] 调度失败', e.message); }
-  app.listen(PORT, () => {
+  const server = app.listen(PORT, () => {
     console.log(`[server] 已启动 → http://localhost:${PORT}`);
     console.log(`[server] CORS 放行: ${CORS_ORIGIN.join(', ')}`);
     console.log(`[server] 数据库方言: ${dialect}`);
-    // 生产环境护栏：未配置 DATABASE_URL 时会落到 Render 临时磁盘的本地 SQLite，
-    // 实例休眠/重启/重新部署即清空数据（作品、相册、订单、财务全部丢失）。绝不允许静默发生。
-    const isProdLike = process.env.NODE_ENV === 'production' || process.env.RENDER || process.env.RENDER_EXTERNAL_URL;
-    if (dialect !== 'pg' && isProdLike) {
-      console.error('');
-      console.error('╔══════════════════════════════════════════════════════════════════════════╗');
-      console.error('║  ⚠️  严重：生产环境未检测到 DATABASE_URL，当前使用临时本地 SQLite！          ║');
-      console.error('║  所有数据（作品/相册/订单/财务）将随实例重启或重新部署丢失。                  ║');
-      console.error('║  立即在 Render 环境变量中添加 DATABASE_URL = postgresql://<Neon连接串> 并重新部署。║');
-      console.error('╚══════════════════════════════════════════════════════════════════════════╝');
-      console.error('');
-    }
   });
+  // 需求 D：上传接口超时放大到 60 秒（分片小、连接多，单请求远超默认短超时，
+  // 避免弱网下大图/多分片被过早掐断）。Node 默认 server.timeout=0（无限），此处显式设为 60s。
+  server.setTimeout(60000);
+  // 生产环境护栏：未配置 DATABASE_URL 时会落到 Render 临时磁盘的本地 SQLite，
+  // 实例休眠/重启/重新部署即清空数据（作品、相册、订单、财务全部丢失）。绝不允许静默发生。
+  const isProdLike = process.env.NODE_ENV === 'production' || process.env.RENDER || process.env.RENDER_EXTERNAL_URL;
+  if (dialect !== 'pg' && isProdLike) {
+    console.error('');
+    console.error('╔══════════════════════════════════════════════════════════════════════════╗');
+    console.error('║  ⚠️  严重：生产环境未检测到 DATABASE_URL，当前使用临时本地 SQLite！          ║');
+    console.error('║  所有数据（作品/相册/订单/财务）将随实例重启或重新部署丢失。                  ║');
+    console.error('║  立即在 Render 环境变量中添加 DATABASE_URL = postgresql://<Neon连接串> 并重新部署。║');
+    console.error('╚══════════════════════════════════════════════════════════════════════════╝');
+    console.error('');
+  }
 });

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import http, { img, compressImage, uploadBatch, getExistSigns } from '../api.js';
+import http, { img, compressImage, uploadImage, getExistSigns } from '../api.js';
 import bgm from '../bgm.js';
 import Slideshow from '../components/Slideshow.jsx';
 
@@ -23,8 +23,15 @@ export default function WorkDetail() {
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadText, setUploadText] = useState('');
-  const [uploadProgress, setUploadProgress] = useState(0);
   const abortRef = useRef(null);
+  // 需求 D：逐项进度 + 暂停/继续 + 单张失败重试 + 弱网提示
+  const [paused, setPaused] = useState(false);
+  const [uploadRows, setUploadRows] = useState([]); // 与 toUpload 等长：{ name,size,progress,status,url,error }
+  const [overallPct, setOverallPct] = useState(0);
+  const [weakNet, setWeakNet] = useState(false);
+  const pauseRef = useRef(false);
+  const rowsRef = useRef([]);
+  const toUploadRef = useRef([]);
   const [selected, setSelected] = useState(new Set());
   const [form, setForm] = useState({ title: '', category_ids: [], tags: '', album_copy: '', is_public: true, allow_download: false, album_password_enabled: false, album_password: '', album_expires_at: '' });
   const [draggedId, setDraggedId] = useState(null);
@@ -144,54 +151,121 @@ export default function WorkDetail() {
     if (abortRef.current) abortRef.current.abort();
   }
 
-  // 确认上传：仅上传非重复项，重复项直接过滤（不发起网络请求）
-  async function confirmUpload() {
-    const toUpload = uploadPreviews.filter((p) => !p.dup);
-    if (!toUpload.length) { setUploadOpen(false); return; }
-    setUploading(true);
-    setUploadProgress(0);
-    const ac = new AbortController();
-    abortRef.current = ac;
-    const ZONE_CAT = { sample: 'client', local: 'negative', final: 'retouched' };
-    const ZONE_PUB = { sample: true, local: false, final: false };
+  // 行内更新（ref 为真源，setState 仅触发渲染）
+  function updateRow(i, patch) {
+    const n = rowsRef.current.slice();
+    n[i] = { ...n[i], ...patch };
+    rowsRef.current = n;
+    setUploadRows(n);
+  }
+  function recomputeOverall() {
+    const rows = rowsRef.current;
+    if (!rows.length) { setOverallPct(0); return; }
+    const done = rows.filter((r) => r.status === 'done').length;
+    setOverallPct(Math.round((done / rows.length) * 100));
+  }
+
+  function togglePause() {
+    const np = !paused;
+    setPaused(np);
+    pauseRef.current = np;
+  }
+
+  const ZONE_CAT = { sample: 'client', local: 'negative', final: 'retouched' };
+  const ZONE_PUB = { sample: true, local: false, final: false };
+
+  // 单张上传（压缩 → 上传，含逐项进度 + 弱网标记）。供主循环与单张重试复用。
+  async function uploadOneRow(p, idx, ac) {
+    updateRow(idx, { status: 'uploading', progress: 0, error: undefined });
     try {
-      // 压缩（仅对待上传文件），但保留压缩前的原始 name/size 供去重签名
-      const compressed = [];
-      for (let i = 0; i < toUpload.length; i += 3) {
-        const chunk = toUpload.slice(i, i + 3);
-        const out = await Promise.all(chunk.map((p) => compressImage(p.file, { maxWidth: 1920, maxHeight: 1920, quality: 0.82 })));
-        compressed.push(...out);
-      }
-      const metas = toUpload.map((p, i) => ({ file: compressed[i], name: p.name, size: p.size }));
-      const { items, failed, aborted } = await uploadBatch(metas, {
+      // 需求 D：压缩质量下调到 0.75，进一步加快上传；保留压缩前 name/size 供去重签名
+      const compressed = await compressImage(p.file, { maxWidth: 1920, maxHeight: 1920, quality: 0.75 });
+      const r = await uploadImage(compressed, {
         category: ZONE_CAT[zone] || 'customer',
         isPublic: ZONE_PUB[zone] || false,
         signal: ac.signal,
-        onProgress: (d, t) => setUploadProgress(Math.round((d / t) * 100))
+        metaName: p.name,
+        metaSize: p.size,
+        getPaused: () => pauseRef.current, // 大图分片上传时也可被暂停挂起
+        onProgress: (pct) => updateRow(idx, { progress: pct })
       });
-      if (aborted) { setUploadText('已取消上传'); return; }
-      // 按索引对齐拼接 originalName/size，投递后端（后端据此存签名，下次可识别为重复）
-      const bodyItems = [];
-      toUpload.forEach((p, i) => {
-        const it = items[i];
-        if (it && it.url) bodyItems.push({ url: it.url, originalName: p.name, size: p.size });
-      });
-      if (bodyItems.length) {
+      updateRow(idx, { status: 'done', progress: 100, url: r.url });
+      return true;
+    } catch (e) {
+      if (ac.signal.aborted) return false;
+      // 弱网/超时/网络错误 → 弹出非静默提示（不吞掉失败）
+      const isNet = e && (e.type === 'network' || e.type === 'timeout' || e.type === 'cancel');
+      if (isNet) setWeakNet(true);
+      updateRow(idx, { status: 'failed', error: (e && e.message) || '上传失败' });
+      return false;
+    }
+  }
+
+  // 单张失败重试（不影响其他图，不打断队列）
+  async function retryOne(idx) {
+    const p = toUploadRef.current[idx];
+    if (!p || !abortRef.current) return;
+    await uploadOneRow(p, idx, abortRef.current);
+    recomputeOverall();
+  }
+
+  // 确认上传：仅上传非重复项；并发 3 张、逐项进度、暂停/继续、单张失败标红+重试、弱网提示
+  async function confirmUpload() {
+    const toUpload = uploadPreviews.filter((p) => !p.dup && !p.error);
+    if (!toUpload.length) { setUploadOpen(false); return; }
+    setUploading(true);
+    setOverallPct(0);
+    setPaused(false);
+    pauseRef.current = false;
+    setWeakNet(false);
+    rowsRef.current = toUpload.map((p) => ({ name: p.name, size: p.size, progress: 0, status: 'pending' }));
+    toUploadRef.current = toUpload;
+    setUploadRows(rowsRef.current.slice());
+    const ac = new AbortController();
+    abortRef.current = ac;
+    const total = toUpload.length;
+    let done = 0;
+    let cursor = 0;
+
+    const worker = async () => {
+      while (cursor < total) {
+        if (ac.signal.aborted) return;
+        const idx = cursor++;
+        const ok = await uploadOneRow(toUpload[idx], idx, ac);
+        if (ac.signal.aborted) return;
+        done++;
+        recomputeOverall();
+        if (!ok) {/* 单张失败已标红，继续其余 */}
+      }
+    };
+
+    const pool = [];
+    for (let i = 0; i < Math.min(3, total); i++) pool.push(worker());
+    await Promise.all(pool);
+
+    // 收尾：取消则不投递；否则按成功项拼接 originalName/size 投递后端
+    if (ac.signal.aborted) { setUploadText('已取消上传'); setUploading(false); return; }
+    const bodyItems = [];
+    toUpload.forEach((p, i) => {
+      const row = rowsRef.current[i];
+      if (row && row.status === 'done' && row.url) bodyItems.push({ url: row.url, originalName: p.name, size: p.size });
+    });
+    if (bodyItems.length) {
+      try {
         await http.post('/api/works/' + id + '/albums', { zone, items: bodyItems });
         await loadAlbums();
+      } catch (err) {
+        alert((err.response && err.response.data && err.response.data.error) || '相册保存失败');
       }
-      const dupCount = uploadPreviews.length - toUpload.length;
-      if (failed.filter(Boolean).length) alert(`成功 ${bodyItems.length} 张，已自动跳过重复 ${dupCount} 张，失败 ${failed.filter(Boolean).length} 张`);
-      else alert(`成功上传 ${bodyItems.length} 张（已自动跳过 ${dupCount} 张重复照片）`);
-    } catch (err) {
-      alert((err.response && err.response.data && err.response.data.error) || '上传失败');
-    } finally {
-      setUploading(false);
-      setUploadProgress(0);
-      setUploadOpen(false);
-      uploadPreviews.forEach((p) => URL.revokeObjectURL(p.url));
-      setUploadPreviews([]);
     }
+    const dupCount = uploadPreviews.length - toUpload.length;
+    const failCount = rowsRef.current.filter((r) => r.status === 'failed').length;
+    if (failCount) alert(`成功 ${bodyItems.length} 张，已自动跳过重复 ${dupCount} 张，失败 ${failCount} 张（失败项可单张重试）`);
+    else alert(`成功上传 ${bodyItems.length} 张（已自动跳过 ${dupCount} 张重复照片）`);
+    setUploading(false);
+    setUploadOpen(false);
+    uploadPreviews.forEach((p) => URL.revokeObjectURL(p.url));
+    setUploadPreviews([]);
   }
 
   async function setCover(url) {
@@ -467,13 +541,16 @@ export default function WorkDetail() {
               <div className="flex items-center gap-2">
                 <button onClick={openSlide} disabled={!zoneAlbums.length} className="px-4 py-2 rounded border border-line text-sm text-fg hover:text-brand hover:border-brand disabled:opacity-40">▶ 播放幻灯片</button>
                 <input ref={fileRef} type="file" accept="image/*" multiple className="hidden" onChange={onPickFiles} />
-                <button onClick={() => fileRef.current && fileRef.current.click()} disabled={uploading || preparing} className="px-4 py-2 rounded bg-brand text-white text-sm hover:opacity-90 disabled:opacity-60">{uploading ? `上传中 ${uploadProgress}%` : preparing ? '准备中…' : '+ 批量上传'}</button>
+                <button onClick={() => fileRef.current && fileRef.current.click()} disabled={uploading || preparing} className="px-4 py-2 rounded bg-brand text-white text-sm hover:opacity-90 disabled:opacity-60">{uploading ? `上传中 ${overallPct}%` : preparing ? '准备中…' : '+ 批量上传'}</button>
+                {uploading && (
+                  <button onClick={togglePause} className="px-3 py-2 rounded border border-line text-sm text-muted hover:text-brand">{paused ? '继续' : '暂停'}</button>
+                )}
                 {uploading && (
                   <button onClick={cancelUpload} className="px-3 py-2 rounded border border-line text-sm text-muted hover:text-red-500">取消</button>
                 )}
                 {uploading && (
                   <div className="w-full mt-2 h-1.5 bg-ink rounded overflow-hidden">
-                    <div className="h-full bg-brand transition-all" style={{ width: uploadProgress + '%' }} />
+                    <div className="h-full bg-brand transition-all" style={{ width: overallPct + '%' }} />
                   </div>
                 )}
               </div>
@@ -558,61 +635,122 @@ export default function WorkDetail() {
         </div>
       </div>
       {/* 上传去重预览弹窗：选图后展示缩略图，重复项灰色蒙层 + 【已存在】标签，仅上传新照片 */}
-      {uploadOpen && (
+      {uploadOpen && (() => {
+        const toUpload = uploadPreviews.filter((p) => !p.dup && !p.error);
+        const dupCount = uploadPreviews.filter((p) => p.dup).length;
+        const errCount = uploadPreviews.filter((p) => p.error).length;
+        // 每个预览对应类型与（非重复）行索引
+        const kinds = uploadPreviews.map((p) => {
+          if (p.dup) return { kind: 'dup' };
+          if (p.error) return { kind: 'err' };
+          return { kind: 'up', ri: toUpload.indexOf(p) };
+        });
+        const failCount = uploadRows.filter((r) => r.status === 'failed').length;
+        const doneCount = uploadRows.filter((r) => r.status === 'done').length;
+        return (
         <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" onClick={() => !uploading && closeUpload()}>
           <div className="bg-panel border border-line rounded-xl2 w-full max-w-3xl max-h-[85vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between p-4 border-b border-line">
               <div>
                 <h3 className="text-base font-semibold text-fg">上传到「{ZONES.find((z) => z.key === zone).label}」相册</h3>
                 <p className="text-xs text-muted mt-0.5">
-                  待上传 {uploadPreviews.filter((p) => !p.dup).length} 张 · 已存在 {uploadPreviews.filter((p) => p.dup).length} 张（自动跳过，不发起上传）
+                  待上传 {toUpload.length} 张 · 已存在 {dupCount} 张（自动跳过）{errCount ? ` · 读取失败 ${errCount} 张` : ''}
                 </p>
               </div>
               <button onClick={closeUpload} disabled={uploading} className="text-muted hover:text-fg text-sm disabled:opacity-40">✕</button>
             </div>
+            {weakNet && (
+              <div className="mx-4 mt-3 px-3 py-2 rounded bg-amber-50 border border-amber-300 text-amber-700 text-xs flex items-center justify-between gap-2">
+                <span>⚠️ 检测到弱网，已自动重试；若持续失败请检查网络后单张重试。</span>
+                <button onClick={() => setWeakNet(false)} className="text-amber-700 font-medium shrink-0">知道了</button>
+              </div>
+            )}
             <div className="p-4 overflow-y-auto">
               <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
-                {uploadPreviews.map((p, i) => (
-                  <div key={i} className={'relative aspect-square rounded-xl2 overflow-hidden bg-ink border ' + (p.dup ? 'border-line' : 'border-brand/40')}>
+                {uploadPreviews.map((p, i) => {
+                  const k = kinds[i];
+                  const row = k.kind === 'up' ? uploadRows[k.ri] : null;
+                  const isFailed = row && row.status === 'failed';
+                  const isDone = row && row.status === 'done';
+                  const isUploading = row && row.status === 'uploading';
+                  return (
+                  <div key={i} className={'relative aspect-square rounded-xl2 overflow-hidden bg-ink border ' + (
+                    k.kind === 'dup' ? 'border-line'
+                    : isFailed ? 'border-red-400'
+                    : isDone ? 'border-green-400/70'
+                    : 'border-brand/40'
+                  )}>
                     <img src={p.url} className="w-full h-full object-cover" alt={p.name} />
-                    {p.dup && (
+                    {k.kind === 'dup' && (
                       <>
                         <div className="absolute inset-0 bg-black/55" />
                         <span className="absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded bg-black/70 text-white text-[10px]">已存在</span>
                         <span className="absolute bottom-1.5 right-1.5 text-white/80 text-[10px]">已跳过</span>
                       </>
                     )}
-                    {!p.dup && (
-                      <span className={'absolute bottom-1.5 left-1.5 px-1.5 py-0.5 rounded text-white text-[10px] ' + (p.error ? 'bg-amber-500/80' : 'bg-brand/80')}>待上传</span>
+                    {k.kind === 'err' && (
+                      <span className="absolute bottom-1.5 left-1.5 px-1.5 py-0.5 rounded bg-amber-500/80 text-white text-[10px]">读取失败</span>
+                    )}
+                    {k.kind === 'up' && (
+                      <>
+                        {isUploading && (
+                          <div className="absolute bottom-0 left-0 right-0 h-1.5 bg-black/40">
+                            <div className="h-full bg-brand transition-all" style={{ width: (row.progress || 0) + '%' }} />
+                          </div>
+                        )}
+                        {isFailed && (
+                          <button onClick={() => retryOne(k.ri)} className="absolute inset-0 flex items-center justify-center">
+                            <span className="px-2 py-1 rounded bg-red-500/90 text-white text-[10px]">↻ 重试</span>
+                          </button>
+                        )}
+                        <span className={'absolute bottom-1.5 left-1.5 px-1.5 py-0.5 rounded text-white text-[10px] ' + (
+                          isDone ? 'bg-green-500/80' : isFailed ? 'bg-red-500/80' : isUploading ? 'bg-brand/90' : 'bg-brand/80'
+                        )}>
+                          {isDone ? '完成' : isFailed ? '失败' : isUploading ? `上传中 ${row.progress || 0}%` : '待上传'}
+                        </span>
+                      </>
                     )}
                   </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
             {uploading && (
               <div className="px-4 pb-3">
+                <div className="flex items-center justify-between text-xs text-muted mb-1">
+                  <span>总进度 {doneCount}/{uploadRows.length || toUpload.length}</span>
+                  <span>{overallPct}%</span>
+                </div>
                 <div className="h-1.5 bg-ink rounded overflow-hidden">
-                  <div className="h-full bg-brand transition-all" style={{ width: uploadProgress + '%' }} />
+                  <div className="h-full bg-brand transition-all" style={{ width: overallPct + '%' }} />
                 </div>
               </div>
             )}
             <div className="p-4 border-t border-line flex items-center justify-between gap-3">
-              <span className="text-xs text-muted">已自动过滤重复照片，仅上传新照片</span>
+              <span className="text-xs text-muted">
+                {failCount ? `失败 ${failCount} 张可单张重试 · ` : ''}已自动过滤重复照片，仅上传新照片
+              </span>
               <div className="flex gap-2">
                 {uploading ? (
-                  <button onClick={cancelUpload} className="px-4 py-2 rounded border border-line text-sm text-red-500 hover:border-red-300">取消上传</button>
+                  <>
+                    <button onClick={togglePause} className="px-4 py-2 rounded border border-line text-sm text-brand hover:border-brand">{paused ? '继续' : '暂停'}</button>
+                    <button onClick={cancelUpload} className="px-4 py-2 rounded border border-line text-sm text-red-500 hover:border-red-300">取消</button>
+                  </>
                 ) : (
                   <button onClick={closeUpload} className="px-4 py-2 rounded border border-line text-sm text-fg hover:border-brand">取消</button>
                 )}
-                <button onClick={confirmUpload} disabled={uploading || uploadPreviews.filter((p) => !p.dup).length === 0}
-                  className="px-4 py-2 rounded bg-brand text-white text-sm hover:opacity-90 disabled:opacity-60">
-                  {uploading ? `上传中 ${uploadProgress}%` : `上传 ${uploadPreviews.filter((p) => !p.dup).length} 张`}
-                </button>
+                {!uploading && (
+                  <button onClick={confirmUpload} disabled={toUpload.length === 0}
+                    className="px-4 py-2 rounded bg-brand text-white text-sm hover:opacity-90 disabled:opacity-60">
+                    {`上传 ${toUpload.length} 张`}
+                  </button>
+                )}
               </div>
             </div>
           </div>
         </div>
-      )}
+        );
+      })()}
       <Slideshow photos={slidePhotos} open={slideOpen} onClose={closeSlide} title={work ? work.title : ''} />
     </div>
   );

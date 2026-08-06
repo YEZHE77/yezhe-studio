@@ -6,23 +6,38 @@
 
   <view class="toolbar">
     <button class="btn btn-choose" bindtap="onChoose" disabled="{{uploading}}">+ 选择照片</button>
-    <button class="btn btn-confirm" bindtap="onConfirm"
-      disabled="{{uploading || toUploadCount === 0}}">
-      {{uploading ? '上传中 ' + uploadProgress + '%' : '上传 ' + toUploadCount + ' 张'}}
-    </button>
+    <button wx:if="{{!uploading}}" class="btn btn-confirm" bindtap="onConfirm" disabled="{{toUploadCount === 0}}">上传 {{toUploadCount}} 张</button>
+    <button wx:if="{{uploading}}" class="btn btn-pause" bindtap="togglePause">{{paused ? '继续' : '暂停'}}</button>
+    <button wx:if="{{uploading}}" class="btn btn-cancel" bindtap="cancelAll">取消</button>
+  </view>
+
+  <view wx:if="{{weakNet}}" class="weaknet">
+    <text>⚠️ 检测到弱网，已自动重试；若持续失败请检查网络后单张重试。</text>
+    <text class="weaknet__close" bindtap="onWeakClose">知道了</text>
   </view>
 
   <view wx:if="{{uploading}}" class="progress">
-    <view class="bar" style="width:{{uploadProgress}}%"></view>
+    <view class="progress__info">总进度 {{overallPct}}%</view>
+    <view class="bar"><view class="bar__fill" style="width:{{overallPct}}%"></view></view>
   </view>
 
   <view class="grid" wx:if="{{previews.length}}">
-    <view wx:for="{{previews}}" wx:key="index" class="cell {{item.dup ? 'cell--dup' : ''}}">
+    <view wx:for="{{previews}}" wx:key="index" class="cell {{item.dup ? 'cell--dup' : ''}} {{item.status === 'failed' ? 'cell--fail' : ''}} {{item.status === 'done' ? 'cell--done' : ''}}">
       <image src="{{item.tempFilePath}}" mode="aspectFill" class="thumb" />
       <view wx:if="{{item.dup}}" class="mask"></view>
       <text wx:if="{{item.dup}}" class="tag">已存在</text>
-      <text wx:if="{{!item.dup && item.error}}" class="tag tag--warn">待上传</text>
-      <text wx:if="{{!item.dup && !item.error}}" class="tag tag--ok">待上传</text>
+      <text wx:if="{{item.dup}}" class="tag tag--skip">已跳过</text>
+
+      <block wx:if="{{!item.dup && !item.error}}">
+        <view wx:if="{{item.status === 'uploading'}}" class="cell__bar"><view class="cell__bar-fill" style="width:{{item.progress}}%"></view></view>
+        <view wx:if="{{item.status === 'failed'}}" class="cell__retry" bindtap="retryOne" data-idx="{{index}}"><text class="tag tag--fail">↻ 重试</text></view>
+        <text wx:if="{{item.status === 'done'}}" class="tag tag--ok">完成</text>
+        <text wx:if="{{item.status === 'failed'}}" class="tag tag--fail">失败</text>
+        <text wx:if="{{item.status === 'uploading'}}" class="tag tag--ok">上传中 {{item.progress}}%</text>
+        <text wx:if="{{item.status === 'pending'}}" class="tag tag--ok">待上传</text>
+      </block>
+
+      <text wx:if="{{item.error}}" class="tag tag--warn">读取失败</text>
     </view>
   </view>
 

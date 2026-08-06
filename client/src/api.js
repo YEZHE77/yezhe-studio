@@ -163,7 +163,8 @@ export const api = {
 };
 
 // 前端上传前压缩：长边不超过 maxWidth/maxHeight，质量 quality，<2MB 或不是图片则跳过
-export function compressImage(file, { maxWidth = 1920, maxHeight = 1920, quality = 0.85, type = 'image/jpeg' } = {}) {
+// 需求 D：默认质量下调到 0.8（0.7~0.8 区间），进一步缩小压缩小样体积、加快上传。
+export function compressImage(file, { maxWidth = 1920, maxHeight = 1920, quality = 0.8, type = 'image/jpeg' } = {}) {
   return new Promise((resolve, reject) => {
     if (!file || !file.type.startsWith('image/')) return resolve(file);
     if (file.size < 2 * 1024 * 1024) return resolve(file);
@@ -252,6 +253,10 @@ function toType(cat) { return CATEGORY_TO_TYPE[cat] || 'uncategorized'; }
 // opts: { category, isPublic, onProgress, signal }
 export async function uploadImage(file, opts = {}) {
   const { category = 'uncategorized', isPublic = false, onProgress, signal, metaName, metaSize } = opts;
+  // 需求 D：压缩小样单张 >2MB 走分片上传（断点续传 + 2 次自动重试 + 聚合单图进度）
+  if (file && file.size > 2 * 1024 * 1024) {
+    return uploadImageChunked(file, opts);
+  }
   const type = toType(category);
   const workerUrl = import.meta.env.VITE_UPLOAD_WORKER_URL;
   let url;
@@ -317,6 +322,87 @@ export async function uploadImage(file, opts = {}) {
   return { url, name: metaName ?? file.name, size: metaSize ?? file.size };
 }
 
+// ---- 需求 D：分片上传（压缩小样单张 >2MB 启用） ----
+const CHUNK_SIZE = 512 * 1024; // 512KB/片（R2/S3 原生 multipart 要求每片≥5MB，故走后端临时缓冲+合并）
+const CHUNK_RETRY = 2; // 单分片失败自动重试次数
+
+function genUploadId() {
+  return Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10);
+}
+
+// 上传单个分片（per-part 进度回调 + 自动重试 CHUNK_RETRY 次）
+async function uploadOneChunk(uploadId, partNo, blob, opts) {
+  const { signal, onPartProgress } = opts;
+  const fd = new FormData();
+  fd.append('file', blob, `part-${partNo}`);
+  fd.append('uploadId', uploadId);
+  fd.append('partNo', String(partNo));
+  let attempts = 0;
+  while (true) {
+    try {
+      await http.post('/api/upload/chunk', fd, {
+        timeout: 60000,
+        signal,
+        headers: { 'Content-Type': 'multipart/form-data' },
+        onUploadProgress: (e) => { if (onPartProgress && e.total) onPartProgress(Math.round((e.loaded / e.total) * 100)); }
+      });
+      return;
+    } catch (err) {
+      if (signal && signal.aborted) throw err;
+      attempts++;
+      if (attempts > CHUNK_RETRY) throw err; // 2 次自动重试后仍失败 → 交上层（单张失败标红+手动重试）
+      await new Promise((r) => setTimeout(r, 800));
+    }
+  }
+}
+
+// 分片上传主流程：512KB/片 + 断点续传（先查已存在分片跳过）+ 2 次自动重试 + 聚合单图进度
+export async function uploadImageChunked(file, opts = {}) {
+  const { category = 'uncategorized', isPublic = false, onProgress, signal, metaName, metaSize, getPaused } = opts;
+  const uploadId = genUploadId();
+  const ext = '.' + ((file.name.split('.').pop() || 'jpg').toLowerCase());
+  const totalParts = Math.max(1, Math.ceil(file.size / CHUNK_SIZE));
+  // 断点续传：先查该 uploadId 已存在的分片（切网络/后台回来可续，已传分片不重复传）
+  const uploaded = new Set();
+  try {
+    const st = await http.get('/api/upload/chunk/status?uploadId=' + encodeURIComponent(uploadId));
+    (st.data.parts || []).forEach((p) => uploaded.add(Number(p)));
+  } catch { /* 查询失败不阻断，从头传 */ }
+  let uploadedBytes = 0;
+  for (let partNo = 1; partNo <= totalParts; partNo++) {
+    if (signal && signal.aborted) throw { type: 'cancel', message: '已取消' };
+    // 暂停（getPaused 返回 true 时挂起当前图后续分片，已发起请求不阻断）
+    while (getPaused && getPaused() && !(signal && signal.aborted)) {
+      await new Promise((r) => setTimeout(r, 150));
+    }
+    const start = (partNo - 1) * CHUNK_SIZE;
+    const end = Math.min(start + CHUNK_SIZE, file.size);
+    const partSize = end - start;
+    if (uploaded.has(partNo)) {
+      uploadedBytes = end;
+      if (onProgress) onProgress(Math.min(99, Math.round((uploadedBytes / file.size) * 100)));
+      continue;
+    }
+    await uploadOneChunk(uploadId, partNo, file.slice(start, end), {
+      signal,
+      onPartProgress: (pct) => {
+        if (onProgress) {
+          const cur = uploadedBytes + Math.round((pct / 100) * partSize);
+          onProgress(Math.min(99, Math.round((cur / file.size) * 100)));
+        }
+      }
+    });
+    uploadedBytes = end;
+  }
+  // 全部到达 → 后端合并落库
+  const type = toType(category);
+  const { data } = await http.post('/api/upload/complete', {
+    uploadId, ext, category: type, isPublic: !!isPublic, totalParts
+  }, { signal, timeout: 60000 });
+  await registerMedia(data.url, type, file.size, isPublic);
+  return { url: data.url, name: metaName ?? file.name, size: metaSize ?? file.size };
+}
+
 // 拉取某相册已存在图片的签名集合（originalName_size），用于上传前重复检测。
 // 失败时返回空集合（降级：不拦截，避免误伤正常上传）。
 export async function getExistSigns(workId) {
@@ -355,7 +441,7 @@ export async function downloadBackup() {
 //     便于调用方按原始顺序拼接 originalName/size 投递后端去重接口。
 //   - failed：按索引对齐的错误信息数组（成功项为空）。
 export async function uploadBatch(files, opts = {}) {
-  const { category = 'uncategorized', isPublic = false, concurrency = 3, signal, onProgress } = opts;
+  const { category = 'uncategorized', isPublic = false, concurrency = 3, signal, onProgress, onItemProgress } = opts;
   const list = Array.from(files || []).map((f) => (f && f.file ? f : { file: f, name: f && f.name, size: f && f.size }));
   const items = new Array(list.length).fill(null);
   const failed = new Array(list.length).fill(undefined);
@@ -368,7 +454,10 @@ export async function uploadBatch(files, opts = {}) {
       const idx = cursor++;
       try {
         const item = list[idx];
-        const r = await uploadImage(item.file, { category, isPublic, signal, metaName: item.name, metaSize: item.size });
+        const r = await uploadImage(item.file, {
+          category, isPublic, signal, metaName: item.name, metaSize: item.size,
+          onProgress: (pct) => { if (onItemProgress) onItemProgress(idx, pct); }
+        });
         items[idx] = r;
       } catch (e) {
         if (signal && signal.aborted) return;
