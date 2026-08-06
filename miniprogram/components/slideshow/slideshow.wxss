@@ -6,6 +6,7 @@
   z-index: 9999;
 }
 
+/* ===== 顶部栏：左关闭 / 中计数 / 右 BGM ===== */
 .ss-top {
   position: absolute;
   top: 0; left: 0; right: 0;
@@ -13,63 +14,103 @@
   height: calc(88rpx + env(safe-area-inset-top));
   display: flex;
   align-items: center;
-  justify-content: center;
+  padding-left: 24rpx;
+  padding-right: 24rpx;
+  box-sizing: border-box;
   pointer-events: auto;
+  z-index: 2;
+}
+.ss-close {
+  width: 64rpx; height: 64rpx;
+  display: flex; align-items: center; justify-content: center;
+  color: #fff; font-size: 44rpx; line-height: 1;
 }
 .ss-count {
+  flex: 1;
+  text-align: center;
   color: #fff;
   font-size: 26rpx;
   letter-spacing: 2rpx;
-  background: rgba(0, 0, 0, 0.35);
-  padding: 6rpx 20rpx;
-  border-radius: 999rpx;
 }
+.ss-bgm {
+  width: 64rpx; height: 64rpx;
+  display: flex; align-items: center; justify-content: center;
+  color: #fff; font-size: 40rpx; line-height: 1;
+}
+.ss-bgm.on { color: #fff; }
+.ss-bgm-ico { font-size: 40rpx; line-height: 1; }
 
-.ss-img {
+/* ===== 素材图层（转场动画作用对象） ===== */
+.ss-media {
   position: absolute;
   left: 0; top: 0;
   width: 100%;
   height: 100%;
+  will-change: transform, opacity;
 }
+.ss-photo { backface-visibility: hidden; }
 
-.ss-buffering {
-  position: absolute;
-  top: calc(110rpx + env(safe-area-inset-top));
-  left: 0; right: 0;
-  text-align: center;
-  color: rgba(255, 255, 255, 0.85);
-  font-size: 24rpx;
-  letter-spacing: 1rpx;
-}
-
-.ss-tools {
+/* ===== 底部控件：播放/暂停 + 进度条 + 时间 ===== */
+.ss-bottom {
   position: absolute;
   left: 0; right: 0;
-  bottom: calc(48rpx + env(safe-area-inset-bottom));
+  bottom: calc(40rpx + env(safe-area-inset-bottom));
   display: flex;
-  justify-content: center;
-  gap: 56rpx;
-  pointer-events: auto;
-}
-.ss-btn {
-  display: flex;
-  flex-direction: column;
   align-items: center;
+  gap: 20rpx;
+  padding: 0 32rpx;
+  box-sizing: border-box;
+  pointer-events: auto;
+  z-index: 2;
+}
+.ss-play {
+  width: 72rpx; height: 72rpx;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.16);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.ss-ico-play {
+  width: 0; height: 0;
+  border-left: 24rpx solid #fff;
+  border-top: 14rpx solid transparent;
+  border-bottom: 14rpx solid transparent;
+  margin-left: 6rpx;
+}
+.ss-ico-pause { display: flex; gap: 8rpx; }
+.ss-ico-pause view { width: 8rpx; height: 26rpx; background: #fff; border-radius: 2rpx; }
+
+.ss-progress { flex: 1; }
+.ss-bar {
+  height: 6rpx;
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 3rpx;
+  overflow: hidden;
+}
+.ss-bar-fill {
+  height: 100%;
+  background: #fff;
+  border-radius: 3rpx;
+}
+.ss-time {
   color: #fff;
-  min-width: 96rpx;
+  font-size: 22rpx;
+  flex-shrink: 0;
+  min-width: 130rpx;
+  text-align: right;
 }
-.ss-ico {
-  font-size: 46rpx;
-  line-height: 1;
-}
-.ss-lbl {
-  font-size: 20rpx;
-  margin-top: 10rpx;
-  opacity: 0.85;
-}
-.ss-btn.on .ss-lbl {
-  color: var(--brand-green);
-}
-.ss-btn.on .ss-ico {
-  color: var(--brand-green);
-}
+
+/* ===== 转场动画（6 种预定义，相邻尽量不重复） ===== */
+@keyframes ssFade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes ssSlideL { from { opacity: 0; transform: translateX(8%); } to { opacity: 1; transform: translateX(0); } }
+@keyframes ssSlideU { from { opacity: 0; transform: translateY(8%); } to { opacity: 1; transform: translateY(0); } }
+@keyframes ssZoom { from { opacity: 0; transform: scale(0.85); } to { opacity: 1; transform: scale(1); } }
+@keyframes ssRotate { from { opacity: 0; transform: rotate(-8deg) scale(0.92); } to { opacity: 1; transform: rotate(0) scale(1); } }
+@keyframes ssBlind { from { opacity: 0; transform: scaleY(0.04); } to { opacity: 1; transform: scaleY(1); } }
+
+.ss-anim-fade { animation: ssFade 0.6s ease both; }
+.ss-anim-slideL { animation: ssSlideL 0.55s ease both; }
+.ss-anim-slideU { animation: ssSlideU 0.55s ease both; }
+.ss-anim-zoom { animation: ssZoom 0.6s ease both; }
+.ss-anim-rotate { animation: ssRotate 0.65s ease both; }
+.ss-anim-blind { animation: ssBlind 0.6s ease both; transform-origin: center center; }
