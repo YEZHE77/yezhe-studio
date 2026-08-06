@@ -38,8 +38,8 @@
   <block wx:else>
     <!-- 相册内容（未锁定时展示） -->
     <block wx:if="{{!locked}}">
-      <!-- 右上角悬浮分享按钮 -->
-      <view class="share-float-btn" bindtap="openShareSheet">分享</view>
+      <!-- 右上角悬浮分享按钮：小圆形 -->
+      <view class="share-float-btn" style="top: {{statusBarHeight + navHeight + 12}}px;" bindtap="openShareSheet">分享</view>
 
       <!-- 封面图 -->
       <view class="cover-wrap">
@@ -114,11 +114,35 @@
         <view class="share-panel" catchtap="noop">
           <view class="share-row">
             <button class="share-item" open-type="share" catchtap="shareToFriend">
-              <view class="icon wechat">💬</view>
+              <view class="icon wechat">
+                <svg class="share-svg" viewBox="0 0 64 64">
+                  <path d="M12 28 C12 18 24 12 36 16 C44 19 48 28 44 36 C42 40 36 43 30 42 L26 48 L24 41 C18 39 12 34 12 28Z" fill="#ffffff"/>
+                  <path d="M28 38 C28 32 36 28 46 30 C54 32 58 38 56 44 C54 48 50 50 44 50 L42 55 L40 50 C34 49 28 45 28 38Z" fill="#ffffff"/>
+                </svg>
+              </view>
               <text>微信好友</text>
             </button>
             <view class="share-item" catchtap="downloadAlbumQrcode">
-              <view class="icon qrcode">▦</view>
+              <view class="icon qrcode">
+                <svg class="share-svg" viewBox="0 0 64 64">
+                  <rect x="6" y="6" width="20" height="20" rx="3" fill="none" stroke="#ffffff" stroke-width="4"/>
+                  <rect x="12" y="12" width="8" height="8" fill="#ffffff"/>
+                  <rect x="38" y="6" width="20" height="20" rx="3" fill="none" stroke="#ffffff" stroke-width="4"/>
+                  <rect x="44" y="12" width="8" height="8" fill="#ffffff"/>
+                  <rect x="6" y="38" width="20" height="20" rx="3" fill="none" stroke="#ffffff" stroke-width="4"/>
+                  <rect x="12" y="44" width="8" height="8" fill="#ffffff"/>
+                  <rect x="32" y="8" width="4" height="4" fill="#ffffff"/>
+                  <rect x="32" y="16" width="4" height="4" fill="#ffffff"/>
+                  <rect x="32" y="28" width="8" height="8" fill="#ffffff"/>
+                  <rect x="8" y="32" width="4" height="4" fill="#ffffff"/>
+                  <rect x="16" y="32" width="4" height="4" fill="#ffffff"/>
+                  <rect x="44" y="32" width="4" height="4" fill="#ffffff"/>
+                  <rect x="54" y="32" width="4" height="4" fill="#ffffff"/>
+                  <rect x="32" y="42" width="4" height="4" fill="#ffffff"/>
+                  <rect x="32" y="52" width="4" height="4" fill="#ffffff"/>
+                  <rect x="44" y="44" width="14" height="14" fill="#ffffff"/>
+                </svg>
+              </view>
               <text>下载二维码</text>
             </view>
           </view>

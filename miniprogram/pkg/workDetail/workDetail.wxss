@@ -62,27 +62,24 @@
 /* ===== 封面 + 右上角悬浮分享按钮 ===== */
 .cover-wrap { position: relative; width: 100%; height: 520rpx; }
 .cover-img { width: 100%; height: 100%; display: block; }
-/* 分享按钮：靠右贴边异形长胶囊（左大圆角/右小圆角），薄荷青扁平，浮于封面中上 */
+/* 分享按钮：右上角小型圆形悬浮按钮 */
 .share-float-btn {
   position: fixed;
-  top: 240rpx;
-  right: 0rpx;
+  right: 24rpx;
   z-index: 99;
-  width: 320rpx;
-  height: 110rpx;
-  line-height: 110rpx;
+  width: 80rpx;
+  height: 80rpx;
+  line-height: 80rpx;
   text-align: center;
   background: var(--brand-green);
   color: #ffffff;
-  font-size: 44rpx;
-  font-weight: bold;
-  border-top-left-radius: 55rpx;
-  border-bottom-left-radius: 55rpx;
-  border-top-right-radius: 12rpx;
-  border-bottom-right-radius: 12rpx;
+  font-size: 24rpx;
+  font-weight: 500;
+  border-radius: 50%;
+  box-shadow: 0 4rpx 16rpx rgba(0,0,0,0.18);
   transition: transform .12s ease;
 }
-.share-float-btn:active { transform: scale(0.97); }
+.share-float-btn:active { transform: scale(0.92); }
 
 /* ===== 相册信息区 ===== */
 .info-wrap { padding: 28rpx 32rpx 20rpx; background: #f7f7f5; }
@@ -240,11 +237,11 @@
 }
 .share-panel {
   background: #fff;
-  border-top-left-radius: 24rpx;
-  border-top-right-radius: 24rpx;
-  padding: 40rpx 30rpx;
-  padding-bottom: calc(40rpx + constant(safe-area-inset-bottom));
-  padding-bottom: calc(40rpx + env(safe-area-inset-bottom));
+  border-top-left-radius: 36rpx;
+  border-top-right-radius: 36rpx;
+  padding: 48rpx 30rpx 0;
+  padding-bottom: calc(24rpx + constant(safe-area-inset-bottom));
+  padding-bottom: calc(24rpx + env(safe-area-inset-bottom));
   box-sizing: border-box;
   animation: sheetUp .25s ease;
 }
@@ -252,7 +249,7 @@
   from { transform: translateY(100%); }
   to { transform: translateY(0); }
 }
-.share-row { display: flex; }
+.share-row { display: flex; padding: 0 40rpx; }
 .share-item {
   flex: 1;
   display: flex;
@@ -266,23 +263,23 @@
 /* button 形态的分享项需去掉默认样式 */
 .share-item::after { border: none; }
 .share-item .icon {
-  width: 120rpx;
-  height: 120rpx;
+  width: 124rpx;
+  height: 124rpx;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #fff;
-  font-size: 52rpx;
 }
 .share-item .icon.wechat { background: var(--brand-green); }
-.share-item .icon.qrcode { background: #f27052; }
-.share-item text { margin-top: 16rpx; font-size: 26rpx; color: #555; }
+.share-item .icon.qrcode { background: #f2704e; }
+.share-svg { width: 64rpx; height: 64rpx; display: block; }
+.share-item text { margin-top: 18rpx; font-size: 26rpx; color: #555; font-weight: 400; }
 .cancel-btn {
-  margin-top: 40rpx;
+  margin-top: 48rpx;
   text-align: center;
-  height: 96rpx;
-  line-height: 96rpx;
+  height: 100rpx;
+  line-height: 100rpx;
   font-size: 30rpx;
   color: #333;
+  border-top: 1rpx solid #eeeeee;
 }
