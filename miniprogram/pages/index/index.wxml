@@ -31,10 +31,10 @@
     <view class="brand-more" bindtap="goAbout">查看品牌故事 ></view>
   </view>
 
-  <!-- 作品展示 Gallery -->
+  <!-- 作品展示 -->
   <view class="gallery">
-    <view class="gallery-en">GALLERY</view>
     <view class="gallery-title">作品展示</view>
+    <view class="gallery-sub">Works Exhibition</view>
 
     <!-- 分类标签 -->
     <scroll-view class="cat-bar" scroll-x scroll-with-animation>

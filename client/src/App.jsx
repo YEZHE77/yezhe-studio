@@ -24,6 +24,10 @@ const BusinessCard = React.lazy(() => import('./pages/BusinessCard.jsx'));
 const SelectionAdmin = React.lazy(() => import('./pages/SelectionAdmin.jsx'));
 const ShareAlbum = React.lazy(() => import('./pages/ShareAlbum.jsx'));
 const CapacityManagement = React.lazy(() => import('./pages/CapacityManagement.jsx'));
+// 客户前端（公开，无需登录）：首页 / 我的 / 公开作品相册
+const Home = React.lazy(() => import('./pages/Home.jsx'));
+const My = React.lazy(() => import('./pages/My.jsx'));
+const WorkPublic = React.lazy(() => import('./pages/WorkPublic.jsx'));
 
 // 通用加载占位
 function PageLoader() {
@@ -79,6 +83,10 @@ export default function App() {
       {!user && (
         <>
           <Route path="/login" element={<Login />} />
+          <Route path="/" element={<Suspense fallback={<PageLoader />}><Home /></Suspense>} />
+          <Route path="/home" element={<Suspense fallback={<PageLoader />}><Home /></Suspense>} />
+          <Route path="/my" element={<Suspense fallback={<PageLoader />}><My /></Suspense>} />
+          <Route path="/w/:id" element={<Suspense fallback={<PageLoader />}><WorkPublic /></Suspense>} />
           <Route path="*" element={<Navigate to="/login" replace />} />
         </>
       )}
