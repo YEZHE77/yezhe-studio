@@ -3,6 +3,8 @@ import { useSearchParams } from 'react-router-dom';
 import http, { img, debounce } from '../api.js';
 import { useViewState } from '../tabMemory.js';
 import OrderCreateModal from '../components/OrderCreateModal.jsx';
+import bgm from '../bgm.js';
+import Slideshow from '../components/Slideshow.jsx';
 
 const STATUS_LABEL = {
   unpaid: '待付定金', deposit: '已付定金', shot: '已拍摄', selecting: '选片中',
@@ -33,8 +35,22 @@ export default function Orders() {
   const [share, setShare] = useState(null); // 分享二维码 {share_token, share_url, qr_url}
   const [shareModal, setShareModal] = useState(false);
   const [shareBusy, setShareBusy] = useState(false);
+  const [slideOpen, setSlideOpen] = useState(false);
+  const [slidePhotos, setSlidePhotos] = useState([]);
 
   const abortRef = useRef(null);
+
+  // 全屏幻灯片（订单选片结果）：用户点击【播放】手势内触发 BGM 播放
+  function openSlideSel() {
+    if (!sel || !sel.photos.length) return;
+    setSlidePhotos(sel.photos.map((p) => ({ url: img(p.photo_url) })));
+    bgm.play();
+    setSlideOpen(true);
+  }
+  function closeSlideSel() {
+    bgm.pause();
+    setSlideOpen(false);
+  }
 
   // 搜索防抖 300ms（避免逐字发请求）
   const setQ = useMemo(() => debounce((v) => setState((s) => ({ ...s, q: v }))), [setState]);
@@ -384,11 +400,15 @@ export default function Orders() {
             {/* 选片结果（客户在小程序提交，后台可查看/修改）*/}
             <div className="text-xs text-muted mb-1 flex items-center justify-between">
               <span>选片结果</span>
-              {sel && sel.selection && (
-                <span className={sel.selection.submitted ? 'text-emerald-400' : 'text-amber-400'}>
-                  {sel.selection.submitted ? '已提交' : '草稿'}
-                </span>
-              )}
+              <div className="flex items-center gap-2">
+                <button onClick={openSlideSel} disabled={!sel || !sel.photos.length}
+                  className="px-2 py-1 rounded border border-line text-xs text-fg hover:text-brand hover:border-brand disabled:opacity-40">▶ 播放</button>
+                {sel && sel.selection && (
+                  <span className={sel.selection.submitted ? 'text-emerald-400' : 'text-amber-400'}>
+                    {sel.selection.submitted ? '已提交' : '草稿'}
+                  </span>
+                )}
+              </div>
             </div>
             <div className="mb-4">
               {!sel && <div className="text-muted text-sm py-2">加载中…</div>}
@@ -584,6 +604,7 @@ export default function Orders() {
         </div>
       )}
 
+      <Slideshow photos={slidePhotos} open={slideOpen} onClose={closeSlideSel} title={detail ? detail.title : '订单相册'} />
     </div>
   );
 }

@@ -1,0 +1,32 @@
+<!-- 全屏幻灯片（作品相册 / 订单相册 共用） -->
+<view wx:if="{{visible}}" class="ss-mask" bindtap="onMaskTap">
+  <!-- 顶部计数 -->
+  <view class="ss-top" catchtap="noop">
+    <text class="ss-count">{{index + 1}} / {{total}}</text>
+  </view>
+
+  <!-- 图片：catchtap 阻止冒泡到蒙层；touch 处理左右滑动 / 下拉关闭 -->
+  <image wx:if="{{cur}}" class="ss-img" src="{{cur}}" mode="aspectFit"
+    catchtap="noop"
+    catchtouchstart="onImgTouchStart"
+    catchtouchend="onImgTouchEnd" />
+
+  <!-- 缓冲提示 -->
+  <view wx:if="{{loading}}" class="ss-buffering">音乐加载中…</view>
+
+  <!-- 底部悬浮控件（catchtap 阻止冒泡） -->
+  <view class="ss-tools" catchtap="noop">
+    <view class="ss-btn" bindtap="toggleMute">
+      <text class="ss-ico">{{muted ? '🔇' : '🔊'}}</text>
+      <text class="ss-lbl">{{muted ? '已静音' : '音乐'}}</text>
+    </view>
+    <view class="ss-btn {{autoplay ? 'on' : ''}}" bindtap="toggleAutoplay">
+      <text class="ss-ico">{{autoplay ? '⏩' : '⏯'}}</text>
+      <text class="ss-lbl">{{autoplay ? '自动播放' : '手动'}}</text>
+    </view>
+    <view class="ss-btn" bindtap="close">
+      <text class="ss-ico">✕</text>
+      <text class="ss-lbl">关闭</text>
+    </view>
+  </view>
+</view>

@@ -1,6 +1,9 @@
 <view class="page">
   <view class="head">
-    <text class="head-t">{{title ? title : '成片相册'}}</text>
+    <view class="head-row">
+      <text class="head-t">{{title ? title : '成片相册'}}</text>
+      <view wx:if="{{photos.length && !locked}}" class="play-btn" bindtap="openSlideshow">▶ 幻灯片</view>
+    </view>
     <text class="muted small" wx:if="{{allowDownload && !locked}}">长按或点「保存」存到相册</text>
     <text class="muted small" wx:elif="{{!locked}}">仅可浏览，保存未开放</text>
   </view>
@@ -25,4 +28,7 @@
     </view>
     <view wx:else class="empty">还没有成片</view>
   </block>
+
+  <!-- 全屏幻灯片 -->
+  <slideshow wx:if="{{showSlideshow}}" visible="{{showSlideshow}}" photos="{{slidePhotos}}" startIndex="0" bind:close="closeSlideshow" />
 </view>

@@ -16,9 +16,9 @@ page { background: #f9f8f6; }
 .brand {
   text-align: center;
   /* 仅保留横向内边距用于内容缩进；垂直间距一律用 margin（见下）
-     轮播底部 → 圆形头像顶部：80rpx */
+     轮播底部 → 圆形头像顶部：50rpx */
   padding: 0 32rpx;
-  margin-top: 80rpx;
+  margin-top: 50rpx;
   background: transparent;
 }
 .brand-logo {

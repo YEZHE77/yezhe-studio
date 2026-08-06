@@ -127,7 +127,7 @@ export default function Home() {
       </div>
 
       {/* 品牌简介（扁平流式：间距全部用 margin，禁止容器 padding 制造空白） */}
-      <div className="mt-10 px-8 text-center">
+      <div className="mt-[25px] px-8 text-center">
         {studio.logo && (
           <div className="mx-auto h-[120px] w-[120px] overflow-hidden rounded-full border border-gray-200 bg-gray-100">
             <img src={img(studio.logo, 'thumb')} alt="" className="h-full w-full object-cover" />

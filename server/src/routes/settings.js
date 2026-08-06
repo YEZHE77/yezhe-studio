@@ -12,6 +12,9 @@ const DEFAULT_STUDIO = {
   name: '叶哲 Studio',
   logo: '',
   cover: '',
+  // 幻灯片背景音乐（BGM）HTTPS 地址，如《梦中的婚礼》钢琴曲 MP3；
+  // 留空则播放幻灯片无声，但播放/暂停/进度记忆逻辑保持完整。建议上传 R2 经代理访问。
+  bgmUrl: '',
   heroImages: [],
   intro: '海口婚礼 / 人像摄影 · YEZHE WORKSHOP',
   // 品牌 Slogan（首页工作室名称下方浅灰小字；为空时客户端不渲染该行）

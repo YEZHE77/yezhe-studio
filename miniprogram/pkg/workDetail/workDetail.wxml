@@ -5,8 +5,8 @@
       <view class="tb-back" bindtap="goBack">‹</view>
       <view class="tb-title">{{title || '作品相册'}}</view>
       <view class="tb-actions">
-        <view class="tb-icon {{canInteract ? '' : 'disabled'}}" bindtap="togglePlay">
-          <text class="tb-icon-symbol">{{playing ? '⏸' : '▶'}}</text>
+        <view class="tb-icon {{canInteract ? '' : 'disabled'}}" bindtap="openSlideshow">
+          <text class="tb-icon-symbol">▶</text>
         </view>
         <view class="tb-icon {{canInteract ? '' : 'disabled'}}" bindtap="cast">
           <text class="tb-icon-symbol">⍟</text>
@@ -63,7 +63,7 @@
       </view>
 
       <!-- 照片内容：流式/网格 -->
-      <scroll-view scroll-y class="content" scroll-top="{{scrollTop}}" scroll-with-animation="{{playing}}">
+      <scroll-view scroll-y class="content" scroll-top="{{scrollTop}}">
         <!-- 纵向长图流式模式（默认） -->
         <view wx:if="{{view==='flow'}}" class="photo-flow">
           <view class="flow-item" wx:for="{{photos}}" wx:key="id" wx:for-index="idx" bindtap="previewImage" data-idx="{{idx}}">
@@ -92,9 +92,9 @@
           </view>
         </view>
         <view class="brand-tools">
-          <view class="tool {{canInteract ? '' : 'disabled'}}" bindtap="togglePlay">
-            <text class="tool-icon">{{playing ? '⏸' : '▶'}}</text>
-            <text class="tool-label">{{playing ? '暂停' : '播放'}}</text>
+          <view class="tool {{canInteract ? '' : 'disabled'}}" bindtap="openSlideshow">
+            <text class="tool-icon">▶</text>
+            <text class="tool-label">播放</text>
           </view>
           <view class="tool {{canInteract ? '' : 'disabled'}}" bindtap="cast">
             <text class="tool-icon">⍟</text>
@@ -141,4 +141,7 @@
       <button class="lock-btn" loading="{{pwBusy}}" bindtap="verify">查看相册</button>
     </view>
   </view>
+
+      <!-- 全屏幻灯片 -->
+      <slideshow wx:if="{{showSlideshow}}" visible="{{showSlideshow}}" photos="{{photos}}" startIndex="{{slideIndex}}" bind:close="closeSlideshow" />
 </view>

@@ -1,6 +1,7 @@
 const { CONFIG } = require('../../utils/config.js');
 const { requestTask } = require('../../utils/req.js');
 const { getImageUrl } = require('../../utils/imageUrl.js');
+const Bgm = require('../../utils/bgm.js');
 
 function abs(u) {
   if (!u) return '';
@@ -20,7 +21,11 @@ Page({
     title: '',
     pw: '',
     pwErr: '',
-    pwBusy: false
+    pwBusy: false,
+    // 全屏幻灯片
+    showSlideshow: false,
+    slidePhotos: [],
+    bgmUrl: ''
   },
   _tasks: [],
 
@@ -34,8 +39,17 @@ Page({
   onUnload() {
     this._tasks.forEach((ab) => { try { ab(); } catch (e) {} });
     this._tasks = [];
+    Bgm.destroy();
     // 释放大图内存
     this.setData({ photos: [], title: '' });
+  },
+
+  onHide() {
+    if (this.data.showSlideshow) Bgm.pause();
+  },
+
+  onShow() {
+    if (this.data.showSlideshow) Bgm.resume();
   },
 
   onLoad(q) {
@@ -46,6 +60,10 @@ Page({
       this.setData({ orderId: q.orderId });
       this.load();
     }
+    // 获取 BGM 地址（后台设置）
+    requestTask('/api/settings/studio').then((r) => {
+      if (r && r.bgmUrl) this.setData({ bgmUrl: r.bgmUrl });
+    }).catch(() => {});
   },
 
   // 客户自有订单（openid 行级隔离）
@@ -111,6 +129,21 @@ Page({
     const url = e.currentTarget.dataset.url;
     const urls = (this.data.photos || []).map((p) => p.photo_url).filter(Boolean);
     if (url && urls.length) wx.previewImage({ current: url, urls });
+  },
+
+  // 唤起全屏幻灯片（用户手势内触发 BGM 播放）
+  openSlideshow() {
+    if (!this.data.photos.length) return;
+    const slidePhotos = this.data.photos.map((p) => ({ url: p.photo_url, preview: p.thumb || p.photo_url }));
+    Bgm.init(this.data.bgmUrl);
+    Bgm.play(); // 必须在用户点击手势内调用
+    this.setData({ showSlideshow: true, slidePhotos });
+  },
+
+  // 关闭幻灯片：暂停 BGM 并记录进度（不销毁实例）
+  closeSlideshow() {
+    Bgm.pause();
+    this.setData({ showSlideshow: false });
   },
 
   save(e) {

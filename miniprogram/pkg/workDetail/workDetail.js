@@ -1,10 +1,6 @@
 const { requestTask } = require('../../utils/req.js');
 const { getImageUrl } = require('../../utils/imageUrl.js');
-
-// 幻灯片背景音乐：《梦中的婚礼》钢琴曲。
-// 请替换为真实 HTTPS URL（建议上传 MP3 至 R2 私有桶，通过 yezhe-img-proxy.yezhe128627.workers.dev 代理；
-// 并在微信公众平台 downloadFile 合法域名添加该域名）。留空则不播放声音，播放/暂停/退出逻辑保持完整。
-const BGM_URL = '';
+const Bgm = require('../../utils/bgm.js');
 
 Page({
   data: {
@@ -25,9 +21,10 @@ Page({
     cover: '',
     photos: [], // [{ id, url, thumb, preview }]
     brand: { name: '', slogan: '', logo: '' },
-    // 播放状态
-    playing: false,
-    playTimer: null,
+    // 全屏幻灯片
+    showSlideshow: false,
+    slideIndex: 0,
+    bgmUrl: '',
     // 相册密码锁
     locked: false,
     pw: '',
@@ -37,7 +34,6 @@ Page({
     canInteract: true // 锁定时置灰分享、视图切换、播放、投屏
   },
   _tasks: [],
-  innerAudioContext: null,
 
   onLoad(options) {
     const sys = wx.getSystemInfoSync();
@@ -46,13 +42,10 @@ Page({
     const shareTop = statusBarHeight + navHeight + 8;
     this.setData({ statusBarHeight, navHeight, shareTop });
 
-    // 初始化背景音乐（配置了 BGM_URL 才创建；留空则无声音但逻辑完整）
-    if (BGM_URL) {
-      const audio = wx.createInnerAudioContext();
-      audio.src = BGM_URL;
-      audio.loop = true;
-      this.innerAudioContext = audio;
-    }
+    // 获取 BGM 地址（后台设置）；不在此播放，仅注入单例
+    requestTask('/api/settings/studio').then((r) => {
+      if (r && r.bgmUrl) this.setData({ bgmUrl: r.bgmUrl });
+    }).catch(() => {});
 
     const id = options && options.id ? Number(options.id) : 0;
     if (!id) {
@@ -67,18 +60,16 @@ Page({
   onUnload() {
     this._tasks.forEach((t) => { try { t.abort(); } catch (e) {} });
     this._tasks = [];
-    this.stopPlay();
-    if (this.innerAudioContext) {
-      this.innerAudioContext.stop();
-      this.innerAudioContext.destroy();
-      this.innerAudioContext = null;
-    }
+    Bgm.destroy();
     this.setData({ photos: [] });
   },
 
   onHide() {
-    this.stopPlay();
-    if (this.innerAudioContext) this.innerAudioContext.pause();
+    if (this.data.showSlideshow) Bgm.pause();
+  },
+
+  onShow() {
+    if (this.data.showSlideshow) Bgm.resume();
   },
 
   // 转发分享（封面右上悬浮胶囊按钮触发）
@@ -236,33 +227,18 @@ Page({
     if (current && urls.length) wx.previewImage({ current, urls });
   },
 
-  // 幻灯片播放：自动向下滚动，同步背景音乐
-  togglePlay() {
+  // 唤起全屏幻灯片（用户手势内触发 BGM 播放）
+  openSlideshow() {
     if (!this.data.canInteract || !this.data.photos.length) return;
-    if (this.data.playing) {
-      this.stopPlay();
-      return;
-    }
-    this.setData({ playing: true });
-    if (this.innerAudioContext) this.innerAudioContext.play();
-    this._playTimer = setInterval(() => {
-      const query = wx.createSelectorQuery().in(this);
-      query.select('.content').scrollOffset();
-      query.select('.content').boundingClientRect();
-      query.exec((res) => {
-        if (!res || !res[0] || !res[1]) return;
-        const offset = res[0].scrollTop;
-        const viewH = res[1].height;
-        const next = offset + viewH * 0.88;
-        this.setData({ scrollTop: next });
-      });
-    }, 2200);
+    Bgm.init(this.data.bgmUrl);
+    Bgm.play(); // 必须在用户点击手势内调用，规避音频拦截
+    this.setData({ showSlideshow: true, slideIndex: 0 });
   },
 
-  stopPlay() {
-    if (this._playTimer) { clearInterval(this._playTimer); this._playTimer = null; }
-    this.setData({ playing: false });
-    if (this.innerAudioContext) this.innerAudioContext.pause();
+  // 关闭幻灯片：暂停 BGM 并记录进度（不销毁实例）
+  closeSlideshow() {
+    Bgm.pause();
+    this.setData({ showSlideshow: false });
   },
 
   // 投屏提示

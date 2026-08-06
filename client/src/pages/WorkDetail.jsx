@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import http, { img, compressImage, uploadBatch } from '../api.js';
+import bgm from '../bgm.js';
+import Slideshow from '../components/Slideshow.jsx';
 
 const ZONES = [
   { key: 'sample', label: '样片', desc: '对外展示、C端小程序可见' },
@@ -28,6 +30,8 @@ export default function WorkDetail() {
   const [draggedId, setDraggedId] = useState(null);
   const [dragOverId, setDragOverId] = useState(null);
   const [reordering, setReordering] = useState(false);
+  const [slideOpen, setSlideOpen] = useState(false);
+  const [slidePhotos, setSlidePhotos] = useState([]);
 
   async function loadWork() {
     try {
@@ -248,6 +252,18 @@ export default function WorkDetail() {
 
   const zoneAlbums = albums.filter((a) => a.zone === zone).sort((a, b) => (a.sort - b.sort) || (a.id - b.id));
 
+  // 全屏幻灯片：用户点击【播放】手势内触发 BGM 播放
+  function openSlide() {
+    if (!zoneAlbums.length) return;
+    setSlidePhotos(zoneAlbums.map((a) => ({ url: img(a.photo_url) })));
+    bgm.play(); // 必须在用户点击手势内调用，规避浏览器自动播放拦截
+    setSlideOpen(true);
+  }
+  function closeSlide() {
+    bgm.pause();
+    setSlideOpen(false);
+  }
+
   if (loading) {
     return (
       <div className="max-w-7xl mx-auto animate-pulse">
@@ -387,6 +403,7 @@ export default function WorkDetail() {
                 <p className="text-xs text-muted mt-0.5">共 {albums.length} 张照片 · 当前分区 {zoneAlbums.length} 张</p>
               </div>
               <div className="flex items-center gap-2">
+                <button onClick={openSlide} disabled={!zoneAlbums.length} className="px-4 py-2 rounded border border-line text-sm text-fg hover:text-brand hover:border-brand disabled:opacity-40">▶ 播放幻灯片</button>
                 <input ref={fileRef} type="file" accept="image/*" multiple className="hidden" onChange={batchUpload} />
                 <button onClick={() => fileRef.current && fileRef.current.click()} disabled={uploading} className="px-4 py-2 rounded bg-brand text-white text-sm hover:opacity-90 disabled:opacity-60">{uploading ? `上传中 ${uploadProgress}%` : '+ 批量上传'}</button>
                 {uploading && (
@@ -478,6 +495,7 @@ export default function WorkDetail() {
           </div>
         </div>
       </div>
+      <Slideshow photos={slidePhotos} open={slideOpen} onClose={closeSlide} title={work ? work.title : ''} />
     </div>
   );
 }

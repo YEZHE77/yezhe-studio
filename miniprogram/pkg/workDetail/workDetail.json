@@ -4,5 +4,7 @@
   "navigationBarBackgroundColor": "#111111",
   "navigationBarTextStyle": "white",
   "backgroundColor": "#f7f7f5",
-  "usingComponents": {}
+  "usingComponents": {
+    "slideshow": "../../components/slideshow/slideshow"
+  }
 }

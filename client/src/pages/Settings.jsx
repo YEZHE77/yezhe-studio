@@ -4,6 +4,8 @@ import ImageCropper from '../components/ImageCropper.jsx';
 
 const EMPTY = {
   name: '叶哲 Studio', logo: '', cover: '', heroImages: [],
+  // 幻灯片背景音乐（BGM）HTTPS 地址，如《梦中的婚礼》钢琴曲 MP3
+  bgmUrl: '',
   intro: '海口婚礼 / 人像摄影 · YEZHE WORKSHOP',
   // 品牌 Slogan：首页工作室名称下方浅灰小字（为空则不渲染）
   slogan: '拍摄有温度的照片，记录平凡生活中的美好。',
@@ -68,6 +70,7 @@ export default function Settings() {
         name: d.name || EMPTY.name,
         logo: d.logo || '', cover: d.cover || '',
         heroImages: Array.isArray(d.heroImages) ? d.heroImages : [],
+        bgmUrl: d.bgmUrl !== undefined ? d.bgmUrl : EMPTY.bgmUrl,
         intro: d.intro || EMPTY.intro,
         slogan: d.slogan !== undefined ? d.slogan : EMPTY.slogan,
         contact: { phone: (d.contact && d.contact.phone) || '', wechat: (d.contact && d.contact.wechat) || '', address: (d.contact && d.contact.address) || '' }
@@ -204,6 +207,10 @@ export default function Settings() {
           </Field>
           <Field label="品牌 Slogan（首页工作室名称下方浅灰小字 · 留空则不显示）">
             <input className={inputCls} value={form.slogan} onChange={(e) => set('slogan', e.target.value)} placeholder="拍摄有温度的照片，记录平凡生活中的美好。" />
+          </Field>
+          <Field label="幻灯片背景音乐 BGM（HTTPS MP3，如《梦中的婚礼》；留空则播放幻灯片无声）">
+            <input className={inputCls} value={form.bgmUrl} onChange={(e) => set('bgmUrl', e.target.value)} placeholder="https://.../dream-wedding.mp3" />
+            <p className="text-xs text-muted mt-1">相册「播放幻灯片」时作为背景音乐循环播放；仅用户点击播放后才触发，切图不中断；建议上传到 R2 私有桶并经代理域名访问（小程序需加入 downloadFile 合法域名）。</p>
           </Field>
           <Field label="简介 / 品牌故事（关于我们页正文）">
             <textarea className={inputCls + ' h-20 resize-none'} value={form.intro} onChange={(e) => set('intro', e.target.value)} />

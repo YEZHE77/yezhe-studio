@@ -1,0 +1,75 @@
+/* 全屏幻灯片 */
+.ss-mask {
+  position: fixed;
+  left: 0; top: 0; right: 0; bottom: 0;
+  background: #000;
+  z-index: 9999;
+}
+
+.ss-top {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  padding-top: env(safe-area-inset-top);
+  height: calc(88rpx + env(safe-area-inset-top));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: auto;
+}
+.ss-count {
+  color: #fff;
+  font-size: 26rpx;
+  letter-spacing: 2rpx;
+  background: rgba(0, 0, 0, 0.35);
+  padding: 6rpx 20rpx;
+  border-radius: 999rpx;
+}
+
+.ss-img {
+  position: absolute;
+  left: 0; top: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.ss-buffering {
+  position: absolute;
+  top: calc(110rpx + env(safe-area-inset-top));
+  left: 0; right: 0;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 24rpx;
+  letter-spacing: 1rpx;
+}
+
+.ss-tools {
+  position: absolute;
+  left: 0; right: 0;
+  bottom: calc(48rpx + env(safe-area-inset-bottom));
+  display: flex;
+  justify-content: center;
+  gap: 56rpx;
+  pointer-events: auto;
+}
+.ss-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  color: #fff;
+  min-width: 96rpx;
+}
+.ss-ico {
+  font-size: 46rpx;
+  line-height: 1;
+}
+.ss-lbl {
+  font-size: 20rpx;
+  margin-top: 10rpx;
+  opacity: 0.85;
+}
+.ss-btn.on .ss-lbl {
+  color: #7ecdbb;
+}
+.ss-btn.on .ss-ico {
+  color: #7ecdbb;
+}

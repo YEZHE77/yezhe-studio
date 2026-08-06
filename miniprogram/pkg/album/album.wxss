@@ -1,6 +1,15 @@
 .page { padding: 24rpx 20rpx 40rpx; }
 .head { padding: 12rpx 20rpx 20rpx; display: flex; flex-direction: column; gap: 6rpx; }
+.head-row { display: flex; align-items: center; justify-content: space-between; }
 .head-t { font-size: 36rpx; font-weight: 700; }
+.play-btn {
+  flex-shrink: 0;
+  font-size: 26rpx;
+  color: #fff;
+  background: #111;
+  padding: 12rpx 28rpx;
+  border-radius: 999rpx;
+}
 
 .grid { display: flex; flex-wrap: wrap; }
 .cell { position: relative; width: calc(50% - 12rpx); margin: 6rpx; border-radius: 10rpx; overflow: hidden; }

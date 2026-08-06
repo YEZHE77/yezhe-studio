@@ -1,3 +1,6 @@
 {
-  "navigationBarTitleText": "成片相册"
+  "navigationBarTitleText": "成片相册",
+  "usingComponents": {
+    "slideshow": "../../components/slideshow/slideshow"
+  }
 }
