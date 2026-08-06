@@ -6,7 +6,7 @@
     <view class="topbar">
       <view class="icon" bindtap="goBack">‹</view>
       <view class="title">{{gallery.subtitle || gallery.title}}</view>
-      <view class="icon" bindtap="share">↗</view>
+      <view class="icon-spacer"></view>
     </view>
 
     <!-- 沉浸式垂直轮播 -->
@@ -52,6 +52,9 @@
         </view>
       </view>
     </view>
+
+    <!-- 右下角常驻悬浮分享按钮（点击调用小程序原生转发好友/群聊） -->
+    <button class="float-share" open-type="share">分享</button>
 
     <view wx:if="{{toast}}" class="toast">{{toast}}</view>
   </block>

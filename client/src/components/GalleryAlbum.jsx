@@ -8,6 +8,7 @@ export default function GalleryAlbum({ gallery }) {
   const [playing, setPlaying] = useState(false);
   const [current, setCurrent] = useState(0);
   const [toast, setToast] = useState('');
+  const [showShare, setShowShare] = useState(false);
   const scrollRef = useRef(null);
   const timerRef = useRef(null);
   const winH = typeof window !== 'undefined' ? window.innerHeight : 800;
@@ -61,6 +62,16 @@ export default function GalleryAlbum({ gallery }) {
     // 查看更多：返回工作室主页（H5 公开落地页首页）
     const base = window.location.origin;
     window.location.href = base + '/';
+  };
+
+  const copyAlbumLink = async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      setShowShare(false);
+      showToast('链接已复制，可粘贴给亲友 / 微信转发');
+    } catch {
+      showToast('复制失败，请手动复制浏览器地址栏链接');
+    }
   };
 
   return (
@@ -141,6 +152,25 @@ export default function GalleryAlbum({ gallery }) {
           </div>
         </div>
       </div>
+
+      {/* 右下角常驻悬浮分享按钮（H5 点击弹窗，复制相册链接兜底） */}
+      <button onClick={() => setShowShare(true)}
+        className="fixed bottom-28 right-4 z-50 flex items-center justify-center px-6 h-11 rounded-full bg-white text-neutral-900 text-sm font-semibold shadow-lg">
+        分享
+      </button>
+
+      {/* 分享弹窗：复制相册链接 */}
+      {showShare && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-6" onClick={() => setShowShare(false)}>
+          <div className="bg-white rounded-2xl p-5 w-full max-w-sm text-neutral-900" onClick={(e) => e.stopPropagation()}>
+            <div className="text-base font-semibold mb-1">分享电子相册</div>
+            <div className="text-xs text-neutral-500 mb-4">复制链接后，可粘贴到微信 / 发送给亲友</div>
+            <div className="text-xs text-neutral-400 break-all bg-neutral-100 rounded-lg p-3 mb-4 leading-relaxed">{window.location.href}</div>
+            <button onClick={copyAlbumLink} className="w-full py-3 rounded-full bg-neutral-900 text-white text-sm font-semibold">复制相册链接</button>
+            <button onClick={() => setShowShare(false)} className="w-full py-2 mt-2 text-xs text-neutral-400">取消</button>
+          </div>
+        </div>
+      )}
 
       {/* 轻提示 */}
       {toast && (

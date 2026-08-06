@@ -46,3 +46,16 @@
   position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 40;
   background: rgba(0,0,0,.8); color: #fff; font-size: 24rpx; padding: 20rpx 32rpx; border-radius: 12rpx; text-align: center; max-width: 80%;
 }
+
+.icon-spacer { width: 64rpx; height: 64rpx; }
+
+/* 右下角常驻悬浮分享按钮：层级高于图片，滚动时固定不动 */
+.float-share {
+  position: fixed; right: 32rpx; bottom: 200rpx; z-index: 50;
+  display: flex; align-items: center; justify-content: center;
+  padding: 0 38rpx; height: 74rpx; line-height: 1;
+  border-radius: 999rpx; background: #ffffff; color: #111;
+  font-size: 28rpx; font-weight: 600;
+  box-shadow: 0 8rpx 24rpx rgba(0,0,0,.4);
+}
+.float-share::after { border: none; }

@@ -97,7 +97,7 @@ Page({
       ? '/pages/share/share?token=' + this.data.token
       : '/pkg/gallery/gallery?workId=' + this.data.workId;
     return {
-      title: g.subtitle || g.title || 'YEZHE WORKSHOP 作品相册',
+      title: g.title || g.subtitle || 'YEZHE WORKSHOP 作品相册',
       path,
       imageUrl: (this.data.photos && this.data.photos[0]) || ''
     };
@@ -107,12 +107,10 @@ Page({
   onShareTimeline() {
     const g = this.data.gallery || {};
     return {
-      title: g.subtitle || g.title || 'YEZHE WORKSHOP 作品相册',
+      title: g.title || g.subtitle || 'YEZHE WORKSHOP 作品相册',
       query: this.data.token ? ('token=' + this.data.token) : ('workId=' + this.data.workId)
     };
   },
-
-  share() { wx.showToast({ title: '请点右上角「···」转发给好友', icon: 'none' }); },
 
   cast() { this.showToast('请下拉控制中心 → 屏幕镜像投屏到电视'); },
 
