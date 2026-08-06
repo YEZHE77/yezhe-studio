@@ -39,8 +39,7 @@ Page({
     const sys = wx.getSystemInfoSync();
     const statusBarHeight = sys.statusBarHeight || 20;
     const navHeight = 44;
-    const shareTop = statusBarHeight + navHeight + 8;
-    this.setData({ statusBarHeight, navHeight, shareTop });
+    this.setData({ statusBarHeight, navHeight });
 
     // 获取 BGM 地址（后台设置）；不在此播放，仅注入单例
     requestTask('/api/settings/studio').promise.then((r) => {
@@ -70,6 +69,13 @@ Page({
 
   onShow() {
     if (this.data.showSlideshow) Bgm.resume();
+  },
+
+  // 进入页面即启用右上角系统「…」原生转发（好友 / 朋友圈）
+  onReady() {
+    if (wx.showShareMenu) {
+      wx.showShareMenu({ withShareTicket: true, menus: ['shareAppMessage', 'shareTimeline'] });
+    }
   },
 
   // 转发分享（封面右上悬浮胶囊按钮触发）
@@ -164,9 +170,12 @@ Page({
 
   goBack() { wx.navigateBack(); },
 
-  // 分享弹窗
+  // 分享弹窗：主动启用系统原生转发，并弹出分享面板（微信好友 / 生成海报）
   openShare() {
     if (!this.data.canInteract) return;
+    if (wx.showShareMenu) {
+      wx.showShareMenu({ withShareTicket: true, menus: ['shareAppMessage', 'shareTimeline'] });
+    }
     this.setData({ shareOpen: true });
   },
   closeShare() { this.setData({ shareOpen: false }); },

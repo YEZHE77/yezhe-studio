@@ -41,8 +41,8 @@
       <!-- 封面图 + 右上悬浮分享胶囊 -->
       <view class="cover-wrap">
         <image class="cover-img" src="{{cover}}" mode="aspectFill" lazy-load binderror="onImgError" />
-        <button wx:if="{{canInteract}}" class="share-capsule" style="top: {{shareTop}}px;" bindtap="openShare">分享</button>
-        <view wx:else class="share-capsule disabled" style="top: {{shareTop}}px;">分享</view>
+        <button wx:if="{{canInteract}}" class="share-capsule" hover-class="share-capsule-hover" hover-stay-time="100" bindtap="openShare">分享</button>
+        <view wx:else class="share-capsule disabled">分享</view>
       </view>
 
       <!-- 相册信息区 -->

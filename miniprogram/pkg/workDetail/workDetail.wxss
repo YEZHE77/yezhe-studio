@@ -59,24 +59,31 @@
 .retry-btn { margin-top: 32rpx; display: inline-block; padding: 16rpx 48rpx; font-size: 28rpx; color: #fff; background: #111; border-radius: 999rpx; }
 .retry-btn::after { border: none; }
 
-/* ===== 封面 + 右上分享胶囊 ===== */
+/* ===== 封面 + 右上悬浮分享胶囊 ===== */
 .cover-wrap { position: relative; width: 100%; height: 520rpx; }
 .cover-img { width: 100%; height: 100%; display: block; }
+/* 分享按钮：140×72rpx 全圆角胶囊，悬浮于封面右上角，浮于图片之上不被遮挡 */
 .share-capsule {
-  position: fixed;
-  right: 24rpx;
-  z-index: 90;
-  height: 52rpx;
-  padding: 0 22rpx;
-  border-radius: 12rpx;
-  background: #7ecdbb;
-  color: #fff;
-  font-size: 24rpx;
-  font-weight: 500;
-  line-height: 52rpx;
-  box-shadow: 0 4rpx 14rpx rgba(0,0,0,0.16);
+  position: absolute;
+  top: 32rpx;
+  right: 32rpx;
+  z-index: 99;
+  width: 140rpx;
+  height: 72rpx;
+  padding: 0;
+  border-radius: 36rpx;
+  background: #48c8b0;
+  color: #ffffff;
+  font-size: 28rpx;
+  font-weight: normal;
+  line-height: 72rpx;
+  text-align: center;
+  box-shadow: 0 6rpx 16rpx rgba(0,0,0,0.18);
+  transition: transform .12s ease;
 }
 .share-capsule::after { border: none; }
+/* 按压态：轻微缩放 */
+.share-capsule-hover { transform: scale(0.96); }
 .share-capsule.disabled {
   background: #c9c9c9;
   color: #f0f0f0;
