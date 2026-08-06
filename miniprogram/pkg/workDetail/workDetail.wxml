@@ -108,25 +108,39 @@
     </block>
   </block>
 
-      <!-- 分享弹窗（底部滑入） -->
+      <!-- 分享操作菜单（底部滑入）：转发微信好友 / 生成朋友圈海报 / 下载小程序码 / 取消 -->
       <view wx:if="{{shareOpen}}" class="share-mask" bindtap="closeShare">
         <view class="share-sheet" catchtap="noop">
           <view class="share-title">分享相册</view>
-          <view class="share-opts">
-            <button class="share-opt" open-type="share">
-              <view class="opt-icon" style="background:#7ecdbb;">💬</view>
-              <view class="opt-label">微信好友</view>
+          <view class="share-menu">
+            <button class="share-menu-item" open-type="share" hover-class="share-menu-hover">
+              <view class="smi-ico" style="background:#07c160;">💬</view>
+              <view class="smi-label">转发微信好友</view>
             </button>
-            <view class="share-opt" bindtap="shareTimeline">
-              <view class="opt-icon" style="background:#1aad19;">🌈</view>
-              <view class="opt-label">朋友圈</view>
+            <view class="share-menu-item" hover-class="share-menu-hover" bindtap="openPoster">
+              <view class="smi-ico" style="background:#ed5b60;">🖼️</view>
+              <view class="smi-label">生成朋友圈海报</view>
             </view>
-            <view class="share-opt" bindtap="downloadQR">
-              <view class="opt-icon" style="background:#2c2c2c;">📷</view>
-              <view class="opt-label">下载二维码</view>
+            <view class="share-menu-item" hover-class="share-menu-hover" bindtap="downloadQR">
+              <view class="smi-ico" style="background:#2c2c2c;">📲</view>
+              <view class="smi-label">下载小程序码</view>
             </view>
           </view>
           <view class="share-cancel" bindtap="closeShare">取消</view>
+        </view>
+      </view>
+
+      <!-- 客片海报弹窗（canvas 合成） -->
+      <view wx:if="{{posterOpen}}" class="poster-mask">
+        <view class="poster-close" bindtap="closePoster">✕</view>
+        <view class="poster-head">客片海报</view>
+        <view class="poster-body">
+          <view class="poster-card">
+            <image wx:if="{{posterImage && !posterLoading}}" class="poster-img" src="{{posterImage}}" mode="widthFix" />
+            <view wx:if="{{posterLoading}}" class="poster-loading">正在生成海报…</view>
+            <canvas type="2d" id="posterCanvas" class="poster-canvas"></canvas>
+          </view>
+          <view class="poster-save {{posterLoading ? 'poster-save-disabled' : ''}}" hover-class="poster-save-hover" bindtap="savePoster">保存到本地</view>
         </view>
       </view>
 
