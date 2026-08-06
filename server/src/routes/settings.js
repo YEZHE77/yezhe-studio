@@ -11,6 +11,7 @@ const DEFAULT_STUDIO = {
   name: '叶哲 Studio',
   logo: '',
   cover: '',
+  heroImages: [],
   intro: '海口婚礼 / 人像摄影 · YEZHE WORKSHOP',
   contact: { phone: '', wechat: '', address: '' },
   tabs: [

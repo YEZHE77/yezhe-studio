@@ -3,7 +3,7 @@ import http, { img, compressImage, uploadImage, downloadBackup } from '../api.js
 import ImageCropper from '../components/ImageCropper.jsx';
 
 const EMPTY = {
-  name: '叶哲 Studio', logo: '', cover: '',
+  name: '叶哲 Studio', logo: '', cover: '', heroImages: [],
   intro: '海口婚礼 / 人像摄影 · YEZHE WORKSHOP',
   contact: { phone: '', wechat: '', address: '' }
 };
@@ -26,6 +26,8 @@ export default function Settings() {
   const [tip, setTip] = useState('');
   const logoRef = useRef();
   const coverRef = useRef();
+  const heroRef = useRef();
+  const [heroBusy, setHeroBusy] = useState(false);
   const [crop, setCrop] = useState(null);
 
   // 对外预约设置：开放开关 + 每周可约日（0=周日 … 6=周六）
@@ -63,6 +65,7 @@ export default function Settings() {
       setForm({
         name: d.name || EMPTY.name,
         logo: d.logo || '', cover: d.cover || '',
+        heroImages: Array.isArray(d.heroImages) ? d.heroImages : [],
         intro: d.intro || EMPTY.intro,
         contact: { phone: (d.contact && d.contact.phone) || '', wechat: (d.contact && d.contact.wechat) || '', address: (d.contact && d.contact.address) || '' }
       });
@@ -105,6 +108,28 @@ export default function Settings() {
     if (!crop) return;
     await upload(croppedFile, crop.kind);
     setCrop(null);
+  }
+
+  // 首页轮播图：支持一次选多张，顺序即展示顺序
+  async function addHeroFiles(files) {
+    const arr = Array.from(files || []);
+    if (!arr.length || heroBusy) return;
+    setHeroBusy(true);
+    try {
+      for (const f of arr) {
+        const compressed = await compressImage(f, { maxWidth: 1600, maxHeight: 1600, quality: 0.82 });
+        const r = await uploadImage(compressed, { category: 'cover', isPublic: true });
+        if (r && r.url) {
+          setForm((fm) => ({ ...fm, heroImages: [...fm.heroImages, r.url] }));
+        }
+      }
+    } catch (e) {
+      setTip('轮播图上传失败：' + (e.response?.data?.error || e.message));
+      setTimeout(() => setTip(''), 3000);
+    } finally { setHeroBusy(false); }
+  }
+  function removeHero(idx) {
+    setForm((fm) => ({ ...fm, heroImages: fm.heroImages.filter((_, i) => i !== idx) }));
   }
 
   async function save() {
@@ -189,20 +214,46 @@ export default function Settings() {
               <input ref={logoRef} type="file" accept="image/*" className="hidden" onChange={(e) => startCrop(e.target.files[0], 'logo', 1, 400, 400)} />
             </div>
           </Field>
-          <Field label="封面图">
+          <Field label="封面图（关于我们页封面）">
             <div className="flex items-center gap-3">
               {form.cover && <img src={img(form.cover)} alt="" loading="lazy" decoding="async" className="w-24 h-16 rounded-lg object-cover border border-line" />}
               <button onClick={() => coverRef.current.click()} className="px-3 py-1.5 rounded-lg border border-line text-sm text-muted hover:text-brand hover:border-brand">上传封面</button>
               <input ref={coverRef} type="file" accept="image/*" className="hidden" onChange={(e) => startCrop(e.target.files[0], 'cover', 16 / 9, 1200, 675)} />
             </div>
           </Field>
+          <Field label={`首页轮播图（多张 · ${form.heroImages.length} 张）`}>
+            <div className="flex flex-wrap gap-3 items-start">
+              {form.heroImages.map((u, i) => (
+                <div key={i} className="relative w-24 h-16 rounded-lg overflow-hidden border border-line group">
+                  <img src={img(u)} alt="" loading="lazy" decoding="async" className="w-full h-full object-cover" />
+                  <button type="button" onClick={() => removeHero(i)}
+                    className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/60 text-white text-xs leading-none flex items-center justify-center opacity-0 group-hover:opacity-100">×</button>
+                  <span className="absolute bottom-0 left-0 px-1 text-[10px] text-white bg-black/50">{i + 1}</span>
+                </div>
+              ))}
+              <button type="button" onClick={() => heroRef.current.click()} disabled={heroBusy}
+                className="w-24 h-16 rounded-lg border border-dashed border-line text-xs text-muted flex flex-col items-center justify-center gap-1 hover:text-brand hover:border-brand disabled:opacity-50">
+                {heroBusy ? '上传中…' : '+ 添加'}
+              </button>
+              <input ref={heroRef} type="file" accept="image/*" multiple className="hidden" onChange={(e) => addHeroFiles(e.target.files)} />
+            </div>
+            <p className="text-xs text-muted mt-2">支持一次选多张；从左到右的顺序即为小程序首页轮播顺序；第一张建议为品牌主视觉。删除：鼠标移到图片上点右上角 ×。</p>
+          </Field>
         </div>
 
         {/* 预览 */}
         <div className="bg-panel border border-line rounded-xl2 p-5">
-          <div className="text-xs text-muted mb-3">C 端「关于我们」预览</div>
+          <div className="text-xs text-muted mb-3">C 端「首页轮播 / 关于我们」预览</div>
           <div className="rounded-xl overflow-hidden border border-line">
-            {form.cover && <img src={img(form.cover)} alt="" loading="lazy" decoding="async" className="w-full h-32 object-cover" />}
+            {form.heroImages.length > 0 ? (
+              <div className="flex overflow-x-auto snap-x gap-0">
+                {form.heroImages.map((u, i) => (
+                  <img key={i} src={img(u)} alt="" loading="lazy" decoding="async" className="w-full h-32 object-cover shrink-0 snap-start" style={{ minWidth: '100%' }} />
+                ))}
+              </div>
+            ) : form.cover ? (
+              <img src={img(form.cover)} alt="" loading="lazy" decoding="async" className="w-full h-32 object-cover" />
+            ) : null}
             <div className="p-5">
               <div className="flex items-center gap-3">
                 {form.logo
