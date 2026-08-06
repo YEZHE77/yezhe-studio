@@ -8,7 +8,6 @@ const GROUPS = [
     title: '内容管理',
     items: [
       { to: '/works', label: '作品', icon: 'photo' },
-      { to: '/categories', label: '分类管理', icon: 'tag' },
       { to: '/packages', label: '套系', icon: 'package' },
       { to: '/schedule', label: '档期', icon: 'calendar' },
       { to: '/settings', label: '资料设置', icon: 'settings' },
