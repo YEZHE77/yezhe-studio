@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import http, { img } from '../api.js';
-import GalleryAlbum from '../components/GalleryAlbum.jsx';
+import AlbumGrid from '../components/AlbumGrid.jsx';
 
 const ZONE_LABEL = { sample: '样片', final: '成片' };
 
@@ -80,9 +80,9 @@ export default function ShareAlbum() {
     );
   }
 
-  // 客片电子相册（album）类型：沉浸式轮播
+  // 客片电子相册（album）类型：网格 / 流式大图 双视图（与小程序相册详情页一致）
   if (payload.gallery) {
-    return <GalleryAlbum gallery={payload.gallery} />;
+    return <AlbumGrid gallery={payload.gallery} />;
   }
 
   // 订单影集（专属相册）类型

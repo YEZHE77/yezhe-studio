@@ -1,5 +1,6 @@
 {
-  "navigationBarTitleText": "作品详情",
+  "navigationStyle": "custom",
+  "navigationBarTitleText": "作品相册",
   "navigationBarBackgroundColor": "#111111",
   "navigationBarTextStyle": "white",
   "backgroundColor": "#f7f7f5",

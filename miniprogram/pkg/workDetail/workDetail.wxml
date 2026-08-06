@@ -1,9 +1,19 @@
 <view class="page">
+  <!-- 自定义顶部栏：返回 + 标题 + 网格/大图切换 -->
+  <view class="topbar" style="padding-top: {{statusBarHeight}}px;">
+    <view class="tb-bar" style="height: {{navHeight}}px;">
+      <view class="tb-back" bindtap="goBack">‹</view>
+      <view class="tb-title">{{title || '作品相册'}}</view>
+      <view class="tb-toggle">
+        <view class="seg {{view==='grid' ? 'on' : ''}}" data-v="grid" bindtap="setView">网格</view>
+        <view class="seg {{view==='flow' ? 'on' : ''}}" data-v="flow" bindtap="setView">大图</view>
+      </view>
+    </view>
+  </view>
+  <view class="tb-ph" style="height: {{statusBarHeight + navHeight}}px;"></view>
+
   <!-- 骨架屏 -->
   <view wx:if="{{loading}}" class="sk-wrap">
-    <view class="sk-cover sk-shimmer"></view>
-    <view class="sk-line sk-w60 sk-shimmer" style="margin-top:40rpx"></view>
-    <view class="sk-line sk-w40 sk-shimmer" style="height:24rpx;margin-top:16rpx"></view>
     <view class="sk-grid">
       <view wx:for="{{[1,2,3,4]}}" wx:key="*this" class="sk-img sk-shimmer"></view>
     </view>
@@ -16,39 +26,44 @@
     <button class="retry-btn" bindtap="retry">重新加载</button>
   </view>
 
-  <!-- 内容 -->
-  <scroll-view wx:else scroll-y class="content">
-    <!-- 封面区 -->
-    <view class="cover-wrap">
-      <image wx:if="{{work.cover_url}}" class="cover" src="{{work.cover_url}}" mode="widthFix" lazy-load />
-      <view wx:else class="cover cover-ph"></view>
-      <view class="cover-gradient"></view>
-      <view class="cover-meta">
-        <view class="cover-title">{{work.title}}</view>
-        <view wx:if="{{work.description}}" class="cover-desc">{{work.description}}</view>
-      </view>
-    </view>
+  <block wx:else>
+    <!-- 相册内容（未锁定时展示） -->
+    <scroll-view wx:if="{{!locked}}" scroll-y class="content">
+      <!-- 自定义相册文案模块 -->
+      <view wx:if="{{albumCopy}}" class="album-copy">{{albumCopy}}</view>
 
-    <!-- 相册网格 -->
-    <view class="albums" wx:if="{{albums.length}}">
-      <view class="section-title">作品集</view>
-      <view class="photo-grid">
-        <view class="photo-item" wx:for="{{albums}}" wx:key="id" bindtap="previewImage" data-url="{{item.photo_url}}">
+      <!-- 两列网格视图 -->
+      <view wx:if="{{view==='grid'}}" class="photo-grid">
+        <view class="photo-item" wx:for="{{photos}}" wx:key="id" wx:for-index="idx" bindtap="previewImage" data-idx="{{idx}}">
           <image class="photo" src="{{item.thumb}}" mode="aspectFill" lazy-load />
         </view>
       </view>
-    </view>
 
-    <view wx:else class="empty-wrap">
-      <view class="empty-text">暂无照片</view>
-    </view>
+      <!-- 流式大图视图 -->
+      <view wx:else class="photo-flow">
+        <view class="flow-item" wx:for="{{photos}}" wx:key="id" wx:for-index="idx" bindtap="previewImage" data-idx="{{idx}}">
+          <image class="flow-img" src="{{item.preview}}" mode="widthFix" lazy-load />
+        </view>
+      </view>
 
-    <!-- 沉浸式电子相册入口 -->
-    <view class="album-entry" wx:if="{{albums.length}}">
-      <button class="album-btn" bindtap="openAlbum">🖼 查看电子相册（可转发分享）</button>
-    </view>
+      <view wx:if="{{!photos.length}}" class="empty-text">暂无照片</view>
+      <view class="safe-bottom"></view>
+    </scroll-view>
 
-    <!-- 底部留白 -->
-    <view class="safe-bottom"></view>
-  </scroll-view>
+    <!-- 右下角常驻悬浮青绿色【分享】按钮（锁定态置灰不可点击） -->
+    <button wx:if="{{!locked && canShare}}" class="float-share" open-type="share">分享</button>
+    <view wx:elif="{{!locked}}" class="float-share disabled">分享</view>
+  </block>
+
+  <!-- 相册密码锁：全屏校验 -->
+  <view wx:if="{{locked}}" class="lock-mask">
+    <view class="lock-card">
+      <view class="lock-emoji">🔒</view>
+      <view class="lock-title">{{title || '受保护的相册'}}</view>
+      <view class="lock-sub">该相册已设置访问密码，请输入密码查看</view>
+      <input class="lock-pw" password value="{{pw}}" bindinput="onPwInput" placeholder="请输入访问密码" placeholder-class="ph" />
+      <view wx:if="{{pwErr}}" class="lock-err">{{pwErr}}</view>
+      <button class="lock-btn" loading="{{pwBusy}}" bindtap="verify">查看相册</button>
+    </view>
+  </view>
 </view>

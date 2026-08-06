@@ -2,12 +2,12 @@ page { background: #f9f8f6; }
 .page { padding-bottom: 60rpx; }
 
 /* ===== 轮播 Banner ===== */
-.banner { width: 100%; height: 422rpx; }
+.banner { width: 100%; height: 300rpx; }
 .banner-img { width: 100%; height: 100%; }
 .banner--ph {
   background: #111; color: #fff;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
-  height: 422rpx;
+  height: 300rpx;
 }
 .banner-logo { font-size: 40rpx; letter-spacing: 10rpx; opacity: .9; }
 .banner-tag { margin-top: 20rpx; font-size: 26rpx; opacity: .6; letter-spacing: 4rpx; }
@@ -15,7 +15,7 @@ page { background: #f9f8f6; }
 /* ===== 品牌简介（扁平紧凑，无大卡片） ===== */
 .brand {
   text-align: center;
-  padding: 28rpx 32rpx 20rpx;
+  padding: 18rpx 32rpx 10rpx;
   background: transparent;
 }
 .brand-logo {
@@ -53,17 +53,17 @@ page { background: #f9f8f6; }
 }
 
 /* ===== 作品展示 ===== */
-.gallery { margin-top: 28rpx; padding: 0 32rpx; }
+.gallery { margin-top: 10rpx; padding: 0 32rpx; }
 .gallery-en {
   text-align: center; font-size: 22rpx; letter-spacing: 6rpx; color: #999;
   text-transform: uppercase;
 }
 .gallery-title {
-  text-align: center; margin-top: 10rpx; font-size: 40rpx; font-weight: 600; color: #2c2c2c; letter-spacing: 4rpx;
+  text-align: center; margin-top: 8rpx; font-size: 40rpx; font-weight: 600; color: #2c2c2c; letter-spacing: 4rpx;
 }
 
 /* 分类标签 */
-.cat-bar { margin-top: 28rpx; white-space: nowrap; }
+.cat-bar { margin-top: 16rpx; white-space: nowrap; }
 .cat-wrap { display: inline-flex; gap: 24rpx; padding: 4rpx 4rpx 20rpx; }
 .cat-item {
   display: inline-block; font-size: 26rpx; color: #888; padding: 10rpx 6rpx;

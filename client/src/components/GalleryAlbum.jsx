@@ -3,7 +3,7 @@ import { img } from '../api.js';
 
 // 客片电子相册沉浸式页面（对应零屿 VISION 这类婚礼电子相册 H5）
 // 全屏上下滑动浏览照片 + 新人名字/分类/专属文案 + 底部品牌工具栏（播放/投屏/查看更多）
-export default function GalleryAlbum({ gallery }) {
+export default function GalleryAlbum({ gallery, startIndex = 0, onClose }) {
   const { title, subtitle, category, blessing, albumCopy, photos = [], brand_name, brand_slogan, brand_logo } = gallery;
   // 自定义相册文案（albumCopy）优先级高于旧 blessing，作为相册正文文案模块
   const copy = albumCopy || blessing || '';
@@ -36,6 +36,14 @@ export default function GalleryAlbum({ gallery }) {
     const el = scrollRef.current;
     if (el) setCurrent(Math.round(el.scrollTop / winH));
   };
+
+  // 作为全屏查看 overlay 时，从指定张数开始
+  useEffect(() => {
+    if (startIndex > 0 && scrollRef.current) {
+      scrollRef.current.scrollTop = winH * startIndex;
+      setCurrent(startIndex);
+    }
+  }, [startIndex, winH]);
 
   const showToast = (msg) => setToast(msg);
 
@@ -80,8 +88,13 @@ export default function GalleryAlbum({ gallery }) {
     <div className="min-h-screen bg-black text-white relative overflow-hidden">
       {/* 顶部导航 */}
       <div className="fixed top-0 left-0 right-0 z-30 flex items-center justify-between px-4 pt-3 pb-6 bg-gradient-to-b from-black/70 to-transparent">
-        <button onClick={() => window.history.length > 1 ? window.history.back() : (window.location.href = window.location.origin + '/')}
-          className="w-9 h-9 rounded-full bg-black/30 flex items-center justify-center text-white/90 text-lg">‹</button>
+        {onClose ? (
+          <button onClick={onClose}
+            className="w-9 h-9 rounded-full bg-black/30 flex items-center justify-center text-white/90 text-xl">×</button>
+        ) : (
+          <button onClick={() => window.history.length > 1 ? window.history.back() : (window.location.href = window.location.origin + '/')}
+            className="w-9 h-9 rounded-full bg-black/30 flex items-center justify-center text-white/90 text-lg">‹</button>
+        )}
         <div className="text-center flex-1">
           <div className="text-sm font-medium truncate">{subtitle || title}</div>
         </div>
