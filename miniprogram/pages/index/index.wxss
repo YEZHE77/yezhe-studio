@@ -12,10 +12,13 @@ page { background: #f9f8f6; }
 .banner-logo { font-size: 40rpx; letter-spacing: 10rpx; opacity: .9; }
 .banner-tag { margin-top: 20rpx; font-size: 26rpx; opacity: .6; letter-spacing: 4rpx; }
 
-/* ===== 品牌简介（扁平紧凑，无大卡片） ===== */
+/* ===== 品牌简介（扁平流式，间距全部用 margin，禁止容器 padding 制造空白） ===== */
 .brand {
   text-align: center;
-  padding: 14rpx 32rpx 6rpx;
+  /* 仅保留横向内边距用于内容缩进；垂直间距一律用 margin（见下）
+     轮播底部 → 圆形头像顶部：80rpx */
+  padding: 0 32rpx;
+  margin-top: 80rpx;
   background: transparent;
 }
 .brand-logo {
@@ -24,23 +27,23 @@ page { background: #f9f8f6; }
   background: #eee; border: 1rpx solid #e5e5e5;
 }
 .brand-logo image { width: 100%; height: 100%; }
+/* 头像底部 → 工作室名称：32rpx */
 .brand-name {
-  margin-top: 14rpx; font-size: 40rpx; font-weight: 600;
+  margin-top: 32rpx; font-size: 40rpx; font-weight: 600;
   color: #2c2c2c; letter-spacing: 4rpx;
 }
 .brand-address {
-  margin-top: 10rpx; font-size: 24rpx; color: #999;
+  margin-top: 12rpx; font-size: 24rpx; color: #999;
   display: flex; align-items: center; justify-content: center;
   line-height: 1.4;
 }
 .addr-icon { margin-right: 6rpx; font-size: 22rpx; }
 .brand-slogan {
-  margin-top: 10rpx; font-size: 24rpx;
+  margin-top: 12rpx; font-size: 24rpx;
   line-height: 1.5; color: #888;
-  padding: 0 40rpx;
 }
 .brand-actions {
-  margin-top: 22rpx; display: flex; justify-content: center; gap: 20rpx;
+  margin-top: 24rpx; display: flex; justify-content: center; gap: 20rpx;
 }
 .brand-actions .btn {
   min-width: 200rpx; height: 68rpx; line-height: 68rpx;
@@ -54,12 +57,20 @@ page { background: #f9f8f6; }
 .btn-outline {
   background: #fff; color: #7ecdbb; border: 2rpx solid #7ecdbb;
 }
+/* 工作室名称 → 查看品牌故事：自然间距；查看品牌故事底部 → 资料区块结束：64rpx */
 .brand-more {
-  margin-top: 14rpx; text-align: center;
+  margin-top: 16rpx; margin-bottom: 64rpx; text-align: center;
   font-size: 24rpx; color: #7ecdbb;
 }
 
-/* ===== 作品展示 ===== */
+/* 资料区块结束后的浅灰色分割线（高度 8rpx，通栏） */
+.divider {
+  width: 100%;
+  height: 8rpx;
+  background: #eee;
+}
+
+/* 分割线底部 → 作品展示标题顶部：80rpx */
 .gallery { margin-top: 80rpx; padding: 0 32rpx; }
 .gallery-title {
   text-align: center; font-size: 40rpx; font-weight: 600; color: #2c2c2c; letter-spacing: 4rpx;

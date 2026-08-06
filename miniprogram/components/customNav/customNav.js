@@ -7,7 +7,9 @@ Component({
     // 是否显示自定义返回箭头（仅在「个人中心」等需要手动返回的子页面启用；
     // 因本组件配合 navigationStyle:custom 使用，系统原生返回箭头永不显示，
     // 故 showBack=true 时由组件渲染左上角白色左箭头，不会出现双返回键）。
-    showBack: { type: Boolean, value: false }
+    showBack: { type: Boolean, value: false },
+    // 是否显示圆形 LOGO + 品牌文字（首页导航栏启用：左侧用圆形 LOGO 图片替代默认相机图标）
+    showLogo: { type: Boolean, value: false }
   },
 
   data: {

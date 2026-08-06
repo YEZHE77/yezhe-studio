@@ -93,12 +93,12 @@ export default function Home() {
       {/* 顶部黑色自定义导航栏（对齐小程序；H5 无微信胶囊，汉堡贴右） */}
       <div className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between h-14 px-4 bg-[#111111] text-white">
         <div className="flex items-center min-w-0">
-          <svg className="w-5 h-4 mr-2 shrink-0" viewBox="0 0 24 20" fill="none" stroke="#fff" strokeWidth="2">
-            <rect x="1" y="4" width="22" height="14" rx="3" />
-            <path d="M8 1.5h8v3.5" />
-            <circle cx="12" cy="11" r="4" />
-          </svg>
-          <span className="text-base font-medium tracking-wide truncate">{studio.name || '叶哲 STUDIO'}</span>
+          <div className="mr-2 h-9 w-9 shrink-0 overflow-hidden rounded-full bg-[#333]">
+            {studio.logo && (
+              <img src={img(studio.logo, 'thumb')} alt="" className="h-full w-full object-cover" />
+            )}
+          </div>
+          <span className="truncate text-[20px] font-medium tracking-[2px]">{studio.name || '叶哲 STUDIO'}</span>
         </div>
         <button onClick={() => setDrawerOpen(true)} className="p-2 -mr-2" aria-label="菜单">
           <div className="w-5 flex flex-col gap-1">
@@ -126,21 +126,21 @@ export default function Home() {
         )}
       </div>
 
-      {/* 品牌简介（扁平紧凑） */}
-      <div className="px-8 pb-1 pt-3 text-center">
+      {/* 品牌简介（扁平流式：间距全部用 margin，禁止容器 padding 制造空白） */}
+      <div className="mt-10 px-8 text-center">
         {studio.logo && (
           <div className="mx-auto h-[120px] w-[120px] overflow-hidden rounded-full border border-gray-200 bg-gray-100">
             <img src={img(studio.logo, 'thumb')} alt="" className="h-full w-full object-cover" />
           </div>
         )}
-        <div className="mt-3 text-2xl font-semibold tracking-[4px]">{studio.name || '叶哲 STUDIO'}</div>
+        <div className="mt-4 text-2xl font-semibold tracking-[4px]">{studio.name || '叶哲 STUDIO'}</div>
         {studio.address && (
           <div className="mt-2 flex items-center justify-center text-xs text-gray-400">
             <span className="mr-1">📍</span>{studio.address}
           </div>
         )}
         {studio.slogan && (
-          <div className="mt-2 px-8 text-xs leading-relaxed text-gray-400">{studio.slogan}</div>
+          <div className="mt-2 text-xs leading-relaxed text-gray-400">{studio.slogan}</div>
         )}
         <div className="mt-4 flex justify-center gap-3">
           <button onClick={() => setContactOpen(true)} className="h-[44px] min-w-[120px] rounded-lg text-sm" style={{ background: TEAL, color: '#fff' }}>
@@ -150,10 +150,13 @@ export default function Home() {
             + 关注
           </button>
         </div>
-        <div className="mt-3 cursor-pointer text-sm" style={{ color: TEAL }} onClick={() => setStoryOpen(true)}>
+        <div className="mb-8 mt-3 cursor-pointer text-sm" style={{ color: TEAL }} onClick={() => setStoryOpen(true)}>
           查看品牌故事 &gt;
         </div>
       </div>
+
+      {/* 资料区块结束后的浅灰色分割线（高度 8rpx=4px，通栏） */}
+      <div className="h-1 w-full bg-gray-100" />
 
       {/* 作品展示 —— 与上方品牌故事之间固定 80rpx(40px) 垂直外边距，仅露底色 */}
       <div id="gallery-section" className="mt-10 px-8">

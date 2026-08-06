@@ -2,11 +2,23 @@
 <view class="nav-header" style="padding-top: {{statusBarHeight}}px; height: {{totalHeight}}px;">
   <view class="nav-bar" style="height: {{navHeight}}px;">
     <view class="nav-left">
-      <view wx:if="{{showBack}}" class="nav-back" bindtap="onBack" hover-class="nav-back-hover" hover-stay-time="60">
-        <view class="nav-back-arrow"></view>
-      </view>
-      <view wx:else class="nav-camera"></view>
-      <text class="nav-title">{{title || studio.name || '叶哲 STUDIO'}}</text>
+      <block wx:if="{{showLogo}}">
+        <view class="nav-logo">
+          <image wx:if="{{studio.logo}}" class="nav-logo-img" src="{{studio.logo}}" mode="aspectFill" />
+          <view wx:else class="nav-logo-ph"></view>
+        </view>
+        <text class="nav-brand">{{studio.name || '叶哲 STUDIO'}}</text>
+      </block>
+      <block wx:elif="{{showBack}}">
+        <view class="nav-back" bindtap="onBack" hover-class="nav-back-hover" hover-stay-time="60">
+          <view class="nav-back-arrow"></view>
+        </view>
+        <text class="nav-title">{{title || studio.name || '叶哲 STUDIO'}}</text>
+      </block>
+      <block wx:else>
+        <view class="nav-camera"></view>
+        <text class="nav-title">{{title || studio.name || '叶哲 STUDIO'}}</text>
+      </block>
     </view>
     <view class="nav-right" bindtap="openDrawer">
       <view class="hamburger">

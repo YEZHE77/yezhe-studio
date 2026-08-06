@@ -1,6 +1,6 @@
 <view class="page">
   <!-- 自定义顶部导航 + 抽屉菜单 -->
-  <customNav title="叶哲 STUDIO" />
+  <customNav showLogo="{{true}}" />
 
   <!-- 顶部轮播 Banner -->
   <swiper class="banner" indicator-dots autoplay circular interval="4000" duration="500" wx:if="{{banners.length}}">
@@ -30,6 +30,9 @@
     </view>
     <view class="brand-more" bindtap="goAbout">查看品牌故事 ></view>
   </view>
+
+  <!-- 资料区块结束后的浅灰色分割线（高度 8rpx） -->
+  <view class="divider"></view>
 
   <!-- 作品展示 -->
   <view class="gallery">
