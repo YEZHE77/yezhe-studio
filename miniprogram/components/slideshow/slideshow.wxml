@@ -12,14 +12,18 @@
 
   <!-- 素材：视频 / 图片（catchtap 阻止冒泡到蒙层；touch 处理左右滑动） -->
   <block wx:if="{{curIsVideo}}">
-    <video wx:if="{{cur}}" id="ssVideo" class="ss-media ss-photo {{animClass}}" src="{{cur}}"
+    <video id="ssVideo" class="ss-media ss-photo {{animClass}}" src="{{cur}}"
       autoplay="{{playing}}" loop="{{false}}" show-center-play-btn="{{false}}" controls="{{false}}"
       object-fit="contain" enable-progress-gesture="{{false}}"
       bindended="onVideoEnded" bindtimeupdate="onVideoTimeUpdate"
+      catchtap="noop"
       catchtouchstart="onImgTouchStart" catchtouchend="onImgTouchEnd" />
   </block>
-  <image wx:else wx:if="{{cur}}" class="ss-media ss-photo {{animClass}}" src="{{cur}}" mode="aspectFit"
-    catchtouchstart="onImgTouchStart" catchtouchend="onImgTouchEnd" />
+  <block wx:else>
+    <image class="ss-media ss-photo {{animClass}}" src="{{cur}}" mode="aspectFit"
+      catchtap="noop"
+      catchtouchstart="onImgTouchStart" catchtouchend="onImgTouchEnd" />
+  </block>
 
   <!-- 底部控件：播放/暂停 + 进度条 + 时间 -->
   <view class="ss-bottom" catchtap="noop">
