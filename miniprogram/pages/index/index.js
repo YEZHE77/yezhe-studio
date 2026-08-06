@@ -40,7 +40,7 @@ Page({
     this.setData({ statusBarHeight, navHeight });
   },
 
-  // onShow 改为静默刷新：数据未过期则跳过，避免 tab 切换重复请求
+  // onShow：优先用缓存秒显，但后台改了轮播图/品牌后，回到首页必须重新拉取最新
   onShow() {
     const app = getApp();
     const cachedS = app.getCached('studio');
@@ -49,6 +49,8 @@ Page({
     if (cachedC) this.setData({ categories: cachedC });
     // 检查预约开关
     this.loadBooking();
+    // 首次 onLoad 已拉过一次；之后每次回到首页都绕过 5 分钟缓存、强制同步后台最新轮播图
+    if (this._didInitialLoad) this.refreshStudio();
   },
 
   onUnload() {
@@ -72,19 +74,31 @@ Page({
     if (this._loading) return;
     this._loading = true;
     try {
-      // 优先使用缓存
       const app = getApp();
-      let s = app.getCached('studio');
-      let c = app.getCached('categories');
-      if (!s || !c) {
-        [s, c] = await Promise.all([this.loadStudio(), this.loadCategories()]);
-      }
+      // 分类极少变动，命中缓存可省一次请求；轮播图/品牌信息随时可能改，始终拉取最新
+      const c = app.getCached('categories');
+      const [s, cats] = await Promise.all([
+        this.loadStudio(),
+        c ? Promise.resolve(c) : this.loadCategories()
+      ]);
       if (s) this.setData({ studio: s });
-      if (c) this.setData({ categories: c });
+      if (cats) this.setData({ categories: cats });
+      this._didInitialLoad = true;
       await this.loadWorks(true);
     } finally {
       this._loading = false;
     }
+  },
+
+  // 强制重新拉取工作室设置（轮播图 heroImages 等），绕过本地缓存，保证后台保存后小程序同步
+  async refreshStudio() {
+    if (this._refreshingStudio) return;
+    this._refreshingStudio = true;
+    try {
+      const s = await this.loadStudio();
+      if (s) this.setData({ studio: s });
+    } catch (e) { /* 静默失败 */ }
+    finally { this._refreshingStudio = false; }
   },
 
   async loadBooking() {
@@ -99,12 +113,10 @@ Page({
       const s = await this._req('/api/settings/studio');
       const app = getApp();
       app.setCached('studio', s || {});
-      // 优先使用 B 端上传的首页轮播图；没有再用作品封面兜底
+      // 优先使用 B 端上传的首页轮播图；没有则清空，由 loadWorks 用作品封面兜底
       const heroImages = (s && s.heroImages) || [];
-      if (heroImages.length) {
-        const banners = heroImages.map((url) => getImageUrl(url, 'thumb')).filter(Boolean);
-        this.setData({ banners });
-      }
+      const banners = heroImages.map((url) => getImageUrl(url, 'thumb')).filter(Boolean);
+      this.setData({ banners });
       return s || {};
     } catch (e) { console.error('loadStudio err', e); return null; }
   },
