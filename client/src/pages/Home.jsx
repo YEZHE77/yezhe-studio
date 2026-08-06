@@ -91,25 +91,25 @@ export default function Home() {
 
   return (
     <div className="min-h-screen" style={{ background: PAGE_BG, color: '#2c2c2c' }}>
-      {/* 顶部黑色自定义导航栏（对齐小程序；H5 无微信胶囊，汉堡贴右） */}
-      <div className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between h-14 px-4 bg-[#111111] text-white">
+      {/* 顶部黑色自定义导航栏（对齐小程序轻薄版：44px内容高/左24rpx LOGO/36rpx品牌/右侧三点菜单） */}
+      <div className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between h-11 px-3 bg-[#111111] text-white">
         <div className="flex items-center min-w-0">
-          <div className="mr-2 h-9 w-9 shrink-0 overflow-hidden rounded-full bg-[#333]">
+          <div className="mr-2 h-8 w-8 shrink-0 overflow-hidden rounded-full bg-[#333]">
             {studio.logo && (
               <img src={img(studio.logo, 'thumb')} alt="" className="h-full w-full object-cover" />
             )}
           </div>
-          <span className="truncate text-[20px] font-medium tracking-[2px]">{studio.name || '叶哲 STUDIO'}</span>
+          <span className="truncate text-[18px] font-medium tracking-[1px]">{studio.name || '叶哲 STUDIO'}</span>
         </div>
-        <button onClick={() => setDrawerOpen(true)} className="p-2 -mr-2" aria-label="菜单">
-          <div className="w-5 flex flex-col gap-1">
-            <span className="block h-0.5 bg-white rounded"></span>
-            <span className="block h-0.5 bg-white rounded"></span>
-            <span className="block h-0.5 bg-white rounded"></span>
+        <button onClick={() => setDrawerOpen(true)} className="flex h-[22px] w-[22px] items-center justify-center" aria-label="菜单">
+          <div className="flex items-center gap-[5px]">
+            <span className="block h-[5px] w-[5px] rounded-full bg-white"></span>
+            <span className="block h-[5px] w-[5px] rounded-full bg-white"></span>
+            <span className="block h-[5px] w-[5px] rounded-full bg-white"></span>
           </div>
         </button>
       </div>
-      <div className="h-14" />
+      <div className="h-11" />
 
       {/* 顶部轮播 Banner（4:3 比例） */}
       <div className="w-full aspect-[4/3] overflow-hidden">

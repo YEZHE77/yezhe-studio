@@ -21,10 +21,10 @@
       </block>
     </view>
     <view class="nav-right" bindtap="openDrawer">
-      <view class="hamburger">
-        <view class="h-line"></view>
-        <view class="h-line"></view>
-        <view class="h-line"></view>
+      <view class="dots">
+        <view class="dot"></view>
+        <view class="dot"></view>
+        <view class="dot"></view>
       </view>
     </view>
   </view>

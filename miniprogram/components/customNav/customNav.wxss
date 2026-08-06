@@ -55,10 +55,10 @@
   border-radius: 50%;
   box-sizing: border-box;
 }
-/* 自定义圆形 LOGO（首页导航栏，替代相机；72rpx×72rpx，与白色品牌文字垂直居中） */
+/* 自定义圆形 LOGO（首页导航栏，替代相机；64rpx×64rpx，与白色品牌文字垂直居中） */
 .nav-logo {
-  width: 72rpx;
-  height: 72rpx;
+  width: 64rpx;
+  height: 64rpx;
   margin-right: 16rpx;
   border-radius: 50%;
   overflow: hidden;
@@ -69,10 +69,10 @@
 .nav-logo-ph { width: 100%; height: 100%; }
 .nav-brand {
   color: #fff;
-  font-size: 40rpx;
+  font-size: 36rpx;
   font-weight: 500;
-  letter-spacing: 2rpx;
-  line-height: 72rpx;
+  letter-spacing: 1rpx;
+  line-height: 1;
 }
 .nav-title {
   color: #fff;
@@ -103,21 +103,25 @@
   transform: rotate(45deg);
   margin-left: 8rpx; /* 视觉居中：抵消箭头旋转后的右移 */
 }
+/* 右侧三点菜单按钮（44rpx×44rpx，距右24rpx，垂直居中） */
 .nav-right {
-  padding: 16rpx;
-  margin-right: -16rpx;
-}
-.hamburger {
-  width: 40rpx;
-  height: 32rpx;
+  width: 44rpx;
+  height: 44rpx;
+  margin-right: 24rpx;
   display: flex;
-  flex-direction: column;
-  justify-content: space-between;
+  align-items: center;
+  justify-content: center;
 }
-.h-line {
-  height: 4rpx;
+.dots {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+}
+.dot {
+  width: 9rpx;
+  height: 9rpx;
+  border-radius: 50%;
   background: #fff;
-  border-radius: 2rpx;
 }
 .nav-placeholder {
   width: 100%;

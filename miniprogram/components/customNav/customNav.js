@@ -78,10 +78,8 @@ Component({
     },
 
     setSubCategories(categories) {
-      const wanted = ['婚礼', '领证', '孕妇照', '写真'];
-      const map = new Map((categories || []).map((c) => [c.name, c]));
-      const subCategories = wanted.map((name) => map.get(name)).filter(Boolean);
-      this.setData({ subCategories });
+      // 直接使用后端返回（已启用、按 sort 排序）的全部分类，避免前端写死分类数组
+      this.setData({ subCategories: (categories || []).filter((c) => c && c.id) });
     },
 
     openDrawer() {
