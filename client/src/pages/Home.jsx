@@ -111,8 +111,8 @@ export default function Home() {
       </div>
       <div className="h-11" />
 
-      {/* 顶部轮播 Banner（4:3 比例） */}
-      <div className="w-full aspect-[4/3] overflow-hidden">
+      {/* 顶部轮播 Banner（16:9 比例） */}
+      <div className="w-full aspect-[16/9] overflow-hidden">
         {banners.length ? (
           <div className="flex h-full overflow-x-auto snap-x snap-mandatory">
             {banners.map((b, i) => (

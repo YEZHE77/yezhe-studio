@@ -247,7 +247,7 @@ export default function Settings() {
           <Field label={`首页轮播图（多张 · ${form.heroImages.length} 张）`}>
             <div className="flex flex-wrap gap-3 items-start">
               {form.heroImages.map((u, i) => (
-                <div key={i} className="relative w-24 h-16 rounded-lg overflow-hidden border border-line group">
+                <div key={i} className="relative w-32 aspect-[16/9] rounded-lg overflow-hidden border border-line group">
                   <img src={img(u)} alt="" loading="lazy" decoding="async" className="w-full h-full object-cover" />
                   <button type="button" onClick={() => removeHero(i)}
                     className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/60 text-white text-xs leading-none flex items-center justify-center opacity-0 group-hover:opacity-100">×</button>
@@ -255,12 +255,12 @@ export default function Settings() {
                 </div>
               ))}
               <button type="button" onClick={() => heroRef.current.click()} disabled={heroBusy}
-                className="w-24 h-16 rounded-lg border border-dashed border-line text-xs text-muted flex flex-col items-center justify-center gap-1 hover:text-brand hover:border-brand disabled:opacity-50">
+                className="w-32 aspect-[16/9] rounded-lg border border-dashed border-line text-xs text-muted flex flex-col items-center justify-center gap-1 hover:text-brand hover:border-brand disabled:opacity-50">
                 {heroBusy ? '上传中…' : '+ 添加'}
               </button>
               <input ref={heroRef} type="file" accept="image/*" multiple className="hidden" onChange={(e) => addHeroFiles(e.target.files)} />
             </div>
-            <p className="text-xs text-muted mt-2">建议上传 4:3 比例照片；支持一次选多张；从左到右的顺序即为小程序首页轮播顺序；第一张建议为品牌主视觉。删除：鼠标移到图片上点右上角 ×。</p>
+            <p className="text-xs text-muted mt-2">建议上传 16:9 比例照片；支持一次选多张；从左到右的顺序即为小程序首页轮播顺序；第一张建议为品牌主视觉。删除：鼠标移到图片上点右上角 ×。</p>
           </Field>
         </div>
 
@@ -271,11 +271,11 @@ export default function Settings() {
             {form.heroImages.length > 0 ? (
               <div className="flex overflow-x-auto snap-x gap-0">
                 {form.heroImages.map((u, i) => (
-                  <img key={i} src={img(u)} alt="" loading="lazy" decoding="async" className="w-full h-32 object-cover shrink-0 snap-start" style={{ minWidth: '100%' }} />
+                  <img key={i} src={img(u)} alt="" loading="lazy" decoding="async" className="w-full aspect-[16/9] object-cover shrink-0 snap-start" style={{ minWidth: '100%' }} />
                 ))}
               </div>
             ) : form.cover ? (
-              <img src={img(form.cover)} alt="" loading="lazy" decoding="async" className="w-full h-32 object-cover" />
+              <img src={img(form.cover)} alt="" loading="lazy" decoding="async" className="w-full aspect-[16/9] object-cover" />
             ) : null}
             <div className="p-5">
               <div className="flex items-center gap-3">
