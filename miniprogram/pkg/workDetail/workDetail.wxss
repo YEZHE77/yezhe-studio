@@ -229,10 +229,84 @@
   align-items: center;
   justify-content: center;
 }
-.share-item .icon.wechat { background: var(--brand-green); }
-.share-item .icon.qrcode { background: #f2704e; }
-.share-svg { width: 64rpx; height: 64rpx; display: block; }
+.share-item .icon.wechat { background: var(--brand-green); position: relative; }
+.share-item .icon.qrcode { background: #f2704e; position: relative; }
 .share-item text { margin-top: 18rpx; font-size: 26rpx; color: #555; font-weight: 400; }
+
+/* 微信双气泡图标（CSS 绘制，对齐参考图比例） */
+.wechat-bubble {
+  position: absolute;
+  background: #ffffff;
+  border-radius: 50%;
+}
+.wechat-bubble::after {
+  content: '';
+  position: absolute;
+  width: 0;
+  height: 0;
+  border-style: solid;
+}
+.wb-large {
+  width: 54rpx;
+  height: 42rpx;
+  left: 16rpx;
+  top: 34rpx;
+  border-radius: 22rpx;
+}
+.wb-large::after {
+  left: 6rpx;
+  bottom: -6rpx;
+  border-width: 10rpx 10rpx 0 0;
+  border-color: #ffffff transparent transparent transparent;
+  transform: rotate(-20deg);
+}
+.wb-small {
+  width: 36rpx;
+  height: 28rpx;
+  right: 20rpx;
+  top: 22rpx;
+  border-radius: 16rpx;
+}
+.wb-small::after {
+  right: 4rpx;
+  top: -6rpx;
+  border-width: 0 8rpx 8rpx 0;
+  border-color: transparent #ffffff transparent transparent;
+  transform: rotate(-15deg);
+}
+
+/* 二维码图标（CSS 绘制，对齐参考图比例） */
+.qr-corner {
+  position: absolute;
+  width: 22rpx;
+  height: 22rpx;
+  border: 5rpx solid #ffffff;
+  border-radius: 4rpx;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.qr-dot {
+  width: 8rpx;
+  height: 8rpx;
+  background: #ffffff;
+  border-radius: 2rpx;
+}
+.qr-tl { left: 16rpx; top: 16rpx; }
+.qr-tr { right: 16rpx; top: 16rpx; }
+.qr-bl { left: 16rpx; bottom: 16rpx; }
+.qr-bit {
+  position: absolute;
+  background: #ffffff;
+  border-radius: 2rpx;
+}
+.qb1 { width: 8rpx; height: 8rpx; right: 22rpx; bottom: 18rpx; }
+.qb2 { width: 6rpx; height: 6rpx; right: 18rpx; bottom: 34rpx; }
+.qb3 { width: 6rpx; height: 6rpx; right: 34rpx; bottom: 24rpx; }
+.qb4 { width: 5rpx; height: 5rpx; right: 28rpx; bottom: 32rpx; }
+.qb5 { width: 5rpx; height: 5rpx; right: 40rpx; bottom: 38rpx; }
+.qb6 { width: 5rpx; height: 5rpx; right: 20rpx; bottom: 46rpx; }
 .cancel-btn {
   margin-top: 48rpx;
   text-align: center;
