@@ -24,6 +24,10 @@ const BusinessCard = React.lazy(() => import('./pages/BusinessCard.jsx'));
 const SelectionAdmin = React.lazy(() => import('./pages/SelectionAdmin.jsx'));
 const ShareAlbum = React.lazy(() => import('./pages/ShareAlbum.jsx'));
 const CapacityManagement = React.lazy(() => import('./pages/CapacityManagement.jsx'));
+// 客户对外首页 / 个人中心 / 公开作品相册（公开，无需登录）
+const Home = React.lazy(() => import('./pages/Home.jsx'));
+const My = React.lazy(() => import('./pages/My.jsx'));
+const WorkPublic = React.lazy(() => import('./pages/WorkPublic.jsx'));
 
 // 通用加载占位
 function PageLoader() {
@@ -79,7 +83,12 @@ export default function App() {
       {!user && (
         <>
           <Route path="/login" element={<Login />} />
-          <Route path="*" element={<Navigate to="/login" replace />} />
+          {/* 客户对外首页（公开落地页）与「我的」独立页 */}
+          <Route path="/home" element={<Home />} />
+          <Route path="/my" element={<My />} />
+          <Route path="/w/:id" element={<WorkPublic />} />
+          <Route path="/" element={<Home />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
         </>
       )}
       {user && <Route path="/*" element={<AppShell />} />}
