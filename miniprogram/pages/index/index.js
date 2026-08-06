@@ -12,13 +12,29 @@ Page({
     hasMore: true,
     loading: false,
     banners: [],
-    bookingOpen: false
+    bookingOpen: false,
+    // 顶部自定义导航栏总高度（px）：状态栏高度 + 44px 导航内容区，随机型动态计算（默认兜底 64）
+    navHeight: 64
   },
   _tasks: [],    // 可取消的请求任务
   _loading: false, // 全局加载锁
 
   onLoad() {
+    this.setNavHeight();
     this.loadAll();
+  },
+
+  // 动态获取状态栏高度 + 固定导航内容区(44px) 得到导航总高度，
+  // 供 --nav-height CSS 变量下偏移首屏轮播，覆盖全部机型（刘海/挖孔屏状态栏不同）。
+  setNavHeight() {
+    let navHeight = 64; // 兜底：约 statusBar(20) + navContent(44)
+    try {
+      const win = wx.getWindowInfo();           // 微信推荐 API，替代已废弃的 wx.getSystemInfoSync
+      const statusBarHeight = win.statusBarHeight || 20;
+      const navContentHeight = 44;              // 自定义导航内容区高度（与 customNav 组件一致，全机型恒定）
+      navHeight = Math.round(statusBarHeight + navContentHeight);
+    } catch (e) { /* 个别环境无此 API，沿用兜底值 */ }
+    this.setData({ navHeight });
   },
 
   // onShow 改为静默刷新：数据未过期则跳过，避免 tab 切换重复请求

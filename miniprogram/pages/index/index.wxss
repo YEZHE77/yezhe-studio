@@ -1,9 +1,11 @@
 page { background: #f9f8f6; }
 .page { padding-bottom: 60rpx; }
 
-/* ===== 轮播 Banner（4:3 比例，750rpx 宽对应 562rpx 高，按 aspect-ratio 自适应） ===== */
+/* ===== 轮播 Banner（最外层容器用动态 --nav-height 下偏移，避让固定导航栏） ===== */
+.swiper-wrap { width: 100%; }
+/* 4:3 比例，750rpx 宽对应 562rpx 高，按 aspect-ratio 自适应，全机型不变形 */
 .banner { width: 100%; aspect-ratio: 4 / 3; }
-.banner-img { width: 100%; height: 100%; }
+.banner-img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .banner--ph {
   background: #111; color: #fff;
   display: flex; flex-direction: column; align-items: center; justify-content: center;

@@ -1,16 +1,18 @@
 <view class="page">
-  <!-- 自定义顶部导航 + 抽屉菜单 -->
-  <customNav showLogo="{{true}}" />
+  <!-- 自定义顶部导航 + 抽屉菜单（首页关闭组件内置占位，改由下方 swiper-wrap 用 --nav-height 控制下偏移） -->
+  <customNav showLogo="{{true}}" placeholder="{{false}}" />
 
-  <!-- 顶部轮播 Banner -->
-  <swiper class="banner" indicator-dots autoplay circular interval="4000" duration="500" wx:if="{{banners.length}}">
-    <swiper-item wx:for="{{banners}}" wx:key="*this">
-      <image class="banner-img" src="{{item}}" mode="aspectFill" lazy-load />
-    </swiper-item>
-  </swiper>
-  <view wx:else class="banner banner--ph">
-    <view class="banner-logo">{{studio.name || '叶哲 STUDIO'}}</view>
-    <view class="banner-tag" wx:if="{{studio.intro}}">{{studio.intro}}</view>
+  <!-- 顶部轮播 Banner：外层容器用动态 --nav-height 整体下偏移，避开固定黑色导航栏 -->
+  <view class="swiper-wrap" style="--nav-height: {{navHeight}}px; padding-top: var(--nav-height);">
+    <swiper class="banner" indicator-dots autoplay circular interval="4000" duration="500" wx:if="{{banners.length}}">
+      <swiper-item wx:for="{{banners}}" wx:key="*this">
+        <image class="banner-img" src="{{item}}" mode="aspectFill" lazy-load />
+      </swiper-item>
+    </swiper>
+    <view wx:else class="banner banner--ph">
+      <view class="banner-logo">{{studio.name || '叶哲 STUDIO'}}</view>
+      <view class="banner-tag" wx:if="{{studio.intro}}">{{studio.intro}}</view>
+    </view>
   </view>
 
   <!-- 品牌简介（扁平紧凑，无大卡片包裹） -->

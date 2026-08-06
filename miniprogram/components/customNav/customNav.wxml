@@ -29,7 +29,7 @@
     </view>
   </view>
 </view>
-<view class="nav-placeholder" style="height: {{totalHeight}}px;"></view>
+<view wx:if="{{placeholder}}" class="nav-placeholder" style="height: {{totalHeight}}px;"></view>
 
 <!-- 抽屉遮罩与菜单 -->
 <view class="drawer-mask {{showDrawer ? 'show' : ''}}" bindtap="closeDrawer" catchtouchmove="preventMove">

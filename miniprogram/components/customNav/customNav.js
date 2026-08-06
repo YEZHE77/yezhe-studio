@@ -9,7 +9,10 @@ Component({
     // 故 showBack=true 时由组件渲染左上角白色左箭头，不会出现双返回键）。
     showBack: { type: Boolean, value: false },
     // 是否显示圆形 LOGO + 品牌文字（首页导航栏启用：左侧用圆形 LOGO 图片替代默认相机图标）
-    showLogo: { type: Boolean, value: false }
+    showLogo: { type: Boolean, value: false },
+    // 是否在导航栏下方渲染占位块（默认 true，为页面内容预留顶部高度）。
+    // 首页改为 false：由页面自身用动态 --nav-height 控制首屏轮播的下偏移，避免双重占位。
+    placeholder: { type: Boolean, value: true }
   },
 
   data: {
