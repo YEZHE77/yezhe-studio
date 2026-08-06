@@ -121,21 +121,22 @@
 .brand-name { font-size: 26rpx; color: #2c2c2c; font-weight: 500; }
 .brand-slogan { margin-top: 4rpx; font-size: 20rpx; color: #999; }
 .brand-tools { display: flex; align-items: center; gap: 16rpx; }
+.tool-divider { width: 1rpx; height: 44rpx; background: #e2e2e2; flex-shrink: 0; }
 .tool {
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   min-width: 72rpx; padding: 0 12rpx;
-  color: #2c2c2c;
+  color: #9a9a9a;
 }
 .tool.disabled { opacity: 0.35; }
 .tool-icon { width: 44rpx; height: 34rpx; position: relative; }
 .tool-label { margin-top: 4rpx; font-size: 18rpx; }
 
-/* 播放：空心三角轮廓图标（黑色线条） */
+/* 播放：空心三角轮廓图标（浅灰线条） */
 .tool-play .play-tri {
   position: absolute;
   left: 2rpx; top: 0;
   width: 0; height: 0;
-  border-left: 22rpx solid #2c2c2c;
+  border-left: 22rpx solid #9a9a9a;
   border-top: 17rpx solid transparent;
   border-bottom: 17rpx solid transparent;
 }
@@ -149,12 +150,12 @@
   border-bottom: 10rpx solid transparent;
 }
 
-/* 投屏：电视机/显示器空心轮廓图标（黑色线条） */
+/* 投屏：电视机/显示器空心轮廓图标（浅灰线条） */
 .tool-tv .tv-screen {
   position: absolute;
   left: 0; top: 0;
   width: 44rpx; height: 30rpx;
-  border: 3rpx solid #2c2c2c;
+  border: 3rpx solid #9a9a9a;
   border-radius: 4rpx;
   box-sizing: border-box;
 }
@@ -165,14 +166,14 @@
   width: 0; height: 0;
   border-left: 9rpx solid transparent;
   border-right: 9rpx solid transparent;
-  border-top: 8rpx solid #2c2c2c;
+  border-top: 8rpx solid #9a9a9a;
 }
 .tool-tv .tv-base {
   position: absolute;
   left: 50%; top: 38rpx;
   transform: translateX(-50%);
   width: 26rpx; height: 3rpx;
-  background: #2c2c2c;
+  background: #9a9a9a;
   border-radius: 2rpx;
 }
 

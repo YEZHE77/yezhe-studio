@@ -76,6 +76,7 @@
           </view>
         </view>
         <view class="brand-tools">
+          <view class="tool-divider"></view>
           <view class="tool {{canInteract ? '' : 'disabled'}}" bindtap="openSlideshow">
             <view class="tool-icon tool-play">
               <view class="play-tri"></view>
@@ -83,6 +84,7 @@
             </view>
             <text class="tool-label">播放</text>
           </view>
+          <view class="tool-divider"></view>
           <view class="tool {{canInteract ? '' : 'disabled'}}" bindtap="cast">
             <view class="tool-icon tool-tv">
               <view class="tv-screen"></view>
@@ -91,6 +93,7 @@
             </view>
             <text class="tool-label">投屏</text>
           </view>
+          <view class="tool-divider"></view>
           <view class="tool tool-primary" bindtap="goAppointment">
             <text class="tool-label">预约服务</text>
           </view>
