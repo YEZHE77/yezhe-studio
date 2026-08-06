@@ -1,21 +1,4 @@
 <view class="page">
-  <!-- 自定义顶部栏：返回 + 标题 + 播放/投屏 -->
-  <view class="topbar" style="padding-top: {{statusBarHeight}}px;">
-    <view class="tb-bar" style="height: {{navHeight}}px;">
-      <view class="tb-back" bindtap="goBack">‹</view>
-      <view class="tb-title">{{title || '作品相册'}}</view>
-      <view class="tb-actions">
-        <view class="tb-icon {{canInteract ? '' : 'disabled'}}" bindtap="openSlideshow">
-          <text class="tb-icon-symbol">▶</text>
-        </view>
-        <view class="tb-icon {{canInteract ? '' : 'disabled'}}" bindtap="cast">
-          <text class="tb-icon-symbol">⍟</text>
-        </view>
-      </view>
-    </view>
-  </view>
-  <view class="tb-ph" style="height: {{statusBarHeight + navHeight}}px;"></view>
-
   <!-- 骨架屏 -->
   <view wx:if="{{loading}}" class="sk-wrap">
     <view class="sk-cover sk-shimmer"></view>

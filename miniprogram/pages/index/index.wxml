@@ -1,9 +1,6 @@
 <view class="page">
-  <!-- 自定义顶部导航 + 抽屉菜单（首页关闭组件内置占位，改由下方 swiper-wrap 用 --nav-height 控制下偏移） -->
-  <customNav showLogo="{{true}}" placeholder="{{false}}" />
-
-  <!-- 顶部轮播 Banner：外层容器用动态 --nav-height 整体下偏移，避开固定黑色导航栏 -->
-  <view class="swiper-wrap" style="--nav-height: {{navHeight}}px; padding-top: var(--nav-height);">
+  <!-- 顶部轮播 Banner：系统原生白导航栏已占用顶部，内容自然排列在其下方 -->
+  <view class="swiper-wrap">
     <swiper class="banner" indicator-dots autoplay circular interval="4000" duration="500" wx:if="{{banners.length}}">
       <swiper-item wx:for="{{banners}}" wx:key="*this">
         <image class="banner-img" src="{{item}}" mode="aspectFill" lazy-load />

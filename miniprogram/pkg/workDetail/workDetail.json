@@ -1,8 +1,7 @@
 {
-  "navigationStyle": "custom",
+  "navigationBarBackgroundColor": "#ffffff",
+  "navigationBarTextStyle": "black",
   "navigationBarTitleText": "作品相册",
-  "navigationBarBackgroundColor": "#111111",
-  "navigationBarTextStyle": "white",
   "backgroundColor": "#f7f7f5",
   "usingComponents": {
     "slideshow": "../../components/slideshow/slideshow"
