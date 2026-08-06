@@ -111,8 +111,8 @@ export default function Home() {
         </div>
       </div>
 
-      {/* ③ 作品展示区块（仅此处加大与上方品牌模块的上下间距，露出页面底色形成视觉断开；其余间距不变） */}
-      <div className="px-3 mt-12">
+      {/* ③ 作品展示区块 */}
+      <div className="px-3 mt-6">
         <div className="rounded-3xl px-6 py-10" style={{ background: CARD, boxShadow: '0 4px 18px rgba(0,0,0,0.04)' }}>
           <div className="text-center text-xs tracking-[6px] uppercase" style={{ color: '#999' }}>GALLERY</div>
           <div className="text-center mt-1 text-2xl font-semibold tracking-[4px]" style={{ color: '#2c2c2c' }}>作品展示</div>
