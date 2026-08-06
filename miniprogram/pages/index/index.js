@@ -80,6 +80,12 @@ Page({
       const s = await this._req('/api/settings/studio');
       const app = getApp();
       app.setCached('studio', s || {});
+      // 优先使用 B 端上传的首页轮播图；没有再用作品封面兜底
+      const heroImages = (s && s.heroImages) || [];
+      if (heroImages.length) {
+        const banners = heroImages.map((url) => getImageUrl(url, 'thumb')).filter(Boolean);
+        this.setData({ banners });
+      }
       return s || {};
     } catch (e) { console.error('loadStudio err', e); return null; }
   },
@@ -104,11 +110,15 @@ Page({
       const r = await this._req('/api/works/public?' + params.join('&'));
       const items = (r.items || []).map((w) => ({ ...w, cover: getImageUrl(w.cover_url || '', 'thumb') }));
       const merged = reset ? items : this.data.works.concat(items);
+      // 只在未配置 heroImages 时用作品封面兜底轮播
+      const fallbackBanners = reset && !this.data.banners.length
+        ? items.slice(0, 3).map((w) => getImageUrl(w.cover_url || '', 'thumb')).filter(Boolean)
+        : this.data.banners;
       this.setData({
         works: merged,
         page,
         hasMore: merged.length < (r.total || 0),
-        banners: reset ? items.slice(0, 3).map((w) => getImageUrl(w.cover_url || '', 'thumb')).filter(Boolean) : this.data.banners
+        banners: fallbackBanners
       });
     } catch (e) {
       wx.showToast({ title: '加载失败', icon: 'none' });
