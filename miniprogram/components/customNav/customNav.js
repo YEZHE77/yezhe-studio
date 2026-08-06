@@ -3,7 +3,11 @@ const { requestTask } = require('../../utils/req.js');
 
 Component({
   properties: {
-    title: { type: String, value: '' }
+    title: { type: String, value: '' },
+    // 是否显示自定义返回箭头（仅在「个人中心」等需要手动返回的子页面启用；
+    // 因本组件配合 navigationStyle:custom 使用，系统原生返回箭头永不显示，
+    // 故 showBack=true 时由组件渲染左上角白色左箭头，不会出现双返回键）。
+    showBack: { type: Boolean, value: false }
   },
 
   data: {
@@ -113,7 +117,17 @@ Component({
 
     goAbout() { this._nav('/pkg/about/about', false); },
 
-    goMy() { this._nav('/pages/my/my', true); },
+    goMy() { this._nav('/pages/my/my', false); },
+
+    // 自定义返回箭头点击：有上一页则 navigateBack，无上一页（页面栈为空/直接打开）则回首页
+    onBack() {
+      const pages = getCurrentPages();
+      if (pages && pages.length > 1) {
+        wx.navigateBack();
+      } else {
+        wx.reLaunch({ url: '/pages/index/index' });
+      }
+    },
 
     _nav(url, isMainPage) {
       this.closeDrawer();

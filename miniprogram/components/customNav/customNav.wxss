@@ -61,6 +61,29 @@
   font-weight: 500;
   letter-spacing: 2rpx;
 }
+/* 自定义返回箭头（白色左箭头，仅在 showBack 时渲染，替代相机图标；不与原生箭头叠加） */
+.nav-back {
+  width: 48rpx;
+  height: 48rpx;
+  margin-right: 12rpx;
+  margin-left: -6rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.nav-back-hover {
+  opacity: 0.6;
+}
+.nav-back-arrow {
+  width: 22rpx;
+  height: 22rpx;
+  border-left: 4rpx solid #fff;
+  border-bottom: 4rpx solid #fff;
+  border-bottom-left-radius: 4rpx;
+  transform: rotate(45deg);
+  margin-left: 8rpx; /* 视觉居中：抵消箭头旋转后的右移 */
+}
 .nav-right {
   padding: 16rpx;
   margin-right: -16rpx;

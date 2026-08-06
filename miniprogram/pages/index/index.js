@@ -162,7 +162,7 @@ Page({
 
   goAppointment() { wx.navigateTo({ url: '/pkg/schedule/schedule' }); },
   goAbout() { wx.navigateTo({ url: '/pkg/about/about' }); },
-  goMy() { wx.reLaunch({ url: '/pages/my/my' }); },
+  goMy() { wx.navigateTo({ url: '/pages/my/my' }); },
 
   openWork(e) {
     const id = e.currentTarget.dataset.id;
