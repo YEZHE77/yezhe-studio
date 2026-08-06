@@ -4,7 +4,9 @@ import { img } from '../api.js';
 // 客片电子相册沉浸式页面（对应零屿 VISION 这类婚礼电子相册 H5）
 // 全屏上下滑动浏览照片 + 新人名字/分类/专属文案 + 底部品牌工具栏（播放/投屏/查看更多）
 export default function GalleryAlbum({ gallery }) {
-  const { title, subtitle, category, blessing, photos = [], brand_name, brand_slogan, brand_logo } = gallery;
+  const { title, subtitle, category, blessing, albumCopy, photos = [], brand_name, brand_slogan, brand_logo } = gallery;
+  // 自定义相册文案（albumCopy）优先级高于旧 blessing，作为相册正文文案模块
+  const copy = albumCopy || blessing || '';
   const [playing, setPlaying] = useState(false);
   const [current, setCurrent] = useState(0);
   const [toast, setToast] = useState('');
@@ -97,8 +99,8 @@ export default function GalleryAlbum({ gallery }) {
         {photos.map((p, i) => (
           <div key={i} className="h-screen w-full snap-start flex items-center justify-center bg-black relative">
             <img src={img(p)} alt="" className="max-w-full max-h-full object-contain" loading={i <= 1 ? 'eager' : 'lazy'} />
-            {/* 首屏叠加：新人名字 + 分类 + 文案 */}
-            {i === 0 && (title || category || blessing) && (
+            {/* 首屏叠加：新人名字 + 分类 + 自定义文案模块 */}
+            {i === 0 && (title || category || copy) && (
               <div className="absolute inset-x-0 bottom-0 px-6 pb-28 pt-24 bg-gradient-to-t from-black/80 via-black/20 to-transparent text-center">
                 {category && (
                   <span className="inline-block px-3 py-1 rounded-full border border-white/40 text-[11px] text-white/90 mb-3">
@@ -106,7 +108,7 @@ export default function GalleryAlbum({ gallery }) {
                   </span>
                 )}
                 {title && <div className="text-2xl font-semibold tracking-wide mb-3">{title}</div>}
-                {blessing && <div className="text-sm text-white/85 leading-relaxed max-w-md mx-auto">{blessing}</div>}
+                {copy && <div className="text-sm text-white/85 leading-relaxed max-w-md mx-auto whitespace-pre-line">{copy}</div>}
               </div>
             )}
           </div>

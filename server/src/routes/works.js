@@ -1,12 +1,45 @@
 // routes/works.js —— 作品管理（对标拾光盒子【客片/在线选片】核心）
 import { Router } from 'express';
+import bcrypt from 'bcryptjs';
 import { query, get, insert, run } from '../db.js';
 import { parseRow } from '../schema.js';
-import { authRequired } from '../auth.js';
-import { buildWorkAlbum } from './share.js';
+import { authRequired, hashPassword, peekUser } from '../auth.js';
+import { buildWorkAlbum, albumLockState } from './share.js';
 import { deleteFromR2 } from '../storage.js';
 
 const router = Router();
+
+// 去掉相册密码明文（仅留「是否已设置」标记），避免任何接口把哈希返回给前端
+function safeWork(w) {
+  if (!w) return w;
+  const { album_password, ...rest } = w;
+  return { ...rest, album_password_set: !!album_password };
+}
+
+// 解析并校验相册级配置（自定义文案 / 密码开关 / 6 位数字密码 / 可选有效期）
+// existingHash：更新时传入旧密码哈希——前端未传新密码则沿用旧值；新建时为 null。
+// 校验失败抛出带中文说明的错误，由调用方转成 400。
+async function resolveAlbumFields(b, existingHash) {
+  const album_copy = b.album_copy != null ? String(b.album_copy) : '';
+  const enabled = b.album_password_enabled ? 1 : 0;
+  let album_password = existingHash || null;
+  const pw = b.album_password != null ? String(b.album_password) : '';
+  if (pw) {
+    if (!/^\d{6}$/.test(pw)) throw new Error('相册密码必须是 6 位数字');
+    album_password = await hashPassword(pw); // bcrypt 哈希存储，绝不存明文
+  }
+  if (enabled && !album_password) {
+    throw new Error('开启相册密码保护前，请先设置 6 位数字密码');
+  }
+  let album_expires_at = b.album_expires_at || null;
+  if (album_expires_at) {
+    const exp = new Date(album_expires_at).getTime();
+    if (Number.isNaN(exp)) throw new Error('相册有效期格式不正确');
+    // 原样保留（date 输入 YYYY-MM-DD 可直接回显），仅做可解析性校验
+    album_expires_at = String(album_expires_at);
+  }
+  return { album_copy, album_password_enabled: enabled, album_password, album_expires_at };
+}
 
 // 列表（筛选 + 分页 + Tab 记忆所需参数）
 // query: category, q(搜索标题/客户), is_public(0/1), page, pageSize
@@ -25,7 +58,7 @@ router.get('/', async (req, res) => {
       'SELECT * FROM works ' + w + ' ORDER BY id DESC LIMIT ? OFFSET ?',
       [...params, parseInt(pageSize), offset]
     );
-    const items = rows.map((r) => parseRow(r, ['tags']));
+    const items = rows.map((r) => safeWork(parseRow(r, ['tags'])));
     res.json({ items, total, page: parseInt(page), pageSize: parseInt(pageSize) });
   } catch (e) {
     res.status(500).json({ error: e.message });
@@ -72,6 +105,36 @@ router.get('/public/:id/album', async (req, res) => {
   try {
     const w = await get('SELECT * FROM works WHERE id = ? AND is_public = 1', [req.params.id]);
     if (!w) return res.status(404).json({ error: '作品不存在或未公开' });
+    const isStaff = !!peekUser(req); // 商家后台进入 → 跳过相册密码锁
+    const lock = await albumLockState(w.id);
+    if (lock.enabled && !isStaff) {
+      if (lock.expired) return res.status(403).json({ error: '该相册已过期' });
+      // 相册锁：返回 locked 信封，不含 gallery
+      return res.json({ locked: true, albumLock: true, workId: w.id });
+    }
+    const gallery = await buildWorkAlbum(w.id);
+    if (!gallery) return res.status(404).json({ error: '作品相册不存在' });
+    res.json({ gallery });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// 公开作品相册解锁：校验相册密码后返回 gallery（C 端小程序/H5 访客输入密码后调用）
+router.post('/public/:id/album/verify', async (req, res) => {
+  try {
+    const w = await get('SELECT * FROM works WHERE id = ? AND is_public = 1', [req.params.id]);
+    if (!w) return res.status(404).json({ error: '作品不存在或未公开' });
+    const lock = await albumLockState(w.id);
+    if (!lock.enabled) {
+      // 未开启密码：直接返回 gallery（无需解锁）
+      const gallery = await buildWorkAlbum(w.id);
+      return res.json({ gallery });
+    }
+    if (lock.expired) return res.status(403).json({ error: '该相册已过期' });
+    const password = (req.body && req.body.password) || '';
+    const ok = w.album_password ? await bcrypt.compare(String(password), w.album_password) : false;
+    if (!ok) return res.status(401).json({ error: '密码错误' });
     const gallery = await buildWorkAlbum(w.id);
     if (!gallery) return res.status(404).json({ error: '作品相册不存在' });
     res.json({ gallery });
@@ -85,7 +148,7 @@ router.get('/:id', async (req, res) => {
   try {
     const w = await get('SELECT * FROM works WHERE id = ?', [req.params.id]);
     if (!w) return res.status(404).json({ error: '作品不存在' });
-    const work = parseRow(w, ['tags']);
+    const work = safeWork(parseRow(w, ['tags']));
     const albums = await query('SELECT * FROM albums WHERE work_id = ? ORDER BY zone, sort', [w.id]);
     const sel = await get('SELECT * FROM selections WHERE work_id = ? ORDER BY id DESC LIMIT 1', [w.id]);
     res.json({ work, albums, selection: sel ? parseRow(sel, ['selected']) : null });
@@ -98,12 +161,16 @@ router.get('/:id', async (req, res) => {
 router.post('/', authRequired, async (req, res) => {
   try {
     const b = req.body;
+    let album;
+    try { album = await resolveAlbumFields(b, null); }
+    catch (err) { return res.status(400).json({ error: err.message }); }
     const id = await insert(
-      'INSERT INTO works (title, category_id, is_public, is_private, cover_url, description, blessing, tags, live, customer_name, order_id, allow_download) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)',
+      'INSERT INTO works (title, category_id, is_public, is_private, cover_url, description, blessing, tags, live, customer_name, order_id, allow_download, album_copy, album_password_enabled, album_password, album_expires_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
       [
         b.title, b.category_id || null, b.is_public ? 1 : 0, b.is_private ? 1 : 0,
         b.cover_url || '', b.description || '', b.blessing || '',
-        JSON.stringify(b.tags || []), b.live ? 1 : 0, b.customer_name || '', b.order_id || null, b.allow_download ? 1 : 0
+        JSON.stringify(b.tags || []), b.live ? 1 : 0, b.customer_name || '', b.order_id || null, b.allow_download ? 1 : 0,
+        album.album_copy, album.album_password_enabled, album.album_password, album.album_expires_at
       ]
     );
     res.json({ id });
@@ -116,12 +183,17 @@ router.post('/', authRequired, async (req, res) => {
 router.put('/:id', authRequired, async (req, res) => {
   try {
     const b = req.body;
+    const existing = await get('SELECT album_password FROM works WHERE id = ?', [req.params.id]);
+    let album;
+    try { album = await resolveAlbumFields(b, existing ? existing.album_password : null); }
+    catch (err) { return res.status(400).json({ error: err.message }); }
     await run(
-      `UPDATE works SET title=?, category_id=?, is_public=?, is_private=?, cover_url=?, description=?, blessing=?, tags=?, live=?, customer_name=?, order_id=?, allow_download=? WHERE id=?`,
+      `UPDATE works SET title=?, category_id=?, is_public=?, is_private=?, cover_url=?, description=?, blessing=?, tags=?, live=?, customer_name=?, order_id=?, allow_download=?, album_copy=?, album_password_enabled=?, album_password=?, album_expires_at=? WHERE id=?`,
       [
         b.title, b.category_id || null, b.is_public ? 1 : 0, b.is_private ? 1 : 0,
         b.cover_url || '', b.description || '', b.blessing || '',
-        JSON.stringify(b.tags || []), b.live ? 1 : 0, b.customer_name || '', b.order_id || null, b.allow_download ? 1 : 0, req.params.id
+        JSON.stringify(b.tags || []), b.live ? 1 : 0, b.customer_name || '', b.order_id || null, b.allow_download ? 1 : 0,
+        album.album_copy, album.album_password_enabled, album.album_password, album.album_expires_at, req.params.id
       ]
     );
     res.json({ ok: true });

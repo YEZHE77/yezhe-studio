@@ -4,6 +4,7 @@
 import { Router } from 'express';
 import bcrypt from 'bcryptjs';
 import { query, get, insert } from '../db.js';
+import { peekUser } from '../auth.js';
 
 const router = Router();
 
@@ -105,17 +106,32 @@ export async function buildWorkAlbum(workId) {
     )).map((a) => a.photo_url).filter(Boolean);
   }
   const brand = await fetchStudioBrand();
+  // 自定义相册文案（album_copy）取代旧的 description/blessing：客户相册正文由商家自定义
+  const albumCopy = w.album_copy || w.blessing || '';
   return {
     title: w.title || '',
     subtitle: catName || '',
     category: catName || '',
-    blessing: w.description || w.blessing || '',
+    blessing: albumCopy,
+    albumCopy,
     cover_url: w.cover_url || '',
     photos,
     brand_name: brand.brand_name,
     brand_slogan: brand.brand_slogan,
     brand_logo: brand.brand_logo
   };
+}
+
+// 相册锁状态：是否开启密码 + 是否过期（不返回密码本身）
+export async function albumLockState(workId) {
+  const w = await get('SELECT album_password_enabled, album_expires_at FROM works WHERE id = ?', [workId]);
+  if (!w) return { enabled: false, expired: false };
+  let expired = false;
+  if (w.album_expires_at) {
+    const exp = new Date(w.album_expires_at).getTime();
+    if (!Number.isNaN(exp)) expired = exp < Date.now();
+  }
+  return { enabled: !!Number(w.album_password_enabled), expired };
 }
 
 async function buildWorkPayload(workId) {
@@ -286,6 +302,37 @@ router.get('/:token', async (req, res) => {
     if (share.disabled) return res.status(403).json({ error: '该分享已被关闭' });
     if (isExpired(share.expire_at)) return res.status(403).json({ error: '该分享已过期' });
 
+    const isStaff = !!peekUser(req); // 商家后台进入 → 跳过相册密码锁
+
+    // 相册级密码锁（仅 type=work；订单/套系等分享仍走 share.password_hash）
+    if (share.type === 'work' && !isStaff) {
+      const w = await get('SELECT id, title, album_password_enabled, album_expires_at FROM works WHERE id = ?', [share.ref_id]);
+      if (w) {
+        let expired = false;
+        if (w.album_expires_at) {
+          const exp = new Date(w.album_expires_at).getTime();
+          if (!Number.isNaN(exp)) expired = exp < Date.now();
+        }
+        if (expired) return res.status(403).json({ error: '该相册已过期' });
+        if (Number(w.album_password_enabled)) {
+          // 相册锁：返回 locked 信封（meta.albumLock 标记），不含数据
+          return res.json({
+            ok: true,
+            locked: true,
+            meta: {
+              token: share.token,
+              type: share.type,
+              ref_id: share.ref_id || null,
+              title: w.title || '',
+              expire_at: share.expire_at || null,
+              albumLock: true
+            },
+            data: null
+          });
+        }
+      }
+    }
+
     const data = await buildPayload(share.type, share.ref_id);
     if (!data) return res.status(404).json({ error: '分享内容不存在或已失效' });
 
@@ -310,11 +357,22 @@ router.post('/:token/verify', async (req, res) => {
     if (isExpired(share.expire_at)) return res.status(403).json({ error: '该分享已过期' });
 
     const password = (req.body && req.body.password) || '';
+    // 优先 share 级密码；否则若 type=work 且开启相册锁，则校验相册密码
     if (share.password_hash) {
       const ok = await bcrypt.compare(String(password), share.password_hash);
       if (!ok) {
         await logAccess(token, 'deny', null, req);
         return res.status(401).json({ error: '密码错误' });
+      }
+    } else if (share.type === 'work') {
+      const w = await get('SELECT album_password_enabled, album_password FROM works WHERE id = ?', [share.ref_id]);
+      const locked = w && Number(w.album_password_enabled) && w.album_password;
+      if (locked) {
+        const ok = await bcrypt.compare(String(password), w.album_password);
+        if (!ok) {
+          await logAccess(token, 'deny', 'album', req);
+          return res.status(401).json({ error: '密码错误' });
+        }
       }
     }
 

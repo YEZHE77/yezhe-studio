@@ -24,7 +24,7 @@ export default function WorkDetail() {
   const [uploadProgress, setUploadProgress] = useState(0);
   const abortRef = useRef(null);
   const [selected, setSelected] = useState(new Set());
-  const [form, setForm] = useState({ title: '', category_id: '', description: '', tags: '', customer_name: '', is_public: true, allow_download: false });
+  const [form, setForm] = useState({ title: '', category_id: '', description: '', tags: '', customer_name: '', is_public: true, allow_download: false, album_copy: '', album_password_enabled: false, album_password: '', album_expires_at: '' });
   const [draggedId, setDraggedId] = useState(null);
   const [dragOverId, setDragOverId] = useState(null);
   const [reordering, setReordering] = useState(false);
@@ -41,7 +41,11 @@ export default function WorkDetail() {
         tags: Array.isArray(w.tags) ? w.tags.join('、') : (w.tags || ''),
         customer_name: w.customer_name || '',
         is_public: !!w.is_public,
-        allow_download: !!w.allow_download
+        allow_download: !!w.allow_download,
+        album_copy: w.album_copy || '',
+        album_password_enabled: !!w.album_password_enabled,
+        album_password: '', // 明文密码绝不回填，修改时由商家重新录入
+        album_expires_at: w.album_expires_at || ''
       });
       // 后端 /api/works/:id 已同时返回 albums，避免再发一次请求
       setAlbums(r.data.albums || []);
@@ -85,7 +89,11 @@ export default function WorkDetail() {
         blessing: work.blessing || '',
         live: !!work.live,
         customer_name: form.customer_name,
-        order_id: work.order_id || null
+        order_id: work.order_id || null,
+        album_copy: form.album_copy || '',
+        album_password_enabled: form.album_password_enabled,
+        album_password: form.album_password || '', // 空字符串 → 后端保留原密码
+        album_expires_at: form.album_expires_at || ''
       });
       await loadWork();
       alert('保存成功');
@@ -344,6 +352,32 @@ export default function WorkDetail() {
               <label className="flex items-center gap-2 text-sm text-fg">
                 <input type="checkbox" checked={form.allow_download} onChange={(e) => setForm({ ...form, allow_download: e.target.checked })} /> 允许客户下载成片
               </label>
+
+              <div className="pt-3 mt-1 border-t border-line">
+                <div className="text-xs font-medium text-fg mb-3">相册交付设置（客户访问相册）</div>
+                <div>
+                  <label className="block text-xs text-muted mb-1">相册文案（自定义正文）</label>
+                  <textarea value={form.album_copy} onChange={(e) => setForm({ ...form, album_copy: e.target.value })} rows={3} placeholder="写给新人的话 / 拍摄手记，将展示在相册首页覆盖层" className="w-full px-3 py-2 rounded bg-ink border border-line text-fg text-sm outline-none" />
+                </div>
+                <label className="flex items-center gap-2 text-sm text-fg mt-3 cursor-pointer select-none">
+                  <input type="checkbox" checked={form.album_password_enabled} onChange={(e) => setForm({ ...form, album_password_enabled: e.target.checked })} /> 启用相册密码保护
+                </label>
+                {form.album_password_enabled && (
+                  <div className="mt-2">
+                    <label className="block text-xs text-muted mb-1">访问密码（6 位数字）</label>
+                    <input type="password" inputMode="numeric" maxLength={6} value={form.album_password}
+                      onChange={(e) => setForm({ ...form, album_password: e.target.value.replace(/\D/g, '').slice(0, 6) })}
+                      placeholder="请输入 6 位数字"
+                      className="w-full px-3 py-2 rounded bg-ink border border-line text-fg text-sm outline-none tracking-widest" />
+                    <div className="text-[11px] text-muted mt-1">{work.album_password_set ? '已设置密码 · 留空则保持当前密码' : '尚未设置密码 · 保存前请先录入'}</div>
+                  </div>
+                )}
+                <div className="mt-3">
+                  <label className="block text-xs text-muted mb-1">相册有效期（可选，留空则永久有效）</label>
+                  <input type="date" value={form.album_expires_at} onChange={(e) => setForm({ ...form, album_expires_at: e.target.value })}
+                    className="w-full px-3 py-2 rounded bg-ink border border-line text-fg text-sm outline-none" />
+                </div>
+              </div>
             </div>
             <button type="submit" disabled={saving} className="mt-5 w-full px-4 py-2 rounded bg-brand text-white text-sm hover:opacity-90 disabled:opacity-60">{saving ? '保存中…' : '保存基本信息'}</button>
           </form>

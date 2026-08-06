@@ -56,6 +56,18 @@
     <!-- 右下角常驻悬浮分享按钮（点击调用小程序原生转发好友/群聊） -->
     <button class="float-share" open-type="share">分享</button>
 
+    <!-- 相册密码锁弹窗（访客需输入密码后方可浏览/分享） -->
+    <view wx:if="{{albumLock}}" class="lock-mask">
+      <view class="lock-card">
+        <view class="lock-ico">🔒</view>
+        <view class="lock-title">受密码保护的相册</view>
+        <view class="lock-sub">该相册已开启访问密码，请输入密码查看</view>
+        <input class="lock-input" type="number" maxlength="6" value="{{pw}}" bindinput="onPwInput" placeholder="请输入 6 位数字密码" />
+        <view wx:if="{{pwErr}}" class="lock-err">{{pwErr}}</view>
+        <button class="lock-btn" loading="{{pwBusy}}" disabled="{{pwBusy}}" bindtap="unlock">查看相册</button>
+      </view>
+    </view>
+
     <view wx:if="{{toast}}" class="toast">{{toast}}</view>
   </block>
 </view>

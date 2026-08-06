@@ -59,3 +59,29 @@
   box-shadow: 0 8rpx 24rpx rgba(0,0,0,.4);
 }
 .float-share::after { border: none; }
+
+/* 相册密码锁弹窗：层级最高，覆盖一切 */
+.lock-mask {
+  position: fixed; inset: 0; z-index: 60;
+  background: rgba(0,0,0,.85);
+  display: flex; align-items: center; justify-content: center;
+}
+.lock-card {
+  width: 560rpx; box-sizing: border-box;
+  background: #1c1c1e; border: 1rpx solid rgba(255,255,255,.1);
+  border-radius: 24rpx; padding: 48rpx 40rpx; text-align: center;
+}
+.lock-ico { font-size: 56rpx; margin-bottom: 16rpx; }
+.lock-title { color: #fff; font-size: 32rpx; font-weight: 600; margin-bottom: 12rpx; }
+.lock-sub { color: rgba(255,255,255,.5); font-size: 24rpx; margin-bottom: 32rpx; }
+.lock-input {
+  background: rgba(255,255,255,.08); border: 1rpx solid rgba(255,255,255,.15);
+  border-radius: 12rpx; color: #fff; font-size: 32rpx; letter-spacing: 12rpx;
+  text-align: center; padding: 20rpx 0; margin-bottom: 16rpx;
+}
+.lock-err { color: #ff6b6b; font-size: 24rpx; margin-bottom: 16rpx; }
+.lock-btn {
+  background: #6b5bff; color: #fff; font-size: 30rpx; font-weight: 600;
+  border-radius: 999rpx; margin-top: 8rpx; padding: 0; height: 88rpx; line-height: 88rpx;
+}
+.lock-btn::after { border: none; }

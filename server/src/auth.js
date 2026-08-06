@@ -42,6 +42,25 @@ export function requireRole(...roles) {
   };
 }
 
+// 商家角色集合：登录后台的商户（admin/photographer/selector/finance）一律视为内部人员；
+// 客户 JWT（role='customer'）不在此列，故不会触发「管理员跳过」逻辑。
+export const MERCHANT_ROLES = ['admin', 'photographer', 'selector', 'finance'];
+
+// 非抛错地解析请求里的商家令牌：仅当角色属于 MERCHANT_ROLES 时才返回 payload，否则返回 null。
+// 用于公开分享网关判断「是否为管理员从后台进入」——是则跳过相册密码锁。
+export function peekUser(req) {
+  const h = req.headers.authorization || '';
+  const token = h.startsWith('Bearer ') ? h.slice(7) : '';
+  if (!token) return null;
+  try {
+    const payload = jwt.verify(token, SECRET);
+    if (payload && MERCHANT_ROLES.includes(payload.role)) return payload;
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 // ===== 客户侧 JWT（C 端小程序）=====
 // 与商家 JWT 隔离：payload 只含 openid + customerId，不可冒充商家角色。
 export function signCustomerToken(customer) {

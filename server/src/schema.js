@@ -254,7 +254,7 @@ async function ensureColumn(table, col, def) {
   const cols = await colsOf(table);
   if (!cols.includes(col)) {
     await run(`ALTER TABLE ${table} ADD COLUMN ${col} ${def}`);
-    console.log(`[schema] orders 补列 ${col}`);
+    console.log(`[schema] 增量补列 ${table}.${col}`);
   }
 }
 
@@ -288,6 +288,11 @@ export async function initSchema() {
   // 客户绑定列 + 成片下载开关
   await ensureColumn('orders', 'openid', 'TEXT');
   await ensureColumn('works', 'allow_download', 'INTEGER NOT NULL DEFAULT 0');
+  // 相册级配置（客户相册密码 / 自定义文案 / 有效期）——挂在作品维度（作品相册即交付客户的客片相册）
+  await ensureColumn('works', 'album_copy', 'TEXT');
+  await ensureColumn('works', 'album_password_enabled', 'INTEGER NOT NULL DEFAULT 0');
+  await ensureColumn('works', 'album_password', 'TEXT');
+  await ensureColumn('works', 'album_expires_at', 'TEXT');
   // packages / schedules 增量补列
   const PACKAGES_NEW_COLUMNS = [
     ['deposit', 'REAL NOT NULL DEFAULT 0'],
