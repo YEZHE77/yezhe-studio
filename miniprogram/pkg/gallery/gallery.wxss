@@ -1,0 +1,48 @@
+.page { background: #000; width: 100vw; height: 100vh; position: relative; overflow: hidden; }
+.center { color: #fff; opacity: .7; text-align: center; padding-top: 45vh; font-size: 14px; }
+
+.topbar {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 30;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 24rpx 28rpx 48rpx; box-sizing: border-box;
+  background: linear-gradient(to bottom, rgba(0,0,0,.6), rgba(0,0,0,0));
+}
+.topbar .icon { width: 64rpx; height: 64rpx; border-radius: 50%; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; color: #fff; font-size: 40rpx; }
+.topbar .title { color: #fff; font-size: 28rpx; flex: 1; text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 0 16rpx; }
+
+.swiper { width: 100vw; height: 100vh; }
+.swiper .photo { width: 100vw; height: 100vh; }
+.overlay {
+  position: absolute; left: 0; right: 0; bottom: 0; padding: 60rpx 48rpx 240rpx;
+  background: linear-gradient(to top, rgba(0,0,0,.8), rgba(0,0,0,0)); text-align: center;
+}
+.overlay .tag { display: inline-block; padding: 6rpx 22rpx; border: 1rpx solid rgba(255,255,255,.5); border-radius: 999rpx; color: #fff; font-size: 22rpx; margin-bottom: 18rpx; }
+.overlay .htitle { color: #fff; font-size: 44rpx; font-weight: 600; letter-spacing: 2rpx; margin-bottom: 18rpx; }
+.overlay .bless { color: rgba(255,255,255,.85); font-size: 26rpx; line-height: 1.7; max-width: 560rpx; margin: 0 auto; }
+
+.dots { position: fixed; right: 16rpx; top: 50%; transform: translateY(-50%); z-index: 20; display: flex; flex-direction: column; gap: 12rpx; }
+.dots .dot { width: 12rpx; height: 12rpx; border-radius: 50%; background: rgba(255,255,255,.3); }
+.dots .dot.on { background: #fff; }
+
+.footer {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 30;
+  padding: 64rpx 32rpx 40rpx; box-sizing: border-box;
+  background: linear-gradient(to top, rgba(0,0,0,.9), rgba(0,0,0,0));
+  display: flex; align-items: center; justify-content: space-between;
+}
+.brand { display: flex; align-items: center; min-width: 0; }
+.brand .logo, .brand .logo-ph { width: 72rpx; height: 72rpx; border-radius: 50%; margin-right: 18rpx; }
+.brand .logo-ph { background: #6b5bff; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 26rpx; }
+.brand-txt { min-width: 0; }
+.brand-txt .bname { color: #fff; font-size: 28rpx; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.brand-txt .bslogan { color: rgba(255,255,255,.55); font-size: 20rpx; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.actions { display: flex; align-items: center; }
+.act { display: flex; flex-direction: column; align-items: center; margin-left: 44rpx; }
+.act-ico { color: #fff; font-size: 36rpx; line-height: 1; }
+.act-txt { color: rgba(255,255,255,.9); font-size: 20rpx; margin-top: 8rpx; }
+
+.toast {
+  position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 40;
+  background: rgba(0,0,0,.8); color: #fff; font-size: 24rpx; padding: 20rpx 32rpx; border-radius: 12rpx; text-align: center; max-width: 80%;
+}

@@ -95,6 +95,10 @@ Page({
       const r = await this._req('/api/share/' + this.data.token);
       if (r.locked) {
         this.setData({ loading: false, locked: true, title: (r.meta && r.meta.title) || '受保护的分享' });
+      } else if (r.meta && r.meta.type === 'album') {
+        // 电子相册：直接跳转沉浸式画廊页
+        wx.redirectTo({ url: '/pkg/gallery/gallery?token=' + this.data.token });
+        return;
       } else {
         this.setData({
           loading: false,

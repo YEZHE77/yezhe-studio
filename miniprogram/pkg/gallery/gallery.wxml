@@ -1,0 +1,58 @@
+<view class="page">
+  <view wx:if="{{loading}}" class="center">加载中…</view>
+  <view wx:elif="{{error}}" class="center">{{error}}</view>
+  <block wx:else>
+    <!-- 顶部栏 -->
+    <view class="topbar">
+      <view class="icon" bindtap="goBack">‹</view>
+      <view class="title">{{gallery.subtitle || gallery.title}}</view>
+      <view class="icon" bindtap="share">↗</view>
+    </view>
+
+    <!-- 沉浸式垂直轮播 -->
+    <swiper wx:if="{{photos.length}}" class="swiper" vertical autoplay="{{playing}}" interval="3500" duration="500" bindchange="onSwiper">
+      <swiper-item wx:for="{{photos}}" wx:key="index">
+        <image class="photo" src="{{item}}" mode="aspectFit" lazy-load />
+        <view wx:if="{{index === 0 && (gallery.title || gallery.category || gallery.blessing)}}" class="overlay">
+          <view wx:if="{{gallery.category}}" class="tag">{{gallery.category}}</view>
+          <view wx:if="{{gallery.title}}" class="htitle">{{gallery.title}}</view>
+          <view wx:if="{{gallery.blessing}}" class="bless">{{gallery.blessing}}</view>
+        </view>
+      </swiper-item>
+    </swiper>
+    <view wx:if="{{!photos.length}}" class="center">该相册暂未添加照片</view>
+
+    <!-- 进度点 -->
+    <view class="dots" wx:if="{{photos.length > 1}}">
+      <view wx:for="{{photos}}" wx:key="index" class="dot {{index === current ? 'on' : ''}}"></view>
+    </view>
+
+    <!-- 底部品牌工具栏 -->
+    <view class="footer">
+      <view class="brand">
+        <image wx:if="{{gallery.brand_logo}}" class="logo" src="{{gallery.brand_logo}}" mode="aspectFill" />
+        <view wx:else class="logo-ph">YE</view>
+        <view class="brand-txt">
+          <view class="bname">{{gallery.brand_name || 'YEZHE WORKSHOP'}}</view>
+          <view wx:if="{{gallery.brand_slogan}}" class="bslogan">{{gallery.brand_slogan}}</view>
+        </view>
+      </view>
+      <view class="actions">
+        <view class="act" bindtap="togglePlay">
+          <text class="act-ico">{{playing ? '❚❚' : '▶'}}</text>
+          <text class="act-txt">{{playing ? '暂停' : '播放'}}</text>
+        </view>
+        <view class="act" bindtap="cast">
+          <text class="act-ico">📺</text>
+          <text class="act-txt">投屏</text>
+        </view>
+        <view class="act" bindtap="goMore">
+          <text class="act-ico">＋</text>
+          <text class="act-txt">更多</text>
+        </view>
+      </view>
+    </view>
+
+    <view wx:if="{{toast}}" class="toast">{{toast}}</view>
+  </block>
+</view>

@@ -3,6 +3,7 @@ import { Router } from 'express';
 import crypto from 'node:crypto';
 import QRCode from 'qrcode';
 import { query, get, insert, run } from '../db.js';
+import { shareBaseUrl } from '../shareUtil.js';
 import { authRequired, requireRole } from '../auth.js';
 import { parseRow } from '../schema.js';
 
@@ -250,17 +251,8 @@ router.post('/:id/share', authRequired, requireRole(['admin', 'photographer', 'f
     let token = o.share_token;
     if (!token) token = crypto.randomBytes(16).toString('hex');
 
-    // 分享落地页基准地址：生产设为前端域名（如 https://yezhe-studio.netlify.app），
-    // 本地未配置时若请求来自 4000 端口则回退到前端开发端口 5173，方便扫码调试。
-    let base = process.env.SHARE_BASE_URL || '';
-    if (!base) {
-      const host = req.get('host') || '';
-      if (host.includes('localhost:4000') || host.includes('127.0.0.1:4000')) {
-        base = 'http://localhost:5173';
-      } else {
-        base = `${req.protocol}://${host}`;
-      }
-    }
+    // 分享落地页基准地址：统一走 shareUtil（默认前端 Cloudflare Pages 域名）
+    const base = shareBaseUrl(req);
     const shareUrl = `${base}/share/${token}`;
     const qrUrl = await QRCode.toDataURL(shareUrl, { width: 480, margin: 1 });
     await run('UPDATE orders SET share_token = ?, qr_url = ? WHERE id = ?', [token, qrUrl, o.id]);

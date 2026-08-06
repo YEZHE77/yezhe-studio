@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import http, { img } from '../api.js';
+import GalleryAlbum from '../components/GalleryAlbum.jsx';
 
 const ZONE_LABEL = { sample: '样片', final: '成片' };
 
@@ -77,6 +78,11 @@ export default function ShareAlbum() {
         <div className="text-sm text-white/40 mt-2">该分享链接可能已失效、被关闭或已过期，请联系摄影师获取最新链接。</div>
       </div>
     );
+  }
+
+  // 客片电子相册（album）类型：沉浸式轮播
+  if (payload.gallery) {
+    return <GalleryAlbum gallery={payload.gallery} />;
   }
 
   // 订单影集（专属相册）类型

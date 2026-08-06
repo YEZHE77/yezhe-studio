@@ -27,7 +27,16 @@ router.get('/', authRequired, async (req, res) => {
 router.post('/', authRequired, requireRole(['admin', 'photographer']), async (req, res) => {
   try {
     const b = req.body || {};
-    const photos = Array.isArray(b.photos) ? b.photos.filter(Boolean) : [];
+    let photos = Array.isArray(b.photos) ? b.photos.filter(Boolean) : [];
+    // 未显式传照片时，若绑定了订单，自动抓取该订单 final 分区精修照片
+    if (photos.length === 0 && b.order_id) {
+      const works = await query('SELECT id FROM works WHERE order_id = ?', [Number(b.order_id)]);
+      for (const w of works) {
+        const al = await query("SELECT photo_url FROM albums WHERE work_id = ? AND zone = 'final' ORDER BY sort ASC", [w.id]);
+        photos.push(...al.map((a) => a.photo_url).filter(Boolean));
+      }
+    }
+    const cover_url = b.cover_url || (photos[0] || '');
     const token = crypto.randomBytes(16).toString('hex');
     const id = await insert(
       `INSERT INTO galleries (title, subtitle, category, blessing, cover_url, photos, brand_name, brand_slogan, brand_logo, order_id, share_token, is_public)
@@ -37,7 +46,7 @@ router.post('/', authRequired, requireRole(['admin', 'photographer']), async (re
         b.subtitle || '',
         b.category || '婚礼',
         b.blessing || '',
-        b.cover_url || '',
+        cover_url,
         JSON.stringify(photos),
         b.brand_name || '',
         b.brand_slogan || '',
