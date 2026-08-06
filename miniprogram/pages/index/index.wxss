@@ -152,7 +152,7 @@ page { background: #f9f8f6; }
 .fab-group {
   position: fixed;
   right: 40rpx;
-  top: 160rpx;
+  top: 120rpx;
   z-index: 90;
   display: flex;
   flex-direction: column;

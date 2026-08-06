@@ -27,8 +27,12 @@ export async function seedIfNeeded() {
     const hasMaternity = await get("SELECT id FROM categories WHERE name='孕妇照' AND deleted=0");
     const hasFamily = await get("SELECT id FROM categories WHERE name='家庭纪实' AND deleted=0");
     if (hasMaternity && !hasFamily) {
-      await run("UPDATE categories SET name='家庭纪实', preset=1 WHERE id=?", [hasMaternity.id]);
-      console.log('✓ 已迁移分类：孕妇照 → 家庭纪实（置为预设）');
+      await run("UPDATE categories SET name='家庭纪实', preset=1, sort=4 WHERE id=?", [hasMaternity.id]);
+      console.log('✓ 已迁移分类：孕妇照 → 家庭纪实（置为预设，sort=4）');
+    }
+    // 兜底：确保预设分类顺序为 婚礼/领证/写真/家庭纪实
+    for (const [name, sort] of [['婚礼', 1], ['领证', 2], ['写真', 3], ['家庭纪实', 4]]) {
+      await run('UPDATE categories SET sort=?, preset=1, deleted=0 WHERE name=?', [sort, name]);
     }
   }
 

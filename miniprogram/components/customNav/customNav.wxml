@@ -5,7 +5,7 @@
       <block wx:if="{{showLogo}}">
         <view class="nav-logo">
           <image wx:if="{{studio.logo}}" class="nav-logo-img" src="{{studio.logo}}" mode="aspectFill" />
-          <view wx:else class="nav-logo-ph"></view>
+          <view wx:else class="nav-logo-ph">YZ</view>
         </view>
         <text class="nav-brand">{{studio.name || '叶哲 STUDIO'}}</text>
       </block>

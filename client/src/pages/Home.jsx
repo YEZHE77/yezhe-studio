@@ -229,8 +229,8 @@ export default function Home() {
         <div className="mt-6 text-center text-[11px] text-gray-500">叶哲 STUDIO · 用影像记录时光</div>
       </div>
 
-      {/* 右侧固定悬浮按钮组：right:40rpx(20px) / top:160rpx(80px) / 间距32rpx(16px) / 圆形160rpx(80px) / 图标在上文字在下 */}
-      <div className="fixed right-5 top-20 z-50 flex flex-col gap-4">
+      {/* 右侧固定悬浮按钮组：right:40rpx(20px) / top:120rpx(60px) / 间距32rpx(16px) / 圆形160rpx(80px) / 图标在上文字在下 */}
+      <div className="fixed right-5 top-15 z-50 flex flex-col gap-4">
         {/* 关注：白底 + 空心爱心灰 + 文字灰 */}
         <button onClick={copyWechat}
           className="flex h-20 w-20 flex-col items-center justify-center rounded-full text-[#666666] shadow-[0_6px_20px_rgba(0,0,0,0.12)] active:scale-95 transition"
