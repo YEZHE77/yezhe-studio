@@ -229,38 +229,38 @@ export default function Home() {
         <div className="mt-6 text-center text-[11px] text-gray-500">叶哲 STUDIO · 用影像记录时光</div>
       </div>
 
-      {/* 右侧固定悬浮按钮组：right:40rpx(20px) / top:120rpx(60px) / 间距32rpx(16px) / 圆形160rpx(80px) / 图标在上文字在下 */}
-      <div className="fixed right-5 top-15 z-50 flex flex-col gap-4">
+      {/* 右侧固定悬浮按钮组：right:40rpx(20px) / bottom:100rpx(50px，右下角) / 间距24rpx(12px) / 圆形120rpx(60px) / 图标在上文字在下 */}
+      <div className="fixed right-5 bottom-[50px] z-50 flex flex-col gap-3">
         {/* 关注：白底 + 空心爱心灰 + 文字灰 */}
         <button onClick={copyWechat}
-          className="flex h-20 w-20 flex-col items-center justify-center rounded-full text-[#666666] shadow-[0_6px_20px_rgba(0,0,0,0.12)] active:scale-95 transition"
+          className="flex h-[60px] w-[60px] flex-col items-center justify-center rounded-full text-[#666666] shadow-[0_6px_20px_rgba(0,0,0,0.12)] active:scale-95 transition"
           style={{ background: '#ffffff' }} aria-label="关注">
-          <svg viewBox="0 0 24 24" className="h-7 w-7" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round">
+          <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round">
             <path d="M12 20.3l-1.45-1.32C5.4 14.24 2 11.16 2 7.5 2 4.42 4.42 2 7.5 2c1.74 0 3.41.81 4.5 2.09C13.09 2.81 14.76 2 16.5 2 19.58 2 22 4.42 22 7.5c0 3.66-3.4 6.74-8.55 11.49L12 20.3z" />
           </svg>
-          <span className="mt-1 text-[14px] leading-none">关注</span>
+          <span className="mt-1 text-[12px] leading-none">关注</span>
         </button>
         {/* 预约：青绿底 + 白色对话气泡(三点) + 文字白 */}
         <button onClick={() => setContactOpen(true)}
-          className="flex h-20 w-20 flex-col items-center justify-center rounded-full shadow-[0_6px_20px_rgba(72,200,192,0.35)] active:scale-95 transition"
+          className="flex h-[60px] w-[60px] flex-col items-center justify-center rounded-full shadow-[0_6px_20px_rgba(72,200,192,0.35)] active:scale-95 transition"
           style={{ background: '#48c8c0', color: '#fff' }} aria-label="预约">
-          <svg viewBox="0 0 24 24" className="h-7 w-7" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round">
+          <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round">
             <path d="M4 5h16a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H10l-4 3v-3H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z" />
             <circle cx="9" cy="11" r="1" fill="currentColor" stroke="none" />
             <circle cx="12" cy="11" r="1" fill="currentColor" stroke="none" />
             <circle cx="15" cy="11" r="1" fill="currentColor" stroke="none" />
           </svg>
-          <span className="mt-1 text-[14px] leading-none">预约</span>
+          <span className="mt-1 text-[12px] leading-none">预约</span>
         </button>
         {/* 我的：白底 + 灰色人形轮廓 + 文字灰 */}
         <button onClick={() => nav('/my')}
-          className="flex h-20 w-20 flex-col items-center justify-center rounded-full text-[#666666] shadow-[0_6px_20px_rgba(0,0,0,0.12)] active:scale-95 transition"
+          className="flex h-[60px] w-[60px] flex-col items-center justify-center rounded-full text-[#666666] shadow-[0_6px_20px_rgba(0,0,0,0.12)] active:scale-95 transition"
           style={{ background: '#ffffff' }} aria-label="我的">
-          <svg viewBox="0 0 24 24" className="h-7 w-7" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
+          <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
             <circle cx="12" cy="8" r="3.2" />
             <path d="M5 20a7 7 0 0 1 14 0" />
           </svg>
-          <span className="mt-1 text-[14px] leading-none">我的</span>
+          <span className="mt-1 text-[12px] leading-none">我的</span>
         </button>
       </div>
 
