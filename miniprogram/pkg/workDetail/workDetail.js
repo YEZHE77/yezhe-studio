@@ -227,6 +227,12 @@ Page({
     if (current && urls.length) wx.previewImage({ current, urls });
   },
 
+  // 图片加载失败：多为微信小程序 downloadFile 合法域名未配置
+  onImgError(e) {
+    const src = (e && e.detail && e.detail.src) || '';
+    console.error('[workDetail] 图片加载失败，请检查小程序后台 downloadFile 合法域名:', src);
+  },
+
   // 唤起全屏幻灯片（用户手势内触发 BGM 播放）
   openSlideshow() {
     if (!this.data.canInteract || !this.data.photos.length) return;

@@ -101,9 +101,16 @@ export default function Settings() {
 
   async function upload(file, kind) {
     if (!file) return;
-    const compressed = await compressImage(file, { maxWidth: 1280, maxHeight: 1280, quality: 0.82 });
-    const r = await uploadImage(compressed, { category: 'backup', isPublic: true });
-    set(kind, r.url);
+    try {
+      const compressed = await compressImage(file, { maxWidth: 1280, maxHeight: 1280, quality: 0.82 });
+      const r = await uploadImage(compressed, { category: 'backup', isPublic: true });
+      set(kind, r.url);
+    } catch (e) {
+      const msg = e.response?.data?.error || e.message || '上传失败';
+      setTip('上传失败：' + msg);
+      setTimeout(() => setTip(''), 5000);
+      throw e;
+    }
   }
 
   function startCrop(file, kind, aspectRatio, outputWidth, outputHeight) {
@@ -112,8 +119,11 @@ export default function Settings() {
 
   async function onCropped(croppedFile) {
     if (!crop) return;
-    await upload(croppedFile, crop.kind);
-    setCrop(null);
+    try {
+      await upload(croppedFile, crop.kind);
+    } finally {
+      setCrop(null);
+    }
   }
 
   // 首页轮播图：支持一次选多张，顺序即展示顺序

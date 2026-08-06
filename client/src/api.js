@@ -2,7 +2,10 @@ import axios from 'axios';
 
 // 生产：Netlify 构建时注入 VITE_API_BASE=https://你的render地址.onrender.com
 // 开发：留空，由 vite.config.js 的 proxy 转发到本地 4000
-const BASE = import.meta.env.VITE_API_BASE || '';
+// 生产：Netlify/Cloudflare Pages 构建时注入 VITE_API_BASE=https://你的render地址.onrender.com
+// 开发：留空，由 vite.config.js 的 proxy 转发到本地 4000
+// 注：环境变量末尾若有 / 会导致双斜杠，统一去掉。
+const BASE = (import.meta.env.VITE_API_BASE || '').replace(/\/+$/, '');
 const TIMEOUT = 15000; // 15 秒超时
 
 const http = axios.create({ baseURL: BASE, timeout: TIMEOUT });
@@ -208,7 +211,7 @@ export function formatBytes(bytes, decimals = 1) {
 // 媒资元数据登记（幂等：唯一索引去重）
 export async function registerMedia(url, category, bytes, isPublic) {
   try {
-    await http.post('/api/media/register', { url, category, bytes, isPublic: !!isPublic });
+    await http.post('/api/admin/media/register', { url, category, bytes, isPublic: !!isPublic });
   } catch (e) { /* 最佳努力，失败不影响主流程 */ }
 }
 
@@ -257,30 +260,41 @@ export async function uploadImage(file, opts = {}) {
     const fd = new FormData();
     fd.append('file', file);
     fd.append('type', type); // Worker 强制业务类型前缀（用于分类统计，T-07 枚举）
-    url = await new Promise((resolve, reject) => {
-      if (signal && signal.aborted) return reject(new DOMException('上传已取消', 'AbortError'));
-      const xhr = new XMLHttpRequest();
-      xhr.open('POST', workerUrl);
-      if (token) xhr.setRequestHeader('Authorization', 'Bearer ' + token);
-      xhr.upload.onprogress = (e) => {
-        if (onProgress && e.lengthComputable) onProgress(Math.round((e.loaded / e.total) * 100));
-      };
-      const onAbort = () => xhr.abort();
-      if (signal) signal.addEventListener('abort', onAbort);
-      xhr.onload = () => {
-        if (signal) signal.removeEventListener('abort', onAbort);
-        if (xhr.status >= 200 && xhr.status < 300) {
-          try { resolve(JSON.parse(xhr.responseText).url); }
-          catch { reject(new Error('上传返回解析失败')); }
-        } else { reject(new Error('上传失败(' + xhr.status + ')')); }
-      };
-      xhr.onerror = () => {
-        if (signal) signal.removeEventListener('abort', onAbort);
-        reject(new Error('上传网络错误'));
-      };
-      xhr.send(fd);
-    });
-  } else {
+    try {
+      url = await new Promise((resolve, reject) => {
+        if (signal && signal.aborted) return reject(new DOMException('上传已取消', 'AbortError'));
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', workerUrl);
+        if (token) xhr.setRequestHeader('Authorization', 'Bearer ' + token);
+        xhr.upload.onprogress = (e) => {
+          if (onProgress && e.lengthComputable) onProgress(Math.round((e.loaded / e.total) * 100));
+        };
+        const onAbort = () => xhr.abort();
+        if (signal) signal.addEventListener('abort', onAbort);
+        xhr.onload = () => {
+          if (signal) signal.removeEventListener('abort', onAbort);
+          if (xhr.status >= 200 && xhr.status < 300) {
+            try { resolve(JSON.parse(xhr.responseText).url); }
+            catch { reject(new Error('Worker 上传返回解析失败: ' + workerUrl)); }
+          } else {
+            let detail = '';
+            try { detail = ' ' + xhr.responseText; } catch {}
+            reject(new Error('Worker 上传失败(' + xhr.status + '): ' + workerUrl + detail));
+          }
+        };
+        xhr.onerror = () => {
+          if (signal) signal.removeEventListener('abort', onAbort);
+          reject(new Error('Worker 上传网络错误: ' + workerUrl));
+        };
+        xhr.send(fd);
+      });
+    } catch (err) {
+      // Worker 配置错误或不可用时，自动降级到后端 /api/upload（兜底可用）
+      console.warn('[upload] Worker 失败，降级到 /api/upload:', err.message);
+      url = null;
+    }
+  }
+  if (!url) {
     const fd = new FormData();
     fd.append('file', file);
     fd.append('category', type);

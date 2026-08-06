@@ -40,7 +40,7 @@
     <block wx:if="{{!locked}}">
       <!-- 封面图 + 右上悬浮分享胶囊 -->
       <view class="cover-wrap">
-        <image class="cover-img" src="{{cover}}" mode="aspectFill" lazy-load />
+        <image class="cover-img" src="{{cover}}" mode="aspectFill" lazy-load binderror="onImgError" />
         <button wx:if="{{canInteract}}" class="share-capsule" style="top: {{shareTop}}px;" bindtap="openShare">分享</button>
         <view wx:else class="share-capsule disabled" style="top: {{shareTop}}px;">分享</view>
       </view>
@@ -67,14 +67,14 @@
         <!-- 纵向长图流式模式（默认） -->
         <view wx:if="{{view==='flow'}}" class="photo-flow">
           <view class="flow-item" wx:for="{{photos}}" wx:key="id" wx:for-index="idx" bindtap="previewImage" data-idx="{{idx}}">
-            <image class="flow-img" src="{{item.preview}}" mode="widthFix" lazy-load />
+            <image class="flow-img" src="{{item.preview}}" mode="widthFix" lazy-load binderror="onImgError" />
           </view>
         </view>
 
         <!-- 缩略图网格模式 -->
         <view wx:else class="photo-grid">
           <view class="photo-item" wx:for="{{photos}}" wx:key="id" wx:for-index="idx" bindtap="previewImage" data-idx="{{idx}}">
-            <image class="photo" src="{{item.thumb}}" mode="aspectFill" lazy-load />
+            <image class="photo" src="{{item.thumb}}" mode="aspectFill" lazy-load binderror="onImgError" />
           </view>
         </view>
 
@@ -85,7 +85,7 @@
       <!-- 底部品牌工具栏 -->
       <view class="brand-bar">
         <view class="brand-left">
-          <image wx:if="{{brand.logo}}" class="brand-logo" src="{{brand.logo}}" mode="aspectFill" />
+          <image wx:if="{{brand.logo}}" class="brand-logo" src="{{brand.logo}}" mode="aspectFill" binderror="onImgError" />
           <view class="brand-text">
             <view class="brand-name">{{brand.name || 'YEZHE WORKSHOP'}}</view>
             <view class="brand-slogan">{{brand.slogan || '记录时光中的最美瞬间'}}</view>

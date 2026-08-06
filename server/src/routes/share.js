@@ -90,8 +90,9 @@ export async function buildWorkAlbum(workId) {
   const w = await get('SELECT * FROM works WHERE id = ?', [workId]);
   if (!w) return null;
   let catName = '';
-  if (w.category_id) {
-    const c = await get('SELECT name FROM categories WHERE id = ?', [w.category_id]);
+  const firstCatId = w.category_id || (w.category_ids ? String(w.category_ids).split(',')[0] : '');
+  if (firstCatId) {
+    const c = await get('SELECT name FROM categories WHERE id = ?', [firstCatId]);
     catName = c ? c.name : '';
   }
   // 优先 sample 区（对外展示），无则回退 final，绝不取 local 原片
