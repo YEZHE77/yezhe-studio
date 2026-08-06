@@ -17,9 +17,33 @@ export default function Works() {
   const abortRef = useRef(null);
   const fileInputRef = useRef(null);
   const folderInputRef = useRef(null);
+  const [workShare, setWorkShare] = useState(null); // 作品分享相册 {open, workId, title, result, busy}
 
   function emptyForm() {
     return { title: '', category_id: '', is_public: true, allow_download: false, cover: null, cover_url: '', description: '', tags: '' };
+  }
+
+  // 作品分享相册：生成公开分享令牌（type=work）→ 沉浸式相册二维码 + 链接
+  function openWorkShare(w) {
+    setWorkShare({ open: true, workId: w.id, title: w.title, result: null, busy: false });
+  }
+  async function submitWorkShare() {
+    const ws = workShare;
+    if (!ws) return;
+    setWorkShare({ ...ws, busy: true });
+    try {
+      const r = await http.post('/api/shares', { type: 'work', ref_id: ws.workId });
+      setWorkShare({ ...ws, result: r.data, busy: false });
+    } catch (e) {
+      const msg = (e.response && e.response.data && e.response.data.error) || '生成失败';
+      setWorkShare({ ...ws, busy: false });
+      alert(msg);
+    }
+  }
+  function copyWorkShare() {
+    if (!workShare || !workShare.result) return;
+    navigator.clipboard?.writeText(workShare.result.share_url);
+    alert('相册链接已复制：\n' + workShare.result.share_url);
   }
 
   // 搜索防抖 300ms
@@ -223,6 +247,7 @@ export default function Works() {
               </button>
               <div className="flex gap-2 mt-2">
                 <button onClick={(e) => { e.stopPropagation(); navigate('/works/' + w.id); }} className="flex-1 text-xs py-1.5 rounded border border-line text-brand hover:bg-brand/5">管理相册</button>
+                <button onClick={(e) => { e.stopPropagation(); openWorkShare(w); }} className="flex-1 text-xs py-1.5 rounded border border-line text-emerald-500 hover:bg-emerald-50">分享相册</button>
                 <button onClick={(e) => remove(w, e)} className="flex-1 text-xs py-1.5 rounded border border-line text-red-500 hover:bg-red-50">删除</button>
               </div>
             </div>
@@ -310,6 +335,44 @@ export default function Works() {
               </button>
             </div>
           </form>
+        </div>
+      )}
+
+      {/* 作品分享相册弹窗 */}
+      {workShare && workShare.open && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[80] p-4" onClick={() => setWorkShare(null)}>
+          <div onClick={(e) => e.stopPropagation()} className="w-full max-w-md bg-panel border border-line rounded-xl2 p-6">
+            {!workShare.result && (
+              <>
+                <div className="text-white font-medium mb-1">分享作品相册</div>
+                <div className="text-xs text-muted mb-4">将生成该作品的公开沉浸式相册（全屏轮播 / 播放 / 投屏 / 分享），客户扫码或点链接即可在手机浏览并转发。</div>
+                <div className="space-y-3">
+                  <label className="block text-xs text-muted">{workShare.title || '未命名作品'}</label>
+                  <div className="text-xs text-muted">相册照片自动取该作品「样片」分区（对外展示）；公开链接不含原片。</div>
+                </div>
+                <div className="flex gap-2 justify-end mt-5">
+                  <button type="button" onClick={() => setWorkShare(null)} className="px-4 py-2 rounded text-sm text-muted">取消</button>
+                  <button type="button" onClick={submitWorkShare} disabled={workShare.busy}
+                    className="px-4 py-2 rounded bg-brand text-white text-sm disabled:opacity-40">{workShare.busy ? '生成中…' : '生成相册链接'}</button>
+                </div>
+              </>
+            )}
+            {workShare.result && (
+              <>
+                <div className="text-white font-medium mb-1">作品相册已生成</div>
+                <div className="text-xs text-muted mb-4">客户扫码或点链接即可在手机浏览作品（沉浸轮播 / 播放 / 投屏 / 分享）</div>
+                {workShare.result.qr_url && (
+                  <img src={workShare.result.qr_url} alt="相册二维码" className="w-56 h-56 mx-auto rounded-lg bg-white p-2" />
+                )}
+                <div className="text-xs text-muted mt-3 break-all">{workShare.result.share_url}</div>
+                <div className="flex gap-2 justify-center mt-4">
+                  <button onClick={copyWorkShare} className="px-3 py-1.5 rounded bg-brand text-white text-xs">复制链接</button>
+                  <button onClick={() => window.open(workShare.result.share_url, '_blank')} className="px-3 py-1.5 rounded bg-panel2 border border-line text-white text-xs">预览</button>
+                  <button onClick={() => setWorkShare(null)} className="px-3 py-1.5 rounded bg-panel2 border border-line text-muted text-xs">完成</button>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       )}
 

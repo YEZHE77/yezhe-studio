@@ -3,6 +3,7 @@ import { Router } from 'express';
 import { query, get, insert, run } from '../db.js';
 import { parseRow } from '../schema.js';
 import { authRequired } from '../auth.js';
+import { buildWorkAlbum } from './share.js';
 import { deleteFromR2 } from '../storage.js';
 
 const router = Router();
@@ -61,6 +62,19 @@ router.get('/public/:id', async (req, res) => {
     const work = parseRow(w, ['tags']);
     const albums = await query("SELECT * FROM albums WHERE work_id = ? AND zone != 'local' ORDER BY zone, sort", [w.id]);
     res.json({ work, albums });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// 公开作品相册（沉浸式电子相册数据，无需登录）—— C 端小程序作品详情「查看相册」直连
+router.get('/public/:id/album', async (req, res) => {
+  try {
+    const w = await get('SELECT * FROM works WHERE id = ? AND is_public = 1', [req.params.id]);
+    if (!w) return res.status(404).json({ error: '作品不存在或未公开' });
+    const gallery = await buildWorkAlbum(w.id);
+    if (!gallery) return res.status(404).json({ error: '作品相册不存在' });
+    res.json({ gallery });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }

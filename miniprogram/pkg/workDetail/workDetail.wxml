@@ -43,6 +43,11 @@
       <view class="empty-text">暂无照片</view>
     </view>
 
+    <!-- 沉浸式电子相册入口 -->
+    <view class="album-entry" wx:if="{{albums.length}}">
+      <button class="album-btn" bindtap="openAlbum">🖼 查看电子相册（可转发分享）</button>
+    </view>
+
     <!-- 底部留白 -->
     <view class="safe-bottom"></view>
   </scroll-view>

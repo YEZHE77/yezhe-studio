@@ -33,8 +33,6 @@ export default function Orders() {
   const [share, setShare] = useState(null); // 分享二维码 {share_token, share_url, qr_url}
   const [shareModal, setShareModal] = useState(false);
   const [shareBusy, setShareBusy] = useState(false);
-  const [gallery, setGallery] = useState(null); // 生成电子相册表单 {open, result}
-  const [galleryBusy, setGalleryBusy] = useState(false);
 
   const abortRef = useRef(null);
 
@@ -244,43 +242,7 @@ export default function Orders() {
     alert('分享链接已复制：\n' + share.share_url);
   }
 
-  // 生成电子相册（客片分享页）：预填新人名字，提交后返回二维码 + 链接
-  function openGalleryForm() {
-    if (!detail) return;
-    const names = [detail.groom_name, detail.bride_name].filter(Boolean);
-    const title = names.length ? names.join(' & ').toUpperCase() : (detail.customer_name || '').toUpperCase();
-    setGallery({
-      open: true,
-      result: null,
-      form: {
-        title: title,
-        subtitle: names.length ? names.join(' & ') : (detail.customer_name || ''),
-        category: '婚礼',
-        blessing: '',
-        cover_url: ''
-      }
-    });
-  }
-  function setGF(k, v) {
-    setGallery((g) => g && ({ ...g, form: { ...g.form, [k]: v } }));
-  }
-  async function submitGallery() {
-    if (!gallery || !detail) return;
-    setGalleryBusy(true);
-    try {
-      const r = await http.post('/api/galleries', {
-        ...gallery.form,
-        order_id: detail.id
-      });
-      setGallery((g) => ({ ...g, result: r.data }));
-    } catch (e) { alert((e.response && e.response.data && e.response.data.error) || '生成失败'); }
-    finally { setGalleryBusy(false); }
-  }
-  function copyGallery() {
-    if (!gallery || !gallery.result) return;
-    navigator.clipboard?.writeText(gallery.result.share_url);
-    alert('相册链接已复制：\n' + gallery.result.share_url);
-  }
+  // （已移除订单详情「生成电子相册」入口：相册分享改为在「作品」页发起，见 Works.jsx）
 
   const total = detail ? Number(detail.total_amount || 0) : 0;
   const paid = detail ? Number(detail.paid_amount || 0) : 0;
@@ -466,8 +428,6 @@ export default function Orders() {
               <button onClick={openEdit} className="px-3 py-1.5 rounded bg-panel2 border border-line text-white text-xs">编辑</button>
               <button onClick={openShare} disabled={shareBusy}
                 className="px-3 py-1.5 rounded bg-panel2 border border-line text-sky-400 text-xs disabled:opacity-40">分享客户影集</button>
-              <button onClick={openGalleryForm}
-                className="px-3 py-1.5 rounded bg-panel2 border border-line text-emerald-400 text-xs">生成电子相册</button>
               {!detail.is_deleted ? (
                 <button onClick={removeOrder} className="px-3 py-1.5 rounded bg-panel2 border border-line text-red-400 text-xs">删除</button>
               ) : (
@@ -624,63 +584,6 @@ export default function Orders() {
         </div>
       )}
 
-      {/* 生成电子相册弹窗 */}
-      {gallery && gallery.open && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[80] p-4" onClick={() => setGallery(null)}>
-          <div onClick={(e) => e.stopPropagation()} className="w-full max-w-md bg-panel border border-line rounded-xl2 p-6">
-            {/* 表单态 */}
-            {!gallery.result && (
-              <>
-                <div className="text-white font-medium mb-1">生成电子相册</div>
-                <div className="text-xs text-muted mb-4">照片将自动从该订单的「成片」分区抓取；也可在相册创建后于分享页查看。</div>
-                <div className="space-y-3">
-                  <label className="block text-xs text-muted">新人英文名（轮播标题）
-                    <input value={gallery.form.title} onChange={(e) => setGF('title', e.target.value)} placeholder="LIU WEI & GONG SHIYU"
-                      className="w-full mt-1 px-3 py-2 rounded bg-panel2 border border-line text-white text-sm outline-none" />
-                  </label>
-                  <label className="block text-xs text-muted">中文名 / 副标题
-                    <input value={gallery.form.subtitle} onChange={(e) => setGF('subtitle', e.target.value)} placeholder="刘伟 & 龚诗雨"
-                      className="w-full mt-1 px-3 py-2 rounded bg-panel2 border border-line text-white text-sm outline-none" />
-                  </label>
-                  <label className="block text-xs text-muted">分类标签
-                    <input value={gallery.form.category} onChange={(e) => setGF('category', e.target.value)} placeholder="婚礼"
-                      className="w-full mt-1 px-3 py-2 rounded bg-panel2 border border-line text-white text-sm outline-none" />
-                  </label>
-                  <label className="block text-xs text-muted">专属文案
-                    <textarea value={gallery.form.blessing} onChange={(e) => setGF('blessing', e.target.value)} placeholder="关于美好，要从我遇见你的那天说起。"
-                      className="w-full mt-1 px-3 py-2 rounded bg-panel2 border border-line text-white text-sm outline-none h-20 resize-none" />
-                  </label>
-                  <label className="block text-xs text-muted">封面图 URL（留空自动取首图）
-                    <input value={gallery.form.cover_url} onChange={(e) => setGF('cover_url', e.target.value)} placeholder="https://..."
-                      className="w-full mt-1 px-3 py-2 rounded bg-panel2 border border-line text-white text-sm outline-none" />
-                  </label>
-                </div>
-                <div className="flex gap-2 justify-end mt-5">
-                  <button type="button" onClick={() => setGallery(null)} className="px-4 py-2 rounded text-sm text-muted">取消</button>
-                  <button type="button" onClick={submitGallery} disabled={galleryBusy}
-                    className="px-4 py-2 rounded bg-brand text-white text-sm disabled:opacity-40">{galleryBusy ? '生成中…' : '生成相册'}</button>
-                </div>
-              </>
-            )}
-            {/* 结果态：二维码 + 链接 */}
-            {gallery.result && (
-              <>
-                <div className="text-white font-medium mb-1">电子相册已生成</div>
-                <div className="text-xs text-muted mb-4">客户扫码或点链接即可在手机浏览婚礼客片（沉浸轮播 / 播放 / 投屏 / 分享）</div>
-                {gallery.result.qr_url && (
-                  <img src={gallery.result.qr_url} alt="相册二维码" className="w-56 h-56 mx-auto rounded-lg bg-white p-2" />
-                )}
-                <div className="text-xs text-muted mt-3 break-all">{gallery.result.share_url}</div>
-                <div className="flex gap-2 justify-center mt-4">
-                  <button onClick={copyGallery} className="px-3 py-1.5 rounded bg-brand text-white text-xs">复制链接</button>
-                  <button onClick={() => window.open(gallery.result.share_url, '_blank')} className="px-3 py-1.5 rounded bg-panel2 border border-line text-white text-xs">预览</button>
-                  <button onClick={() => setGallery(null)} className="px-3 py-1.5 rounded bg-panel2 border border-line text-muted text-xs">完成</button>
-                </div>
-              </>
-            )}
-          </div>
-        </div>
-      )}
     </div>
   );
 }

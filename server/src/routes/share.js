@@ -71,23 +71,57 @@ async function buildOrderPayload(orderId) {
   };
 }
 
-async function buildWorkPayload(workId) {
+// 取工作室品牌信息（用于相册底部品牌工具栏）
+async function fetchStudioBrand() {
+  const r = await get("SELECT value FROM settings WHERE key = 'studio'");
+  let s = {};
+  if (r && r.value) { try { s = JSON.parse(r.value); } catch { s = {}; } }
+  return {
+    brand_name: s.name || 'YEZHE WORKSHOP',
+    brand_slogan: s.intro || '',
+    brand_logo: s.logo || ''
+  };
+}
+
+// 作品 → 沉浸式相册数据（公开，仅 sample/final，绝不返回 local 原片）
+// 单独导出，供 works.js 的公开相册接口复用（小程序作品详情「查看相册」直连）。
+export async function buildWorkAlbum(workId) {
   const w = await get('SELECT * FROM works WHERE id = ?', [workId]);
   if (!w) return null;
-  const albums = await query(
-    "SELECT photo_url, zone FROM albums WHERE work_id = ? AND zone IN ('sample','final') ORDER BY sort ASC",
+  let catName = '';
+  if (w.category_id) {
+    const c = await get('SELECT name FROM categories WHERE id = ?', [w.category_id]);
+    catName = c ? c.name : '';
+  }
+  // 优先 sample 区（对外展示），无则回退 final，绝不取 local 原片
+  let photos = (await query(
+    "SELECT photo_url FROM albums WHERE work_id = ? AND zone = 'sample' ORDER BY sort ASC",
     [w.id]
-  );
+  )).map((a) => a.photo_url).filter(Boolean);
+  if (!photos.length) {
+    photos = (await query(
+      "SELECT photo_url FROM albums WHERE work_id = ? AND zone = 'final' ORDER BY sort ASC",
+      [w.id]
+    )).map((a) => a.photo_url).filter(Boolean);
+  }
+  const brand = await fetchStudioBrand();
   return {
-    work: {
-      id: w.id,
-      title: w.title,
-      cover_url: w.cover_url,
-      description: w.description || '',
-      blessing: w.blessing || ''
-    },
-    photos: albums.map((a) => ({ url: a.photo_url, zone: a.zone }))
+    title: w.title || '',
+    subtitle: catName || '',
+    category: catName || '',
+    blessing: w.description || w.blessing || '',
+    cover_url: w.cover_url || '',
+    photos,
+    brand_name: brand.brand_name,
+    brand_slogan: brand.brand_slogan,
+    brand_logo: brand.brand_logo
   };
+}
+
+async function buildWorkPayload(workId) {
+  const gallery = await buildWorkAlbum(workId);
+  if (!gallery) return null;
+  return { gallery };
 }
 
 async function buildPackagePayload(packageId) {

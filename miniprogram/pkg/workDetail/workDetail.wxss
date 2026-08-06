@@ -37,3 +37,8 @@
 .photo { display: block; width: 100%; height: 260rpx; }
 
 .safe-bottom { height: 60rpx; }
+
+/* 沉浸式电子相册入口 */
+.album-entry { padding: 24rpx 32rpx 48rpx; }
+.album-btn { width: 100%; padding: 28rpx 0; font-size: 30rpx; color: #fff; background: #111; border-radius: 999rpx; line-height: 1.2; }
+.album-btn::after { border: none; }

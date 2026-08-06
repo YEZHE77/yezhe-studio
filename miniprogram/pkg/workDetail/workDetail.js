@@ -62,5 +62,11 @@ Page({
     if (this.data.id) this.loadDetail(this.data.id);
   },
 
+  // 查看沉浸式电子相册（公开接口，无需登录即可转发分享）
+  openAlbum() {
+    if (!this.data.id) return;
+    wx.navigateTo({ url: '/pkg/gallery/gallery?workId=' + this.data.id });
+  },
+
   goBack() { wx.navigateBack(); }
 });
