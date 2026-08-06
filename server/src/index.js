@@ -30,6 +30,7 @@ import adminRoutes from './routes/admin.js';
 import settingsRoutes from './routes/settings.js';
 import shareRoutes from './routes/share.js';
 import sharesRoutes from './routes/shares.js';
+import galleriesRoutes from './routes/galleries.js';
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -96,6 +97,7 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/share', shareRoutes);
 app.use('/api/shares', sharesRoutes);
+app.use('/api/galleries', galleriesRoutes);
 
 // multer / 通用错误
 app.use((err, req, res, next) => {

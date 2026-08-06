@@ -140,6 +140,45 @@ CREATE TABLE IF NOT EXISTS media (
 );
 CREATE UNIQUE INDEX IF NOT EXISTS idx_media_url ON media(url);`;
 
+// 客片电子相册（C 端对外分享：婚礼/领证等客片轮播页）
+// 单表存元数据 + 照片 URL 数组（JSON）；分享令牌复用 shares 表的 album 类型；绝不含 local 原片。
+const PG_GALLERIES = `
+CREATE TABLE IF NOT EXISTS galleries (
+  id SERIAL PRIMARY KEY,
+  title TEXT NOT NULL DEFAULT '',
+  subtitle TEXT NOT NULL DEFAULT '',
+  category TEXT NOT NULL DEFAULT '婚礼',
+  blessing TEXT NOT NULL DEFAULT '',
+  cover_url TEXT NOT NULL DEFAULT '',
+  photos TEXT NOT NULL DEFAULT '[]',
+  brand_name TEXT NOT NULL DEFAULT '',
+  brand_slogan TEXT NOT NULL DEFAULT '',
+  brand_logo TEXT NOT NULL DEFAULT '',
+  order_id INTEGER,
+  share_token TEXT,
+  is_public INTEGER NOT NULL DEFAULT 1,
+  disabled INTEGER NOT NULL DEFAULT 0,
+  created_at TIMESTAMPTZ DEFAULT now()
+);`;
+const SQLITE_GALLERIES = `
+CREATE TABLE IF NOT EXISTS galleries (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  title TEXT NOT NULL DEFAULT '',
+  subtitle TEXT NOT NULL DEFAULT '',
+  category TEXT NOT NULL DEFAULT '婚礼',
+  blessing TEXT NOT NULL DEFAULT '',
+  cover_url TEXT NOT NULL DEFAULT '',
+  photos TEXT NOT NULL DEFAULT '[]',
+  brand_name TEXT NOT NULL DEFAULT '',
+  brand_slogan TEXT NOT NULL DEFAULT '',
+  brand_logo TEXT NOT NULL DEFAULT '',
+  order_id INTEGER,
+  share_token TEXT,
+  is_public INTEGER NOT NULL DEFAULT 1,
+  disabled INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP
+);`;
+
 // 客户侧（C 端小程序）新表：customers / appointments / photo_select / evaluates
 // 双方言 DDL；首次启动自动创建；向前兼容用 ensureColumn 给 orders/works 补列。
 const PG_CUSTOMER_TABLES = `
@@ -240,6 +279,9 @@ export async function initSchema() {
 
   // 媒资元数据表（容量管理：按业务分类汇总）
   for (const s of (dialect === 'pg' ? PG_MEDIA : SQLITE_MEDIA).split(';').map((x) => x.trim()).filter(Boolean)) await run(s);
+
+  // 客片电子相册表（C 端对外分享）
+  for (const s of (dialect === 'pg' ? PG_GALLERIES : SQLITE_GALLERIES).split(';').map((x) => x.trim()).filter(Boolean)) await run(s);
 
   // orders 增量补列
   for (const [col, def] of ORDERS_NEW_COLUMNS) await ensureColumn('orders', col, def);

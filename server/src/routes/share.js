@@ -172,6 +172,29 @@ async function buildBillPayload(orderId) {
   };
 }
 
+async function buildAlbumPayload(galleryId) {
+  const g = await get('SELECT * FROM galleries WHERE id = ?', [galleryId]);
+  if (!g) return null;
+  let photos = [];
+  try { photos = JSON.parse(g.photos || '[]'); } catch { photos = []; }
+  if (!Array.isArray(photos)) photos = [];
+  photos = photos.filter(Boolean);
+  return {
+    gallery: {
+      id: g.id,
+      title: g.title || '',
+      subtitle: g.subtitle || '',
+      category: g.category || '',
+      blessing: g.blessing || '',
+      cover_url: g.cover_url || '',
+      photos,
+      brand_name: g.brand_name || '',
+      brand_slogan: g.brand_slogan || '',
+      brand_logo: g.brand_logo || ''
+    }
+  };
+}
+
 async function buildPayload(type, refId) {
   switch (type) {
     case 'order': return buildOrderPayload(refId);
@@ -179,6 +202,7 @@ async function buildPayload(type, refId) {
     case 'package': return buildPackagePayload(refId);
     case 'schedule': return buildSchedulePayload(refId);
     case 'bill': return buildBillPayload(refId);
+    case 'album': return buildAlbumPayload(refId);
     default: return null;
   }
 }

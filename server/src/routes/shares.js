@@ -9,7 +9,7 @@ import { buildShareUrl, genQr } from '../shareUtil.js';
 
 const router = Router();
 
-const TYPES = ['order', 'work', 'package', 'schedule', 'bill'];
+const TYPES = ['order', 'work', 'package', 'schedule', 'bill', 'album'];
 
 // 校验 ref_id 指向的业务记录是否存在（按类型）
 async function validateRef(type, refId) {
@@ -24,6 +24,8 @@ async function validateRef(type, refId) {
       return get('SELECT id, name FROM packages WHERE id = ?', [refId]);
     case 'schedule':
       return get('SELECT id, date FROM schedules WHERE id = ?', [refId]);
+    case 'album':
+      return get('SELECT id, title FROM galleries WHERE id = ?', [refId]);
     default:
       return null;
   }
@@ -42,6 +44,8 @@ async function defaultTitle(type, refId, row) {
       return row.name || '套系分享';
     case 'schedule':
       return `婚礼档期 · ${row.date || ''}`;
+    case 'album':
+      return row.title || '客片相册';
     default:
       return '';
   }
