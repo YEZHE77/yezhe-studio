@@ -43,7 +43,7 @@ Page({
     this.setData({ statusBarHeight, navHeight, shareTop });
 
     // 获取 BGM 地址（后台设置）；不在此播放，仅注入单例
-    requestTask('/api/settings/studio').then((r) => {
+    requestTask('/api/settings/studio').promise.then((r) => {
       if (r && r.bgmUrl) this.setData({ bgmUrl: r.bgmUrl });
     }).catch(() => {});
 

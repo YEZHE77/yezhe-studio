@@ -61,7 +61,7 @@ Page({
       this.load();
     }
     // 获取 BGM 地址（后台设置）
-    requestTask('/api/settings/studio').then((r) => {
+    this._req('/api/settings/studio').then((r) => {
       if (r && r.bgmUrl) this.setData({ bgmUrl: r.bgmUrl });
     }).catch(() => {});
   },
