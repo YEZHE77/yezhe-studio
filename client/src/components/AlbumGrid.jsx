@@ -1,12 +1,10 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { img } from '../api.js';
 import GalleryAlbum from './GalleryAlbum.jsx';
 
-const TEAL = '#7ecdbb';
-
 // 客片电子相册（纵向长图流式 / 缩略图网格 双视图）—— 与小程序「相册详情页」UI/交互保持一致
 // 封面右上悬浮青绿色胶囊「分享」；标题栏右侧视图切换；底部品牌工具栏（播放/投屏/预约服务）
-export default function AlbumGrid({ gallery, onBack }) {
+export default function AlbumGrid({ gallery }) {
   const { title, subtitle, category, albumCopy, cover_url, photos = [], brand_name, brand_slogan, brand_logo } = gallery;
   const [view, setView] = useState('flow'); // flow 纵向长图（默认） | grid 缩略网格
   const [full, setFull] = useState(-1);     // >=0 打开全屏查看的起始索引
@@ -36,7 +34,6 @@ export default function AlbumGrid({ gallery, onBack }) {
   }, [playing, photos.length]);
 
   const goBack = () => {
-    if (onBack) return onBack();
     if (window.history.length > 1) window.history.back();
     else window.location.href = window.location.origin + '/';
   };
@@ -92,8 +89,7 @@ export default function AlbumGrid({ gallery, onBack }) {
       <div className="relative w-full h-[65vw] max-h-[520px] bg-neutral-200">
         {cover && <img src={img(cover)} alt="" className="w-full h-full object-cover" />}
         <button onClick={copyLink}
-          className="fixed top-20 right-4 z-40 h-9 px-6 rounded-full text-white text-sm font-medium shadow-lg active:opacity-90"
-          style={{ background: TEAL }}>
+          className="fixed top-20 right-4 z-40 h-9 px-6 rounded-full bg-brand text-white text-sm font-medium shadow-lg active:opacity-90">
           分享
         </button>
       </div>
@@ -147,7 +143,7 @@ export default function AlbumGrid({ gallery, onBack }) {
           {brand_logo ? (
             <img src={img(brand_logo)} alt="" className="w-10 h-10 rounded-full object-cover bg-white shrink-0" />
           ) : (
-            <div className="w-10 h-10 rounded-full flex items-center justify-center text-white text-xs font-semibold shrink-0" style={{ background: TEAL }}>YE</div>
+            <div className="w-10 h-10 rounded-full bg-brand flex items-center justify-center text-white text-xs font-semibold shrink-0">YE</div>
           )}
           <div className="ml-3 min-w-0">
             <div className="text-sm font-medium text-white truncate">{brand_name || 'YEZHE WORKSHOP'}</div>
@@ -164,8 +160,7 @@ export default function AlbumGrid({ gallery, onBack }) {
             <span className="text-[10px] mt-0.5">投屏</span>
           </button>
           <button onClick={goAppointment}
-            className="h-9 px-4 rounded-md text-white text-sm font-medium active:opacity-90"
-            style={{ background: TEAL }}>
+            className="h-9 px-4 rounded-md bg-brand text-white text-sm font-medium active:opacity-90">
             预约服务
           </button>
         </div>

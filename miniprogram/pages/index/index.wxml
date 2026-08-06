@@ -2,46 +2,41 @@
   <!-- 自定义顶部导航 + 抽屉菜单 -->
   <customNav title="叶哲 STUDIO" />
 
-  <!-- ① 轮播 Banner 区块（独立卡片） -->
-  <view class="card banner-card">
-    <swiper class="banner" indicator-dots autoplay circular interval="4000" duration="500" wx:if="{{banners.length}}">
-      <swiper-item wx:for="{{banners}}" wx:key="*this">
-        <image class="banner-img" src="{{item}}" mode="aspectFill" lazy-load />
-      </swiper-item>
-    </swiper>
-    <view wx:else class="banner banner--ph">
-      <view class="banner-logo">YEZHE STUDIO</view>
-      <view class="banner-tag">海口婚礼 / 人像摄影</view>
-    </view>
+  <!-- 顶部轮播 Banner -->
+  <swiper class="banner" indicator-dots autoplay circular interval="4000" duration="500" wx:if="{{banners.length}}">
+    <swiper-item wx:for="{{banners}}" wx:key="*this">
+      <image class="banner-img" src="{{item}}" mode="aspectFill" lazy-load />
+    </swiper-item>
+  </swiper>
+  <view wx:else class="banner banner--ph">
+    <view class="banner-logo">YEZHE STUDIO</view>
+    <view class="banner-tag">海口婚礼 / 人像摄影</view>
   </view>
 
-  <!-- ② 品牌介绍区块（独立卡片） -->
-  <view class="card brand-card">
+  <!-- 品牌简介（扁平紧凑，无大卡片包裹） -->
+  <view class="brand">
     <view class="brand-logo" wx:if="{{studio.logo}}">
       <image src="{{studio.logo}}" mode="aspectFill" />
     </view>
     <view class="brand-name">{{studio.name || '叶哲 STUDIO'}}</view>
-
-    <!-- 顶部大按钮：预约咨询 / +关注 -->
-    <view class="brand-actions">
-      <button class="btn btn-primary" bindtap="goAppointment">预约咨询</button>
-      <button class="btn btn-outline" bindtap="copyWechat">+ 关注</button>
-    </view>
-
     <view class="brand-address" wx:if="{{studio.address}}">
       <text class="addr-icon">📍</text>
       <text>{{studio.address}}</text>
     </view>
     <view class="brand-slogan">{{studio.intro || '拍摄有温度的照片，记录平凡生活中的美好。'}}</view>
+    <view class="brand-actions">
+      <button class="btn btn-primary" bindtap="goAppointment">预约咨询</button>
+      <button class="btn btn-outline" bindtap="copyWechat">+ 关注</button>
+    </view>
     <view class="brand-more" bindtap="goAbout">查看品牌故事 ></view>
   </view>
 
-  <!-- ③ 作品展示区块（独立卡片） -->
-  <view class="card gallery-card">
+  <!-- 作品展示 Gallery -->
+  <view class="gallery">
     <view class="gallery-en">GALLERY</view>
     <view class="gallery-title">作品展示</view>
 
-    <!-- 分类标签（横向滑动） -->
+    <!-- 分类标签 -->
     <scroll-view class="cat-bar" scroll-x scroll-with-animation>
       <view class="cat-wrap">
         <view class="cat-item {{activeCat === 0 ? 'active' : ''}}" bindtap="selectCat" data-id="0">全部</view>
@@ -68,8 +63,8 @@
     <view wx:if="{{works.length && !hasMore}}" class="more-end">— 没有更多了 —</view>
   </view>
 
-  <!-- 底部联系信息区块（独立卡片） -->
-  <view class="card footer-card">
+  <!-- 底部联系信息 -->
+  <view class="footer">
     <view class="footer-title">联系我们</view>
     <view class="footer-line" wx:if="{{studio.contact.wechat}}">
       <text class="footer-label">微信</text>
@@ -88,7 +83,7 @@
     <view class="footer-copy">叶哲 STUDIO · 用影像记录时光</view>
   </view>
 
-  <!-- 右侧固定悬浮按钮（始终悬浮在所有卡片上层，不侵入卡片） -->
+  <!-- 右侧固定悬浮按钮 -->
   <view class="fab-group">
     <view class="fab fab-white" bindtap="copyWechat">
       <text class="fab-icon">♡</text>
