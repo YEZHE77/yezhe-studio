@@ -38,11 +38,17 @@ router.get('/studio', async (req, res) => {
 router.put('/studio', authRequired, async (req, res) => {
   try {
     const body = req.body || {};
-    const value = JSON.stringify(body);
+    // 与默认值合并：旧版前端可能缺少新增字段（如 heroImages），避免直接覆盖导致字段丢失
+    const merged = {
+      ...DEFAULT_STUDIO,
+      ...body,
+      contact: { ...DEFAULT_STUDIO.contact, ...(body.contact || {}) }
+    };
+    const value = JSON.stringify(merged);
     const exists = await get("SELECT key FROM settings WHERE key = 'studio'");
     if (exists) await run("UPDATE settings SET value = ? WHERE key = 'studio'", [value]);
     else await insert("INSERT INTO settings (key, value) VALUES (?, ?)", ['studio', value]);
-    res.json({ ok: true });
+    res.json({ ok: true, studio: merged });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 

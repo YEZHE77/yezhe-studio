@@ -60,11 +60,21 @@ export async function run(sql, params = []) {
   }
 }
 
-// 插入并返回自增 id（兼容两种方言）
+// 插入并返回自增 id（兼容两种方言）。
+// 部分表（settings/shares）以业务字段为主键，没有 id 列；pg 下先尝试 RETURNING id，
+// 若表不存在 id 列则回退到普通 INSERT，避免"column \"id\" does not exist"。
 export async function insert(sql, params = []) {
   if (dialect === 'pg') {
-    const r = await pgPool.query(toPg(sql + ' RETURNING id'), params);
-    return r.rows[0].id;
+    try {
+      const r = await pgPool.query(toPg(sql + ' RETURNING id'), params);
+      return r.rows[0]?.id ?? 0;
+    } catch (e) {
+      if (e.message && /column[^"]*"?id"?\s+does not exist/i.test(e.message)) {
+        await pgPool.query(toPg(sql), params);
+        return 0;
+      }
+      throw e;
+    }
   }
   sqlite.prepare(sql).run(...params);
   return sqlite.prepare('SELECT last_insert_rowid() AS id').get().id;
