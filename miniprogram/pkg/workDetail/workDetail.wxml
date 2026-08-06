@@ -77,11 +77,18 @@
         </view>
         <view class="brand-tools">
           <view class="tool {{canInteract ? '' : 'disabled'}}" bindtap="openSlideshow">
-            <text class="tool-icon">▶</text>
+            <view class="tool-icon tool-play">
+              <view class="play-tri"></view>
+              <view class="play-tri-inner"></view>
+            </view>
             <text class="tool-label">播放</text>
           </view>
           <view class="tool {{canInteract ? '' : 'disabled'}}" bindtap="cast">
-            <text class="tool-icon">⍟</text>
+            <view class="tool-icon tool-tv">
+              <view class="tv-screen"></view>
+              <view class="tv-stand"></view>
+              <view class="tv-base"></view>
+            </view>
             <text class="tool-label">投屏</text>
           </view>
           <view class="tool tool-primary" bindtap="goAppointment">
