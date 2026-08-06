@@ -60,7 +60,8 @@ page { background: #f3f1ec; }
 }
 
 /* ===== ③ 作品展示 ===== */
-.gallery-card { padding: 44rpx 28rpx 40rpx; }
+/* 仅在「品牌模块底部 → 作品展示顶部」之间加大外边距，露出页面底色形成视觉断开；其余卡片间距保持 .card 的 28rpx 不变 */
+.gallery-card { margin-top: 96rpx; padding: 44rpx 28rpx 40rpx; }
 .gallery-en {
   text-align: center; font-size: 22rpx; letter-spacing: 6rpx; color: #999;
   text-transform: uppercase;
