@@ -68,8 +68,8 @@
   opacity: 0.85;
 }
 .ss-btn.on .ss-lbl {
-  color: #7ecdbb;
+  color: var(--brand-green);
 }
 .ss-btn.on .ss-ico {
-  color: #7ecdbb;
+  color: var(--brand-green);
 }

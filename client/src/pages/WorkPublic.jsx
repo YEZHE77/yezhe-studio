@@ -58,7 +58,7 @@ export default function WorkPublic() {
               className="w-full rounded-lg border border-white/15 bg-white/10 px-4 py-3 text-center text-white outline-none" />
             {pwErr && <div className="mt-2 text-xs text-red-400">{pwErr}</div>}
             <button type="submit" disabled={pwBusy}
-              className="mt-4 w-full rounded-lg py-3 text-sm text-white disabled:opacity-40" style={{ background: '#7ecdbb' }}>查看内容</button>
+              className="mt-4 w-full rounded-lg py-3 text-sm text-white disabled:opacity-40" style={{ background: 'var(--brand-green)' }}>查看内容</button>
           </form>
         </div>
       </div>

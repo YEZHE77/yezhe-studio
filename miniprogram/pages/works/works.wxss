@@ -20,6 +20,6 @@
 
 /* 分页加载指示 */
 .load-more { display: flex; align-items: center; justify-content: center; gap: 12rpx; padding: 32rpx 0; }
-.load-spin { width: 32rpx; height: 32rpx; border: 4rpx solid #eee; border-top-color: #7ecdbb; border-radius: 50%; animation: spin .8s linear infinite; }
+.load-spin { width: 32rpx; height: 32rpx; border: 4rpx solid #eee; border-top-color: var(--brand-green); border-radius: 50%; animation: spin .8s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 

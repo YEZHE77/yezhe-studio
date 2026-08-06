@@ -18,7 +18,7 @@ page { background: #f9f8f6; }
 .contact-line { display: flex; align-items: center; margin-top: 28rpx; font-size: 28rpx; }
 .c-label { width: 90rpx; color: #999; }
 .c-value { flex: 1; color: #2c2c2c; }
-.c-action { margin-left: 16rpx; color: #7ecdbb; font-size: 26rpx; }
+.c-action { margin-left: 16rpx; color: var(--brand-green); font-size: 26rpx; }
 .contact-empty { text-align: center; margin-top: 20rpx; font-size: 26rpx; }
 .copy { margin-top: 40rpx; text-align: center; font-size: 22rpx; color: #999; }
 

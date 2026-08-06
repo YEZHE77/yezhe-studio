@@ -2,7 +2,14 @@
 @tailwind components;
 @tailwind utilities;
 
-:root { color-scheme: light; }
+:root {
+  color-scheme: light;
+  /* ===== 全局品牌色（薄荷青绿，与小程序的 --brand-green 对齐，C 端统一） ===== */
+  --brand-green: #60C4AA;        /* 主品牌薄荷绿：预约/分享按钮、标签、强调按钮背景 */
+  --brand-green-light: #A8DDCF;  /* 浅绿辅助色：边框、淡背景 */
+  --brand-green-dark: #4BB399;   /* hover / 按下加深色 */
+  --text-on-green: #FFFFFF;      /* 绿色按钮上的白色文字 */
+}
 html, body, #root { height: 100%; }
 body {
   margin: 0;

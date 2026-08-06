@@ -5,6 +5,11 @@ page {
   font-family: -apple-system, "PingFang SC", "Helvetica Neue", Helvetica, sans-serif;
   font-size: 28rpx;
   line-height: 1.6;
+  /* ===== 全局品牌色（薄荷青绿，统一所有绿色元素，禁止杂绿） ===== */
+  --brand-green: #60C4AA;        /* 主品牌薄荷绿：预约/分享按钮、标签、强调按钮背景 */
+  --brand-green-light: #A8DDCF;  /* 浅绿辅助色：边框、淡背景 */
+  --brand-green-dark: #4BB399;   /* hover / 按下加深色 */
+  --text-on-green: #FFFFFF;      /* 绿色按钮上的白色文字 */
 }
 view, text, scroll-view, image { box-sizing: border-box; }
 

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-const TEAL = '#7ecdbb';
+const TEAL = 'var(--brand-green)';
 const PAGE_BG = '#f9f8f6';
 
 // H5 客户中心（我的）—— 与小程序 pages/my 菜单一致

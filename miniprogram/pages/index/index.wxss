@@ -54,15 +54,15 @@ page { background: #f9f8f6; }
 }
 .btn::after { border: none; }
 .btn-primary {
-  background: #7ecdbb; color: #fff;
+  background: var(--brand-green); color: var(--text-on-green);
 }
 .btn-outline {
-  background: #fff; color: #7ecdbb; border: 2rpx solid #7ecdbb;
+  background: #fff; color: var(--brand-green); border: 2rpx solid var(--brand-green);
 }
 /* 工作室名称 → 查看品牌故事：下移 20rpx（16→36rpx）；查看品牌故事底部 → 资料区块结束：64rpx */
 .brand-more {
   margin-top: 36rpx; margin-bottom: 64rpx; text-align: center;
-  font-size: 24rpx; color: #7ecdbb;
+  font-size: 24rpx; color: var(--brand-green);
 }
 
 /* 资料区块结束后的浅灰色分割线（高度 8rpx，通栏） */
@@ -91,7 +91,7 @@ page { background: #f9f8f6; }
 .cat-item.active { color: #2c2c2c; font-weight: 600; }
 .cat-item.active::after {
   content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 4rpx;
-  background: #7ecdbb; border-radius: 4rpx;
+  background: var(--brand-green); border-radius: 4rpx;
 }
 
 /* 作品网格 */
@@ -144,7 +144,7 @@ page { background: #f9f8f6; }
 .footer-label { width: 80rpx; color: #aaa; }
 .footer-value { flex: 1; color: #fff; }
 .footer-action {
-  margin-left: 16rpx; color: #7ecdbb; font-size: 24rpx;
+  margin-left: 16rpx; color: var(--brand-green); font-size: 24rpx;
 }
 .footer-copy {
   margin-top: 30rpx; text-align: center; font-size: 22rpx; color: #777;
@@ -172,7 +172,7 @@ page { background: #f9f8f6; }
 }
 .fab::after { border: none; }
 .fab-white { background: #fff; }
-.fab-primary { background: #48c8c0; }
+.fab-primary { background: var(--brand-green); }
 .fab-ico {
   width: 32rpx;
   height: 32rpx;

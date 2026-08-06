@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import http, { img } from '../api.js';
 
-const TEAL = '#7ecdbb';
+const TEAL = 'var(--brand-green)';
 const PAGE_BG = '#f9f8f6'; // 与小程序首页底色一致
 
 // 扁平风格 H5 客户首页 —— 结构与小程序 pages/index 完全一致
@@ -169,12 +169,12 @@ export default function Home() {
           <div className="inline-flex gap-6 pb-4">
             <button onClick={() => selectCat(0)} className={'relative pb-2 text-base ' + (activeCat === 0 ? 'font-semibold text-[#2c2c2c]' : 'text-gray-400')}>
               全部
-              {activeCat === 0 && <span className="absolute -bottom-0.5 left-0 right-0 h-1 rounded bg-[#7ecdbb]" />}
+              {activeCat === 0 && <span className="absolute -bottom-0.5 left-0 right-0 h-1 rounded bg-[var(--brand-green)]" />}
             </button>
             {categories.map((c) => (
               <button key={c.id} onClick={() => selectCat(c.id)} className={'relative pb-2 text-base ' + (activeCat === c.id ? 'font-semibold text-[#2c2c2c]' : 'text-gray-400')}>
                 {c.name}
-                {activeCat === c.id && <span className="absolute -bottom-0.5 left-0 right-0 h-1 rounded bg-[#7ecdbb]" />}
+                {activeCat === c.id && <span className="absolute -bottom-0.5 left-0 right-0 h-1 rounded bg-[var(--brand-green)]" />}
               </button>
             ))}
           </div>
@@ -242,8 +242,8 @@ export default function Home() {
         </button>
         {/* 预约：青绿底 + 白色对话气泡(三点) + 文字白 */}
         <button onClick={() => setContactOpen(true)}
-          className="flex h-12 w-12 flex-col items-center justify-center rounded-full shadow-[0_4px_14px_rgba(72,200,192,0.35)] active:scale-95 transition"
-          style={{ background: '#48c8c0', color: '#fff' }} aria-label="预约">
+          className="flex h-12 w-12 flex-col items-center justify-center rounded-full shadow-[0_4px_14px_rgba(96,196,170,0.35)] active:scale-95 transition"
+          style={{ background: 'var(--brand-green)', color: '#fff' }} aria-label="预约">
           <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round">
             <path d="M4 5h16a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H10l-4 3v-3H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z" />
             <circle cx="9" cy="11" r="1" fill="currentColor" stroke="none" />
