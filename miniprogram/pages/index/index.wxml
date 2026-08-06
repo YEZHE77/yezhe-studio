@@ -1,5 +1,10 @@
-<view class="page">
-  <!-- 顶部轮播 Banner：系统原生白导航栏已占用顶部，内容自然排列在其下方 -->
+<view class="page" style="padding-top: {{navHeight}}px;">
+  <!-- 自定义顶部标题栏：白底黑字「叶哲 STUDIO」居中，固定置顶，避开系统状态栏；原生胶囊按钮在右上角不遮挡文字 -->
+  <view class="topbar" style="padding-top: {{statusBarHeight}}px;">
+    <view class="topbar-title">叶哲 STUDIO</view>
+  </view>
+
+  <!-- 顶部轮播 Banner：外层页面已用动态 navHeight 整体下偏移，避开自定义导航栏，轮播高度不变 -->
   <view class="swiper-wrap">
     <swiper class="banner" indicator-dots autoplay circular interval="4000" duration="500" wx:if="{{banners.length}}">
       <swiper-item wx:for="{{banners}}" wx:key="*this">

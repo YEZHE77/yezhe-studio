@@ -13,7 +13,8 @@ Page({
     loading: false,
     banners: [],
     bookingOpen: false,
-    // 顶部自定义导航栏总高度（px）：状态栏高度 + 44px 导航内容区，随机型动态计算（默认兜底 64）
+    // 顶部自定义导航栏：状态栏高度（px，动态） + 导航内容区总高度（px，动态）
+    statusBarHeight: 20,
     navHeight: 64
   },
   _tasks: [],    // 可取消的请求任务
@@ -25,16 +26,18 @@ Page({
   },
 
   // 动态获取状态栏高度 + 固定导航内容区(44px) 得到导航总高度，
-  // 供 --nav-height CSS 变量下偏移首屏轮播，覆盖全部机型（刘海/挖孔屏状态栏不同）。
+  // 供页面 padding-top 下偏移首屏轮播，避让系统状态栏与自定义标题栏，覆盖全部机型（刘海/挖孔屏状态栏不同）。
+  // 不写死任何固定 px/rpx，全部读取 wx.getWindowInfo 真实设备值。
   setNavHeight() {
+    let statusBarHeight = 20;
     let navHeight = 64; // 兜底：约 statusBar(20) + navContent(44)
     try {
       const win = wx.getWindowInfo();           // 微信推荐 API，替代已废弃的 wx.getSystemInfoSync
-      const statusBarHeight = win.statusBarHeight || 20;
-      const navContentHeight = 44;              // 自定义导航内容区高度（与 customNav 组件一致，全机型恒定）
+      statusBarHeight = win.statusBarHeight || 20;
+      const navContentHeight = 44;              // 自定义导航内容区高度（全机型恒定，与系统胶囊同高）
       navHeight = Math.round(statusBarHeight + navContentHeight);
     } catch (e) { /* 个别环境无此 API，沿用兜底值 */ }
-    this.setData({ navHeight });
+    this.setData({ statusBarHeight, navHeight });
   },
 
   // onShow 改为静默刷新：数据未过期则跳过，避免 tab 切换重复请求
