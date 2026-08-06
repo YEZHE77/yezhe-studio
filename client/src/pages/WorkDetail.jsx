@@ -24,7 +24,7 @@ export default function WorkDetail() {
   const [uploadProgress, setUploadProgress] = useState(0);
   const abortRef = useRef(null);
   const [selected, setSelected] = useState(new Set());
-  const [form, setForm] = useState({ title: '', category_id: '', description: '', tags: '', customer_name: '', is_public: true, allow_download: false, album_copy: '', album_password_enabled: false, album_password: '', album_expires_at: '' });
+  const [form, setForm] = useState({ title: '', category_id: '', tags: '', album_copy: '', is_public: true, allow_download: false, album_password_enabled: false, album_password: '', album_expires_at: '' });
   const [draggedId, setDraggedId] = useState(null);
   const [dragOverId, setDragOverId] = useState(null);
   const [reordering, setReordering] = useState(false);
@@ -37,12 +37,10 @@ export default function WorkDetail() {
       setForm({
         title: w.title || '',
         category_id: w.category_id || '',
-        description: w.description || '',
         tags: Array.isArray(w.tags) ? w.tags.join('、') : (w.tags || ''),
-        customer_name: w.customer_name || '',
+        album_copy: w.album_copy || '',
         is_public: !!w.is_public,
         allow_download: !!w.allow_download,
-        album_copy: w.album_copy || '',
         album_password_enabled: !!w.album_password_enabled,
         album_password: '', // 明文密码绝不回填，修改时由商家重新录入
         album_expires_at: w.album_expires_at || ''
@@ -83,12 +81,10 @@ export default function WorkDetail() {
         is_public: form.is_public,
         allow_download: form.allow_download,
         cover_url: work.cover_url || '',
-        description: form.description,
         tags,
         is_private: !!work.is_private,
         blessing: work.blessing || '',
         live: !!work.live,
-        customer_name: form.customer_name,
         order_id: work.order_id || null,
         album_copy: form.album_copy || '',
         album_password_enabled: form.album_password_enabled,
@@ -335,12 +331,8 @@ export default function WorkDetail() {
                 </select>
               </div>
               <div>
-                <label className="block text-xs text-muted mb-1">客户名称</label>
-                <input value={form.customer_name} onChange={(e) => setForm({ ...form, customer_name: e.target.value })} placeholder="如：XI XI & JUN HUA" className="w-full px-3 py-2 rounded bg-ink border border-line text-fg text-sm outline-none" />
-              </div>
-              <div>
-                <label className="block text-xs text-muted mb-1">作品描述</label>
-                <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={4} className="w-full px-3 py-2 rounded bg-ink border border-line text-fg text-sm outline-none" />
+                <label className="block text-xs text-muted mb-1">相册文案（自定义正文）</label>
+                <textarea value={form.album_copy} onChange={(e) => setForm({ ...form, album_copy: e.target.value })} rows={4} placeholder="写给新人的话 / 拍摄手记，将展示在相册首页覆盖层" className="w-full px-3 py-2 rounded bg-ink border border-line text-fg text-sm outline-none" />
               </div>
               <div>
                 <label className="block text-xs text-muted mb-1">标签</label>
@@ -355,11 +347,7 @@ export default function WorkDetail() {
 
               <div className="pt-3 mt-1 border-t border-line">
                 <div className="text-xs font-medium text-fg mb-3">相册交付设置（客户访问相册）</div>
-                <div>
-                  <label className="block text-xs text-muted mb-1">相册文案（自定义正文）</label>
-                  <textarea value={form.album_copy} onChange={(e) => setForm({ ...form, album_copy: e.target.value })} rows={3} placeholder="写给新人的话 / 拍摄手记，将展示在相册首页覆盖层" className="w-full px-3 py-2 rounded bg-ink border border-line text-fg text-sm outline-none" />
-                </div>
-                <label className="flex items-center gap-2 text-sm text-fg mt-3 cursor-pointer select-none">
+                <label className="flex items-center gap-2 text-sm text-fg cursor-pointer select-none">
                   <input type="checkbox" checked={form.album_password_enabled} onChange={(e) => setForm({ ...form, album_password_enabled: e.target.checked })} /> 启用相册密码保护
                 </label>
                 {form.album_password_enabled && (
