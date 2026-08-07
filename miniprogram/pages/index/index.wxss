@@ -132,9 +132,9 @@ page { background: #ffffff; }
   width: 100%; margin-bottom: 16rpx; position: relative; border-radius: 0;
   overflow: hidden; background: transparent;
 }
-/* 封面容器强制 5:7，aspectFill 居中裁剪，保证所有卡片等高 */
+/* 封面容器强制 7:5（横版），aspectFill 居中裁剪，保证所有卡片等高 */
 .grid-cover-wrap {
-  width: 100%; position: relative; padding-bottom: 140%; /* 5:7 */
+  width: 100%; position: relative; padding-bottom: 71.43%; /* 5/7，横版 7:5 */
   overflow: hidden; background: #eee;
 }
 .grid-cover { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: block; }

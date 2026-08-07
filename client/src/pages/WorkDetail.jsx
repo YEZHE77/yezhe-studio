@@ -97,7 +97,7 @@ export default function WorkDetail() {
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewIndex, setPreviewIndex] = useState(0);
   // 封面裁剪
-  const [coverCrop, setCoverCrop] = useState({ open: false, file: null, aspect: 5 / 7, uploading: false });
+  const [coverCrop, setCoverCrop] = useState({ open: false, file: null, aspect: 7 / 5, uploading: false });
   // 拖拽刚结束的瞬间拦截误触发预览点击
   const justDraggedRef = useRef(false);
 
@@ -510,13 +510,13 @@ export default function WorkDetail() {
     setPreviewOpen(true);
   }
   // 封面自定义裁剪
-  function openCoverCrop() { setCoverCrop({ open: true, file: null, aspect: 5 / 7, uploading: false }); }
+  function openCoverCrop() { setCoverCrop({ open: true, file: null, aspect: 7 / 5, uploading: false }); }
   async function doCoverCrop(file) {
     setCoverCrop((c) => ({ ...c, uploading: true }));
     try {
       const url = await uploadImage(file, { isPublic: true });
       await setCover(url); // 内部已 loadWork + 提示
-      setCoverCrop({ open: false, file: null, aspect: 5 / 7, uploading: false });
+      setCoverCrop({ open: false, file: null, aspect: 7 / 5, uploading: false });
     } catch (e) {
       alert('封面裁剪保存失败');
       setCoverCrop((c) => ({ ...c, uploading: false }));
@@ -1062,7 +1062,7 @@ export default function WorkDetail() {
               {[
                 { label: '1:1', v: 1 },
                 { label: '4:3', v: 4 / 3 },
-                { label: '5:7', v: 5 / 7 },
+                { label: '7:5', v: 7 / 5 },
                 { label: '3:2', v: 3 / 2 },
                 { label: '16:9', v: 16 / 9 }
               ].map((r) => (
