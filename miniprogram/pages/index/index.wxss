@@ -114,9 +114,9 @@ page { background: #ffffff; }
 
 /* 分类标签：自适应居中——分类少时整体居中，超出屏幕宽度时左起横向滚动（margin:auto 在溢出时自动归零，不会裁切左侧） */
 .cat-bar { margin-top: 16rpx; display: flex; }
-.cat-wrap { display: inline-flex; gap: 24rpx; padding: 4rpx 4rpx 20rpx; margin: 0 auto; }
+.cat-wrap { display: inline-flex; gap: 24rpx; padding: 4rpx 0 8rpx; margin: 0 auto; }
 .cat-item {
-  display: inline-block; font-size: 26rpx; color: #888; padding: 10rpx 6rpx;
+  display: inline-block; font-size: 26rpx; color: #888; padding: 6rpx 6rpx 2rpx;
   position: relative; transition: color .2s;
 }
 .cat-item.active { color: #2c2c2c; font-weight: 600; }
