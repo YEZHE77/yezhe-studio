@@ -3,8 +3,9 @@ import { img } from '../api.js';
 import GalleryAlbum from './GalleryAlbum.jsx';
 
 const TEAL = 'var(--brand-green)';
-// 幻灯片背景音乐：《梦中的婚礼》钢琴曲。
-// 请替换为真实 HTTPS URL（建议上传 MP3 至 R2 私有桶，通过 yezhe-img-proxy.yezhe128627.workers.dev 代理；
+// 幻灯片背景音乐：留空即使用前端本地打包的默认 BGM（public/bgm/bgm.mp3，
+// 当前默认曲《The Way You Look Tonight - Tony Bennett》）。如需自有曲子，可在此填
+// 真实 HTTPS URL（建议上传 MP3 至 R2 私有桶，通过 yezhe-img-proxy.yezhe128627.workers.dev 代理；
 // 小程序端需在微信公众平台 downloadFile 合法域名添加该域名）。留空则不播放声音，但播放/暂停/退出逻辑保持完整。
 const BGM_URL = '';
 

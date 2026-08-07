@@ -1,4 +1,4 @@
-// client/src/bgm.js —— 相册幻灯片背景音乐《梦中的婚礼》全局唯一单例（Web 端）
+// client/src/bgm.js —— 相册幻灯片背景音乐全局唯一单例（Web 端）
 //
 // 与微信小程序端逻辑完全统一：
 //  1. 音频采用线上 mp3 网络地址（不打包进前端包），由 bgmUrl 注入。
@@ -10,8 +10,14 @@
 //  7. Web 为单页应用，实例常驻（仅 pause），离开页面不销毁，符合"记录进度下次继续"诉求。
 //  8. 缓冲加载时通过 subscribe 暴露 loading 状态，界面展示「音乐加载中」。
 
+// 本地打包的默认 BGM（Vite public 静态资源，构建后位于 /bgm/bgm.mp3）
+// 当前默认曲：《The Way You Look Tonight - Tony Bennett》（标准 MP3，可替换）。
+// 后台未配置 bgmUrl 时自动回退到此本地文件，彻底规避网易云/QQ 音乐等
+// 防盗链导致线上（Cloudflare Pages）与微信小程序播放失败。
+const LOCAL_BGM = (import.meta.env.BASE_URL || '/') + 'bgm/bgm.mp3';
+
 let audio = null;        // 唯一音频实例
-let url = '';            // BGM 地址
+let url = '';            // BGM 地址（后台配置优先，否则 LOCAL_BGM）
 let progress = 0;        // 已播放秒数（关闭时记录）
 let muted = false;       // 静音状态
 let loading = false;     // 缓冲中
@@ -38,8 +44,9 @@ export function subscribe(fn) {
 }
 
 // 注入 BGM 地址（组件挂载时调用，不触发播放）
+// 后台未配置 bgmUrl（空）时回退到本地打包的默认 BGM 文件，避免防盗链失败。
 export function init(u) {
-  url = u || '';
+  url = (u && u.trim()) ? u : LOCAL_BGM;
   return getState();
 }
 

@@ -12,8 +12,11 @@ const DEFAULT_STUDIO = {
   name: '叶哲 Studio',
   logo: '',
   cover: '',
-  // 幻灯片背景音乐（BGM）HTTPS 地址，如《梦中的婚礼》钢琴曲 MP3；
-  // 留空则播放幻灯片无声，但播放/暂停/进度记忆逻辑保持完整。建议上传 R2 经代理访问。
+  // 幻灯片背景音乐（BGM）HTTPS 地址（可选）。
+  // 留空则自动回退到前端【本地打包】的默认 BGM（H5: public/bgm/bgm.mp3，
+  // 小程序: /assets/bgm/bgm.mp3；当前默认曲《The Way You Look Tonight - Tony Bennett》），
+  // 彻底规避网易云/QQ 音乐等防盗链导致线上与小程序播放失败；
+  // 填了自有 CDN / R2 代理地址则优先使用（切勿填网易云等防盗链网页链接）。
   bgmUrl: '',
   heroImages: [],
   intro: '海口婚礼 / 人像摄影 · YEZHE WORKSHOP',
