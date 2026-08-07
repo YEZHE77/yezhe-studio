@@ -8,11 +8,11 @@
 ⚠️ 重要体积限制（本目录位于【主包】）：
 - 小程序【主包】硬上限 2MB。本曲 1.55MB + 主包其余代码后主包共约 1.63MB，仍 < 2MB，合规。
 - 若要替换更长/更高码的曲子，务必保证整主包 < 2MB：
-  · 优先用「R2 私有桶 + Worker 代理」方案（自有域名、无防盗链、不限体积）：
-    1) 把标准 mp3 上传到 R2 私有桶；
-    2) 后台「资料设置 → BGM」填写经 Worker 代理的 HTTPS 地址
-       （如 https://yezhe-img-proxy.yezhe128627.workers.dev/r2/...mp3）；
-    3) 后台地址优先级高于本地文件，自动覆盖（小程序需把该代理域名加入 downloadFile 合法域名）。
+  · 优先用「对象存储 + CDN」方案（自有域名、无防盗链、不限体积）：
+    1) 把标准 mp3 上传到腾讯云 COS 私有桶（或 R2 私有桶）；
+    2) 后台「资料设置 → BGM」填写 CDN HTTPS 地址
+       （COS 形如 https://<bucket>.cos.<region>.myqcloud.com/...mp3；R2 形如 https://yezhe-img-proxy.yezhe128627.workers.dev/r2/...mp3）；
+    3) 后台地址优先级高于本地文件，自动覆盖（小程序需把该 CDN 域名加入 downloadFile 合法域名）。
   · 或把 mp3 压到 64kbps 单声道（约 1MB/分钟）控制主包体积。
 - 注意：切勿把此 mp3 放进分包再由主包代码引用（主包不能引用分包资源，会加载失败）；
   保持在本主包 assets/ 下即可。

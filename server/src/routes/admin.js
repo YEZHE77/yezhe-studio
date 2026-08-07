@@ -4,10 +4,10 @@ import { Router } from 'express';
 import { query, get, insert, run } from '../db.js';
 import { authRequired } from '../auth.js';
 import { lunarOf } from './schedules.js';
-import { isR2Enabled, deleteMediaByUrl } from '../storage.js';
+import { isR2Enabled, isCloudStorageEnabled, getActiveProviderName, deleteMediaByUrl } from '../storage.js';
 import { cfConfigured, getR2Egress } from '../cf.js';
-import { getR2Storage } from '../r2Metrics.js';
-import { buildFullBackup, writeBackupToR2 } from '../backup.js';
+import { getStorageUsage } from '../r2Metrics.js';
+import { buildFullBackup, writeBackupToCloud } from '../backup.js';
 
 const router = Router();
 router.use(authRequired);
@@ -370,7 +370,11 @@ router.get('/schedules/export', async (req, res) => {
 // 存储状态（Dashboard 告警横幅依据）
 router.get('/storage', async (req, res) => {
   try {
-    res.json({ r2Enabled: isR2Enabled() });
+    res.json({
+      cloudEnabled: isCloudStorageEnabled(),
+      provider: getActiveProviderName() || 'local',
+      r2Enabled: isR2Enabled()
+    });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -395,6 +399,16 @@ const CATEGORY_LABELS = {
 const R2_FREE_STORAGE = 10 * 1024 * 1024 * 1024; // R2 免费额度 10GB
 const R2_FREE_EGRESS = 100 * 1024 * 1024 * 1024; // 免费额度 100GB/月 出流量
 
+// COS 可选存储限额（字节，来自 COS_STORAGE_LIMIT 环境变量），未设置则为 null（不限）
+function cloudLimitBytes(provider) {
+  if (provider === 'r2') return R2_FREE_STORAGE;
+  if (provider === 'cos') {
+    const v = parseInt(process.env.COS_STORAGE_LIMIT || '', 10);
+    return Number.isFinite(v) && v > 0 ? v : null;
+  }
+  return null;
+}
+
 // 按业务分类汇总（来自 media 元数据表，零 R2 遍历）
 async function categoryBreakdown() {
   const rows = await query(
@@ -413,31 +427,33 @@ async function categoryBreakdown() {
 // 存储用量统计（Tab1）
 router.get('/storage/stats', async (req, res) => {
   try {
+    const provider = getActiveProviderName() || 'local';
+    const cloud = isCloudStorageEnabled();
     const r2 = isR2Enabled();
     const cfOk = cfConfigured();
     const categories = await categoryBreakdown();
 
-    // 总量：接入 R2 → 直接读取「真实桶大小」（用已配置的 R2 凭据，零额外令牌，每 5 分钟刷新）。
-    // 未接 R2（本地模式）→ 回退 media 汇总并标注为估算。
+    // 总量：接入云存储 → 直接用凭据 listObjectsV2 读取「真实桶大小」（零额外令牌，每 5 分钟刷新）。
+    // 未接入（本地模式）→ 回退 media 汇总并标注为估算。
     let totalUsedBytes = categories.reduce((s, c) => s + c.bytes, 0);
-    let totalEstimated = !r2;
+    let totalEstimated = !cloud;
     let objectCount = null;
     let updatedAt = new Date().toISOString();
-    let delayNote = '按 R2 真实桶大小统计（每 5 分钟刷新一次）。';
-    if (r2) {
-      const st = await getR2Storage();
+    let delayNote = cloud ? '按对象存储真实桶大小统计（每 5 分钟刷新一次）。' : '本地临时存储，无配额概念。';
+    if (cloud) {
+      const st = await getStorageUsage();
       if (st) {
         totalUsedBytes = st.totalBytes;
         objectCount = st.objectCount;
         totalEstimated = false;
         updatedAt = st.fetchedAt;
       } else {
-        // R2 已配置但读取失败（如凭据临时失效）：退回 media 估算并提示
+        // 已配置但读取失败（如凭据临时失效）：退回 media 估算并提示
         delayNote = '真实桶大小读取失败，暂按已登记媒资估算。';
       }
     }
 
-    // 出流量（可选增强）：配置了 CF analytics 令牌才显示
+    // 出流量（可选增强）：仅 R2 + 配置了 CF analytics 令牌时显示
     let egress = null;
     if (r2 && cfOk) {
       const eg = await getR2Egress();
@@ -445,10 +461,11 @@ router.get('/storage/stats', async (req, res) => {
     }
 
     res.json({
-      provider: r2 ? 'r2' : 'local',
+      provider,
+      cloudEnabled: cloud,
       r2Enabled: r2,
       cfConfigured: cfOk,
-      limitBytes: r2 ? R2_FREE_STORAGE : null, // 本地无配额概念
+      limitBytes: cloudLimitBytes(provider), // 本地 / 未设限额则为 null
       totalUsedBytes,
       totalEstimated,
       objectCount,
@@ -463,6 +480,7 @@ router.get('/storage/stats', async (req, res) => {
 // 图片流量（Tab2）—— CDN 出流量（近似，需 CF analytics 令牌）
 router.get('/storage/traffic', async (req, res) => {
   try {
+    const provider = getActiveProviderName() || 'local';
     const r2 = isR2Enabled();
     const cfOk = cfConfigured();
     let usedBytes = null;
@@ -473,12 +491,15 @@ router.get('/storage/traffic', async (req, res) => {
       if (eg) { usedBytes = eg.bytes; fetchedAt = eg.fetchedAt; note = eg.note; }
     }
     res.json({
-      provider: r2 ? 'r2' : 'local',
+      provider,
+      cloudEnabled: isCloudStorageEnabled(),
       r2Enabled: r2,
       cfConfigured: cfOk,
-      limitBytes: R2_FREE_EGRESS,
+      limitBytes: r2 ? R2_FREE_EGRESS : null,
       usedBytes,
-      delayNote: note || '统计当月累计出流量；需配置 CF_API_TOKEN + CF_ACCOUNT_ID（仅只读 analytics 权限）方可显示。',
+      delayNote: note || (r2
+        ? '统计当月累计出流量；需配置 CF_API_TOKEN + CF_ACCOUNT_ID（仅只读 analytics 权限）方可显示。'
+        : '当前存储后端非 Cloudflare R2，出流量请在对应云厂商（如腾讯云 COS）控制台查看。'),
       updatedAt: fetchedAt
     });
   } catch (e) { res.status(500).json({ error: e.message }); }
@@ -572,11 +593,11 @@ router.get('/backup/export', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// 17.2 立即触发一次 R2 /backup 目录写入（定时任务之外的手动兜底）
+// 17.2 立即触发一次云端 /backup 目录写入（定时任务之外的手动兜底）
 router.post('/backup/run', async (req, res) => {
   try {
-    if (!isR2Enabled()) return res.status(400).json({ error: 'R2 未配置，无法写入云端备份' });
-    const r = await writeBackupToR2();
+    if (!isCloudStorageEnabled()) return res.status(400).json({ error: '未配置云端存储（COS / R2），无法写入云端备份' });
+    const r = await writeBackupToCloud();
     if (r.ok) res.json(r);
     else res.status(500).json({ error: r.reason });
   } catch (e) { res.status(500).json({ error: e.message }); }

@@ -16,7 +16,8 @@ function warnDomain() {
     '[req] 微信校验合法域名失败。请在小程序后台「开发管理 → 开发设置 → 服务器域名」中添加：\n' +
     '  request 合法域名: ' + CONFIG.API_BASE + '\n' +
     '  downloadFile 合法域名: ' + CONFIG.API_BASE + '\n' +
-    '  downloadFile 合法域名: https://yezhe-img-proxy.yezhe128627.workers.dev'
+    (CONFIG.IMG_CDN ? '  downloadFile 合法域名: ' + CONFIG.IMG_CDN + '\n' : '') +
+    '  downloadFile 合法域名: https://yezhe-img-proxy.yezhe128627.workers.dev （R2 兜底，未启用 COS 时）'
   );
 }
 

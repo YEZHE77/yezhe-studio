@@ -62,7 +62,7 @@ export default function Dashboard() {
     Promise.all([
       http.get('/api/stats').then((r) => setStats(r.data)).catch(() => {}),
       http.get('/api/admin/storage/stats')
-        .then((r) => { setStorage(r.data); setShowAlert(!r.data.r2Enabled); })
+        .then((r) => { setStorage(r.data); setShowAlert(!r.data.cloudEnabled); })
         .catch(() => { setStorage(null); setShowAlert(false); })
     ]).finally(() => setLoading(false));
   }, []);
@@ -70,7 +70,7 @@ export default function Dashboard() {
   // 存储容量告警等级：≥90% 严重（持续红）/ 70-90% 警示（黄）/ <70% 正常
   const storageRatio = storage && storage.limitBytes ? storage.totalUsedBytes / storage.limitBytes : 0;
   const storagePct = Math.min(100, Math.round(storageRatio * 100));
-  const storageCritical = !!(storage && storage.r2Enabled && storageRatio >= 0.9);
+  const storageCritical = !!(storage && storage.cloudEnabled && storageRatio >= 0.9);
   const storageLevel = storageCritical ? 'critical' : storageRatio >= 0.7 ? 'warning' : 'normal';
   const storageBar = storageLevel === 'critical' ? 'bg-red-500' : storageLevel === 'warning' ? 'bg-amber-400' : 'bg-emerald-500';
   const storageTx = storageLevel === 'critical' ? 'text-red-600' : storageLevel === 'warning' ? 'text-amber-600' : 'text-emerald-600';

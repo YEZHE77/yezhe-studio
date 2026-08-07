@@ -75,12 +75,12 @@ function StorageTab({ reloadKey }) {
             {level === 'critical' ? '严重' : level === 'warning' ? '警示' : '正常'}
           </span>
         </div>
-        {data.r2Enabled ? (
+        {data.cloudEnabled ? (
           <>
             <div className="flex items-end justify-between mt-3 mb-2">
               <div className="text-3xl font-bold text-fg">{formatBytes(data.totalUsedBytes)}</div>
               <div className="text-xs text-muted">
-                额度 {formatBytes(data.limitBytes)}{data.totalEstimated ? '（估算）' : ''} · 剩余 {formatBytes(remaining)}
+                额度 {data.limitBytes ? formatBytes(data.limitBytes) : '不限'}{data.totalEstimated ? '（估算）' : ''} · 剩余 {remaining != null ? formatBytes(remaining) : '—'}
                 {data.objectCount != null ? ` · ${data.objectCount} 个对象` : ''}
               </div>
             </div>
@@ -142,15 +142,15 @@ function StorageTab({ reloadKey }) {
         <ArchiveGuideCard />
       </div>
 
-      {/* R2 免费额度说明 */}
+      {/* 对象存储免费额度说明 */}
       <div className="bg-panel border border-line rounded-xl2 p-5">
-        <div className="text-[15px] font-semibold text-fg mb-3">Cloudflare R2 免费额度说明</div>
+        <div className="text-[15px] font-semibold text-fg mb-3">对象存储免费额度说明</div>
         <ul className="space-y-2 text-sm text-muted list-disc pl-5">
-          <li><span className="text-fg">存储：</span>永久免费 10GB；超出部分约 $0.015 / GB·月。</li>
-          <li><span className="text-fg">出流量（CDN）：</span>每月免费 100GB；超出部分约 $0.01 / GB。</li>
-          <li><span className="text-fg">入流量：</span>Cloudflare 永远免费（上传不产生流量费）。</li>
-          <li><span className="text-fg">数据时效：</span>存储空间按 R2 真实桶大小统计，每 5 分钟刷新一次（近实时）；出流量（图片流量 Tab）依赖 Cloudflare 指标，存在 5-15 分钟延迟。</li>
-          <li className="text-amber-700">超额风险：超出免费额度后按上述单价计费；本系统全程免费、不涉及任何付费 / VIP / 扩容购买逻辑，请勿轻信第三方扩容服务。</li>
+          <li><span className="text-fg">主用存储：</span>腾讯云 COS（国内 CDN，访问无需代理）；Cloudflare R2 作为兜底后端仍可配置。</li>
+          <li><span className="text-fg">额度：</span>COS 无固定免费额度（按量计费，单价极低）；R2 为永久免费 10GB 存储 + 每月 100GB 出流量。可在后端环境变量配置 COS_STORAGE_LIMIT 自定义告警阈值。</li>
+          <li><span className="text-fg">入流量：</span>上传（入流量）在两家云厂商均免费，不产生流量费。</li>
+          <li><span className="text-fg">数据时效：</span>存储空间按对象存储真实桶大小统计，每 5 分钟刷新一次（近实时）；出流量（图片流量 Tab）仅 R2 + 配置 CF 令牌时显示，存在 5-15 分钟延迟。</li>
+          <li className="text-amber-700">超额风险：超出额度后按云厂商单价计费；本系统全程免费、不涉及任何付费 / VIP / 扩容购买逻辑，请勿轻信第三方扩容服务。</li>
         </ul>
       </div>
     </div>
