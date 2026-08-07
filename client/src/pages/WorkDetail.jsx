@@ -52,6 +52,7 @@ export default function WorkDetail() {
   const [preparing, setPreparing] = useState(false);
   const [slideOpen, setSlideOpen] = useState(false);
   const [slidePhotos, setSlidePhotos] = useState([]);
+  const creatingRef = useRef(false);
 
   async function loadWork() {
     try {
@@ -98,9 +99,40 @@ export default function WorkDetail() {
     }
   }
 
+  async function createDraft() {
+    // 页面式新建：进入 /works/new 时立即创建一个草稿作品，自动跳转到编辑态，
+    // 这样用户无需先点「保存基本信息」就能直接上传照片。
+    if (creatingRef.current) return;
+    creatingRef.current = true;
+    try {
+      const r = await http.post('/api/works', {
+        title: '未命名作品',
+        category_ids: [],
+        is_public: true,
+        allow_download: false,
+        tags: [],
+        album_copy: '',
+        album_password_enabled: false,
+        album_password: '',
+        album_expires_at: '',
+        cover_url: '',
+        is_private: false,
+        description: '',
+        blessing: '',
+        live: false,
+        customer_name: '',
+        order_id: null
+      });
+      navigate('/works/' + r.data.id, { replace: true });
+    } catch (err) {
+      alert((err.response && err.response.data && err.response.data.error) || '创建作品失败');
+      creatingRef.current = false;
+    }
+  }
+
   async function loadAll() {
-    // 新建模式：无作品可加载，直接用空白表单进入编辑页（避免请求 /api/works/new 404）
-    if (isNew) { setLoading(false); return; }
+    // 新建模式：自动创建草稿并跳转，无需用户先保存基本信息
+    if (isNew) { await createDraft(); return; }
     setLoading(true);
     await loadWork();
     setLoading(false);
@@ -171,15 +203,12 @@ export default function WorkDetail() {
     } finally { setSaving(false); }
   }
 
-  // 新建模式下尚未保存基本信息时，拦截批量上传并提示
   function onUploadClick() {
-    if (isNew) { alert('请先保存作品基本信息，再上传照片'); return; }
     if (fileRef.current) fileRef.current.click();
   }
 
   // 选图后立即：①拉取本相册已存在签名；②读取每张原图 name+size 生成签名；③标记重复项；④打开预览弹窗
   async function onPickFiles(e) {
-    if (isNew) return; // 防御：新建未保存时上传按钮已拦截，此处兜底避免请求 /api/works/new
     const files = e.target.files;
     if (!fileRef.current) return;
     if (!files || !files.length) return;
@@ -465,6 +494,15 @@ export default function WorkDetail() {
   if (loading) {
     return (
       <div className="max-w-7xl mx-auto animate-pulse">
+        {isNew && (
+          <div className="mb-5 px-4 py-3 rounded bg-blue-50 border border-blue-200 text-blue-700 text-sm flex items-center gap-2">
+            <svg className="animate-spin h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+            </svg>
+            正在创建作品草稿，请稍候…
+          </div>
+        )}
         <div className="flex items-center justify-between mb-5">
           <div className="flex items-center gap-3">
             <div className="w-28 h-9 rounded bg-ink" />
