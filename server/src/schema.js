@@ -309,6 +309,9 @@ export async function initSchema() {
   await ensureColumn('albums', 'status', `TEXT NOT NULL DEFAULT 'normal'`);
   // 缩略图 URL（同步模式由上传接口写入，未生成独立缩略图时与 photo_url 同值，前端可按需取 ?w= 变体）
   await ensureColumn('albums', 'thumb_url', 'TEXT');
+  // 作品 / 相册照片自定义排序字段（schema DDL 已含，旧库通过 ensureColumn 补列）
+  await ensureColumn('works', 'sort', 'INTEGER NOT NULL DEFAULT 0');
+  await ensureColumn('albums', 'sort', 'INTEGER NOT NULL DEFAULT 0');
 
   // media 补列：处理状态（同步写入后恒为 ready）+ 内容 hash（内容级去重，best-effort）
   await ensureColumn('media', 'status', `TEXT NOT NULL DEFAULT 'ready'`);
