@@ -134,10 +134,10 @@ page { background: #f8f6f2; }
   background: var(--brand-green); border-radius: 4rpx;
 }
 
-/* 作品网格：两列瀑布流（按索引奇偶分列，照片保持原比例完整显示不裁切），列 gap 24rpx、行 gap 40rpx */
+/* 作品网格：两列瀑布流（按索引奇偶分列，照片保持原比例完整显示不裁切），列 gap 20rpx、行 gap 32rpx */
 .works-grid { display: flex; align-items: flex-start; margin-top: 8rpx; }
-.masonry-col { flex: 1 1 0; min-width: 0; padding: 0 12rpx; display: flex; flex-direction: column; }
-.work-card { width: 100%; margin-bottom: 40rpx; }
+.masonry-col { flex: 1 1 0; min-width: 0; padding: 0 10rpx; display: flex; flex-direction: column; }
+.work-card { width: 100%; margin-bottom: 32rpx; }
 /* 封面容器圆角 24rpx，overflow hidden；图片 widthFix 按原图比例完整展示，不裁切人物画面 */
 .work-cover-wrap {
   width: 100%;
