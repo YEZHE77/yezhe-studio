@@ -522,6 +522,24 @@ export default function WorkDetail() {
       setCoverCrop((c) => ({ ...c, uploading: false }));
     }
   }
+  // 使用当前封面进行裁剪：拉取现有 cover_url 转为 File 传给 ImageCropper
+  async function cropCurrentCover() {
+    if (!work?.cover_url) { alert('暂无当前封面'); return; }
+    setCoverCrop((c) => ({ ...c, uploading: true }));
+    try {
+      const url = img(work.cover_url);
+      const res = await fetch(url);
+      if (!res.ok) throw new Error('fetch failed');
+      const blob = await res.blob();
+      const name = url.split('/').pop() || 'current-cover.jpg';
+      const file = new File([blob], name, { type: blob.type || 'image/jpeg' });
+      setCoverCrop((c) => ({ ...c, file, uploading: false }));
+    } catch (e) {
+      console.error(e);
+      alert('当前封面无法直接读取（跨域限制），请下载后从本地选择');
+      setCoverCrop((c) => ({ ...c, uploading: false }));
+    }
+  }
 
   function handleDragStart(e, aid) {
     setDraggedId(aid);
@@ -1052,9 +1070,16 @@ export default function WorkDetail() {
                   className={`px-3 py-1.5 rounded border text-sm ${coverCrop.aspect === r.v ? 'border-brand text-brand' : 'border-line text-muted hover:text-fg'}`}>{r.label}</button>
               ))}
             </div>
+            {work?.cover_url && (
+              <button onClick={cropCurrentCover} disabled={coverCrop.uploading}
+                className="w-full mb-4 px-4 py-3 rounded border border-line text-sm text-fg hover:border-brand hover:text-brand disabled:opacity-50 flex items-center justify-center gap-2">
+                <img src={img(work.cover_url)} alt="" className="w-8 h-8 object-cover rounded bg-ink" />
+                <span>裁切当前封面</span>
+              </button>
+            )}
             <label className="block">
               <input type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files && e.target.files[0]; if (f) setCoverCrop((c) => ({ ...c, file: f })); }} />
-              <div className="border-2 border-dashed border-line rounded-xl2 py-10 text-center text-muted cursor-pointer hover:border-brand hover:text-brand text-sm">＋ 选择本地图片</div>
+              <div className="border-2 border-dashed border-line rounded-xl2 py-10 text-center text-muted cursor-pointer hover:border-brand hover:text-brand text-sm">＋ 选择本地新图片</div>
             </label>
           </div>
         </div>
