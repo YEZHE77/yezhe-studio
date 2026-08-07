@@ -25,16 +25,4 @@
       catchtouchstart="onImgTouchStart" catchtouchend="onImgTouchEnd" />
   </block>
 
-  <!-- 底部控件：播放/暂停 + 进度条 + 时间 -->
-  <view class="ss-bottom" catchtap="noop">
-    <view class="ss-play" catchtap="togglePlay">
-      <view wx:if="{{playing}}" class="ss-ico-pause"><view></view><view></view></view>
-      <view wx:else class="ss-ico-play"></view>
-    </view>
-    <view class="ss-progress">
-      <view class="ss-bar"><view class="ss-bar-fill" style="width:{{progress * 100}}%"></view></view>
-    </view>
-    <text class="ss-time">{{curTime}}s / {{curDuration}}s</text>
-  </view>
-
 </view>

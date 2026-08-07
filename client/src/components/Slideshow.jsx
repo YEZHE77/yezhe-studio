@@ -29,9 +29,9 @@ export default function Slideshow({ photos = [], open, onClose, title = '' }) {
     return () => { alive = false; unsub(); };
   }, []);
 
-  // 打开时重置到第一张并关闭自动播放；关闭时清理定时器
+  // 打开时重置到第一张并开启自动播放；关闭时清理定时器
   useEffect(() => {
-    if (open) { setIndex(0); setAutoplay(false); }
+    if (open) { setIndex(0); setAutoplay(true); }
     else if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
   }, [open]);
 
