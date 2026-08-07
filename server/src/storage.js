@@ -254,6 +254,11 @@ export async function mergeChunks(uploadId, ext, zone = 'biz-works', meta = {}) 
     total += b.length;
   }
   const merged = Buffer.concat(buffers, total);
+  // 单张硬性限制 3M：分片合并后再次校验（兜底），超限则不存储并清理分片
+  if (total > 3 * 1024 * 1024) {
+    await deleteChunks(uploadId);
+    throw new Error('文件超过3M限制');
+  }
   const result = await saveBuffer(merged, ext, zone, meta);
   await deleteChunks(uploadId);
   return result;

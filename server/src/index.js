@@ -48,6 +48,11 @@ const upload = multer({ dest: tmpDir, limits: { fileSize: 15 * 1024 * 1024 } });
 app.post('/api/upload', authRequired, upload.single('file'), async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ error: '未收到文件' });
+    // 单张硬性限制 3M：即便绕过前端，后端再次校验拒绝存储（并清理临时文件）
+    if (req.file.size > 3 * 1024 * 1024) {
+      try { fs.unlinkSync(req.file.path); } catch {}
+      return res.status(400).json({ error: '文件超过3M限制' });
+    }
     // 单图上传多为封面/样片（默认公开）；前端可显式传 category（type 枚举）/ isPublic
     const meta = {
       category: req.body.category || 'cover',
@@ -65,6 +70,12 @@ app.post('/api/upload-multiple', authRequired, upload.array('files', 500), async
   try {
     const files = req.files || [];
     if (!files.length) return res.status(400).json({ error: '未收到文件' });
+    // 单张硬性限制 3M：任一超限即整体拒绝（并清理所有临时文件）
+    const tooBig = files.find((f) => f.size > 3 * 1024 * 1024);
+    if (tooBig) {
+      files.forEach((f) => { try { fs.unlinkSync(f.path); } catch {} });
+      return res.status(400).json({ error: '文件超过3M限制' });
+    }
     // 批量多为客片/底片/精修（默认非公开）；前端可显式传 category（type 枚举）/ isPublic
     const meta = {
       category: req.body.category || 'client',

@@ -177,6 +177,19 @@
 .tag--warn {
   background: #e0a458;
 }
+/* 超限 3M：红色边框 + 置灰 + 红色【超过3M限制】标签 */
+.cell--over {
+  border: 1rpx solid #e26d6d;
+}
+.cell--over .thumb {
+  filter: grayscale(1);
+}
+.tag--over {
+  background: #e26d6d;
+}
+.sub-over {
+  color: #e26d6d;
+}
 
 .empty {
   margin-top: 120rpx;

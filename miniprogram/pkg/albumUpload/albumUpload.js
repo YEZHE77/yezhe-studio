@@ -19,6 +19,7 @@ Page({
     previews: [],      // { tempFilePath, digest, size, sign, dup, error, status, progress, url }
     toUploadCount: 0,  // 待上传数（已剔除重复）
     dupCount: 0,       // 重复数
+    overCount: 0,      // 超过3M限制数
     uploading: false,
     paused: false,
     overallPct: 0,     // 总进度
@@ -37,14 +38,14 @@ Page({
     if (!token) return;
     if (this.data.uploading) return;
     dedup.chooseAndDedup(this.data.workId, token, 9)
-      .then(({ previews, toUploadCount, dupCount }) => {
+      .then(({ previews, toUploadCount, dupCount, overCount }) => {
         // 注入状态字段用于逐项进度渲染
         const withStatus = previews.map((p) => ({
           ...p,
-          status: p.dup ? 'dup' : (p.error ? 'error' : 'pending'),
+          status: p.oversize ? 'over' : (p.dup ? 'dup' : (p.error ? 'error' : 'pending')),
           progress: 0
         }));
-        this.setData({ previews: withStatus, toUploadCount, dupCount, overallPct: 0, weakNet: false });
+        this.setData({ previews: withStatus, toUploadCount, dupCount, overCount: overCount || 0, overallPct: 0, weakNet: false });
       })
       .catch(() => wx.showToast({ title: '选图失败', icon: 'none' }));
   },
@@ -54,7 +55,7 @@ Page({
     if (!token) return;
     const previews = this.data.previews;
     const uploadIdx = [];
-    previews.forEach((p, i) => { if (!p.dup && !p.error) uploadIdx.push(i); });
+    previews.forEach((p, i) => { if (!p.dup && !p.error && !p.oversize) uploadIdx.push(i); });
     if (!uploadIdx.length) { wx.showToast({ title: '无新照片', icon: 'none' }); return; }
 
     const init = previews.map((p) => ({ ...p, status: p.dup ? 'dup' : (p.error ? 'error' : 'pending'), progress: 0 }));
@@ -155,7 +156,7 @@ Page({
       });
       setP({ status: 'done', progress: 100, url });
       const done = this.data.previews.filter((x) => x.status === 'done').length;
-      const up = this.data.previews.filter((x) => !x.dup && !x.error).length;
+      const up = this.data.previews.filter((x) => !x.dup && !x.error && !x.oversize).length;
       this.setData({ overallPct: up ? Math.round((done / up) * 100) : 0 });
     } catch (err) {
       if (err && err.type === 'cancel') return;
