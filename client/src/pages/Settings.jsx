@@ -33,6 +33,8 @@ export default function Settings() {
   const heroRef = useRef();
   const [heroBusy, setHeroBusy] = useState(false);
   const [crop, setCrop] = useState(null);
+  const [heroDragged, setHeroDragged] = useState(null);
+  const [heroOver, setHeroOver] = useState(null);
 
   // 对外预约设置：开放开关 + 每周可约日（0=周日 … 6=周六）
   const [booking, setBooking] = useState({ open: true, openDays: [0, 1, 2, 3, 4, 5, 6] });
@@ -147,6 +149,28 @@ export default function Settings() {
   function removeHero(idx) {
     setForm((fm) => ({ ...fm, heroImages: fm.heroImages.filter((_, i) => i !== idx) }));
   }
+  // 拖拽调整轮播图顺序
+  function onHeroDragStart(e, i) {
+    setHeroDragged(i);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', String(i));
+  }
+  function onHeroDragOver(e, i) {
+    e.preventDefault();
+    if (i !== heroDragged) setHeroOver(i);
+  }
+  function onHeroDrop(e, i) {
+    e.preventDefault();
+    if (heroDragged === null || heroDragged === i) { resetHeroDrag(); return; }
+    setForm((fm) => {
+      const arr = [...fm.heroImages];
+      const [moved] = arr.splice(heroDragged, 1);
+      arr.splice(i, 0, moved);
+      return { ...fm, heroImages: arr };
+    });
+    resetHeroDrag();
+  }
+  function resetHeroDrag() { setHeroDragged(null); setHeroOver(null); }
 
   async function save() {
     setSaving(true); setTip('');
@@ -247,9 +271,17 @@ export default function Settings() {
           <Field label={`首页轮播图（多张 · ${form.heroImages.length} 张）`}>
             <div className="flex flex-wrap gap-3 items-start">
               {form.heroImages.map((u, i) => (
-                <div key={i} className="relative w-32 aspect-[16/9] rounded-lg overflow-hidden border border-line group">
-                  <img src={img(u)} alt="" loading="lazy" decoding="async" className="w-full h-full object-cover" />
-                  <button type="button" onClick={() => removeHero(i)}
+                <div key={i}
+                  draggable
+                  onDragStart={(e) => onHeroDragStart(e, i)}
+                  onDragOver={(e) => onHeroDragOver(e, i)}
+                  onDrop={(e) => onHeroDrop(e, i)}
+                  onDragEnd={resetHeroDrag}
+                  className={`relative w-32 aspect-[16/9] rounded-lg overflow-hidden border group cursor-grab active:cursor-grabbing select-none
+                    ${heroOver === i && heroDragged !== null && heroDragged !== i ? 'border-brand ring-2 ring-brand' : 'border-line'}
+                    ${heroDragged === i ? 'opacity-40' : ''}`}>
+                  <img src={img(u)} alt="" loading="lazy" decoding="async" className="w-full h-full object-cover" draggable={false} />
+                  <button type="button" onClick={() => removeHero(i)} onMouseDown={(e) => e.stopPropagation()}
                     className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/60 text-white text-xs leading-none flex items-center justify-center opacity-0 group-hover:opacity-100">×</button>
                   <span className="absolute bottom-0 left-0 px-1 text-[10px] text-white bg-black/50">{i + 1}</span>
                 </div>
@@ -260,7 +292,7 @@ export default function Settings() {
               </button>
               <input ref={heroRef} type="file" accept="image/*" multiple className="hidden" onChange={(e) => addHeroFiles(e.target.files)} />
             </div>
-            <p className="text-xs text-muted mt-2">建议上传 16:9 比例照片；支持一次选多张；从左到右的顺序即为小程序首页轮播顺序；第一张建议为品牌主视觉。删除：鼠标移到图片上点右上角 ×。</p>
+            <p className="text-xs text-muted mt-2">建议上传 16:9 比例照片；支持一次选多张；<b>拖拽缩略图即可调整轮播顺序</b>，从左到右的顺序即为小程序首页轮播顺序；第一张建议为品牌主视觉。删除：鼠标移到图片上点右上角 ×。</p>
           </Field>
         </div>
 
