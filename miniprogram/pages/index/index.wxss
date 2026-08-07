@@ -103,53 +103,60 @@ page { background: #f8f6f2; }
   background: #eee;
 }
 
-/* 分割线底部 → 作品展示标题顶部：64rpx（收紧） */
-.gallery { margin-top: 64rpx; padding: 0 32rpx; }
+/* 分割线底部 → 作品展示标题顶部：64rpx；左右 margin 32rpx，不贴屏幕边缘 */
+.gallery { margin: 64rpx 32rpx 0; }
 .gallery-title {
   text-align: center; font-size: 40rpx; font-weight: 600; color: #2c2c2c; letter-spacing: 4rpx;
 }
 .gallery-sub {
-  text-align: center; margin-top: 4rpx; font-size: 20rpx; letter-spacing: 2rpx; color: #bbb; line-height: 1.2;
+  text-align: center; margin-top: 4rpx; margin-bottom: 48rpx;
+  font-size: 20rpx; letter-spacing: 2rpx; color: #bbb; line-height: 1.2;
 }
 
 /* 分类标签 */
-.cat-bar { margin-top: 16rpx; white-space: nowrap; }
-.cat-wrap { display: inline-flex; gap: 24rpx; padding: 4rpx 4rpx 20rpx; }
+.cat-bar { white-space: nowrap; }
+.cat-wrap { display: inline-flex; gap: 60rpx; padding: 4rpx 0 20rpx; }
 .cat-item {
-  display: inline-block; font-size: 26rpx; color: #888; padding: 10rpx 6rpx;
+  display: inline-block; font-size: 26rpx; color: #888; padding: 10rpx 0;
   position: relative; transition: color .2s;
 }
 .cat-item.active { color: #2c2c2c; font-weight: 600; }
+/* 下划线宽度跟随文字：cat-item 无水平 padding，伪元素 left/right:0 即文字宽度 */
 .cat-item.active::after {
   content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 4rpx;
   background: var(--brand-green); border-radius: 4rpx;
 }
 
-/* 作品网格：两列瀑布流（按索引奇偶分列，高度自适应，照片保持原比例不裁切） */
-.masonry { display: flex; align-items: flex-start; margin: 8rpx -8rpx 0; }
-.masonry-col { flex: 1 1 0; min-width: 0; padding: 0 8rpx; display: flex; flex-direction: column; }
-.grid-item {
-  width: 100%; margin-bottom: 16rpx; position: relative; border-radius: 16rpx;
-  overflow: hidden; background: #eee;
+/* 作品网格：两列网格，列 gap 24rpx，行 gap 40rpx */
+.works-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  column-gap: 24rpx;
+  row-gap: 40rpx;
 }
-/* widthFix：按图片原始比例展示，不裁切摄影画面；统一间距 16rpx */
-.grid-cover { width: 100%; display: block; }
-.grid-cap {
-  position: absolute; left: 0; right: 0; bottom: 0;
-  padding: 60rpx 18rpx 18rpx;
-  background: linear-gradient(to top, rgba(0,0,0,0.55), transparent);
+.work-card { width: 100%; }
+/* 封面容器强制 16:10，圆角 24rpx，图片 aspectFill 居中裁剪铺满 */
+.work-cover-wrap {
+  width: 100%;
+  position: relative;
+  padding-bottom: 62.5%; /* 10/16 */
+  border-radius: 24rpx;
+  overflow: hidden;
+  background: #eee;
 }
-.grid-title {
-  display: block; color: #fff; font-size: 26rpx; font-weight: 500;
+.work-cover {
+  position: absolute; top: 0; left: 0;
+  width: 100%; height: 100%;
+  display: block;
+}
+/* 文字区在图片下方，左对齐，距图顶部 20rpx */
+.work-info { margin-top: 20rpx; }
+.work-title {
+  display: block; font-size: 26rpx; font-weight: 500; color: #2c2c2c;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.grid-tag {
-  display: block; margin-top: 6rpx; color: rgba(255,255,255,0.85); font-size: 22rpx;
-}
-.live-badge {
-  position: absolute; top: 16rpx; right: 16rpx;
-  background: rgba(126,205,187,0.95); color: #fff;
-  font-size: 20rpx; padding: 6rpx 14rpx; border-radius: 6rpx;
+.work-tag {
+  display: block; margin-top: 6rpx; font-size: 22rpx; color: #888;
 }
 
 /* MORE / 空态 */

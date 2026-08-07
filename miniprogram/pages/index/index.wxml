@@ -43,7 +43,7 @@
     <view class="gallery-title">作品展示</view>
     <view class="gallery-sub">Works Exhibition</view>
 
-    <!-- 分类标签 -->
+    <!-- 分类标签：仅渲染「全部」+ 后端返回分类，不写死额外分类 -->
     <scroll-view class="cat-bar" scroll-x scroll-with-animation>
       <view class="cat-wrap">
         <view class="cat-item {{activeCat === 0 ? 'active' : ''}}" bindtap="selectCat" data-id="0">全部</view>
@@ -51,26 +51,15 @@
       </view>
     </scroll-view>
 
-    <!-- 作品网格：两列瀑布流，照片保持原比例（widthFix 不裁切），统一间距 -->
-    <view class="masonry" wx:if="{{colLeft.length || colRight.length}}">
-      <view class="masonry-col">
-        <view class="grid-item" wx:for="{{colLeft}}" wx:key="id" bindtap="openWork" data-id="{{item.id}}">
-          <image class="grid-cover" src="{{item.cover}}" mode="widthFix" lazy-load />
-          <view wx:if="{{item.live}}" class="live-badge">图片直播</view>
-          <view class="grid-cap">
-            <text class="grid-title">{{item.customer_name || item.title}}</text>
-            <text class="grid-tag">#{{item.category_name || '作品'}}</text>
-          </view>
+    <!-- 作品网格：两列网格，卡片封面强制 16:10 横版，gap 24rpx/40rpx -->
+    <view class="works-grid" wx:if="{{works.length}}">
+      <view class="work-card" wx:for="{{works}}" wx:key="id" bindtap="openWork" data-id="{{item.id}}">
+        <view class="work-cover-wrap">
+          <image class="work-cover" src="{{item.cover}}" mode="aspectFill" lazy-load />
         </view>
-      </view>
-      <view class="masonry-col">
-        <view class="grid-item" wx:for="{{colRight}}" wx:key="id" bindtap="openWork" data-id="{{item.id}}">
-          <image class="grid-cover" src="{{item.cover}}" mode="widthFix" lazy-load />
-          <view wx:if="{{item.live}}" class="live-badge">图片直播</view>
-          <view class="grid-cap">
-            <text class="grid-title">{{item.customer_name || item.title}}</text>
-            <text class="grid-tag">#{{item.category_name || '作品'}}</text>
-          </view>
+        <view class="work-info">
+          <text class="work-title">{{item.customer_name || item.title}}</text>
+          <text class="work-tag">#{{item.category_name || '作品'}}</text>
         </view>
       </view>
     </view>
