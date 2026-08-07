@@ -55,10 +55,25 @@ Page({
     } catch (e) { this.setData({ bookingOpen: true }); }
   },
 
+  // 严格产出 YYYY-MM：仅从 year/monthIdx 提取年、月纯数字，杜绝把 Date 对象塞进 url 参数
+  monthStr(y, m0) {
+    const yy = Number(y);
+    const mm = Number(m0) + 1; // monthIdx 是 0-11，+1 得 1-12
+    if (!Number.isFinite(yy) || !Number.isFinite(mm)) return '';
+    return `${yy}-${pad(mm)}`;
+  },
+
   async loadAvailability() {
-    const y = this.data.year, m = this.data.monthIdx;
-    const month = `${y}-${pad(m + 1)}`;
+    // ① 单独取出年、月纯数字（month 仅传「年-月」字符串 YYYY-MM），禁止传入 Date 对象
+    const month = this.monthStr(this.data.year, this.data.monthIdx);
     this.setData({ month });
+    if (!month) {
+      // 兜底：年月非法时绝不直接拼接进 url，避免污染参数导致 400
+      console.error('[schedule] 非法年月，无法请求档期', { year: this.data.year, monthIdx: this.data.monthIdx });
+      wx.showToast({ title: '获取档期失败', icon: 'none' });
+      this.decorate();
+      return;
+    }
     try {
       const av = await request('/api/schedules/availability?month=' + month);
       const occupied = {}, closed = {}, pending = {};
@@ -73,6 +88,9 @@ Page({
       this.setData({ occupied, closed, pending });
       this.decorate();
     } catch (e) {
+      // ② 容错兜底：接口 400/异常不崩溃，打印实际传入的 month 参数，UI 提示「获取档期失败」
+      console.error('[schedule] 获取档期失败 month=', month, 'err=', e && (e.errMsg || e.message || e));
+      wx.showToast({ title: '获取档期失败', icon: 'none' });
       this.decorate();
     }
   },
