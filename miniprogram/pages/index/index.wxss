@@ -1,4 +1,4 @@
-page { background: #ffffff; }
+page { background: #f8f6f2; }
 .page { padding-bottom: 60rpx; }
 
 /* ===== 自定义顶部标题栏（白底黑字「叶哲 STUDIO」居中，固定置顶，避让系统状态栏） ===== */
@@ -112,11 +112,11 @@ page { background: #ffffff; }
   text-align: center; margin-top: 4rpx; font-size: 20rpx; letter-spacing: 2rpx; color: #bbb; line-height: 1.2;
 }
 
-/* 分类标签：分类少时等比例展开居中（space-evenly），超出屏幕宽度时左起横向滚动；整组略下移，文字紧贴下划线之上 */
-.cat-bar { margin-top: 17rpx; display: flex; }
-.cat-wrap { display: flex; justify-content: space-evenly; min-width: 100%; padding: 4rpx 0 4rpx; }
+/* 分类标签 */
+.cat-bar { margin-top: 16rpx; white-space: nowrap; }
+.cat-wrap { display: inline-flex; gap: 24rpx; padding: 4rpx 4rpx 20rpx; }
 .cat-item {
-  display: inline-block; font-size: 26rpx; color: #888; padding: 6rpx 6rpx 6rpx;
+  display: inline-block; font-size: 26rpx; color: #888; padding: 10rpx 6rpx;
   position: relative; transition: color .2s;
 }
 .cat-item.active { color: #2c2c2c; font-weight: 600; }
@@ -125,50 +125,26 @@ page { background: #ffffff; }
   background: var(--brand-green); border-radius: 4rpx;
 }
 
-/* 作品网格：两列等宽固定尺寸卡片（每张统一 宽331rpx / 总高540rpx，禁止高度自适应、禁止瀑布流） */
-.grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  column-gap: 24rpx;
-  row-gap: 32rpx;
-  margin-top: 8rpx;
+/* 作品网格：两列瀑布流（按索引奇偶分列，高度自适应，照片保持原比例不裁切） */
+.masonry { display: flex; align-items: flex-start; margin: 8rpx -8rpx 0; }
+.masonry-col { flex: 1 1 0; min-width: 0; padding: 0 8rpx; display: flex; flex-direction: column; }
+.grid-item {
+  width: 100%; margin-bottom: 16rpx; position: relative; border-radius: 16rpx;
+  overflow: hidden; background: #eee;
 }
-.card {
-  width: 100%;
-  height: 540rpx;
-  border-radius: 0;
-  overflow: hidden;
-  background: #fff;
-  display: flex;
-  flex-direction: column;
+/* widthFix：按图片原始比例展示，不裁切摄影画面；统一间距 16rpx */
+.grid-cover { width: 100%; display: block; }
+.grid-cap {
+  position: absolute; left: 0; right: 0; bottom: 0;
+  padding: 60rpx 18rpx 18rpx;
+  background: linear-gradient(to top, rgba(0,0,0,0.55), transparent);
 }
-/* 图片区固定 420rpx 高，aspectFill 居中裁剪不拉伸；完全直角 border-radius:0 */
-.card-cover {
-  width: 100%;
-  height: 420rpx;
-  border-radius: 0;
-  display: block;
-  background: #eee;
-}
-/* 文字区固定 120rpx 高，纯白底，完全直角 border-radius:0；与图片底边无缝紧贴、内容溢出省略、禁止撑高卡片 */
-.card-cap {
-  flex: 0 0 120rpx;
-  height: 120rpx;
-  background: #fff;
-  border-radius: 0;
-  padding: 0 24rpx;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-.card-title {
-  display: block; text-align: left; color: #333333; font-size: 38rpx; font-weight: 500;
-  margin-top: 26rpx; margin-bottom: 12rpx;
+.grid-title {
+  display: block; color: #fff; font-size: 26rpx; font-weight: 500;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.card-tag {
-  display: block; text-align: left; color: #999999; font-size: 28rpx; font-weight: 400;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+.grid-tag {
+  display: block; margin-top: 6rpx; color: rgba(255,255,255,0.85); font-size: 22rpx;
 }
 
 /* MORE / 空态 */

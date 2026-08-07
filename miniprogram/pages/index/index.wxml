@@ -43,21 +43,32 @@
     <view class="gallery-title">作品展示</view>
     <view class="gallery-sub">Works Exhibition</view>
 
-    <!-- 分类标签：自适应居中（少则整体居中，多则左起横滑不裁切） -->
-    <scroll-view class="cat-bar" scroll-x scroll-with-animation enable-flex>
+    <!-- 分类标签 -->
+    <scroll-view class="cat-bar" scroll-x scroll-with-animation>
       <view class="cat-wrap">
         <view class="cat-item {{activeCat === 0 ? 'active' : ''}}" bindtap="selectCat" data-id="0">全部</view>
         <view wx:for="{{categories}}" wx:key="id" class="cat-item {{activeCat === item.id ? 'active' : ''}}" bindtap="selectCat" data-id="{{item.id}}">{{item.name}}</view>
       </view>
     </scroll-view>
 
-    <!-- 作品网格：两列等宽固定尺寸卡片（每张统一 宽331rpx / 总高540rpx；图片区420rpx aspectFill + 文字区120rpx白底） -->
-    <view class="grid" wx:if="{{works.length}}">
-      <view class="card" wx:for="{{works}}" wx:key="id" bindtap="openWork" data-id="{{item.id}}">
-        <image class="card-cover" src="{{item.cover}}" mode="aspectFill" lazy-load />
-        <view class="card-cap">
-          <text class="card-title">{{item.customer_name || item.title}}</text>
-          <text class="card-tag">#{{item.category_name || '作品'}}</text>
+    <!-- 作品网格：两列瀑布流，照片保持原比例（widthFix 不裁切），统一间距 -->
+    <view class="masonry" wx:if="{{colLeft.length || colRight.length}}">
+      <view class="masonry-col">
+        <view class="grid-item" wx:for="{{colLeft}}" wx:key="id" bindtap="openWork" data-id="{{item.id}}">
+          <image class="grid-cover" src="{{item.cover}}" mode="widthFix" lazy-load />
+          <view class="grid-cap">
+            <text class="grid-title">{{item.customer_name || item.title}}</text>
+            <text class="grid-tag">#{{item.category_name || '作品'}}</text>
+          </view>
+        </view>
+      </view>
+      <view class="masonry-col">
+        <view class="grid-item" wx:for="{{colRight}}" wx:key="id" bindtap="openWork" data-id="{{item.id}}">
+          <image class="grid-cover" src="{{item.cover}}" mode="widthFix" lazy-load />
+          <view class="grid-cap">
+            <text class="grid-title">{{item.customer_name || item.title}}</text>
+            <text class="grid-tag">#{{item.category_name || '作品'}}</text>
+          </view>
         </view>
       </view>
     </view>

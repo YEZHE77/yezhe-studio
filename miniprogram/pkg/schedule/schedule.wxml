@@ -41,9 +41,9 @@
         <text wx:if="{{occupied[selDate] && occupied[selDate][p]}}" class="dis-tip">已约</text>
       </view>
     </view>
-    <view class="btn btn-block" bindtap="goFill" disabled="{{!selPeriod}}">{{selectMode ? '确定并返回' : '下一步：填写预约信息'}}</view>
+    <view class="btn btn-block" bindtap="goFill" disabled="{{!selPeriod}}">下一步：填写预约信息</view>
   </view>
 
   <view class="tip muted small">提交后摄影师会与您确认档期，确认后才会正式锁定时间。</view>
-  <view class="btn btn-ghost" bindtap="goFillNoDate">{{selectMode ? '不指定日期，返回' : '不指定日期，直接填写预约'}}</view>
+  <view class="btn btn-ghost" bindtap="goFillNoDate">不指定日期，直接填写预约</view>
 </view>

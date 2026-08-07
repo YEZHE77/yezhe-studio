@@ -22,7 +22,9 @@
     </view>
     <view class="field">
       <view class="field-label">期望日期</view>
-      <view class="input picker" bindtap="pickDate">{{hopeDate || '选择日期（点此打开档期日历）'}} ›</view>
+      <picker mode="date" value="{{hopeDate}}" bindchange="onDate">
+        <view class="input picker">{{hopeDate || '选择日期（也可在首页日历选）'}} ›</view>
+      </picker>
     </view>
     <view class="field">
       <view class="field-label">期望时段</view>

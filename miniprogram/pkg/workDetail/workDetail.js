@@ -237,8 +237,8 @@ Page({
     wx.showToast({ title: '请下拉控制中心 → 屏幕镜像到电视', icon: 'none', duration: 2800 });
   },
 
-  // 预约服务：直接进入预约拍摄表单（不再先跳档期日历）
-  goAppointment() { wx.navigateTo({ url: '/pkg/appointment/appointment' }); },
+  // 预约服务
+  goAppointment() { wx.navigateTo({ url: '/pages/schedule/schedule' }); },
 
   onPwInput(e) { this.setData({ pw: e.detail.value, pwErr: '' }); },
 
