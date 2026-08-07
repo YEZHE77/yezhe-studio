@@ -32,7 +32,13 @@ function ensurePool() {
         try {
           await processTask(task);
         } catch (e) {
-          console.error('[uploadQueue] 任务异常', task && task.url, e && e.message);
+          // 进程级兜底：任何未捕获异常都写错误日志，并把相册标记为 failed（若仍可定位）
+          console.error('[uploadQueue] 任务异常（未捕获）', task && task.url, e && (e.stack || e.message || e));
+          try {
+            if (task && task.url) {
+              await run(`UPDATE albums SET status = 'failed' WHERE photo_url = ? AND status = 'processing'`, [task.url]);
+            }
+          } catch {}
         }
       }
     })();
@@ -41,6 +47,10 @@ function ensurePool() {
 
 // 单个上传任务：hash 计算(可选) → 写 media(容量统计) → 联动相册状态翻转
 async function processTask({ url, r2Key, category, bytes, isPublic }) {
+  console.log('[uploadQueue] 开始处理任务', { url, r2Key, category, bytes, isPublic });
+  let failed = false;
+  let failReason = '';
+
   // 1) 内容 hash（用于内容级去重，best-effort；从 R2 拉字节计算，失败忽略）
   let hash = null;
   try {
@@ -61,14 +71,31 @@ async function processTask({ url, r2Key, category, bytes, isPublic }) {
     // 唯一索引冲突（重复写入）视为成功，忽略
     if (!/unique|duplicate/i.test(e && e.message || '')) {
       console.error('[uploadQueue] recordMedia 失败', url, e && e.message);
+      failed = true;
+      failReason = 'media 写入失败: ' + (e && e.message || e);
     }
   }
 
   // 3) 联动相册：把仍处于 processing 的相册行翻为 ready（图片已可用，仅元数据待补全）
+  //    若翻转失败（异步任务真正报错），将该相册标记为 failed，前端可见红色「处理失败」提示
   try {
     await run(`UPDATE albums SET status = 'ready' WHERE photo_url = ? AND status = 'processing'`, [url]);
   } catch (e) {
+    failed = true;
+    failReason = '相册状态翻转失败: ' + (e && e.message || e);
     console.error('[uploadQueue] 相册状态翻转失败', url, e && e.message);
+    try {
+      await run(`UPDATE albums SET status = 'failed' WHERE photo_url = ? AND status = 'processing'`, [url]);
+      console.error('[uploadQueue] 已将相册标记为 failed', url);
+    } catch (e2) {
+      console.error('[uploadQueue] 相册标记 failed 亦失败', url, e2 && e2.message);
+    }
+  }
+
+  if (failed) {
+    console.error('[uploadQueue] 任务处理存在错误（已尽量补救）', { url, failReason });
+  } else {
+    console.log('[uploadQueue] 任务处理完成', { url });
   }
 }
 

@@ -21,6 +21,9 @@ export default function WorkDetail() {
   const [cats, setCats] = useState([]);
   const [work, setWork] = useState(null);
   const [albums, setAlbums] = useState([]);
+  // 图片加载失败（onError）兜底集合：记录已裂图的相册 id，渲染占位而非空白框
+  const [brokenSet, setBrokenSet] = useState(new Set());
+  const brokenSetRef = useRef(new Set());
   const [zone, setZone] = useState('sample');
   const [loading, setLoading] = useState(id === 'new' ? false : true);
   const [saving, setSaving] = useState(false);
@@ -36,6 +39,7 @@ export default function WorkDetail() {
   const [warming, setWarming] = useState(false);
   const warmingRef = useRef(false);
   const reloadCountRef = useRef(0); // 处理中相册自动重试刷新计数（防无限循环）
+  const pollTimeoutShownRef = useRef(false); // 轮询达上限「部分图片处理超时」仅提示一次
   const pauseRef = useRef(false);
   const rowsRef = useRef([]);
   const toUploadRef = useRef([]);
@@ -68,10 +72,46 @@ export default function WorkDetail() {
         album_expires_at: w.album_expires_at || ''
       });
       // 后端 /api/works/:id 已同时返回 albums，避免再发一次请求
-      setAlbums(r.data.albums || []);
+      const initialAlbums = r.data.albums || [];
+      setAlbums(initialAlbums);
+      // 首次进入若即存在「处理中」相册，同样开启轻量轮询（否则会一直显示处理中蒙层）
+      checkAndPoll(initialAlbums);
     } catch (e) {
       alert('加载作品失败');
     }
+  }
+
+  // 轮询参数：每 2 秒拉一次，最多 20 次（约 40s），到达上限提示超时，绝不无限轮询
+  const POLL_INTERVAL = 2000;
+  const POLL_MAX = 20;
+
+  // 标记某张相册图加载失败（onError 兜底），渲染占位图而非空白框
+  function markBroken(aid) {
+    if (brokenSetRef.current.has(aid)) return;
+    const n = new Set(brokenSetRef.current);
+    n.add(aid);
+    brokenSetRef.current = n;
+    setBrokenSet(n);
+  }
+
+  // 是否还有「处理中」相册：有则安排下一次轮询
+  function checkAndPoll(items) {
+    if ((items || []).some((a) => a.status === 'processing')) {
+      schedulePoll();
+    }
+  }
+
+  function schedulePoll() {
+    if (reloadCountRef.current >= POLL_MAX) {
+      // 已达上限仍有处理中：提示超时（仅一次），停止轮询
+      if (!pollTimeoutShownRef.current) {
+        pollTimeoutShownRef.current = true;
+        alert('部分图片处理超时');
+      }
+      return;
+    }
+    reloadCountRef.current += 1;
+    setTimeout(() => loadAlbums(), POLL_INTERVAL);
   }
 
   async function loadAlbums() {
@@ -79,14 +119,12 @@ export default function WorkDetail() {
       const r = await http.get('/api/works/' + id + '/albums');
       const items = r.data.items || [];
       setAlbums(items);
-      // 若有「处理中」相册（后台异步队列尚未完成），短暂后自动重试刷新，直至全部 ready
-      const hasProcessing = items.some((a) => a.status === 'processing');
-      if (hasProcessing && reloadCountRef.current < 8) {
-        reloadCountRef.current += 1;
-        setTimeout(() => loadAlbums(), 2500);
-      }
+      // 控制台打印每张图片完整 url，方便排查 404（需求：url 为空 / 裂图定位）
+      items.forEach((a) => console.log('[WorkDetail] album photo', a.id, 'status=', a.status, 'url=', a.photo_url));
+      // 有「处理中」相册（后台异步队列尚未完成）→ 轻量轮询，直至全部 ready
+      checkAndPoll(items);
     } catch (e) {
-      console.error(e);
+      console.error('[WorkDetail] 获取相册列表失败', e);
     }
   }
 
@@ -284,6 +322,7 @@ export default function WorkDetail() {
     const toUpload = uploadPreviews.filter((p) => !p.dup && !p.error && !p.oversize);
     if (!toUpload.length) { setUploadOpen(false); return; }
     reloadCountRef.current = 0; // 新一轮上传，允许处理中状态自动刷新
+    pollTimeoutShownRef.current = false; // 重置超时提示，避免历史提示干扰新一批
     setUploading(true);
     setOverallPct(0);
     setPaused(false);
@@ -664,7 +703,13 @@ export default function WorkDetail() {
               </div>
             ) : (
               <div className={`grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3 ${reordering ? 'opacity-60' : ''}`}>
-                {zoneAlbums.map((a) => (
+                {zoneAlbums.map((a) => {
+                  const src = img(a.photo_url); // falsy → 空字符串，下面走占位兜底
+                  const broken = brokenSet.has(a.id);
+                  const noUrl = !a.photo_url; // url 为空 → 异常 UI
+                  const isProcessing = a.status === 'processing';
+                  const isFailed = a.status === 'failed'; // 异步任务失败 → 红色提示
+                  return (
                   <div
                     key={a.id}
                     draggable
@@ -674,21 +719,41 @@ export default function WorkDetail() {
                     onDragEnd={() => { setDraggedId(null); setDragOverId(null); }}
                     className={`group relative border rounded-xl2 overflow-hidden bg-ink cursor-grab active:cursor-grabbing select-none
                       ${selected.has(a.id) ? 'border-brand ring-1 ring-brand' : dragOverId === a.id ? 'border-brand ring-2 ring-brand' : 'border-line'}
-                      ${draggedId === a.id ? 'opacity-40' : ''}`}
+                      ${draggedId === a.id ? 'opacity-40' : ''}
+                      ${isFailed ? 'border-red-400' : ''}`}
                   >
-                    <div className="aspect-square pointer-events-none">
-                      <img src={img(a.photo_url)} loading="lazy" decoding="async" className="w-full h-full object-cover bg-ink" alt="" />
+                    <div className="aspect-square pointer-events-none relative">
+                      {src && !broken ? (
+                        <img src={src} loading="lazy" decoding="async" onError={() => markBroken(a.id)} className="w-full h-full object-cover bg-ink" alt="" />
+                      ) : (
+                        // url 为空 / 裂图：灰色占位，杜绝空白框；文案区分原因
+                        <div className="w-full h-full flex items-center justify-center bg-ink text-[11px] text-muted px-1 text-center leading-tight">
+                          {noUrl ? '无图片地址' : '图片加载失败'}
+                        </div>
+                      )}
                     </div>
-                    {/* 处理中状态：图片已可用，覆盖「处理中」徽标（不阻塞继续上传） */}
-                    {a.status === 'processing' && (
+                    {/* 处理中状态：图片已可用，覆盖「图片处理中…」徽标（不阻塞继续上传） */}
+                    {isProcessing && (
                       <div className="absolute inset-0 flex items-center justify-center bg-black/35 pointer-events-none">
                         <span className="px-2 py-1 rounded bg-black/70 text-white text-[11px] flex items-center gap-1">
                           <svg className="animate-spin h-3 w-3" viewBox="0 0 24 24" fill="none">
                             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
                           </svg>
-                          处理中
+                          图片处理中…
                         </span>
+                      </div>
+                    )}
+                    {/* 异步任务失败：红色提示 + 重新上传入口（可见，不空白消失） */}
+                    {isFailed && (
+                      <div className="absolute inset-0 flex items-center justify-center bg-red-500/15 pointer-events-none">
+                        <div className="flex flex-col items-center gap-1">
+                          <span className="px-2 py-1 rounded bg-red-500 text-white text-[11px] text-center leading-tight">处理失败<br />可重新上传</span>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); onUploadClick(); }}
+                            className="pointer-events-auto px-2 py-0.5 rounded bg-white text-red-500 text-[11px] border border-red-500"
+                          >重新上传</button>
+                        </div>
                       </div>
                     )}
                     {/* 选中遮罩 */}
@@ -708,7 +773,8 @@ export default function WorkDetail() {
                       <input type="number" defaultValue={a.sort} onBlur={(e) => updateSort(a.id, e.target.value)} className="w-12 px-1 py-0.5 rounded text-[10px] text-fg bg-white text-center" />
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             )}
             {zoneAlbums.length > 1 && (
