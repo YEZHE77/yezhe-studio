@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import http, { img, debounce } from '../api.js';
 import { useViewState } from '../tabMemory.js';
@@ -8,29 +8,7 @@ export default function Works() {
   const [state, setState] = useViewState('works', { tab: '', q: '', vis: '', page: 1 });
   const [cats, setCats] = useState([]);
   const [data, setData] = useState({ items: [], total: 0, pageSize: 12 });
-  const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState(emptyForm());
-  const [pendingFiles, setPendingFiles] = useState([]);
-  const [uploading, setUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
-  const [uploadZone, setUploadZone] = useState('sample');
-  const abortRef = useRef(null);
-  const fileInputRef = useRef(null);
-  const folderInputRef = useRef(null);
   const [workShare, setWorkShare] = useState(null); // 作品分享相册 {open, workId, title, result, busy}
-
-  function emptyForm() {
-    return { title: '', category_ids: [], is_public: true, allow_download: false, cover: null, cover_url: '', description: '', tags: '' };
-  }
-
-  // 切换作品分类勾选（可多选）
-  function toggleCat(id) {
-    setForm((f) => {
-      const set = new Set(f.category_ids.map(String));
-      if (set.has(String(id))) set.delete(String(id)); else set.add(String(id));
-      return { ...f, category_ids: Array.from(set) };
-    });
-  }
 
   // 作品分享相册：生成公开分享令牌（type=work）→ 沉浸式相册二维码 + 链接
   function openWorkShare(w) {
@@ -77,6 +55,19 @@ export default function Works() {
     return () => ctrl.abort();
   }, [state]);
 
+  // 重新拉取列表（删除 / 切换公开状态后）
+  async function reload() {
+    const ctrl = new AbortController();
+    const p = new URLSearchParams();
+    if (state.tab) p.set('category', state.tab);
+    if (state.q) p.set('q', state.q);
+    if (state.vis === '1') p.set('is_public', '1');
+    if (state.vis === '0') p.set('is_public', '0');
+    p.set('page', state.page);
+    p.set('pageSize', data.pageSize || 12);
+    http.get('/api/works?' + p.toString(), { signal: ctrl.signal }).then((r) => setData(r.data)).catch(() => {});
+  }
+
   async function toggleDownload(w, e) {
     e.stopPropagation();
     try {
@@ -94,53 +85,8 @@ export default function Works() {
     }
   }
 
-  const openNew = () => {
-    setForm(emptyForm());
-    setPendingFiles([]);
-    setUploading(false);
-    setUploadProgress(0);
-    setUploadZone('sample');
-    setShowForm(true);
-  };
-
-  function handleFiles(e) {
-    const files = Array.from(e.target.files || []).filter((f) => f.type.startsWith('image/'));
-    if (!files.length) return;
-    setPendingFiles(files);
-    e.target.value = '';
-  }
-
-  function cancelUpload() {
-    if (abortRef.current) abortRef.current.abort();
-  }
-
-  async function submit(e) {
-    e.preventDefault();
-
-    // 新建作品组：仅保存作品元数据，不在弹窗内上传照片；
-    // 保存成功后关闭弹窗，直接跳转至作品详情编辑页，并在详情页自动打开批量上传区域。
-    const tags = (form.tags || '').split(/[、,，\s]+/).map((s) => s.trim()).filter(Boolean);
-    const payload = {
-      title: form.title,
-      category_ids: form.category_ids,
-      is_public: form.is_public,
-      allow_download: form.allow_download,
-      cover_url: '',
-      description: form.description || '',
-      tags
-    };
-    try {
-      const r = await http.post('/api/works', payload);
-      const workId = r.data.id;
-      setShowForm(false);
-      setPendingFiles([]);
-      setUploadProgress(0);
-      // 携带 openUpload 状态跳转，详情页挂载后自动聚焦批量上传区域
-      navigate('/works/' + workId, { state: { openUpload: true } });
-    } catch (e) {
-      alert((e.response && e.response.data && e.response.data.error) || '保存失败');
-    }
-  }
+  // 新流程：点击「+ 新建作品组」不再弹窗，直接进入作品详情编辑页（页面式新建）
+  const openNew = () => navigate('/works/new');
 
   async function remove(w, e) {
     e.stopPropagation();
@@ -238,91 +184,6 @@ export default function Works() {
             <button key={i} onClick={() => goPage(i + 1)}
               className={'w-8 h-8 rounded text-sm border ' + (data.page === i + 1 ? 'bg-brand text-white border-brand' : 'bg-panel border-line text-muted')}>{i + 1}</button>
           ))}
-        </div>
-      )}
-
-      {/* 新建作品弹窗 */}
-      {showForm && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50" onClick={() => { if (!uploading) setShowForm(false); }}>
-          <form onClick={(e) => e.stopPropagation()} onSubmit={submit}
-            className="w-96 bg-panel border border-line rounded-xl2 p-6">
-            <div className="text-fg font-medium mb-4">新建作品组</div>
-            <input required value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })}
-              placeholder="作品标题" className="w-full mb-3 px-3 py-2 rounded bg-ink border border-line text-fg text-sm outline-none" />
-            <div className="mb-3">
-              <div className="text-sm text-fg mb-1.5">作品分类（可多选）</div>
-              {cats.length === 0 ? (
-                <div className="text-xs text-muted">暂无分类，可在「分类管理」中新增</div>
-              ) : (
-                <div className="flex flex-wrap gap-2">
-                  {cats.map((c) => {
-                    const on = form.category_ids.map(String).includes(String(c.id));
-                    return (
-                      <button type="button" key={c.id} onClick={() => toggleCat(c.id)}
-                        className={'px-3 py-1.5 rounded-full text-sm border transition ' + (on ? 'bg-brand text-white border-brand' : 'bg-ink border-line text-muted hover:border-brand')}>
-                        {c.name}
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-            <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="作品描述（选填）"
-              className="w-full mb-3 px-3 py-2 rounded bg-ink border border-line text-fg text-sm outline-none h-16" />
-            <input value={form.tags} onChange={(e) => setForm({ ...form, tags: e.target.value })} placeholder="标签，用顿号分隔（选填）"
-              className="w-full mb-3 px-3 py-2 rounded bg-ink border border-line text-fg text-sm outline-none" />
-            <label className="flex items-center gap-2 text-sm text-fg mb-4">
-              <input type="checkbox" checked={form.is_public} onChange={(e) => setForm({ ...form, is_public: e.target.checked })} /> 对外公开展示
-            </label>
-            <label className="flex items-center gap-2 text-sm text-fg mb-4">
-              <input type="checkbox" checked={form.allow_download} onChange={(e) => setForm({ ...form, allow_download: e.target.checked })} /> 允许客户下载成片（小程序相册）
-            </label>
-
-            {/* 批量/文件夹上传 */}
-            <div className="mb-3">
-              <label className="block text-sm text-fg mb-1.5">上传照片</label>
-              <select value={uploadZone} onChange={(e) => setUploadZone(e.target.value)}
-                disabled={uploading}
-                className="w-full mb-2 px-3 py-2 rounded bg-ink border border-line text-fg text-sm outline-none disabled:opacity-60">
-                <option value="sample">样片（对外展示）</option>
-                <option value="local">原片（仅后台可见）</option>
-                <option value="final">成片（交付客户）</option>
-              </select>
-              <div className="flex gap-2 mb-2">
-                <label className="flex-1 text-center px-3 py-2 rounded bg-panel border border-line text-sm text-fg cursor-pointer hover:bg-brand/5 disabled:opacity-60">
-                  选择多张照片
-                  <input ref={fileInputRef} type="file" accept="image/*" multiple className="hidden" onChange={handleFiles} disabled={uploading} />
-                </label>
-                <label className="flex-1 text-center px-3 py-2 rounded bg-panel border border-line text-sm text-fg cursor-pointer hover:bg-brand/5 disabled:opacity-60">
-                  选择文件夹
-                  <input ref={folderInputRef} type="file" accept="image/*" webkitdirectory="" className="hidden" onChange={handleFiles} disabled={uploading} />
-                </label>
-              </div>
-              {pendingFiles.length > 0 && (
-                <div className="text-xs text-muted mb-2">
-                  已选 <span className="text-fg font-medium">{pendingFiles.length}</span> 张照片，第一张自动作为作品封面
-                </div>
-              )}
-              {uploading && (
-                <div className="mt-2">
-                  <div className="flex items-center justify-between text-xs text-muted mb-1">
-                    <span>上传中 {uploadProgress}%</span>
-                    <button type="button" onClick={cancelUpload} className="text-red-500 hover:underline">取消</button>
-                  </div>
-                  <div className="w-full h-1.5 bg-ink rounded overflow-hidden">
-                    <div className="h-full bg-brand transition-all" style={{ width: uploadProgress + '%' }} />
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <div className="flex gap-2 justify-end">
-              <button type="button" onClick={() => setShowForm(false)} disabled={uploading} className="px-4 py-2 rounded text-sm text-muted disabled:opacity-60">取消</button>
-              <button type="submit" disabled={uploading} className="px-4 py-2 rounded bg-brand text-white text-sm disabled:opacity-60">
-                {uploading ? '上传中…' : '保存并上传照片'}
-              </button>
-            </div>
-          </form>
         </div>
       )}
 

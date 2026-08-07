@@ -14,6 +14,7 @@ export default function WorkDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
+  const isNew = id === 'new'; // 页面式新建：直接进入编辑页，空白表单创建作品
   const fileRef = useRef(null);
   const uploadAreaRef = useRef(null);
 
@@ -21,7 +22,7 @@ export default function WorkDetail() {
   const [work, setWork] = useState(null);
   const [albums, setAlbums] = useState([]);
   const [zone, setZone] = useState('sample');
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(id === 'new' ? false : true);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadText, setUploadText] = useState('');
@@ -90,6 +91,8 @@ export default function WorkDetail() {
   }
 
   async function loadAll() {
+    // 新建模式：无作品可加载，直接用空白表单进入编辑页（避免请求 /api/works/new 404）
+    if (isNew) { setLoading(false); return; }
     setLoading(true);
     await loadWork();
     setLoading(false);
@@ -117,24 +120,41 @@ export default function WorkDetail() {
 
   async function saveBasic(e) {
     e.preventDefault();
+    if (!form.title.trim()) { alert('请填写作品标题'); return; }
     setSaving(true);
     try {
       const tags = (form.tags || '').split(/[、,，\s]+/).map((s) => s.trim()).filter(Boolean);
-      await http.put('/api/works/' + id, {
+      const payload = {
         title: form.title,
         category_ids: form.category_ids,
         is_public: form.is_public,
         allow_download: form.allow_download,
-        cover_url: work.cover_url || '',
         tags,
-        is_private: !!work.is_private,
-        blessing: work.blessing || '',
-        live: !!work.live,
-        order_id: work.order_id || null,
         album_copy: form.album_copy || '',
         album_password_enabled: form.album_password_enabled,
-        album_password: form.album_password || '', // 空字符串 → 后端保留原密码
+        album_password: form.album_password || '', // 空字符串 → 新建无密码 / 编辑保留原密码
         album_expires_at: form.album_expires_at || ''
+      };
+      if (isNew) {
+        // 新建：创建作品（其余字段后端取默认值），成功后跳转至编辑态（replace 历史，使返回直达列表）
+        const r = await http.post('/api/works', {
+          ...payload,
+          cover_url: '', is_private: false, description: '', blessing: '', live: false, customer_name: '', order_id: null
+        });
+        alert('作品创建成功，可继续上传照片');
+        navigate('/works/' + r.data.id, { replace: true });
+        return;
+      }
+      // 编辑：保留作品本身字段（封面 / 关联订单等），仅更新表单字段
+      await http.put('/api/works/' + id, {
+        ...payload,
+        cover_url: work.cover_url || '',
+        is_private: !!work.is_private,
+        description: work.description || '',
+        blessing: work.blessing || '',
+        live: !!work.live,
+        customer_name: work.customer_name || '',
+        order_id: work.order_id || null
       });
       await loadWork();
       alert('保存成功');
@@ -143,8 +163,15 @@ export default function WorkDetail() {
     } finally { setSaving(false); }
   }
 
+  // 新建模式下尚未保存基本信息时，拦截批量上传并提示
+  function onUploadClick() {
+    if (isNew) { alert('请先保存作品基本信息，再上传照片'); return; }
+    if (fileRef.current) fileRef.current.click();
+  }
+
   // 选图后立即：①拉取本相册已存在签名；②读取每张原图 name+size 生成签名；③标记重复项；④打开预览弹窗
   async function onPickFiles(e) {
+    if (isNew) return; // 防御：新建未保存时上传按钮已拦截，此处兜底避免请求 /api/works/new
     const files = e.target.files;
     if (!fileRef.current) return;
     if (!files || !files.length) return;
@@ -487,10 +514,10 @@ export default function WorkDetail() {
       <div className="flex items-center justify-between mb-5">
         <div className="flex items-center gap-3">
           <button onClick={() => navigate('/works')} className="px-3 py-1.5 rounded border border-line text-sm text-muted hover:text-brand hover:border-brand">← 返回作品列表</button>
-          <h1 className="text-xl font-semibold text-fg">{work.title}</h1>
-          <span className="text-xs px-2 py-0.5 rounded bg-panel border border-line text-muted">{work.is_public ? '公开' : '私密'}</span>
+          <h1 className="text-xl font-semibold text-fg">{isNew ? '新建作品' : work.title}</h1>
+          {!isNew && <span className="text-xs px-2 py-0.5 rounded bg-panel border border-line text-muted">{work.is_public ? '公开' : '私密'}</span>}
         </div>
-        <button onClick={removeWork} className="px-3 py-1.5 rounded border border-red-200 text-red-500 text-sm hover:bg-red-50">删除作品</button>
+        {!isNew && <button onClick={removeWork} className="px-3 py-1.5 rounded border border-red-200 text-red-500 text-sm hover:bg-red-50">删除作品</button>}
       </div>
 
       <div className="grid lg:grid-cols-3 gap-5">
@@ -553,7 +580,7 @@ export default function WorkDetail() {
                       onChange={(e) => setForm({ ...form, album_password: e.target.value.replace(/\D/g, '').slice(0, 6) })}
                       placeholder="请输入 6 位数字"
                       className="w-full px-3 py-2 rounded bg-ink border border-line text-fg text-sm outline-none tracking-widest" />
-                    <div className="text-[11px] text-muted mt-1">{work.album_password_set ? '已设置密码 · 留空则保持当前密码' : '尚未设置密码 · 保存前请先录入'}</div>
+                    <div className="text-[11px] text-muted mt-1">{(work && work.album_password_set) ? '已设置密码 · 留空则保持当前密码' : '尚未设置密码 · 保存前请先录入'}</div>
                   </div>
                 )}
                 <div className="mt-3">
@@ -566,7 +593,7 @@ export default function WorkDetail() {
             <button type="submit" disabled={saving} className="mt-5 w-full px-4 py-2 rounded bg-brand text-white text-sm hover:opacity-90 disabled:opacity-60">{saving ? '保存中…' : '保存基本信息'}</button>
           </form>
 
-          {work.cover_url && (
+          {work?.cover_url && (
             <div className="bg-panel border border-line rounded-xl2 p-5">
               <h2 className="text-base font-semibold text-fg mb-3">当前封面</h2>
               <img src={img(work.cover_url)} loading="lazy" decoding="async" className="w-full h-40 object-cover rounded bg-ink" alt="封面" />
@@ -585,7 +612,7 @@ export default function WorkDetail() {
               <div className="flex items-center gap-2">
                 <button onClick={openSlide} disabled={!zoneAlbums.length} className="px-4 py-2 rounded border border-line text-sm text-fg hover:text-brand hover:border-brand disabled:opacity-40">▶ 播放幻灯片</button>
                 <input ref={fileRef} type="file" accept="image/*" multiple className="hidden" onChange={onPickFiles} />
-                <button onClick={() => fileRef.current && fileRef.current.click()} disabled={uploading || preparing} className="px-4 py-2 rounded bg-brand text-white text-sm hover:opacity-90 disabled:opacity-60">{uploading ? `上传中 ${overallPct}%` : preparing ? '准备中…' : '+ 批量上传'}</button>
+                <button onClick={onUploadClick} disabled={uploading || preparing} className="px-4 py-2 rounded bg-brand text-white text-sm hover:opacity-90 disabled:opacity-60">{uploading ? `上传中 ${overallPct}%` : preparing ? '准备中…' : '+ 批量上传'}</button>
                 {uploading && (
                   <button onClick={togglePause} className="px-3 py-2 rounded border border-line text-sm text-muted hover:text-brand">{paused ? '继续' : '暂停'}</button>
                 )}
