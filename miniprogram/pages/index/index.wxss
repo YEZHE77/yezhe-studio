@@ -130,13 +130,12 @@ page { background: #f8f6f2; }
 .masonry-col { flex: 1 1 0; min-width: 0; padding: 0 12rpx; display: flex; flex-direction: column; }
 .grid-item {
   width: 100%; margin-bottom: 24rpx; border-radius: 20rpx;
-  overflow: hidden; background: #fff;
+  overflow: hidden; background: transparent;
 }
 /* widthFix：按图片原始比例展示，不裁切摄影画面；卡片间距 24rpx */
 .grid-cover { width: 100%; display: block; }
-/* 图片下方独立纯白文字区（不叠加在照片上，纯白底、文字清晰可读） */
+/* 图片下方独立文字区（不叠加在照片上，无白底、跟随页面米白底色） */
 .grid-cap {
-  background: #fff;
   padding: 0 18rpx 18rpx;
 }
 .grid-title {
