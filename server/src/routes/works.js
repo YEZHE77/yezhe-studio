@@ -6,6 +6,7 @@ import { parseRow } from '../schema.js';
 import { authRequired, hashPassword, peekUser } from '../auth.js';
 import { buildWorkAlbum, albumLockState } from './share.js';
 import { deleteFromR2 } from '../storage.js';
+import { enqueueUploadJob } from '../uploadQueue.js';
 
 const router = Router();
 
@@ -275,16 +276,32 @@ router.post('/:id/albums', authRequired, async (req, res) => {
     const max = await get('SELECT COALESCE(MAX(sort), -1) AS m FROM albums WHERE work_id = ? AND zone = ?', [req.params.id, zone]);
     let sort = (max.m ?? -1) + 1;
     const inserted = [];
+    // 相册分区 → Worker type 枚举（与前端 ZONE_CAT 对齐）
+    const ZONE_TYPE = { sample: 'client', local: 'negative', final: 'retouched' };
+    const ZONE_PUB = { sample: true, local: false, final: false };
     for (const it of items) {
       const url = typeof it === 'string' ? it : it.url;
       if (!url) continue;
       const originalName = (it && it.originalName != null) ? String(it.originalName) : null;
       const originalSize = (it && it.size != null) ? Number(it.size) : null;
+      // 后台处理是否已完成（media 表 ready 即视为可正常展示）
+      const m = await get('SELECT status FROM media WHERE url = ?', [url]);
+      const albumStatus = (m && m.status === 'ready') ? 'ready' : 'processing';
       const id = await insert(
-        'INSERT INTO albums (work_id, zone, photo_url, sort, original_name, original_size) VALUES (?,?,?,?,?,?)',
-        [req.params.id, zone, url, sort++, originalName, originalSize]
+        'INSERT INTO albums (work_id, zone, photo_url, sort, original_name, original_size, status) VALUES (?,?,?,?,?,?,?)',
+        [req.params.id, zone, url, sort++, originalName, originalSize, albumStatus]
       );
       inserted.push(id);
+      // 若后台尚未处理完（media 不存在/未 ready），兜底入队，确保相册状态最终翻为 ready
+      if (!m || m.status !== 'ready') {
+        enqueueUploadJob({
+          url,
+          r2Key: null,
+          category: ZONE_TYPE[zone] || 'client',
+          bytes: originalSize || 0,
+          isPublic: ZONE_PUB[zone] || false
+        });
+      }
     }
     res.json({ ok: true, ids: inserted });
   } catch (e) { res.status(500).json({ error: e.message }); }

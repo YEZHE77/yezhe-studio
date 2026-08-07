@@ -244,10 +244,25 @@ function toType(cat) { return CATEGORY_TO_TYPE[cat] || 'uncategorized'; }
 //       拿到返回的 CDN-URL 后再提交给后端业务接口（registerMedia 登记容量统计）。
 //   - 变量为空 / undefined → 自动回退原有逻辑，继续走 Render 的 /api/upload 中转模式，保证降级可用。
 //
+// 上传性能埋点（需求：区分网络耗时 vs 后端阻塞）：
+//   uploadImage / uploadImageChunked 在上传完成后打印控制台日志：
+//     [upload] <文件名> localSize=<字节>B upload=<总上传耗时>ms ttfb=<后端等待耗时>ms
+//   ttfb = 从发起请求到「首个字节/首次进度」的等待（后端冷启动/处理阻塞会显著拉高）。
+//   registerMedia（容量统计登记）改为 fire-and-forget，不再阻塞上传关键路径。
+//
 // 【Render 环境变量配置示例】（在 Render 服务 Environment 里添加，或本地 client/.env）：
 //   VITE_UPLOAD_WORKER_URL=https://yezhe-img-proxy.yezhe128627.workers.dev/upload
 //   注：该地址为上传 Worker 的独立子域（cloudflare/wrangler.upload.toml 部署），不是只读代理域名；
 //       不配置此变量时自动降级为后端中转，无需改动任何业务代码。
+
+// 上传耗时埋点：统一打印控制台日志
+function logUploadTiming(label, fileSize, t0, tFirst, tEnd) {
+  const elapsed = Math.round(tEnd - t0);
+  const ttfb = Math.round((tFirst && tFirst > 0 ? tFirst - t0 : elapsed));
+  // eslint-disable-next-line no-console
+  console.log(`[upload] ${label} localSize=${fileSize}B upload=${elapsed}ms ttfb=${ttfb}ms`);
+  return { ttfb, elapsed };
+}
 //
 // 无论走哪条路径，都会在拿到 URL 后登记 media 元数据（按业务分类汇聚容量统计）。
 // opts: { category, isPublic, onProgress, signal }
@@ -255,10 +270,14 @@ export async function uploadImage(file, opts = {}) {
   const { category = 'uncategorized', isPublic = false, onProgress, signal, metaName, metaSize } = opts;
   // 需求 D：压缩小样单张 >2MB 走分片上传（断点续传 + 2 次自动重试 + 聚合单图进度）
   if (file && file.size > 2 * 1024 * 1024) {
-    return uploadImageChunked(file, opts);
+    const r = await uploadImageChunked(file, opts);
+    return r;
   }
   const type = toType(category);
   const workerUrl = import.meta.env.VITE_UPLOAD_WORKER_URL;
+  const t0 = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+  let tFirst = 0;
+  const markFirst = () => { if (!tFirst) tFirst = (typeof performance !== 'undefined' ? performance.now() : Date.now()); };
   let url;
   if (workerUrl) {
     const token = await getUploadToken();
@@ -272,11 +291,13 @@ export async function uploadImage(file, opts = {}) {
         xhr.open('POST', workerUrl);
         if (token) xhr.setRequestHeader('Authorization', 'Bearer ' + token);
         xhr.upload.onprogress = (e) => {
+          markFirst();
           if (onProgress && e.lengthComputable) onProgress(Math.round((e.loaded / e.total) * 100));
         };
         const onAbort = () => xhr.abort();
         if (signal) signal.addEventListener('abort', onAbort);
         xhr.onload = () => {
+          markFirst();
           if (signal) signal.removeEventListener('abort', onAbort);
           if (xhr.status >= 200 && xhr.status < 300) {
             try { resolve(JSON.parse(xhr.responseText).url); }
@@ -288,6 +309,7 @@ export async function uploadImage(file, opts = {}) {
           }
         };
         xhr.onerror = () => {
+          markFirst();
           if (signal) signal.removeEventListener('abort', onAbort);
           reject(new Error('Worker 上传网络错误: ' + workerUrl));
         };
@@ -309,17 +331,20 @@ export async function uploadImage(file, opts = {}) {
       signal,
       headers: { 'Content-Type': 'multipart/form-data' },
       onUploadProgress: (e) => {
+        markFirst();
         if (onProgress && e.total) onProgress(Math.round((e.loaded / e.total) * 100));
       }
     });
     url = data.url;
   }
-  // 用规范枚举登记 media，保证容量统计分类一致
-  await registerMedia(url, type, file.size, isPublic);
+  const tEnd = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+  const timing = logUploadTiming(metaName || file.name, file.size, t0, tFirst, tEnd);
+  // 容量统计登记（fire-and-forget，绝不阻塞上传关键路径）
+  registerMedia(url, type, file.size, isPublic).catch(() => {});
   // 返回文件名 + 字节数，供前端去重签名（originalName_size）使用。
   // 压缩会改变文件名（如 .png→.jpg）与字节数，故允许调用方传入 metaName/metaSize
   // 携带【压缩前】的原始文件名与字节，确保去重签名与首次上传时存库的一致。
-  return { url, name: metaName ?? file.name, size: metaSize ?? file.size };
+  return { url, name: metaName ?? file.name, size: metaSize ?? file.size, timing };
 }
 
 // ---- 需求 D：分片上传（压缩小样单张 >2MB 启用） ----
@@ -362,6 +387,9 @@ export async function uploadImageChunked(file, opts = {}) {
   const uploadId = genUploadId();
   const ext = '.' + ((file.name.split('.').pop() || 'jpg').toLowerCase());
   const totalParts = Math.max(1, Math.ceil(file.size / CHUNK_SIZE));
+  const t0 = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+  let tFirst = 0;
+  const markFirst = () => { if (!tFirst) tFirst = (typeof performance !== 'undefined' ? performance.now() : Date.now()); };
   // 断点续传：先查该 uploadId 已存在的分片（切网络/后台回来可续，已传分片不重复传）
   const uploaded = new Set();
   try {
@@ -386,6 +414,7 @@ export async function uploadImageChunked(file, opts = {}) {
     await uploadOneChunk(uploadId, partNo, file.slice(start, end), {
       signal,
       onPartProgress: (pct) => {
+        markFirst();
         if (onProgress) {
           const cur = uploadedBytes + Math.round((pct / 100) * partSize);
           onProgress(Math.min(99, Math.round((cur / file.size) * 100)));
@@ -399,8 +428,11 @@ export async function uploadImageChunked(file, opts = {}) {
   const { data } = await http.post('/api/upload/complete', {
     uploadId, ext, category: type, isPublic: !!isPublic, totalParts
   }, { signal, timeout: 60000 });
-  await registerMedia(data.url, type, file.size, isPublic);
-  return { url: data.url, name: metaName ?? file.name, size: metaSize ?? file.size };
+  const tEnd = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+  const timing = logUploadTiming('(chunked) ' + (metaName || file.name), file.size, t0, tFirst, tEnd);
+  // 容量统计登记（fire-and-forget，绝不阻塞上传关键路径）
+  registerMedia(data.url, type, file.size, isPublic).catch(() => {});
+  return { url: data.url, name: metaName ?? file.name, size: metaSize ?? file.size, timing };
 }
 
 // 拉取某相册已存在图片的签名集合（originalName_size），用于上传前重复检测。

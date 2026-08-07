@@ -19,3 +19,6 @@ server/.env
 
 # 本地保活工作流（仅本地运行，绝不入库提交）
 .github/workflows/keepalive.yml
+
+# 项目记忆（WorkBuddy 内部数据，非代码）
+.workbuddy/

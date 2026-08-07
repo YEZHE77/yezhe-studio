@@ -79,15 +79,9 @@ export async function saveImage(file, zone = 'biz-works', meta = {}) {
     r2Key = key;
   }
 
-  // 记录媒资元数据（业务分类 / 字节数 / 是否公开）—— 容量统计来源，零 R2 遍历
-  await recordMedia({
-    url,
-    category: meta.category || 'uncategorized',
-    bytes: file.size || 0,
-    isPublic: !!meta.isPublic,
-    r2Key
-  });
-  return url;
+  // 注意：媒资元数据写入（容量统计）已移到后台异步队列（uploadQueue），
+  // 此处只负责「写入存储 + 返回 URL」，绝不阻塞上传响应。
+  return { url, r2Key, name };
 }
 
 // 真正删除底层对象（仅 R2），不碰 media 表。T-01：不再有本地磁盘对象。
@@ -153,13 +147,7 @@ export async function saveBuffer(buffer, ext, zone = 'biz-works', meta = {}) {
   }));
   const url = `${cfg.R2_WORKER_DOMAIN}/r2/${key}`;
   const r2Key = key;
-  await recordMedia({
-    url,
-    category: meta.category || 'uncategorized',
-    bytes: buffer.length || 0,
-    isPublic: !!meta.isPublic,
-    r2Key
-  });
+  // 媒资元数据写入已移交后台异步队列，此处仅返回写入结果，不阻塞。
   return { url, name, r2Key };
 }
 

@@ -8,6 +8,7 @@ import fs from 'node:fs';
 import { dialect, dataDir } from './db.js';
 import { initSchema } from './schema.js';
 import { saveImage } from './storage.js';
+import { enqueueUploadJob } from './uploadQueue.js';
 import { scheduleDailyBackup } from './backup.js';
 import { authRequired } from './auth.js';
 import { seedIfNeeded } from './seed.js';
@@ -60,7 +61,9 @@ app.post('/api/upload', authRequired, upload.single('file'), async (req, res) =>
         ? true
         : (req.body.isPublic === '1' || req.body.isPublic === 'true' || req.body.isPublic === true)
     };
-    const url = await saveImage(req.file, 'biz-works', meta);
+    const { url, r2Key } = await saveImage(req.file, 'biz-works', meta);
+    // Heavy 任务（媒资元数据 / hash / 相册状态）全部后台异步，立即返回前端
+    enqueueUploadJob({ url, r2Key, category: meta.category, bytes: req.file.size, isPublic: meta.isPublic });
     res.json({ url });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -82,11 +85,17 @@ app.post('/api/upload-multiple', authRequired, upload.array('files', 500), async
       isPublic: req.body.isPublic === '1' || req.body.isPublic === 'true' || req.body.isPublic === true
     };
     const urls = [];
+    const jobs = [];
     for (let i = 0; i < files.length; i += 3) {
       const batch = files.slice(i, i + 3);
-      const batchUrls = await Promise.all(batch.map((f) => saveImage(f, 'customer-demo', meta)));
-      urls.push(...batchUrls);
+      const batchRes = await Promise.all(batch.map((f) => saveImage(f, 'customer-demo', meta)));
+      for (let k = 0; k < batch.length; k++) {
+        urls.push(batchRes[k].url);
+        jobs.push({ url: batchRes[k].url, r2Key: batchRes[k].r2Key, category: meta.category, bytes: batch[k].size, isPublic: meta.isPublic });
+      }
     }
+    // 全部落库后统一入队，绝不阻塞响应
+    jobs.forEach((j) => enqueueUploadJob(j));
     res.json({ urls });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });

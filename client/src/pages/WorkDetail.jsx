@@ -31,6 +31,10 @@ export default function WorkDetail() {
   const [uploadRows, setUploadRows] = useState([]); // 与 toUpload 等长：{ name,size,progress,status,url,error }
   const [overallPct, setOverallPct] = useState(0);
   const [weakNet, setWeakNet] = useState(false);
+  // 冷启动提示：后端 TTFB 超过 3000ms 时显示「服务器唤醒中，请稍候」
+  const [warming, setWarming] = useState(false);
+  const warmingRef = useRef(false);
+  const reloadCountRef = useRef(0); // 处理中相册自动重试刷新计数（防无限循环）
   const pauseRef = useRef(false);
   const rowsRef = useRef([]);
   const toUploadRef = useRef([]);
@@ -72,7 +76,14 @@ export default function WorkDetail() {
   async function loadAlbums() {
     try {
       const r = await http.get('/api/works/' + id + '/albums');
-      setAlbums(r.data.items || []);
+      const items = r.data.items || [];
+      setAlbums(items);
+      // 若有「处理中」相册（后台异步队列尚未完成），短暂后自动重试刷新，直至全部 ready
+      const hasProcessing = items.some((a) => a.status === 'processing');
+      if (hasProcessing && reloadCountRef.current < 8) {
+        reloadCountRef.current += 1;
+        setTimeout(() => loadAlbums(), 2500);
+      }
     } catch (e) {
       console.error(e);
     }
@@ -216,6 +227,11 @@ export default function WorkDetail() {
         getPaused: () => pauseRef.current, // 大图分片上传时也可被暂停挂起
         onProgress: (pct) => updateRow(idx, { progress: pct })
       });
+      // 冷启动检测：后端 TTFB 超 3000ms 视为服务器唤醒中
+      if (r.timing && typeof r.timing.ttfb === 'number') {
+        if (r.timing.ttfb > 3000) { setWarming(true); warmingRef.current = true; }
+        else if (warmingRef.current) { setWarming(false); warmingRef.current = false; }
+      }
       updateRow(idx, { status: 'done', progress: 100, url: r.url });
       return true;
     } catch (e) {
@@ -240,6 +256,7 @@ export default function WorkDetail() {
   async function confirmUpload() {
     const toUpload = uploadPreviews.filter((p) => !p.dup && !p.error && !p.oversize);
     if (!toUpload.length) { setUploadOpen(false); return; }
+    reloadCountRef.current = 0; // 新一轮上传，允许处理中状态自动刷新
     setUploading(true);
     setOverallPct(0);
     setPaused(false);
@@ -635,6 +652,18 @@ export default function WorkDetail() {
                     <div className="aspect-square pointer-events-none">
                       <img src={img(a.photo_url)} loading="lazy" decoding="async" className="w-full h-full object-cover bg-ink" alt="" />
                     </div>
+                    {/* 处理中状态：图片已可用，覆盖「处理中」徽标（不阻塞继续上传） */}
+                    {a.status === 'processing' && (
+                      <div className="absolute inset-0 flex items-center justify-center bg-black/35 pointer-events-none">
+                        <span className="px-2 py-1 rounded bg-black/70 text-white text-[11px] flex items-center gap-1">
+                          <svg className="animate-spin h-3 w-3" viewBox="0 0 24 24" fill="none">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+                          </svg>
+                          处理中
+                        </span>
+                      </div>
+                    )}
                     {/* 选中遮罩 */}
                     {selected.has(a.id) && <div className="absolute inset-0 bg-brand/10 pointer-events-none" />}
                     {/* 操作层 */}
@@ -692,6 +721,15 @@ export default function WorkDetail() {
               <div className="mx-4 mt-3 px-3 py-2 rounded bg-amber-50 border border-amber-300 text-amber-700 text-xs flex items-center justify-between gap-2">
                 <span>⚠️ 检测到弱网，已自动重试；若持续失败请检查网络后单张重试。</span>
                 <button onClick={() => setWeakNet(false)} className="text-amber-700 font-medium shrink-0">知道了</button>
+              </div>
+            )}
+            {warming && (
+              <div className="mx-4 mt-3 px-3 py-2 rounded bg-blue-50 border border-blue-300 text-blue-700 text-xs flex items-center gap-2">
+                <svg className="animate-spin h-3.5 w-3.5 shrink-0" viewBox="0 0 24 24" fill="none">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+                </svg>
+                <span>服务器唤醒中，请稍候（Render 免费服务首次访问需数秒冷启动）…</span>
               </div>
             )}
             <div className="p-4 overflow-y-auto">

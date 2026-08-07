@@ -305,6 +305,12 @@ export async function initSchema() {
   // 小程序端无真实文件名（临时路径），由 wx.getFileInfo 取 size+digest，original_name 存 digest。
   await ensureColumn('albums', 'original_name', 'TEXT');
   await ensureColumn('albums', 'original_size', dialect === 'pg' ? 'BIGINT' : 'INTEGER');
+  // 异步上传：相册照片处理状态标记（'processing' 处理中 / 'ready' 正常），前端显示占位
+  await ensureColumn('albums', 'status', `TEXT NOT NULL DEFAULT 'ready'`);
+
+  // media 补列：处理状态（异步队列完成后置 ready）+ 内容 hash（内容级去重，best-effort）
+  await ensureColumn('media', 'status', `TEXT NOT NULL DEFAULT 'ready'`);
+  await ensureColumn('media', 'hash', 'TEXT');
 
   // categories 增量补列（is_active 启用/禁用、deleted 软删、preset 预设保护）
   await ensureColumn('categories', 'is_active', 'INTEGER NOT NULL DEFAULT 1');
