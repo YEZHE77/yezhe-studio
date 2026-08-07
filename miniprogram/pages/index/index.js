@@ -67,6 +67,8 @@ Page({
   },
 
   onPullDownRefresh() {
+    // 下拉刷新：重置选中分类为「全部」，再重新拉取
+    this.setData({ activeCat: 0 });
     this.loadAll().then(() => wx.stopPullDownRefresh());
   },
 

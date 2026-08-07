@@ -60,7 +60,7 @@
         <view class="work-info">
           <view class="work-title">{{item.customer_name || item.title}}</view>
           <view class="work-tag">#{{item.category_name || '作品'}}</view>
-        </view>
+r        </view>
       </view>
     </view>
 
