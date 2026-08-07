@@ -51,11 +51,13 @@
       </view>
     </scroll-view>
 
-    <!-- 作品网格：两列瀑布流，照片保持原比例（widthFix 不裁切），统一间距 -->
+    <!-- 作品网格：两列瀑布流，封面统一 5:7 比例 aspectFill 裁切，避免照片高低不平 -->
     <view class="masonry" wx:if="{{colLeft.length || colRight.length}}">
       <view class="masonry-col">
         <view class="grid-item" wx:for="{{colLeft}}" wx:key="id" bindtap="openWork" data-id="{{item.id}}">
-          <image class="grid-cover" src="{{item.cover}}" mode="widthFix" lazy-load />
+          <view class="grid-cover-wrap">
+            <image class="grid-cover" src="{{item.cover}}" mode="aspectFill" lazy-load />
+          </view>
           <view class="grid-cap">
             <text class="grid-title">{{item.customer_name || item.title}}</text>
             <text class="grid-tag">#{{item.category_name || '作品'}}</text>
@@ -64,7 +66,9 @@
       </view>
       <view class="masonry-col">
         <view class="grid-item" wx:for="{{colRight}}" wx:key="id" bindtap="openWork" data-id="{{item.id}}">
-          <image class="grid-cover" src="{{item.cover}}" mode="widthFix" lazy-load />
+          <view class="grid-cover-wrap">
+            <image class="grid-cover" src="{{item.cover}}" mode="aspectFill" lazy-load />
+          </view>
           <view class="grid-cap">
             <text class="grid-title">{{item.customer_name || item.title}}</text>
             <text class="grid-tag">#{{item.category_name || '作品'}}</text>

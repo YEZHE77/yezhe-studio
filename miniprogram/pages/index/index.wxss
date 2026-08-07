@@ -125,15 +125,19 @@ page { background: #ffffff; }
   background: var(--brand-green); border-radius: 4rpx;
 }
 
-/* 作品网格：两列瀑布流（按索引奇偶分列，高度自适应，照片保持原比例不裁切） */
+/* 作品网格：两列瀑布流（按索引奇偶分列），封面统一 5:7 比例 aspectFill 裁切，避免高低不平 */
 .masonry { display: flex; align-items: flex-start; margin: 8rpx -8rpx 0; }
 .masonry-col { flex: 1 1 0; min-width: 0; padding: 0 8rpx; display: flex; flex-direction: column; }
 .grid-item {
   width: 100%; margin-bottom: 16rpx; position: relative; border-radius: 0;
   overflow: hidden; background: transparent;
 }
-/* widthFix：按图片原始比例展示，不裁切摄影画面；统一间距 16rpx */
-.grid-cover { width: 100%; display: block; background: #eee; }
+/* 封面容器强制 5:7，aspectFill 居中裁剪，保证所有卡片等高 */
+.grid-cover-wrap {
+  width: 100%; position: relative; padding-bottom: 140%; /* 5:7 */
+  overflow: hidden; background: #eee;
+}
+.grid-cover { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: block; }
 /* 标题/标签移到照片下方（静态块，无浮层渐变遮罩）；深色文字跟随页面底色，不另起白底 */
 .grid-cap {
   padding: 16rpx 18rpx 18rpx;
