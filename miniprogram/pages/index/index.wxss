@@ -142,12 +142,12 @@ page { background: #f8f6f2; }
   row-gap: 40rpx;
 }
 .work-card { width: 100%; }
-/* 封面容器强制 4:3（padding-bottom:75%），圆角 8rpx（小圆角接近直角），overflow hidden；
+/* 封面容器强制 3:4 竖版（padding-bottom:133.33%），圆角 8rpx（小圆角接近直角），overflow hidden；
    图片 aspectFill 居中裁剪填满；无白色卡片外壳，页面底色米白直接铺底 */
 .work-cover-wrap {
   width: 100%;
   position: relative;
-  padding-bottom: 75%; /* 4:3 */
+  padding-bottom: 133.33%; /* 3:4 竖版 */
   border-radius: 8rpx;
   overflow: hidden;
   background: #eee;
