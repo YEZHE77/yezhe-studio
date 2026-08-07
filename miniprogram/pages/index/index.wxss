@@ -103,16 +103,16 @@ page { background: #f8f6f2; }
   background: #eee;
 }
 
-/* 分割线底部 → 作品展示标题顶部：64rpx；左右 margin 32rpx，与 Tab/网格左右边界对齐 */
-.gallery { margin: 64rpx 32rpx 0; }
-/* 英文副标题：在上方，浅灰小字 28rpx/#999999；距主标题底部 16rpx */
-.gallery-sub {
-  font-size: 28rpx; color: #999999; line-height: 1.2;
-  margin-bottom: 16rpx;
-}
-/* 主标题「作品展示」：44rpx/#222/font-weight:500，左对齐与 Tab 视觉一致；距下方 Tab 48rpx */
+/* 分割线底部 → 作品展示标题顶部：收紧上方留白(40rpx，原64rpx)；左右 margin 32rpx，与 Tab/网格左右边界对齐 */
+.gallery { margin: 40rpx 32rpx 0; }
+/* 主标题「作品展示」：在上方，44rpx/#222/font-weight:500，左对齐与 Tab 视觉一致；距下方英文副标题 16rpx */
 .gallery-title {
   font-size: 44rpx; font-weight: 500; color: #222222; letter-spacing: 2rpx; line-height: 1.2;
+  margin-bottom: 16rpx;
+}
+/* 英文副标题：在中文主标题下方，浅灰小字 28rpx/#999999，左对齐；距下方 Tab 48rpx */
+.gallery-sub {
+  font-size: 28rpx; color: #999999; line-height: 1.2;
   margin-bottom: 48rpx;
 }
 
@@ -146,12 +146,12 @@ page { background: #f8f6f2; }
   background: #48c8b0; border-radius: 2rpx;
 }
 
-/* 作品网格：两列等宽、行对齐（非瀑布流），列 gap 24rpx、行 gap 48rpx；图片 widthFix 原比例、文字区固定高度 */
+/* 作品网格：两列等宽、行对齐（非瀑布流），列 gap 24rpx、行 gap 40rpx（收紧）；图片 widthFix 原比例、文字区固定高度 */
 .works-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   column-gap: 24rpx;
-  row-gap: 48rpx;
+  row-gap: 40rpx;
 }
 .work-card { width: 100%; }
 /* 封面容器：widthFix 原比例完整展示，不写死 4:3、不裁剪；圆角 8rpx，overflow hidden；

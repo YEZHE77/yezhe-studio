@@ -40,8 +40,8 @@
 
   <!-- 作品展示 -->
   <view class="gallery">
-    <view class="gallery-sub">Works Exhibition</view>
     <view class="gallery-title">作品展示</view>
+    <view class="gallery-sub">Works Exhibition</view>
 
     <!-- 分类标签：仅渲染「全部」+ 后端返回分类，不写死额外分类 -->
     <scroll-view class="cat-bar" scroll-x scroll-with-animation>
