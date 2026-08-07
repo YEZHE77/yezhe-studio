@@ -97,7 +97,7 @@ export default function WorkDetail() {
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewIndex, setPreviewIndex] = useState(0);
   // 封面裁剪
-  const [coverCrop, setCoverCrop] = useState({ open: false, file: null, aspect: 7 / 5, uploading: false });
+  const [coverCrop, setCoverCrop] = useState({ open: false, file: null, aspect: null, uploading: false });
   // 拖拽刚结束的瞬间拦截误触发预览点击
   const justDraggedRef = useRef(false);
 
@@ -510,13 +510,13 @@ export default function WorkDetail() {
     setPreviewOpen(true);
   }
   // 封面自定义裁剪
-  function openCoverCrop() { setCoverCrop({ open: true, file: null, aspect: 7 / 5, uploading: false }); }
+  function openCoverCrop() { setCoverCrop({ open: true, file: null, aspect: null, uploading: false }); }
   async function doCoverCrop(file) {
     setCoverCrop((c) => ({ ...c, uploading: true }));
     try {
       const url = await uploadImage(file, { isPublic: true });
       await setCover(url); // 内部已 loadWork + 提示
-      setCoverCrop({ open: false, file: null, aspect: 7 / 5, uploading: false });
+      setCoverCrop({ open: false, file: null, aspect: null, uploading: false });
     } catch (e) {
       alert('封面裁剪保存失败');
       setCoverCrop((c) => ({ ...c, uploading: false }));
@@ -1086,6 +1086,7 @@ export default function WorkDetail() {
               <div className="text-xs text-muted mb-2">上传新图片并裁剪</div>
               <div className="flex gap-2 mb-3 flex-wrap">
                 {[
+                  { label: '自由', v: null },
                   { label: '1:1', v: 1 },
                   { label: '4:3', v: 4 / 3 },
                   { label: '7:5', v: 7 / 5 },
@@ -1093,7 +1094,7 @@ export default function WorkDetail() {
                   { label: '16:9', v: 16 / 9 }
                 ].map((r) => (
                   <button key={r.label} onClick={() => setCoverCrop((c) => ({ ...c, aspect: r.v }))}
-                    className={`px-3 py-1.5 rounded border text-sm ${coverCrop.aspect === r.v ? 'border-brand text-brand' : 'border-line text-muted hover:text-fg'}`}>{r.label}</button>
+                    className={`px-3 py-1.5 rounded border text-sm ${coverCrop.aspect === r.v ? 'border-brand text-brand bg-brand/10' : 'border-line text-muted hover:text-fg'}`}>{r.label}</button>
                 ))}
               </div>
               {work?.cover_url && (
