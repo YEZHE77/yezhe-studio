@@ -180,6 +180,17 @@ function CleanupCard({ onCleaned }) {
     setSelected(s);
   };
 
+  const allSelected = list && list.list.length > 0 && selected.size === list.list.length;
+  const someSelected = selected.size > 0 && !allSelected;
+
+  const setSelectAll = (checked) => {
+    if (checked) {
+      setSelected(new Set(list.list.map((x) => x.id)));
+    } else {
+      setSelected(new Set());
+    }
+  };
+
   const exportList = () => {
     const rows = list.list.filter((x) => selected.has(x.id)).map((x) => ({
       url: x.url, category: x.category, label: x.label, bytes: x.bytes,
@@ -221,14 +232,30 @@ function CleanupCard({ onCleaned }) {
       {list && (
         <div className="flex-1 flex flex-col">
           <div className="text-xs text-muted mb-2">
-            {list.list.length} 张可清理 · 共 {formatBytes(list.totalBytes)} ·{' '}
+            仅展示未被任何封面/相册引用的废弃图片 ·{' '}
             <button onClick={scan} className="text-brand hover:underline">重新扫描</button>
           </div>
           <div className="border border-line rounded-lg max-h-56 overflow-auto">
             {list.list.length === 0 ? (
               <div className="text-sm text-muted p-4 text-center">未发现废弃图片，存储空间已整洁。</div>
             ) : (
-              list.list.map((x) => (
+              <>
+                <div className="sticky top-0 z-10 bg-panel2 border-b border-line px-3 py-2 flex items-center gap-2 text-xs text-muted">
+                  <input
+                    type="checkbox"
+                    checked={allSelected}
+                    ref={(el) => { if (el) el.indeterminate = someSelected; }}
+                    onChange={(e) => setSelectAll(e.target.checked)}
+                    className="accent-brand"
+                  />
+                  <span className="font-medium text-fg">
+                    {allSelected ? '已全选' : someSelected ? `已选 ${selected.size} 张` : '全选'}
+                  </span>
+                  <span className="ml-auto">
+                    共 {list.list.length} 张 · {formatBytes(list.totalBytes)}
+                  </span>
+                </div>
+                {list.list.map((x) => (
                 <label key={x.id} className="flex items-center gap-2 px-3 py-2 border-b border-line last:border-0 hover:bg-panel2 cursor-pointer text-sm">
                   <input type="checkbox" checked={selected.has(x.id)} onChange={() => toggle(x.id)} className="accent-brand" />
                   <span className="w-20 shrink-0 text-xs text-muted">{x.label}</span>
@@ -236,7 +263,8 @@ function CleanupCard({ onCleaned }) {
                   <span className="flex-1 truncate text-faint" title={x.url}>{x.url}</span>
                   <span className="text-xs text-muted shrink-0">{formatBytes(x.bytes)}</span>
                 </label>
-              ))
+              ))}
+              </>
             )}
           </div>
 
@@ -246,6 +274,11 @@ function CleanupCard({ onCleaned }) {
               disabled={!selected.size}
               className="px-4 py-2 rounded-lg bg-red-500 text-white text-sm hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
             >删除选中（{selected.size}）</button>
+            <button
+              onClick={() => setSelectAll(!allSelected)}
+              disabled={list.list.length === 0}
+              className="px-4 py-2 rounded-lg border border-line text-sm text-muted hover:text-fg disabled:opacity-40"
+            >{allSelected ? '取消全选' : '全选'}</button>
             <button onClick={exportList} disabled={!selected.size}
               className="px-4 py-2 rounded-lg border border-line text-sm text-muted hover:text-fg disabled:opacity-40">导出删除清单</button>
           </div>
