@@ -154,17 +154,18 @@ Page({
     if (!this.data.canInteract) return;
     const view = e.currentTarget.dataset.v;
     if (view === this.data.view) return;
-    // 记录当前滚动位置
+    // 先立即切换视图，确保按钮点击一定有响应（不依赖下方滚动位置查询）
+    this.setData({ view });
+    // 再尝试记录/恢复滚动位置（查询失败不影响视图切换）
     const query = wx.createSelectorQuery().in(this);
     query.select('.content').scrollOffset();
     query.exec((res) => {
       const offset = (res && res[0]) ? res[0].scrollTop : 0;
+      if (!offset) return;
       this._lastScrollTop = offset;
-      this.setData({ view, scrollTop: this._lastScrollTop || 0 }, () => {
+      this.setData({ scrollTop: offset }, () => {
         // DOM 更新后恢复滚动位置（取近似值）
-        setTimeout(() => {
-          this.setData({ scrollTop: this._lastScrollTop || 0 });
-        }, 50);
+        setTimeout(() => { this.setData({ scrollTop: offset }); }, 50);
       });
     });
   },
