@@ -3,6 +3,8 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import http, { img, compressImage, uploadImage, getExistSigns } from '../api.js';
 import bgm from '../bgm.js';
 import Slideshow from '../components/Slideshow.jsx';
+import Lightbox from '../components/Lightbox.jsx';
+import ImageCropper from '../components/ImageCropper.jsx';
 
 const ZONES = [
   { key: 'sample', label: '样片', desc: '对外展示、C端小程序可见' },
@@ -91,6 +93,13 @@ export default function WorkDetail() {
   const [slideOpen, setSlideOpen] = useState(false);
   const [slidePhotos, setSlidePhotos] = useState([]);
   const creatingRef = useRef(false);
+  // 单击预览（Lightbox）
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewIndex, setPreviewIndex] = useState(0);
+  // 封面裁剪
+  const [coverCrop, setCoverCrop] = useState({ open: false, file: null, aspect: 3 / 2, uploading: false });
+  // 拖拽刚结束的瞬间拦截误触发预览点击
+  const justDraggedRef = useRef(false);
 
   async function loadWork() {
     try {
@@ -494,8 +503,29 @@ export default function WorkDetail() {
     } finally { setReordering(false); }
   }
 
+  // 单击照片打开大图预览（拖拽刚结束的瞬间拦截，避免误触）
+  function openPreview(i) {
+    if (justDraggedRef.current) return;
+    setPreviewIndex(i);
+    setPreviewOpen(true);
+  }
+  // 封面自定义裁剪
+  function openCoverCrop() { setCoverCrop({ open: true, file: null, aspect: 3 / 2, uploading: false }); }
+  async function doCoverCrop(file) {
+    setCoverCrop((c) => ({ ...c, uploading: true }));
+    try {
+      const url = await uploadImage(file, { isPublic: true });
+      await setCover(url); // 内部已 loadWork + 提示
+      setCoverCrop({ open: false, file: null, aspect: 3 / 2, uploading: false });
+    } catch (e) {
+      alert('封面裁剪保存失败');
+      setCoverCrop((c) => ({ ...c, uploading: false }));
+    }
+  }
+
   function handleDragStart(e, aid) {
     setDraggedId(aid);
+    justDraggedRef.current = true; // 标记本次为拖拽，drop 后短暂拦截点击
     e.dataTransfer.effectAllowed = 'move';
     // 隐藏默认拖拽幽灵图上的悬停提示
     e.dataTransfer.setData('text/plain', String(aid));
@@ -504,16 +534,26 @@ export default function WorkDetail() {
     e.preventDefault();
     if (aid !== draggedId) setDragOverId(aid);
   }
+  function resetDrag() { setDraggedId(null); setDragOverId(null); }
   function handleDrop(e, dropId) {
     e.preventDefault();
-    if (!draggedId || draggedId === dropId) { setDraggedId(null); setDragOverId(null); return; }
+    if (!draggedId) { resetDrag(); return; }
     const list = [...zoneAlbums];
-    const from = list.findIndex((a) => a.id === draggedId);
-    const to = list.findIndex((a) => a.id === dropId);
-    if (from < 0 || to < 0) { setDraggedId(null); setDragOverId(null); return; }
-    const [item] = list.splice(from, 1);
-    list.splice(to, 0, item);
-    saveReorder(list.map((a) => a.id));
+    if (!list.some((a) => a.id === dropId)) { resetDrag(); return; }
+    // 多选拖拽：若拖动的这张在选中集合内且选中数>1，则整体移动选中集合（保持相对顺序）
+    const movingIds = (selected.has(draggedId) && selected.size > 1) ? [...selected] : [draggedId];
+    if (movingIds.includes(dropId)) { resetDrag(); return; } // 落在自身组内不移动
+    const moving = list.filter((a) => movingIds.includes(a.id)); // 保持原顺序
+    const rest = list.filter((a) => !movingIds.includes(a.id));
+    let insertAt = rest.findIndex((a) => a.id === dropId);
+    if (insertAt < 0) insertAt = rest.length;
+    rest.splice(insertAt, 0, ...moving);
+    saveReorder(rest.map((a) => a.id)); // 整分区按新顺序重写 sort
+    resetDrag();
+  }
+  function handleDragEnd() {
+    // 延迟重置，确保 drop 后的 click 被 justDraggedRef 拦截
+    setTimeout(() => { justDraggedRef.current = false; }, 0);
     setDraggedId(null);
     setDragOverId(null);
   }
@@ -712,8 +752,16 @@ export default function WorkDetail() {
 
           {work?.cover_url && (
             <div className="bg-panel border border-line rounded-xl2 p-5">
-              <h2 className="text-base font-semibold text-fg mb-3">当前封面</h2>
-              <img src={img(work.cover_url)} loading="lazy" decoding="async" className="w-full h-40 object-cover rounded bg-ink" alt="封面" />
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-base font-semibold text-fg">当前封面</h2>
+                <button onClick={openCoverCrop} className="text-xs text-brand hover:underline">点击自定义裁剪</button>
+              </div>
+              <div className="relative cursor-pointer group" onClick={openCoverCrop}>
+                <img src={img(work.cover_url)} loading="lazy" decoding="async" className="w-full h-40 object-cover rounded bg-ink" alt="封面" />
+                <div className="absolute inset-0 flex items-center justify-center bg-black/0 group-hover:bg-black/40 transition-colors rounded">
+                  <span className="text-white text-xs opacity-0 group-hover:opacity-100">点击裁剪封面</span>
+                </div>
+              </div>
             </div>
           )}
         </div>
@@ -792,14 +840,15 @@ export default function WorkDetail() {
                     onDragStart={(e) => handleDragStart(e, a.id)}
                     onDragOver={(e) => handleDragOver(e, a.id)}
                     onDrop={(e) => handleDrop(e, a.id)}
-                    onDragEnd={() => { setDraggedId(null); setDragOverId(null); }}
+                    onDragEnd={handleDragEnd}
+                    onClick={() => openPreview(idx)}
                     className={`group relative border rounded-xl2 overflow-hidden bg-ink cursor-grab active:cursor-grabbing select-none
                       ${selected.has(a.id) ? 'border-brand ring-1 ring-brand' : dragOverId === a.id ? 'border-brand ring-2 ring-brand' : 'border-line'}
                       ${draggedId === a.id ? 'opacity-40' : ''}`}
                   >
-                    <div className="aspect-square pointer-events-none relative">
+                    <div className="aspect-square relative">
                       {src && !broken ? (
-                        <img src={src} loading="lazy" decoding="async" onError={() => markBroken(a.id)} className="w-full h-full object-cover bg-ink" alt="" />
+                        <img src={src} loading="lazy" decoding="async" onError={() => markBroken(a.id)} draggable={false} className="w-full h-full object-cover bg-ink pointer-events-none select-none" alt="" />
                       ) : (
                         // url 为空 / 裂图：灰色占位，杜绝空白框；文案区分原因
                         <div className="w-full h-full flex items-center justify-center bg-ink text-[11px] text-muted px-1 text-center leading-tight">
@@ -811,15 +860,19 @@ export default function WorkDetail() {
                     {selected.has(a.id) && <div className="absolute inset-0 bg-brand/10 pointer-events-none" />}
                     {/* 操作层 */}
                     <div className="absolute top-2 left-2">
-                      <input type="checkbox" checked={selected.has(a.id)} onChange={() => toggleSelect(a.id)} className="w-4 h-4 accent-brand" />
+                      <input type="checkbox" checked={selected.has(a.id)} onChange={() => toggleSelect(a.id)} onClick={(e) => e.stopPropagation()} className="w-4 h-4 accent-brand" />
                     </div>
                     <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                       {work.cover_url !== a.photo_url && (
-                        <button onClick={() => setCover(a.photo_url)} title="设为封面" className="px-2 py-1 rounded bg-black/60 text-white text-[10px]">封面</button>
+                        <button onClick={(e) => { e.stopPropagation(); setCover(a.photo_url); }} title="设为封面" className="px-2 py-1 rounded bg-black/60 text-white text-[10px]">封面</button>
                       )}
-                      <button onClick={() => deletePhoto(a.id)} title="删除" className="px-2 py-1 rounded bg-red-500/80 text-white text-[10px]">删除</button>
+                      <button onClick={(e) => { e.stopPropagation(); deletePhoto(a.id); }} title="删除" className="px-2 py-1 rounded bg-red-500/80 text-white text-[10px]">删除</button>
                     </div>
-                    <div className="absolute bottom-0 left-0 right-0 bg-black/50 px-2 py-1 flex items-center justify-between opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div
+                      className="absolute bottom-0 left-0 right-0 bg-black/50 px-2 py-1 flex items-center justify-between opacity-0 group-hover:opacity-100 transition-opacity"
+                      onClick={(e) => e.stopPropagation()}
+                      onMouseDown={(e) => e.stopPropagation()}
+                    >
                       <span className="text-white text-[10px]">排序</span>
                       <input type="number" defaultValue={a.sort} onBlur={(e) => updateSort(a.id, e.target.value)} className="w-12 px-1 py-0.5 rounded text-[10px] text-fg bg-white text-center" />
                     </div>
@@ -971,6 +1024,50 @@ export default function WorkDetail() {
         );
       })()}
       <Slideshow photos={slidePhotos} open={slideOpen} onClose={closeSlide} title={work ? work.title : ''} />
+
+      {/* 单张大图预览 */}
+      <Lightbox
+        photos={zoneAlbums.map((a) => img(a.photo_url))}
+        index={previewIndex}
+        open={previewOpen}
+        onClose={() => setPreviewOpen(false)}
+        title={work ? work.title : ''}
+      />
+
+      {/* 封面自定义裁剪：选择图片阶段 */}
+      {coverCrop.open && !coverCrop.file && (
+        <div className="fixed inset-0 z-[120] bg-black/70 flex items-center justify-center p-4" onClick={() => !coverCrop.uploading && setCoverCrop((c) => ({ ...c, open: false }))}>
+          <div className="bg-panel border border-line rounded-xl2 p-5 w-[380px] max-w-[92vw]" onClick={(e) => e.stopPropagation()}>
+            <div className="text-fg font-medium mb-1">设置自定义封面</div>
+            <p className="text-xs text-muted mb-4">上传一张图片，按比例裁剪后设为作品封面</p>
+            <div className="flex gap-2 mb-4">
+              {[
+                { label: '1:1', v: 1 },
+                { label: '3:2', v: 3 / 2 },
+                { label: '16:9', v: 16 / 9 }
+              ].map((r) => (
+                <button key={r.label} onClick={() => setCoverCrop((c) => ({ ...c, aspect: r.v }))}
+                  className={`px-3 py-1.5 rounded border text-sm ${coverCrop.aspect === r.v ? 'border-brand text-brand' : 'border-line text-muted hover:text-fg'}`}>{r.label}</button>
+              ))}
+            </div>
+            <label className="block">
+              <input type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files && e.target.files[0]; if (f) setCoverCrop((c) => ({ ...c, file: f })); }} />
+              <div className="border-2 border-dashed border-line rounded-xl2 py-10 text-center text-muted cursor-pointer hover:border-brand hover:text-brand text-sm">＋ 选择本地图片</div>
+            </label>
+          </div>
+        </div>
+      )}
+
+      {/* 封面自定义裁剪：裁剪阶段（ImageCropper 自带全屏遮罩） */}
+      {coverCrop.open && coverCrop.file && (
+        <ImageCropper
+          file={coverCrop.file}
+          aspectRatio={coverCrop.aspect}
+          onCancel={() => setCoverCrop((c) => ({ ...c, file: null }))}
+          onConfirm={(f) => doCoverCrop(f)}
+          title="裁剪封面"
+        />
+      )}
     </div>
   );
 }
