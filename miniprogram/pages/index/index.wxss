@@ -112,11 +112,11 @@ page { background: #ffffff; }
   text-align: center; margin-top: 4rpx; font-size: 20rpx; letter-spacing: 2rpx; color: #bbb; line-height: 1.2;
 }
 
-/* 分类标签：分类少时等比例展开居中（space-evenly），超出屏幕宽度时左起横向滚动 */
-.cat-bar { margin-top: 16rpx; display: flex; }
-.cat-wrap { display: flex; justify-content: space-evenly; min-width: 100%; padding: 4rpx 0 8rpx; }
+/* 分类标签：分类少时等比例展开居中（space-evenly），超出屏幕宽度时左起横向滚动；整组下移，文字位于下划线之上 */
+.cat-bar { margin-top: 32rpx; display: flex; }
+.cat-wrap { display: flex; justify-content: space-evenly; min-width: 100%; padding: 4rpx 0 4rpx; }
 .cat-item {
-  display: inline-block; font-size: 26rpx; color: #888; padding: 6rpx 6rpx 2rpx;
+  display: inline-block; font-size: 26rpx; color: #888; padding: 6rpx 6rpx 14rpx;
   position: relative; transition: color .2s;
 }
 .cat-item.active { color: #2c2c2c; font-weight: 600; }
