@@ -1055,32 +1055,59 @@ export default function WorkDetail() {
       {/* 封面自定义裁剪：选择图片阶段 */}
       {coverCrop.open && !coverCrop.file && (
         <div className="fixed inset-0 z-[120] bg-black/70 flex items-center justify-center p-4" onClick={() => !coverCrop.uploading && setCoverCrop((c) => ({ ...c, open: false }))}>
-          <div className="bg-panel border border-line rounded-xl2 p-5 w-[380px] max-w-[92vw]" onClick={(e) => e.stopPropagation()}>
-            <div className="text-fg font-medium mb-1">设置自定义封面</div>
-            <p className="text-xs text-muted mb-4">上传一张图片，按比例裁剪后设为作品封面</p>
-            <div className="flex gap-2 mb-4">
-              {[
-                { label: '1:1', v: 1 },
-                { label: '4:3', v: 4 / 3 },
-                { label: '7:5', v: 7 / 5 },
-                { label: '3:2', v: 3 / 2 },
-                { label: '16:9', v: 16 / 9 }
-              ].map((r) => (
-                <button key={r.label} onClick={() => setCoverCrop((c) => ({ ...c, aspect: r.v }))}
-                  className={`px-3 py-1.5 rounded border text-sm ${coverCrop.aspect === r.v ? 'border-brand text-brand' : 'border-line text-muted hover:text-fg'}`}>{r.label}</button>
-              ))}
+          <div className="bg-panel border border-line rounded-xl2 p-5 w-[420px] max-w-[94vw] max-h-[88vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-1">
+              <div className="text-fg font-medium">设置作品封面</div>
+              <button onClick={() => setCoverCrop((c) => ({ ...c, open: false }))} className="text-muted hover:text-fg text-xl leading-none px-1">×</button>
             </div>
-            {work?.cover_url && (
-              <button onClick={cropCurrentCover} disabled={coverCrop.uploading}
-                className="w-full mb-4 px-4 py-3 rounded border border-line text-sm text-fg hover:border-brand hover:text-brand disabled:opacity-50 flex items-center justify-center gap-2">
-                <img src={img(work.cover_url)} alt="" className="w-8 h-8 object-cover rounded bg-ink" />
-                <span>裁切当前封面</span>
-              </button>
+            <p className="text-xs text-muted mb-3">可从已上传照片中直接选用（复用已有图片，不重新上传），或上传新图片裁剪</p>
+
+            {/* 从已上传照片选择：直接复用 photo_url 设为封面，避免裁剪后再上传导致图片丢失 */}
+            {zoneAlbums.length > 0 && (
+              <div className="mb-4">
+                <div className="text-xs text-muted mb-2">从已上传照片中选择</div>
+                <div className="grid grid-cols-4 gap-2">
+                  {zoneAlbums.map((a) => {
+                    const isCover = !!(work?.cover_url && a.photo_url && work.cover_url === a.photo_url);
+                    return (
+                      <button key={a.id}
+                        onClick={async () => { await setCover(a.photo_url); setCoverCrop((c) => ({ ...c, open: false })); }}
+                        className={`relative aspect-square rounded overflow-hidden border ${isCover ? 'border-brand ring-1 ring-brand' : 'border-line hover:border-brand'}`}>
+                        <img src={img(a.photo_url)} alt="" className="w-full h-full object-cover bg-ink" />
+                        {isCover && <span className="absolute bottom-0 left-0 right-0 text-center text-[9px] text-white bg-brand/80 py-0.5">当前</span>}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
             )}
-            <label className="block">
-              <input type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files && e.target.files[0]; if (f) setCoverCrop((c) => ({ ...c, file: f })); }} />
-              <div className="border-2 border-dashed border-line rounded-xl2 py-10 text-center text-muted cursor-pointer hover:border-brand hover:text-brand text-sm">＋ 选择本地新图片</div>
-            </label>
+
+            <div className="border-t border-line pt-3">
+              <div className="text-xs text-muted mb-2">上传新图片并裁剪</div>
+              <div className="flex gap-2 mb-3 flex-wrap">
+                {[
+                  { label: '1:1', v: 1 },
+                  { label: '4:3', v: 4 / 3 },
+                  { label: '7:5', v: 7 / 5 },
+                  { label: '3:2', v: 3 / 2 },
+                  { label: '16:9', v: 16 / 9 }
+                ].map((r) => (
+                  <button key={r.label} onClick={() => setCoverCrop((c) => ({ ...c, aspect: r.v }))}
+                    className={`px-3 py-1.5 rounded border text-sm ${coverCrop.aspect === r.v ? 'border-brand text-brand' : 'border-line text-muted hover:text-fg'}`}>{r.label}</button>
+                ))}
+              </div>
+              {work?.cover_url && (
+                <button onClick={cropCurrentCover} disabled={coverCrop.uploading}
+                  className="w-full mb-3 px-4 py-3 rounded border border-line text-sm text-fg hover:border-brand hover:text-brand disabled:opacity-50 flex items-center justify-center gap-2">
+                  <img src={img(work.cover_url)} alt="" className="w-8 h-8 object-cover rounded bg-ink" />
+                  <span>裁切当前封面</span>
+                </button>
+              )}
+              <label className="block">
+                <input type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files && e.target.files[0]; if (f) setCoverCrop((c) => ({ ...c, file: f })); }} />
+                <div className="border-2 border-dashed border-line rounded-xl2 py-8 text-center text-muted cursor-pointer hover:border-brand hover:text-brand text-sm">＋ 选择本地新图片</div>
+              </label>
+            </div>
           </div>
         </div>
       )}
