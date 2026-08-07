@@ -125,26 +125,50 @@ page { background: #ffffff; }
   background: var(--brand-green); border-radius: 4rpx;
 }
 
-/* 作品网格：两列瀑布流（按索引奇偶分列，高度自适应，照片保持原比例不裁切） */
-.masonry { display: flex; align-items: flex-start; margin: 8rpx 0 0; }
-.masonry-col { flex: 1 1 0; min-width: 0; padding: 0 12rpx; display: flex; flex-direction: column; }
-.grid-item {
-  width: 100%; margin-bottom: 24rpx; border-radius: 20rpx;
-  overflow: hidden; background: transparent;
+/* 作品网格：两列等宽固定尺寸卡片（每张统一 宽331rpx / 总高540rpx，禁止高度自适应、禁止瀑布流） */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  column-gap: 24rpx;
+  row-gap: 32rpx;
+  margin-top: 8rpx;
 }
-/* widthFix：按图片原始比例展示，不裁切摄影画面；卡片间距 24rpx */
-.grid-cover { width: 100%; display: block; }
-/* 图片下方独立文字区（不叠加在照片上，无白底、跟随页面米白底色） */
-.grid-cap {
-  padding: 0 18rpx 18rpx;
+.card {
+  width: 100%;
+  height: 540rpx;
+  border-radius: 20rpx;
+  overflow: hidden;
+  background: #fff;
+  display: flex;
+  flex-direction: column;
 }
-.grid-title {
+/* 图片区固定 420rpx 高，aspectFill 居中裁剪不拉伸；上两角圆角 20rpx */
+.card-cover {
+  width: 100%;
+  height: 420rpx;
+  border-radius: 20rpx 20rpx 0 0;
+  display: block;
+  background: #eee;
+}
+/* 文字区固定 120rpx 高，纯白底，下两角圆角 20rpx；内容溢出省略、禁止撑高卡片 */
+.card-cap {
+  flex: 0 0 120rpx;
+  height: 120rpx;
+  background: #fff;
+  border-radius: 0 0 20rpx 20rpx;
+  padding: 0 24rpx;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.card-title {
   display: block; text-align: left; color: #333333; font-size: 36rpx; font-weight: 500;
-  margin-top: 24rpx; margin-bottom: 12rpx;
-  white-space: normal; overflow: visible; text-overflow: clip; line-height: 1.4;
+  margin-top: 28rpx; margin-bottom: 14rpx;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.grid-tag {
+.card-tag {
   display: block; text-align: left; color: #999999; font-size: 28rpx; font-weight: 400;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 
 /* MORE / 空态 */
