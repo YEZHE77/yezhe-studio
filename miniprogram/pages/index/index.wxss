@@ -136,34 +136,34 @@ page { background: #ffffff; }
 .card {
   width: 100%;
   height: 540rpx;
-  border-radius: 20rpx;
+  border-radius: 0;
   overflow: hidden;
   background: #fff;
   display: flex;
   flex-direction: column;
 }
-/* 图片区固定 420rpx 高，aspectFill 居中裁剪不拉伸；上两角圆角 20rpx */
+/* 图片区固定 420rpx 高，aspectFill 居中裁剪不拉伸；完全直角 border-radius:0 */
 .card-cover {
   width: 100%;
   height: 420rpx;
-  border-radius: 20rpx 20rpx 0 0;
+  border-radius: 0;
   display: block;
   background: #eee;
 }
-/* 文字区固定 120rpx 高，纯白底，下两角圆角 20rpx；内容溢出省略、禁止撑高卡片 */
+/* 文字区固定 120rpx 高，纯白底，完全直角 border-radius:0；与图片底边无缝紧贴、内容溢出省略、禁止撑高卡片 */
 .card-cap {
   flex: 0 0 120rpx;
   height: 120rpx;
   background: #fff;
-  border-radius: 0 0 20rpx 20rpx;
+  border-radius: 0;
   padding: 0 24rpx;
   display: flex;
   flex-direction: column;
   overflow: hidden;
 }
 .card-title {
-  display: block; text-align: left; color: #333333; font-size: 36rpx; font-weight: 500;
-  margin-top: 28rpx; margin-bottom: 14rpx;
+  display: block; text-align: left; color: #333333; font-size: 38rpx; font-weight: 500;
+  margin-top: 26rpx; margin-bottom: 12rpx;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .card-tag {
