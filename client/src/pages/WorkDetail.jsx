@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import http, { img, compressImage, uploadImage, getExistSigns } from '../api.js';
 import bgm from '../bgm.js';
 import Slideshow from '../components/Slideshow.jsx';
@@ -13,7 +13,9 @@ const ZONES = [
 export default function WorkDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const fileRef = useRef(null);
+  const uploadAreaRef = useRef(null);
 
   const [cats, setCats] = useState([]);
   const [work, setWork] = useState(null);
@@ -84,6 +86,23 @@ export default function WorkDetail() {
 
   useEffect(() => { http.get('/api/categories').then((r) => setCats(r.data)); }, []);
   useEffect(() => { loadAll(); }, [id]);
+
+  // 从「新建作品组」保存并上传照片跳转过来时，自动聚焦右侧批量上传区域
+  useEffect(() => {
+    if (!loading && location.state?.openUpload && uploadAreaRef.current) {
+      uploadAreaRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      const t = setTimeout(() => {
+        if (fileRef.current) {
+          try { fileRef.current.click(); } catch {}
+        }
+        // 触发一次后清空 state，避免刷新重复打开
+        if (window.history.replaceState) {
+          window.history.replaceState({}, '', window.location.pathname);
+        }
+      }, 400);
+      return () => clearTimeout(t);
+    }
+  }, [loading, location.state]);
 
   async function saveBasic(e) {
     e.preventDefault();
@@ -532,7 +551,7 @@ export default function WorkDetail() {
 
         {/* 右侧：相册管理 */}
         <div className="lg:col-span-2">
-          <div className="bg-panel border border-line rounded-xl2 p-5 min-h-[500px]">
+          <div ref={uploadAreaRef} className="bg-panel border border-line rounded-xl2 p-5 min-h-[500px]">
             <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
               <div>
                 <h2 className="text-base font-semibold text-fg">相册管理</h2>

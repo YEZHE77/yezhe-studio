@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import http, { img, debounce, compressImage, uploadBatch } from '../api.js';
+import http, { img, debounce } from '../api.js';
 import { useViewState } from '../tabMemory.js';
 
 export default function Works() {
@@ -116,71 +116,27 @@ export default function Works() {
 
   async function submit(e) {
     e.preventDefault();
-    let cover_url = '';
-    let uploadedUrls = [];
 
-    // 1) 批量上传照片（若有）
-    if (pendingFiles.length > 0) {
-      setUploading(true);
-      setUploadProgress(0);
-      const ac = new AbortController();
-      abortRef.current = ac;
-      try {
-        const compressed = [];
-        const list = Array.from(pendingFiles);
-        for (let i = 0; i < list.length; i += 3) {
-          const chunk = list.slice(i, i + 3);
-          const out = await Promise.all(chunk.map((f) => compressImage(f, { maxWidth: 1920, maxHeight: 1920, quality: 0.82 })));
-          compressed.push(...out);
-        }
-        const ZONE_CAT = { sample: 'client', local: 'negative', final: 'retouched' };
-        const ZONE_PUB = { sample: true, local: false, final: false };
-        const { urls, failed, aborted } = await uploadBatch(compressed, {
-          category: ZONE_CAT[uploadZone] || 'customer',
-          isPublic: ZONE_PUB[uploadZone] || false,
-          signal: ac.signal,
-          onProgress: (d, t) => setUploadProgress(Math.round((d / t) * 100))
-        });
-        if (aborted) { setUploading(false); return; }
-        uploadedUrls = urls;
-        if (uploadedUrls.length) cover_url = uploadedUrls[0];
-        if (failed.length) alert(`成功 ${uploadedUrls.length} 张，失败 ${failed.length} 张（创建后可进入作品详情重试）`);
-        if (!uploadedUrls.length) {
-          alert('照片全部上传失败，作品未创建');
-          setUploading(false);
-          return;
-        }
-      } catch (err) {
-        alert((err.response && err.response.data && err.response.data.error) || '上传失败，作品未创建');
-        setUploading(false);
-        return;
-      } finally {
-        setUploading(false);
-        setUploadProgress(0);
-      }
-    }
-
-    // 2) 创建作品（第一张上传照片自动作为封面）
+    // 新建作品组：仅保存作品元数据，不在弹窗内上传照片；
+    // 保存成功后关闭弹窗，直接跳转至作品详情编辑页，并在详情页自动打开批量上传区域。
     const tags = (form.tags || '').split(/[、,，\s]+/).map((s) => s.trim()).filter(Boolean);
     const payload = {
       title: form.title,
       category_ids: form.category_ids,
       is_public: form.is_public,
       allow_download: form.allow_download,
-      cover_url,
+      cover_url: '',
       description: form.description || '',
       tags
     };
     try {
       const r = await http.post('/api/works', payload);
       const workId = r.data.id;
-      // 3) 其余照片写入相册
-      if (uploadedUrls.length > 1) {
-        await http.post('/api/works/' + workId + '/albums', { urls: uploadedUrls.slice(1), zone: uploadZone });
-      }
       setShowForm(false);
       setPendingFiles([]);
-      navigate('/works/' + workId);
+      setUploadProgress(0);
+      // 携带 openUpload 状态跳转，详情页挂载后自动聚焦批量上传区域
+      navigate('/works/' + workId, { state: { openUpload: true } });
     } catch (e) {
       alert((e.response && e.response.data && e.response.data.error) || '保存失败');
     }
