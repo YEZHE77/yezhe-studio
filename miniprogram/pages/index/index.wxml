@@ -51,15 +51,28 @@
       </view>
     </scroll-view>
 
-    <!-- 作品网格：两列网格，卡片封面强制 16:10 横版，gap 24rpx/40rpx -->
+    <!-- 作品网格：两列瀑布流，照片保持原比例完整显示（不裁切），列 gap 24rpx、行 gap 40rpx -->
     <view class="works-grid" wx:if="{{works.length}}">
-      <view class="work-card" wx:for="{{works}}" wx:key="id" bindtap="openWork" data-id="{{item.id}}">
-        <view class="work-cover-wrap">
-          <image class="work-cover" src="{{item.cover}}" mode="aspectFill" lazy-load />
+      <view class="masonry-col">
+        <view class="work-card" wx:for="{{colLeft}}" wx:key="id" bindtap="openWork" data-id="{{item.id}}">
+          <view class="work-cover-wrap">
+            <image class="work-cover" src="{{item.cover}}" mode="widthFix" lazy-load />
+          </view>
+          <view class="work-info">
+            <text class="work-title">{{item.customer_name || item.title}}</text>
+            <text class="work-tag">#{{item.category_name || '作品'}}</text>
+          </view>
         </view>
-        <view class="work-info">
-          <text class="work-title">{{item.customer_name || item.title}}</text>
-          <text class="work-tag">#{{item.category_name || '作品'}}</text>
+      </view>
+      <view class="masonry-col">
+        <view class="work-card" wx:for="{{colRight}}" wx:key="id" bindtap="openWork" data-id="{{item.id}}">
+          <view class="work-cover-wrap">
+            <image class="work-cover" src="{{item.cover}}" mode="widthFix" lazy-load />
+          </view>
+          <view class="work-info">
+            <text class="work-title">{{item.customer_name || item.title}}</text>
+            <text class="work-tag">#{{item.category_name || '作品'}}</text>
+          </view>
         </view>
       </view>
     </view>

@@ -127,29 +127,19 @@ page { background: #f8f6f2; }
   background: var(--brand-green); border-radius: 4rpx;
 }
 
-/* 作品网格：两列网格，列 gap 24rpx，行 gap 40rpx */
-.works-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  column-gap: 24rpx;
-  row-gap: 40rpx;
-}
-.work-card { width: 100%; }
-/* 封面容器强制 16:10，圆角 24rpx，图片 aspectFill 居中裁剪铺满 */
+/* 作品网格：两列瀑布流（按索引奇偶分列，照片保持原比例完整显示不裁切），列 gap 24rpx、行 gap 40rpx */
+.works-grid { display: flex; align-items: flex-start; margin-top: 8rpx; }
+.masonry-col { flex: 1 1 0; min-width: 0; padding: 0 12rpx; display: flex; flex-direction: column; }
+.work-card { width: 100%; margin-bottom: 40rpx; }
+/* 封面容器圆角 24rpx，overflow hidden；图片 widthFix 按原图比例完整展示，不裁切人物画面 */
 .work-cover-wrap {
   width: 100%;
-  position: relative;
-  padding-bottom: 62.5%; /* 10/16 */
   border-radius: 24rpx;
   overflow: hidden;
   background: #eee;
 }
-.work-cover {
-  position: absolute; top: 0; left: 0;
-  width: 100%; height: 100%;
-  display: block;
-}
-/* 文字区在图片下方，左对齐，距图顶部 20rpx */
+.work-cover { width: 100%; display: block; }
+/* 文字区在图片下方，左对齐，距图 20rpx */
 .work-info { margin-top: 20rpx; }
 .work-title {
   display: block; font-size: 26rpx; font-weight: 500; color: #2c2c2c;
