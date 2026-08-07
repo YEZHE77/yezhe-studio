@@ -2,6 +2,7 @@ import React from 'react';
 
 // 全局错误边界：防止单个页面/组件抛错导致整个 SPA 白屏
 // 出错后显示友好提示 + 刷新/返回按钮，并自动上报到 console.error
+// 支持 resetKeys：当 key 变化时自动重置错误状态（配合路由 location.pathname 使用）
 export default class ErrorBoundary extends React.Component {
   constructor(props) {
     super(props);
@@ -14,6 +15,14 @@ export default class ErrorBoundary extends React.Component {
 
   componentDidCatch(error, errorInfo) {
     console.error('[ErrorBoundary] 页面渲染错误:', error, errorInfo);
+  }
+
+  componentDidUpdate(prevProps) {
+    const { resetKeys = [] } = this.props;
+    const prev = prevProps.resetKeys || [];
+    if (this.state.hasError && resetKeys.length && resetKeys.some((k, i) => k !== prev[i])) {
+      this.setState({ hasError: false, error: null });
+    }
   }
 
   render() {

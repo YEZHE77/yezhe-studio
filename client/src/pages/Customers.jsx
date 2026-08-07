@@ -46,7 +46,7 @@ export default function Customers() {
           <div className="col-span-2 text-center">预约</div>
           <div className="col-span-2 text-right">累计消费</div>
         </div>
-        {filtered.map((c) => (
+        {filtered.filter(Boolean).map((c) => (
           <div key={c.openid} onClick={() => open(c.openid)}
             className="grid grid-cols-12 px-4 py-3 text-sm items-center border-b border-line last:border-0 hover:bg-panel2 cursor-pointer transition">
             <div className="col-span-3 flex items-center gap-2 text-fg">

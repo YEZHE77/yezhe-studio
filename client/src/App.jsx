@@ -1,5 +1,5 @@
 import React, { Suspense } from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from './auth.jsx';
 import Sidebar from './layout/Sidebar.jsx';
 import Topbar from './layout/Topbar.jsx';
@@ -41,13 +41,14 @@ function PageLoader() {
 
 // 已登录后的主框架（侧边栏 + 顶栏 + 业务路由）
 function AppShell() {
+  const location = useLocation();
   return (
     <div className="flex h-screen">
       <Sidebar />
       <div className="flex-1 flex flex-col min-w-0">
         <Topbar />
         <main className="flex-1 overflow-auto p-6 bg-ink">
-          <ErrorBoundary>
+          <ErrorBoundary resetKeys={[location.pathname]}>
             <Suspense fallback={<PageLoader />}>
               <Routes>
                 <Route path="/" element={<Dashboard />} />

@@ -451,7 +451,7 @@ export default function WorkDetail() {
   }
 
   async function removeWork() {
-    if (!confirm(`确认删除作品「${work.title}」？\n该作品下的 ${albums.length} 张照片与选片记录也会一并删除，不可恢复。`)) return;
+    if (!confirm(`确认删除作品「${work?.title || '未命名作品'}」？\n该作品下的 ${albums.length} 张照片与选片记录也会一并删除，不可恢复。`)) return;
     try {
       await http.delete('/api/works/' + id);
       navigate('/works');
@@ -562,7 +562,7 @@ export default function WorkDetail() {
       <div className="flex items-center justify-between mb-5">
         <div className="flex items-center gap-3">
           <button onClick={() => navigate('/works')} className="px-3 py-1.5 rounded border border-line text-sm text-muted hover:text-brand hover:border-brand">← 返回作品列表</button>
-          <h1 className="text-xl font-semibold text-fg">{isNew ? '新建作品' : work.title}</h1>
+          <h1 className="text-xl font-semibold text-fg">{isNew ? '新建作品' : (work?.title || '未命名作品')}</h1>
           {!isNew && <span className="text-xs px-2 py-0.5 rounded bg-panel border border-line text-muted">{work.is_public ? '公开' : '私密'}</span>}
         </div>
         {!isNew && <button onClick={removeWork} className="px-3 py-1.5 rounded border border-red-200 text-red-500 text-sm hover:bg-red-50">删除作品</button>}
@@ -584,7 +584,7 @@ export default function WorkDetail() {
                   <div className="text-xs text-muted">暂无分类，可在「分类管理」中新增</div>
                 ) : (
                   <div className="flex flex-wrap gap-2">
-                    {cats.map((c) => {
+                    {cats.filter(Boolean).map((c) => {
                       const on = form.category_ids.map(String).includes(String(c.id));
                       return (
                         <button type="button" key={c.id}
@@ -594,7 +594,7 @@ export default function WorkDetail() {
                             return { ...f, category_ids: Array.from(set) };
                           })}
                           className={'px-3 py-1.5 rounded-full text-sm border transition ' + (on ? 'bg-brand text-white border-brand' : 'bg-ink border-line text-muted hover:border-brand')}>
-                          {c.name}
+                          {c.name || '未命名'}
                         </button>
                       );
                     })}

@@ -121,9 +121,9 @@ export default function Works() {
       <div className="flex items-center gap-2 mb-3 overflow-x-auto">
         <button onClick={() => setTab('')}
           className={'px-4 py-2 rounded-full text-sm border ' + (state.tab === '' ? 'bg-brand text-white border-brand' : 'bg-panel border-line text-muted')}>全部</button>
-        {cats.map((c) => (
+        {cats.filter(Boolean).map((c) => (
           <button key={c.id} onClick={() => setTab(String(c.id))}
-            className={'px-4 py-2 rounded-full text-sm border ' + (state.tab === String(c.id) ? 'bg-brand text-white border-brand' : 'bg-panel border-line text-muted')}>{c.name}</button>
+            className={'px-4 py-2 rounded-full text-sm border ' + (state.tab === String(c.id) ? 'bg-brand text-white border-brand' : 'bg-panel border-line text-muted')}>{c.name || '未命名'}</button>
         ))}
         <button onClick={() => navigate('/categories')}
           className="ml-1 flex items-center gap-1 px-3 py-2 rounded-full text-sm border border-dashed border-line text-muted hover:text-brand hover:border-brand bg-panel shrink-0"

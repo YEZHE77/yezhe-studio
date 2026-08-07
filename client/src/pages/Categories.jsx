@@ -135,7 +135,7 @@ export default function Categories() {
         ) : list.length === 0 ? (
           <div className="p-6 text-sm text-muted text-center">暂无分类</div>
         ) : (
-          list.map((c) => (
+          list.filter(Boolean).map((c) => (
             <div key={c.id} className="flex items-center px-4 py-3 border-b border-line last:border-0">
               <div className="flex-1 flex items-center gap-2">
                 <input

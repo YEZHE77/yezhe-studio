@@ -171,9 +171,9 @@ export default function Home() {
               全部
               {activeCat === 0 && <span className="absolute -bottom-0.5 left-0 right-0 h-1 rounded bg-[var(--brand-green)]" />}
             </button>
-            {categories.map((c) => (
+            {categories.filter(Boolean).map((c) => (
               <button key={c.id} onClick={() => selectCat(c.id)} className={'relative pb-2 text-base ' + (activeCat === c.id ? 'font-semibold text-[#2c2c2c]' : 'text-gray-400')}>
-                {c.name}
+                {c.name || '未命名'}
                 {activeCat === c.id && <span className="absolute -bottom-0.5 left-0 right-0 h-1 rounded bg-[var(--brand-green)]" />}
               </button>
             ))}

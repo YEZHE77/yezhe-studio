@@ -111,12 +111,12 @@ function StorageTab({ reloadKey }) {
           <div className="text-sm text-muted py-4">暂无已登记图片（新上传将自动归类）。</div>
         ) : (
           <div className="space-y-3">
-            {cats.map((c) => {
-              const cp = Math.round((c.bytes / catSum) * 100);
+            {cats.filter(Boolean).map((c) => {
+              const cp = Math.round((safeNum(c.bytes) / Math.max(1, catSum)) * 100);
               return (
                 <div key={c.category} className="flex items-center gap-3">
                   <div className="w-28 shrink-0 text-sm text-fg flex items-center gap-1.5">
-                    {c.label}
+                    {c.label || '未分类'}
                     {c.isPublic && <span className="text-[10px] px-1.5 py-0.5 rounded bg-sky-50 text-sky-600">公开</span>}
                   </div>
                   <div className="flex-1">

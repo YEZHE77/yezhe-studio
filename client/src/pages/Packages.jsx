@@ -139,7 +139,7 @@ export default function Packages() {
         <select value={state.category} onChange={(e) => setState((s) => ({ ...s, category: e.target.value }))}
           className="px-3 py-2 rounded bg-panel border border-line text-white text-sm outline-none">
           <option value="">全部分类</option>
-          {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+          {categories.filter(Boolean).map((c) => <option key={c.id} value={c.id}>{c.name || '未命名'}</option>)}
         </select>
         <input value={state.q} onChange={(e) => setState((s) => ({ ...s, q: e.target.value }))}
           placeholder="搜索套系名称" className="ml-auto w-56 px-3 py-2 rounded bg-panel border border-line text-white text-sm outline-none" />
@@ -223,7 +223,7 @@ export default function Packages() {
                 <select value={form.category_id} onChange={(e) => setForm({ ...form, category_id: e.target.value })}
                   className="w-full mb-3 px-3 py-2 rounded bg-panel2 border border-line text-white text-sm outline-none">
                   <option value="">未分类</option>
-                  {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  {categories.filter(Boolean).map((c) => <option key={c.id} value={c.id}>{c.name || '未命名'}</option>)}
                 </select>
                 <div className="text-xs text-muted mb-1">封面图（可选）</div>
                 <input type="file" accept="image/*" onChange={(e) => setForm({ ...form, cover: e.target.files[0] })} className="w-full mb-3 text-xs text-muted" />
