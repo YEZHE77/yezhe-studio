@@ -35,9 +35,14 @@ Page({
   _loading: false,
   _tasks: [],
 
-  onLoad() {
+  onLoad(options) {
     const now = new Date();
-    this.setData({ year: now.getFullYear(), monthIdx: now.getMonth() });
+    // selectMode=1：作为预约表单的子选择器，选完日期返回表单而非再跳表单
+    this.setData({
+      year: now.getFullYear(),
+      monthIdx: now.getMonth(),
+      selectMode: !!(options && options.selectMode)
+    });
     this.loadBooking();
     this.loadAvailability();
   },
@@ -137,12 +142,42 @@ Page({
   },
 
   goFill() {
-    const { selDate, selPeriod } = this.data;
+    const { selDate, selPeriod, selectMode } = this.data;
     if (!selDate || !selPeriod) return wx.showToast({ title: '请选择日期与时段', icon: 'none' });
+    if (selectMode) {
+      // 子选择器模式：回填上一页（预约表单）的 期望日期/时段，并返回
+      const pages = getCurrentPages();
+      const prev = pages[pages.length - 2];
+      if (prev && prev.route && prev.route.indexOf('appointment') >= 0) {
+        const periodIdx = ['full', 'am', 'pm', 'night'].indexOf(selPeriod);
+        prev.setData({
+          hopeDate: selDate,
+          period: selPeriod,
+          periodIndex: periodIdx < 0 ? 0 : periodIdx,
+          periodLabel: PERIOD_LABEL[selPeriod] || '全天'
+        });
+        wx.navigateBack();
+        return;
+      }
+      // 兜底（极端情况）：重定向到表单
+      wx.redirectTo({ url: `/pkg/appointment/appointment?date=${selDate}&period=${selPeriod}` });
+      return;
+    }
     wx.navigateTo({ url: `/pkg/appointment/appointment?date=${selDate}&period=${selPeriod}` });
   },
 
   goFillNoDate() {
+    if (this.data.selectMode) {
+      // 子选择器模式：不指定日期，直接返回上一页（保留表单原有值）
+      const pages = getCurrentPages();
+      const prev = pages[pages.length - 2];
+      if (prev && prev.route && prev.route.indexOf('appointment') >= 0) {
+        wx.navigateBack();
+        return;
+      }
+      wx.redirectTo({ url: '/pkg/appointment/appointment' });
+      return;
+    }
     wx.navigateTo({ url: '/pkg/appointment/appointment' });
   }
 });

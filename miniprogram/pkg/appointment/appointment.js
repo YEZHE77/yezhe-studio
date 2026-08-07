@@ -102,6 +102,8 @@ Page({
   onPhone(e) { this.setData({ phone: e.detail.value }); },
   onRemark(e) { this.setData({ remark: e.detail.value }); },
   onDate(e) { this.setData({ hopeDate: e.detail.value }); },
+  // 期望日期：点击打开档期日历（子选择器模式），选完由日历 navigateBack 回填 hopeDate
+  pickDate() { wx.navigateTo({ url: '/pkg/schedule/schedule?selectMode=1' }); },
   onPkg(e) {
     const idx = parseInt(e.detail.value);
     this.setData({ pkgIndex: idx, pkgId: this.data.packages[idx].id, specId: '' });

@@ -198,7 +198,7 @@ Page({
     wx.makePhoneCall({ phoneNumber: phone });
   },
 
-  goAppointment() { wx.navigateTo({ url: '/pkg/schedule/schedule' }); },
+  goAppointment() { wx.navigateTo({ url: '/pkg/appointment/appointment' }); },
   goAbout() { wx.navigateTo({ url: '/pkg/about/about' }); },
   goMy() { wx.navigateTo({ url: '/pages/my/my' }); },
 
