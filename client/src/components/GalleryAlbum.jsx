@@ -4,7 +4,7 @@ import { img } from '../api.js';
 // 客片电子相册沉浸式页面（对应零屿 VISION 这类婚礼电子相册 H5）
 // 全屏上下滑动浏览照片 + 新人名字/分类/专属文案 + 底部品牌工具栏（播放/投屏/查看更多）
 export default function GalleryAlbum({ gallery, startIndex = 0, onClose }) {
-  const { title, subtitle, category, blessing, albumCopy, photos = [], brand_name, brand_slogan, brand_logo } = gallery;
+  const { title, subtitle, category, blessing, albumCopy, photos = [], brand_name, brand_slogan, brand_intro, brand_logo } = gallery;
   // 自定义相册文案（albumCopy）优先级高于旧 blessing，作为相册正文文案模块
   const copy = albumCopy || blessing || '';
   const [playing, setPlaying] = useState(false);
@@ -150,7 +150,7 @@ export default function GalleryAlbum({ gallery, startIndex = 0, onClose }) {
             )}
             <div className="min-w-0">
               <div className="text-sm font-medium truncate">{brand_name || 'YEZHE WORKSHOP'}</div>
-              {brand_slogan && <div className="text-[10px] text-white/55 truncate">{brand_slogan}</div>}
+              {(brand_intro || brand_slogan) && <div className="text-[10px] text-white/55 truncate">{brand_intro || brand_slogan}</div>}
             </div>
           </div>
           <div className="flex items-center gap-5 shrink-0">

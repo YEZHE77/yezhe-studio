@@ -79,7 +79,8 @@ async function fetchStudioBrand() {
   if (r && r.value) { try { s = JSON.parse(r.value); } catch { s = {}; } }
   return {
     brand_name: s.name || 'YEZHE WORKSHOP',
-    brand_slogan: s.intro || '',
+    brand_slogan: s.slogan || '',
+    brand_intro: s.intro || '',
     brand_logo: s.logo || ''
   };
 }
@@ -119,6 +120,7 @@ export async function buildWorkAlbum(workId) {
     photos,
     brand_name: brand.brand_name,
     brand_slogan: brand.brand_slogan,
+    brand_intro: brand.brand_intro,
     brand_logo: brand.brand_logo
   };
 }

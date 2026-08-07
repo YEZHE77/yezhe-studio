@@ -12,7 +12,7 @@ const BGM_URL = '';
 // 客片电子相册（纵向长图流式 / 缩略图网格 双视图）—— 与小程序「相册详情页」UI/交互保持一致
 // 封面右上悬浮青绿色「分享」按钮；标题栏右侧视图切换；底部品牌工具栏（播放/投屏/预约服务）
 export default function AlbumGrid({ gallery, onBack, albumId }) {
-  const { title, subtitle, category, albumCopy, cover_url, photos = [], brand_name, brand_slogan, brand_logo } = gallery;
+  const { title, subtitle, category, albumCopy, cover_url, photos = [], brand_name, brand_slogan, brand_intro, brand_logo } = gallery;
   const [view, setView] = useState('flow'); // flow 纵向长图（默认） | grid 缩略网格
   const [full, setFull] = useState(-1);     // >=0 打开全屏查看的起始索引
   const [toast, setToast] = useState('');
@@ -220,7 +220,7 @@ export default function AlbumGrid({ gallery, onBack, albumId }) {
           )}
           <div className="ml-3 min-w-0">
             <div className="text-sm font-medium text-white truncate">{brand_name || 'YEZHE WORKSHOP'}</div>
-            {brand_slogan && <div className="text-[11px] text-neutral-400 truncate">{brand_slogan}</div>}
+            {(brand_intro || brand_slogan) && <div className="text-[11px] text-neutral-400 truncate">{brand_intro || brand_slogan}</div>}
           </div>
         </div>
         <div className="flex items-center gap-4 shrink-0">

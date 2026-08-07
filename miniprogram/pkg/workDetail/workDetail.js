@@ -140,6 +140,7 @@ Page({
       brand: {
         name: g.brand_name || '',
         slogan: g.brand_slogan || '',
+        intro: g.brand_intro || '',
         logo: g.brand_logo || ''
       }
     });
