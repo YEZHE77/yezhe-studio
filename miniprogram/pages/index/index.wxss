@@ -146,7 +146,7 @@ page { background: #f8f6f2; }
   background: #48c8b0; border-radius: 2rpx;
 }
 
-/* 作品网格：两列等宽等比例矩阵，列 gap 24rpx、行 gap 48rpx，禁止瀑布流高低错落 */
+/* 作品网格：两列等宽、行对齐（非瀑布流），列 gap 24rpx、行 gap 48rpx；图片 widthFix 原比例、文字区固定高度 */
 .works-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
@@ -154,19 +154,17 @@ page { background: #f8f6f2; }
   row-gap: 48rpx;
 }
 .work-card { width: 100%; }
-/* 封面容器强制 4:3 横版（padding-bottom:75%），圆角 8rpx，overflow hidden；
-   图片 aspectFill 居中填满；无白色卡片外壳，页面底色米白直接铺底 */
+/* 封面容器：widthFix 原比例完整展示，不写死 4:3、不裁剪；圆角 8rpx，overflow hidden；
+   图片 height:auto 跟随原图比例；无白色卡片外壳，页面底色米白直接铺底 */
 .work-cover-wrap {
   width: 100%;
-  position: relative;
-  padding-bottom: 75%; /* 4:3 横版 */
   border-radius: 8rpx;
   overflow: hidden;
   background: #eee;
 }
 .work-cover {
-  position: absolute; top: 0; left: 0;
-  width: 100%; height: 100%;
+  width: 100%;
+  height: auto;
   display: block;
 }
 /* 文字区在图片下方，距图 28rpx */

@@ -55,7 +55,7 @@
     <view class="works-grid" wx:if="{{works.length}}">
       <view class="work-card" wx:for="{{works}}" wx:key="id" bindtap="openWork" data-id="{{item.id}}">
         <view class="work-cover-wrap">
-          <image class="work-cover" src="{{item.cover}}" mode="aspectFill" lazy-load />
+          <image class="work-cover" src="{{item.cover}}" mode="widthFix" lazy-load />
         </view>
         <view class="work-info">
           <view class="work-title">{{item.customer_name || item.title}}</view>
