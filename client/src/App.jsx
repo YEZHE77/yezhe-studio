@@ -3,6 +3,7 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './auth.jsx';
 import Sidebar from './layout/Sidebar.jsx';
 import Topbar from './layout/Topbar.jsx';
+import ErrorBoundary from './components/ErrorBoundary.jsx';
 
 // 首屏必须同步加载（Login + Dashboard + Sidebar）
 import Login from './pages/Login.jsx';
@@ -46,27 +47,29 @@ function AppShell() {
       <div className="flex-1 flex flex-col min-w-0">
         <Topbar />
         <main className="flex-1 overflow-auto p-6 bg-ink">
-          <Suspense fallback={<PageLoader />}>
-            <Routes>
-              <Route path="/" element={<Dashboard />} />
-              <Route path="/works" element={<Works />} />
-              <Route path="/categories" element={<Categories />} />
-              <Route path="/works/:id" element={<WorkDetail />} />
-              <Route path="/packages" element={<Packages />} />
-              <Route path="/schedule" element={<Schedule />} />
-              <Route path="/orders" element={<Orders />} />
-              <Route path="/appointments" element={<Appointments />} />
-              <Route path="/reviews" element={<Reviews />} />
-              <Route path="/settings" element={<Settings />} />
-              <Route path="/customers" element={<Customers />} />
-              <Route path="/datacharts" element={<DataCharts />} />
-              <Route path="/card" element={<BusinessCard />} />
-              <Route path="/selections" element={<SelectionAdmin />} />
-              <Route path="/finance" element={<Finance />} />
-              <Route path="/capacity" element={<CapacityManagement />} />
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
-          </Suspense>
+          <ErrorBoundary>
+            <Suspense fallback={<PageLoader />}>
+              <Routes>
+                <Route path="/" element={<Dashboard />} />
+                <Route path="/works" element={<Works />} />
+                <Route path="/categories" element={<Categories />} />
+                <Route path="/works/:id" element={<WorkDetail />} />
+                <Route path="/packages" element={<Packages />} />
+                <Route path="/schedule" element={<Schedule />} />
+                <Route path="/orders" element={<Orders />} />
+                <Route path="/appointments" element={<Appointments />} />
+                <Route path="/reviews" element={<Reviews />} />
+                <Route path="/settings" element={<Settings />} />
+                <Route path="/customers" element={<Customers />} />
+                <Route path="/datacharts" element={<DataCharts />} />
+                <Route path="/card" element={<BusinessCard />} />
+                <Route path="/selections" element={<SelectionAdmin />} />
+                <Route path="/finance" element={<Finance />} />
+                <Route path="/capacity" element={<CapacityManagement />} />
+                <Route path="*" element={<Navigate to="/" replace />} />
+              </Routes>
+            </Suspense>
+          </ErrorBoundary>
         </main>
       </div>
     </div>

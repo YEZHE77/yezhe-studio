@@ -150,7 +150,9 @@ export default function Works() {
 
       {/* 作品网格 */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-        {data.items.map((w) => (
+        {data.items.map((w) => {
+          if (!w || !w.id) return null;
+          return (
           <div key={w.id} onClick={() => navigate('/works/' + w.id)}
             className="bg-panel border border-line rounded-xl2 overflow-hidden cursor-pointer hover:shadow-md hover:-translate-y-0.5 transition">
             <div className="h-40 bg-ink flex items-center justify-center text-muted text-3xl">
@@ -173,7 +175,7 @@ export default function Works() {
               </div>
             </div>
           </div>
-        ))}
+        );})}
         {data.items.length === 0 && <div className="col-span-full text-center text-muted py-10">暂无作品</div>}
       </div>
 

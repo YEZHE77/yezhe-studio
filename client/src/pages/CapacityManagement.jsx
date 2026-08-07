@@ -60,7 +60,7 @@ function StorageTab({ reloadKey }) {
   const level = levelOf(ratio);
   const remaining = data.limitBytes ? Math.max(0, data.limitBytes - data.totalUsedBytes) : null;
 
-  const cats = [...data.categories].sort(
+  const cats = [...(data.categories || [])].sort(
     (a, b) => (CATEGORY_ORDER.indexOf(a.category) + 99) - (CATEGORY_ORDER.indexOf(b.category) + 99)
   );
   const catSum = cats.reduce((s, c) => s + c.bytes, 0) || 1;

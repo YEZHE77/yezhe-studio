@@ -59,10 +59,13 @@ export default function WorkDetail() {
       const r = await http.get('/api/works/' + id);
       const w = r.data.work;
       setWork(w);
+      const catIds = typeof w.category_ids === 'string'
+        ? w.category_ids.split(',').map((x) => x.trim()).filter(Boolean)
+        : (Array.isArray(w.category_ids) ? w.category_ids : []);
       setForm({
         title: w.title || '',
-        category_ids: w.category_ids ? w.category_ids.split(',').map((x) => x.trim()).filter(Boolean) : [],
-        tags: Array.isArray(w.tags) ? w.tags.join('、') : (w.tags || ''),
+        category_ids: catIds,
+        tags: Array.isArray(w.tags) ? w.tags.join('、') : (typeof w.tags === 'string' ? w.tags : ''),
         album_copy: w.album_copy || '',
         is_public: !!w.is_public,
         allow_download: !!w.allow_download,

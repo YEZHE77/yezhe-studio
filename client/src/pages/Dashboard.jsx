@@ -75,10 +75,11 @@ export default function Dashboard() {
   const storageBar = storageLevel === 'critical' ? 'bg-red-500' : storageLevel === 'warning' ? 'bg-amber-400' : 'bg-emerald-500';
   const storageTx = storageLevel === 'critical' ? 'text-red-600' : storageLevel === 'warning' ? 'text-amber-600' : 'text-emerald-600';
 
+  const safeNum = (v) => (typeof v === 'number' ? v : 0);
   const overview = [
-    { label: '商户余额（应收）', value: stats ? stats.balance.toLocaleString() : '—' },
-    { label: '线上收入', value: stats ? stats.onlineIncome.toLocaleString() : '—' },
-    { label: '线下收入', value: stats ? stats.offlineIncome.toLocaleString() : '—' }
+    { label: '商户余额（应收）', value: stats ? safeNum(stats.balance).toLocaleString() : '—' },
+    { label: '线上收入', value: stats ? safeNum(stats.onlineIncome).toLocaleString() : '—' },
+    { label: '线下收入', value: stats ? safeNum(stats.offlineIncome).toLocaleString() : '—' }
   ];
 
   return (
@@ -147,7 +148,7 @@ export default function Dashboard() {
         <div className="text-[15px] font-semibold text-fg mb-4">待处理订单</div>
         <div className="grid grid-cols-5 gap-3">
           {PENDING.map((b) => {
-            const n = stats ? (stats.pendingBlocks[b.key] || 0) : '—';
+            const n = stats && stats.pendingBlocks ? (stats.pendingBlocks[b.key] || 0) : '—';
             return (
               <button
                 key={b.key}
