@@ -10,6 +10,38 @@ const ZONES = [
   { key: 'final', label: '成片', desc: '交付客户的精修成片' }
 ];
 
+// 表单默认结构（不写死业务数据，仅作草稿恢复兜底）
+const DEFAULT_FORM = {
+  title: '', category_ids: [], tags: '', album_copy: '',
+  is_public: true, allow_download: false, album_password_enabled: false,
+  album_password: '', album_expires_at: ''
+};
+
+// —— 作品编辑表单草稿（localStorage）——
+// 解决场景：移动端/浏览器在滚动大量图片时可能回收页面或重挂载组件，
+// 导致受控表单 form 状态丢失、用户输入被清空。写入本地草稿，重挂载或刷新后自动恢复。
+function draftKey(id) { return 'work_form_draft_' + id; }
+function readDraft(id) {
+  try {
+    const raw = localStorage.getItem(draftKey(id));
+    if (!raw) return null;
+    const d = JSON.parse(raw);
+    if (!d || typeof d !== 'object' || !d.__ts) return null;
+    return d;
+  } catch { return null; }
+}
+function writeDraft(id, form) {
+  try {
+    // 明文密码不落本地存储，仅保留其余字段；__ts 用于与后端 updated_at 比较
+    const payload = { ...form, __ts: Date.now() };
+    delete payload.album_password;
+    localStorage.setItem(draftKey(id), JSON.stringify(payload));
+  } catch {}
+}
+function clearDraft(id) {
+  try { localStorage.removeItem(draftKey(id)); } catch {}
+}
+
 export default function WorkDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -18,6 +50,8 @@ export default function WorkDetail() {
   const fileRef = useRef(null);
   const uploadAreaRef = useRef(null);
 
+  // 初始表单：非新建且有本地草稿时，优先用草稿恢复（防止重挂载/刷新后标题被清空）
+  const initialDraft = !isNew ? readDraft(id) : null;
   const [cats, setCats] = useState([]);
   const [work, setWork] = useState(null);
   const [albums, setAlbums] = useState([]);
@@ -42,7 +76,11 @@ export default function WorkDetail() {
   const rowsRef = useRef([]);
   const toUploadRef = useRef([]);
   const [selected, setSelected] = useState(new Set());
-  const [form, setForm] = useState({ title: '', category_ids: [], tags: '', album_copy: '', is_public: true, allow_download: false, album_password_enabled: false, album_password: '', album_expires_at: '' });
+  const [form, setForm] = useState(
+    initialDraft
+      ? { ...DEFAULT_FORM, ...initialDraft, album_password: '' }
+      : { ...DEFAULT_FORM }
+  );
   const [draggedId, setDraggedId] = useState(null);
   const [dragOverId, setDragOverId] = useState(null);
   const [reordering, setReordering] = useState(false);
@@ -62,7 +100,7 @@ export default function WorkDetail() {
       const catIds = typeof w.category_ids === 'string'
         ? w.category_ids.split(',').map((x) => x.trim()).filter(Boolean)
         : (Array.isArray(w.category_ids) ? w.category_ids : []);
-      setForm({
+      const backendForm = {
         title: w.title || '',
         category_ids: catIds,
         tags: Array.isArray(w.tags) ? w.tags.join('、') : (typeof w.tags === 'string' ? w.tags : ''),
@@ -72,7 +110,16 @@ export default function WorkDetail() {
         album_password_enabled: !!w.album_password_enabled,
         album_password: '', // 明文密码绝不回填，修改时由商家重新录入
         album_expires_at: w.album_expires_at || ''
-      });
+      };
+      // 本地草稿比后端 updated_at 更新 → 用户有未保存修改，优先恢复草稿，避免覆盖输入
+      const draft = readDraft(id);
+      const backendTs = new Date(w.updated_at || 0).getTime();
+      if (draft && draft.__ts && draft.__ts > backendTs) {
+        setForm({ ...DEFAULT_FORM, ...draft, album_password: '' });
+      } else {
+        setForm(backendForm);
+        if (draft) clearDraft(id); // 后端已是最新，丢弃过期草稿
+      }
       // 后端 /api/works/:id 已同时返回 albums，避免再发一次请求
       const initialAlbums = r.data.albums || [];
       setAlbums(initialAlbums);
@@ -144,6 +191,26 @@ export default function WorkDetail() {
   useEffect(() => { http.get('/api/categories').then((r) => setCats(r.data)); }, []);
   useEffect(() => { loadAll(); }, [id]);
 
+  // 自动保存表单草稿（防抖 600ms）：滚动导致页面回收/组件重挂载或刷新时，输入不丢失
+  useEffect(() => {
+    if (isNew || loading) return;
+    const t = setTimeout(() => writeDraft(id, form), 600);
+    return () => clearTimeout(t);
+  }, [form, id, loading, isNew]);
+
+  // 存在未保存草稿时，离开/刷新页面给出浏览器原生提示，避免误丢改动
+  useEffect(() => {
+    if (isNew) return;
+    function onBeforeUnload(e) {
+      const d = readDraft(id);
+      if (!d) return;
+      e.preventDefault();
+      e.returnValue = '您有未保存的修改，离开页面将丢失。';
+    }
+    window.addEventListener('beforeunload', onBeforeUnload);
+    return () => window.removeEventListener('beforeunload', onBeforeUnload);
+  }, [id, isNew]);
+
   // 从「新建作品组」保存并上传照片跳转过来时，自动聚焦右侧批量上传区域
   useEffect(() => {
     if (!loading && location.state?.openUpload && uploadAreaRef.current) {
@@ -199,6 +266,7 @@ export default function WorkDetail() {
         customer_name: work.customer_name || '',
         order_id: work.order_id || null
       });
+      clearDraft(id);
       await loadWork();
       alert('保存成功');
     } catch (err) {
@@ -454,6 +522,7 @@ export default function WorkDetail() {
     if (!confirm(`确认删除作品「${work?.title || '未命名作品'}」？\n该作品下的 ${albums.length} 张照片与选片记录也会一并删除，不可恢复。`)) return;
     try {
       await http.delete('/api/works/' + id);
+      clearDraft(id);
       navigate('/works');
     } catch (err) { alert('删除失败'); }
   }
