@@ -1,4 +1,4 @@
-page { background: #f8f6f2; }
+page { background: #ffffff; }
 .page { padding-bottom: 60rpx; }
 
 /* ===== 自定义顶部标题栏（白底黑字「叶哲 STUDIO」居中，固定置顶，避让系统状态栏） ===== */

@@ -1043,6 +1043,7 @@ export default function WorkDetail() {
             <div className="flex gap-2 mb-4">
               {[
                 { label: '1:1', v: 1 },
+                { label: '4:3', v: 4 / 3 },
                 { label: '3:2', v: 3 / 2 },
                 { label: '16:9', v: 16 / 9 }
               ].map((r) => (
