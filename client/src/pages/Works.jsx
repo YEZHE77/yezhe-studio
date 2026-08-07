@@ -9,6 +9,11 @@ export default function Works() {
   const [cats, setCats] = useState([]);
   const [data, setData] = useState({ items: [], total: 0, pageSize: 12 });
   const [workShare, setWorkShare] = useState(null); // 作品分享相册 {open, workId, title, result, busy}
+  const [sortMode, setSortMode] = useState(false);
+  const [allItems, setAllItems] = useState([]); // 排序模式下加载全部作品（忽略分页）
+  const [draggedId, setDraggedId] = useState(null);
+  const [dragOverId, setDragOverId] = useState(null);
+  const [savingSort, setSavingSort] = useState(false);
 
   // 作品分享相册：生成公开分享令牌（type=work）→ 沉浸式相册二维码 + 链接
   function openWorkShare(w) {
@@ -54,6 +59,12 @@ export default function Works() {
     http.get('/api/works?' + p.toString(), { signal: ctrl.signal }).then((r) => setData(r.data)).catch(() => {});
     return () => ctrl.abort();
   }, [state]);
+
+  // 筛选/分页变化时自动退出排序模式，避免 allItems 与当前筛选不一致
+  useEffect(() => {
+    if (sortMode) setSortMode(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.tab, state.vis, state.q, state.page]);
 
   // 重新拉取列表（删除 / 切换公开状态后）
   async function reload() {
@@ -108,13 +119,87 @@ export default function Works() {
   const setVis = (v) => setState((s) => ({ ...s, vis: v, page: 1 }));
   const goPage = (p) => setState((s) => ({ ...s, page: p }));
 
+  // 进入/退出排序模式：排序模式加载全部作品（按当前筛选），方便全局拖拽排序
+  async function toggleSortMode() {
+    if (sortMode) {
+      // 退出排序模式时重新加载分页列表
+      setSortMode(false);
+      reload();
+      return;
+    }
+    const ctrl = new AbortController();
+    const p = new URLSearchParams();
+    if (state.tab) p.set('category', state.tab);
+    if (state.q) p.set('q', state.q);
+    if (state.vis === '1') p.set('is_public', '1');
+    if (state.vis === '0') p.set('is_public', '0');
+    p.set('page', '1');
+    p.set('pageSize', '1000');
+    try {
+      const r = await http.get('/api/works?' + p.toString(), { signal: ctrl.signal });
+      setAllItems((r.data.items || []).filter(Boolean));
+      setSortMode(true);
+    } catch (e) {
+      alert('加载作品失败，无法进入排序模式');
+    }
+  }
+
+  async function saveSortOrder() {
+    setSavingSort(true);
+    try {
+      await http.post('/api/works/reorder', { orders: allItems.map((w) => w.id) });
+      setSortMode(false);
+      reload();
+    } catch (e) {
+      alert((e.response && e.response.data && e.response.data.error) || '排序保存失败');
+    } finally {
+      setSavingSort(false);
+    }
+  }
+
+  function handleDragStart(e, id) {
+    setDraggedId(id);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', String(id));
+  }
+  function handleDragOver(e, id) {
+    e.preventDefault();
+    if (id !== draggedId) setDragOverId(id);
+  }
+  function resetDrag() { setDraggedId(null); setDragOverId(null); }
+  function handleDrop(e, dropId) {
+    e.preventDefault();
+    if (!draggedId || draggedId === dropId) { resetDrag(); return; }
+    const list = [...allItems];
+    const dragIdx = list.findIndex((w) => w.id === draggedId);
+    const dropIdx = list.findIndex((w) => w.id === dropId);
+    if (dragIdx < 0 || dropIdx < 0) { resetDrag(); return; }
+    const [moved] = list.splice(dragIdx, 1);
+    list.splice(dropIdx, 0, moved);
+    setAllItems(list);
+    resetDrag();
+  }
+
   const pages = Math.max(1, Math.ceil(data.total / data.pageSize));
 
   return (
     <div className="max-w-6xl mx-auto">
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-xl font-semibold text-fg">作品管理</h1>
-        <button onClick={openNew} className="px-4 py-2 rounded bg-brand text-white text-sm hover:opacity-90">+ 新建作品组</button>
+        <div className="flex items-center gap-2">
+          {sortMode ? (
+            <>
+              <button onClick={() => setSortMode(false)} disabled={savingSort} className="px-4 py-2 rounded border border-line text-sm text-muted hover:text-fg disabled:opacity-50">取消</button>
+              <button onClick={saveSortOrder} disabled={savingSort || !allItems.length}
+                className="px-4 py-2 rounded bg-brand text-white text-sm hover:opacity-90 disabled:opacity-50">{savingSort ? '保存中…' : '保存排序'}</button>
+            </>
+          ) : (
+            <>
+              <button onClick={toggleSortMode} className="px-4 py-2 rounded border border-line text-sm text-muted hover:text-brand hover:border-brand">自定义排序</button>
+              <button onClick={openNew} className="px-4 py-2 rounded bg-brand text-white text-sm hover:opacity-90">+ 新建作品组</button>
+            </>
+          )}
+        </div>
       </div>
 
       {/* 分类 Tab + 管理入口 */}
@@ -149,14 +234,36 @@ export default function Works() {
       </div>
 
       {/* 作品网格 */}
+      {sortMode && (
+        <div className="mb-3 text-xs text-muted bg-panel border border-line rounded-lg p-3">
+          💡 排序模式：拖拽作品卡片可调整顺序，保存后会同步到公开列表（小程序/H5 首页）。未保存前可点击「取消」退出。
+        </div>
+      )}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-        {data.items.map((w) => {
-          if (!w || !w.id) return null;
+        {(sortMode ? allItems : data.items).filter(Boolean).map((w) => {
+          if (!w.id) return null;
+          const isDragOver = sortMode && dragOverId === w.id;
+          const isDragged = sortMode && draggedId === w.id;
           return (
-          <div key={w.id} onClick={() => navigate('/works/' + w.id)}
-            className="bg-panel border border-line rounded-xl2 overflow-hidden cursor-pointer hover:shadow-md hover:-translate-y-0.5 transition">
-            <div className="h-40 bg-ink flex items-center justify-center text-muted text-3xl">
+          <div key={w.id}
+            draggable={sortMode}
+            onDragStart={(e) => sortMode && handleDragStart(e, w.id)}
+            onDragOver={(e) => sortMode && handleDragOver(e, w.id)}
+            onDrop={(e) => sortMode && handleDrop(e, w.id)}
+            onDragEnd={resetDrag}
+            onClick={() => !sortMode && navigate('/works/' + w.id)}
+            className={`bg-panel border rounded-xl2 overflow-hidden transition select-none
+              ${sortMode ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer hover:shadow-md hover:-translate-y-0.5'}
+              ${isDragOver ? 'border-brand ring-2 ring-brand' : 'border-line'}
+              ${isDragged ? 'opacity-40' : ''}`}>
+            <div className="h-40 bg-ink flex items-center justify-center text-muted text-3xl relative">
               {w.cover_url ? <img src={img(w.cover_url)} className="w-full h-full object-cover" alt="" /> : '▣'}
+              {sortMode && (
+                <div className="absolute top-2 left-2 bg-black/60 text-white text-[10px] px-2 py-1 rounded flex items-center gap-1">
+                  <svg viewBox="0 0 24 24" className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="12" r="1"/><circle cx="9" cy="5" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="15" cy="19" r="1"/></svg>
+                  拖拽排序
+                </div>
+              )}
             </div>
             <div className="p-3">
               <div className="text-sm text-fg truncate">{w.title}</div>
@@ -164,23 +271,27 @@ export default function Works() {
                 <span>{w.is_public ? '公开' : '私密'}</span>
                 <span>{(w.tags || []).join(' · ')}</span>
               </div>
-              <button onClick={(e) => toggleDownload(w, e)}
-                className={'mt-2 w-full text-xs py-1.5 rounded border ' + (w.allow_download ? 'bg-emerald-50 text-emerald-600 border-emerald-200' : 'bg-panel2 text-muted border-line')}>
-                {w.allow_download ? '✓ 允许下载' : '禁止下载'}
-              </button>
-              <div className="flex gap-2 mt-2">
-                <button onClick={(e) => { e.stopPropagation(); navigate('/works/' + w.id); }} className="flex-1 text-xs py-1.5 rounded border border-line text-brand hover:bg-brand/5">管理相册</button>
-                <button onClick={(e) => { e.stopPropagation(); openWorkShare(w); }} className="flex-1 text-xs py-1.5 rounded border border-line text-emerald-500 hover:bg-emerald-50">分享相册</button>
-                <button onClick={(e) => remove(w, e)} className="flex-1 text-xs py-1.5 rounded border border-line text-red-500 hover:bg-red-50">删除</button>
-              </div>
+              {!sortMode && (
+                <>
+                  <button onClick={(e) => toggleDownload(w, e)}
+                    className={'mt-2 w-full text-xs py-1.5 rounded border ' + (w.allow_download ? 'bg-emerald-50 text-emerald-600 border-emerald-200' : 'bg-panel2 text-muted border-line')}>
+                    {w.allow_download ? '✓ 允许下载' : '禁止下载'}
+                  </button>
+                  <div className="flex gap-2 mt-2">
+                    <button onClick={(e) => { e.stopPropagation(); navigate('/works/' + w.id); }} className="flex-1 text-xs py-1.5 rounded border border-line text-brand hover:bg-brand/5">管理相册</button>
+                    <button onClick={(e) => { e.stopPropagation(); openWorkShare(w); }} className="flex-1 text-xs py-1.5 rounded border border-line text-emerald-500 hover:bg-emerald-50">分享相册</button>
+                    <button onClick={(e) => remove(w, e)} className="flex-1 text-xs py-1.5 rounded border border-line text-red-500 hover:bg-red-50">删除</button>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         );})}
-        {data.items.length === 0 && <div className="col-span-full text-center text-muted py-10">暂无作品</div>}
+        {(sortMode ? allItems : data.items).length === 0 && <div className="col-span-full text-center text-muted py-10">暂无作品</div>}
       </div>
 
-      {/* 分页 */}
-      {pages > 1 && (
+      {/* 分页：排序模式下隐藏（已加载全部作品） */}
+      {!sortMode && pages > 1 && (
         <div className="flex gap-2 mt-5 justify-center">
           {Array.from({ length: pages }).map((_, i) => (
             <button key={i} onClick={() => goPage(i + 1)}

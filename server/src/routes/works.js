@@ -65,7 +65,7 @@ router.get('/', async (req, res) => {
     const total = (await get('SELECT COUNT(*) AS c FROM works ' + w, params)).c;
     const offset = (Math.max(1, parseInt(page)) - 1) * parseInt(pageSize);
     const rows = await query(
-      'SELECT * FROM works ' + w + ' ORDER BY id DESC LIMIT ? OFFSET ?',
+      'SELECT * FROM works ' + w + ' ORDER BY sort ASC, id DESC LIMIT ? OFFSET ?',
       [...params, parseInt(pageSize), offset]
     );
     const items = rows.map((r) => safeWork(parseRow(r, ['tags'])));
@@ -91,7 +91,7 @@ router.get('/public', async (req, res) => {
     const total = (await get('SELECT COUNT(*) AS c FROM works w ' + w, params)).c;
     const offset = (Math.max(1, parseInt(page)) - 1) * parseInt(pageSize);
     const rows = await query(
-      `SELECT w.*, c.name AS category_name FROM works w LEFT JOIN categories c ON c.id = w.category_id ${w} ORDER BY w.id DESC LIMIT ? OFFSET ?`,
+      `SELECT w.*, c.name AS category_name FROM works w LEFT JOIN categories c ON c.id = w.category_id ${w} ORDER BY w.sort ASC, w.id DESC LIMIT ? OFFSET ?`,
       [...params, parseInt(pageSize), offset]
     );
     res.json({ items: rows.map((r) => parseRow(r, ['tags'])), total, page: parseInt(page), pageSize: parseInt(pageSize) });
@@ -353,6 +353,20 @@ router.put('/:id/cover', authRequired, async (req, res) => {
   try {
     const { cover_url } = req.body;
     await run('UPDATE works SET cover_url = ? WHERE id = ?', [cover_url || '', req.params.id]);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// 作品列表自定义排序：接收作品 id 的有序数组，按顺序重写 sort
+router.post('/reorder', authRequired, async (req, res) => {
+  try {
+    const { orders } = req.body;
+    if (!Array.isArray(orders) || orders.some((id) => typeof id !== 'number')) {
+      return res.status(400).json({ error: 'orders 必须为数字 id 数组' });
+    }
+    for (let i = 0; i < orders.length; i++) {
+      await run('UPDATE works SET sort = ? WHERE id = ?', [i, orders[i]]);
+    }
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
