@@ -21,12 +21,11 @@
   <block wx:else>
     <!-- 相册内容（未锁定时展示） -->
     <block wx:if="{{!locked}}">
-      <!-- 右上角悬浮分享按钮：小圆形 -->
-      <view class="share-float-btn" style="top: {{statusBarHeight + navHeight + 12}}px;" bindtap="openShareSheet">分享</view>
-
-      <!-- 封面图 -->
+      <!-- 封面图：宽度铺满屏幕，高度按原图比例 widthFix 自适应，不裁剪人物 -->
       <view class="cover-wrap">
-        <image class="cover-img" src="{{cover}}" mode="aspectFill" lazy-load binderror="onImgError" />
+        <image class="cover-img" src="{{cover}}" mode="widthFix" lazy-load binderror="onImgError" />
+        <!-- 右侧悬浮分享按钮：相对封面容器绝对定位、垂直居中，封面高度变化自动跟随 -->
+        <view class="share-float-btn" bindtap="openShareSheet">分享</view>
       </view>
 
       <!-- 相册信息区 -->
