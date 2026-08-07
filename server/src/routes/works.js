@@ -6,7 +6,6 @@ import { parseRow } from '../schema.js';
 import { authRequired, hashPassword, peekUser } from '../auth.js';
 import { buildWorkAlbum, albumLockState } from './share.js';
 import { deleteFromR2 } from '../storage.js';
-import { enqueueUploadJob } from '../uploadQueue.js';
 
 const router = Router();
 
@@ -284,24 +283,13 @@ router.post('/:id/albums', authRequired, async (req, res) => {
       if (!url) continue;
       const originalName = (it && it.originalName != null) ? String(it.originalName) : null;
       const originalSize = (it && it.size != null) ? Number(it.size) : null;
-      // 后台处理是否已完成（media 表 ready 即视为可正常展示）
-      const m = await get('SELECT status FROM media WHERE url = ?', [url]);
-      const albumStatus = (m && m.status === 'ready') ? 'ready' : 'processing';
+      // 同步上传模式：图片已由上传接口（/api/upload*）同步完成存储+hash+媒资登记，
+      // 相册直接以 normal 状态落库，不再有 processing/失败态、不再依赖异步队列。
       const id = await insert(
-        'INSERT INTO albums (work_id, zone, photo_url, sort, original_name, original_size, status) VALUES (?,?,?,?,?,?,?)',
-        [req.params.id, zone, url, sort++, originalName, originalSize, albumStatus]
+        'INSERT INTO albums (work_id, zone, photo_url, thumb_url, sort, original_name, original_size, status) VALUES (?,?,?,?,?,?,?,?)',
+        [req.params.id, zone, url, url, sort++, originalName, originalSize, 'normal']
       );
       inserted.push(id);
-      // 若后台尚未处理完（media 不存在/未 ready），兜底入队，确保相册状态最终翻为 ready
-      if (!m || m.status !== 'ready') {
-        enqueueUploadJob({
-          url,
-          r2Key: null,
-          category: ZONE_TYPE[zone] || 'client',
-          bytes: originalSize || 0,
-          isPublic: ZONE_PUB[zone] || false
-        });
-      }
     }
     res.json({ ok: true, ids: inserted });
   } catch (e) { res.status(500).json({ error: e.message }); }

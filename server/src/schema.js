@@ -305,10 +305,12 @@ export async function initSchema() {
   // 小程序端无真实文件名（临时路径），由 wx.getFileInfo 取 size+digest，original_name 存 digest。
   await ensureColumn('albums', 'original_name', 'TEXT');
   await ensureColumn('albums', 'original_size', dialect === 'pg' ? 'BIGINT' : 'INTEGER');
-  // 异步上传：相册照片处理状态标记（'processing' 处理中 / 'ready' 正常），前端显示占位
-  await ensureColumn('albums', 'status', `TEXT NOT NULL DEFAULT 'ready'`);
+  // 同步上传模式：相册照片状态仅一个取值 'normal'（无 processing/failed），默认 normal
+  await ensureColumn('albums', 'status', `TEXT NOT NULL DEFAULT 'normal'`);
+  // 缩略图 URL（同步模式由上传接口写入，未生成独立缩略图时与 photo_url 同值，前端可按需取 ?w= 变体）
+  await ensureColumn('albums', 'thumb_url', 'TEXT');
 
-  // media 补列：处理状态（异步队列完成后置 ready）+ 内容 hash（内容级去重，best-effort）
+  // media 补列：处理状态（同步写入后恒为 ready）+ 内容 hash（内容级去重，best-effort）
   await ensureColumn('media', 'status', `TEXT NOT NULL DEFAULT 'ready'`);
   await ensureColumn('media', 'hash', 'TEXT');
 
@@ -319,6 +321,10 @@ export async function initSchema() {
   // 一次性迁移：旧单分类数据落到 category_ids（仅当 category_ids 为空且 category_id 有值）
   await run(`UPDATE works SET category_ids = CAST(category_id AS TEXT) WHERE category_ids IS NULL AND category_id IS NOT NULL`);
   await run(`UPDATE works SET category_ids = '' WHERE category_ids IS NULL`);
+  // 同步上传模式迁移：旧相册可能有 'processing'/'ready'/'failed' 等状态，统一归一为 'normal'，
+  // 保证历史老图片继续正常展示（历史缩略图缺失则补为 photo_url 同值）。
+  await run(`UPDATE albums SET status = 'normal' WHERE status IS NULL OR status <> 'normal'`);
+  await run(`UPDATE albums SET thumb_url = photo_url WHERE thumb_url IS NULL AND photo_url IS NOT NULL`);
   // packages / schedules 增量补列
   const PACKAGES_NEW_COLUMNS = [
     ['deposit', 'REAL NOT NULL DEFAULT 0'],

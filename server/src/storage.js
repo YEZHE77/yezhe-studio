@@ -5,6 +5,7 @@
 // DB 只存储 CDN URL 字符串（绝不存 base64 / blob）。Render 重启图片不丢失、不裂图。
 import fs from 'node:fs';
 import path from 'node:path';
+import crypto from 'node:crypto';
 import { run, dataDir } from './db.js';
 
 // 分片临时缓冲目录（仅 dev / Worker 不可用回退时使用，瞬态，合并后立即删除，绝不持久化业务图片）
@@ -26,15 +27,19 @@ export function isR2Enabled() {
   return !!r2Config();
 }
 
-// 记录媒资元数据（用于容量管理「按业务分类统计」）—— 失败仅记录，不影响上传主流程
-async function recordMedia({ url, category, bytes, isPublic, r2Key }) {
+// 记录媒资元数据（用于容量管理「按业务分类统计」）—— 同步写入（同步上传模式：
+// 必须在上传接口返回前完成 hash + 元数据），失败仅记录，不影响上传主流程
+async function recordMedia({ url, category, bytes, isPublic, r2Key, hash }) {
   try {
     await run(
-      `INSERT INTO media (url, category, bytes, is_public, r2_key, created_at) VALUES (?, ?, ?, ?, ?, ?)`,
-      [url, category || 'uncategorized', Number(bytes) || 0, isPublic ? 1 : 0, r2Key || null, new Date().toISOString()]
+      `INSERT INTO media (url, category, bytes, is_public, r2_key, hash, status, created_at) VALUES (?, ?, ?, ?, ?, ?, 'ready', ?)`,
+      [url, category || 'uncategorized', Number(bytes) || 0, isPublic ? 1 : 0, r2Key || null, hash || null, new Date().toISOString()]
     );
   } catch (e) {
-    console.error('[storage] 记录 media 失败', e.message);
+    // 唯一索引冲突（重复写入）视为成功，忽略
+    if (!/unique|duplicate/i.test(e && e.message || '')) {
+      console.error('[storage] 记录 media 失败', url, e.message);
+    }
   }
 }
 
@@ -57,6 +62,14 @@ export async function saveImage(file, zone = 'biz-works', meta = {}) {
     throw new Error('未配置 R2 或上传 Worker，无法持久化图片；请在 Render 配置 R2_* 环境变量，或部署上传 Worker 并设置 VITE_UPLOAD_WORKER_URL。');
   }
   let url, r2Key = null;
+  // 同步计算内容 hash（内容级去重，best-effort）—— 在删除临时文件前完成
+  let hash = null;
+  try {
+    const buf = fs.readFileSync(file.path);
+    hash = crypto.createHash('sha256').update(buf).digest('hex');
+  } catch (e) {
+    console.warn('[storage] hash 计算失败（不影响上传）', e.message);
+  }
   {
     // 懒加载 S3 SDK（启用 R2 时才需安装 @aws-sdk/client-s3）
     const { PutObjectCommand, S3Client } = await import('@aws-sdk/client-s3');
@@ -79,9 +92,9 @@ export async function saveImage(file, zone = 'biz-works', meta = {}) {
     r2Key = key;
   }
 
-  // 注意：媒资元数据写入（容量统计）已移到后台异步队列（uploadQueue），
-  // 此处只负责「写入存储 + 返回 URL」，绝不阻塞上传响应。
-  return { url, r2Key, name };
+  // 同步登记媒资（容量统计 + hash），在上传响应前完成（同步模式，不再走异步队列）
+  await recordMedia({ url, category: meta.category, bytes: file.size, isPublic: meta.isPublic, r2Key, hash });
+  return { url, r2Key, name, hash };
 }
 
 // 真正删除底层对象（仅 R2），不碰 media 表。T-01：不再有本地磁盘对象。
@@ -147,8 +160,11 @@ export async function saveBuffer(buffer, ext, zone = 'biz-works', meta = {}) {
   }));
   const url = `${cfg.R2_WORKER_DOMAIN}/r2/${key}`;
   const r2Key = key;
-  // 媒资元数据写入已移交后台异步队列，此处仅返回写入结果，不阻塞。
-  return { url, name, r2Key };
+  // 同步计算 hash + 登记媒资（同步上传模式，分片合并路径同样适用）
+  let hash = null;
+  try { hash = crypto.createHash('sha256').update(buffer).digest('hex'); } catch (e) {}
+  await recordMedia({ url, category: meta.category, bytes: buffer.length, isPublic: meta.isPublic, r2Key, hash });
+  return { url, name, r2Key, hash };
 }
 
 // 写入单个分片（dev 落本地 tmp，prod 落 R2 临时 key）

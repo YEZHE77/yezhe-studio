@@ -10,7 +10,6 @@ import path from 'node:path';
 import { dataDir } from '../db.js';
 import { authRequired } from '../auth.js';
 import { putChunk, listChunks, mergeChunks } from '../storage.js';
-import { enqueueUploadJob } from '../uploadQueue.js';
 
 const router = express.Router();
 
@@ -77,14 +76,7 @@ router.post('/complete', authRequired, async (req, res) => {
       isPublic: isPublic === true || isPublic === '1' || isPublic === 'true',
       contentType: 'image/jpeg'
     });
-    // Heavy 任务后台异步，立即返回前端
-    enqueueUploadJob({
-      url: result.url,
-      r2Key: result.r2Key,
-      category: type,
-      bytes: total,
-      isPublic: isPublic === true || isPublic === '1' || isPublic === 'true'
-    });
+    // 同步模式：mergeChunks 内部已同步完成「存储 + hash + 媒资登记」，接口直接返回 URL
     res.json({ url: result.url });
   } catch (e) {
     res.status(500).json({ error: e.message });
