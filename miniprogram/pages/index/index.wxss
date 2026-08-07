@@ -130,21 +130,21 @@ page { background: #f8f6f2; }
 .masonry-col { flex: 1 1 0; min-width: 0; padding: 0 8rpx; display: flex; flex-direction: column; }
 .grid-item {
   width: 100%; margin-bottom: 16rpx; position: relative; border-radius: 16rpx;
-  overflow: hidden; background: #eee;
+  overflow: hidden; background: transparent;
 }
 /* widthFix：按图片原始比例展示，不裁切摄影画面；统一间距 16rpx */
-.grid-cover { width: 100%; display: block; }
+.grid-cover { width: 100%; display: block; background: #eee; }
+/* 标题/标签移到照片下方（静态块，无浮层渐变遮罩）；深色文字跟随页面底色，不另起白底 */
 .grid-cap {
-  position: absolute; left: 0; right: 0; bottom: 0;
-  padding: 60rpx 18rpx 18rpx;
-  background: linear-gradient(to top, rgba(0,0,0,0.55), transparent);
+  padding: 16rpx 18rpx 18rpx;
+  background: transparent;
 }
 .grid-title {
-  display: block; color: #fff; font-size: 26rpx; font-weight: 500;
+  display: block; color: #333; font-size: 26rpx; font-weight: 500;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .grid-tag {
-  display: block; margin-top: 6rpx; color: rgba(255,255,255,0.85); font-size: 22rpx;
+  display: block; margin-top: 6rpx; color: #999; font-size: 22rpx;
 }
 
 /* MORE / 空态 */
