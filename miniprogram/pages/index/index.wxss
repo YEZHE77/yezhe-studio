@@ -105,21 +105,27 @@ page { background: #f8f6f2; }
 
 /* 分割线底部 → 作品展示标题顶部：收紧上方留白(40rpx，原64rpx)；左右 margin 32rpx，与 Tab/网格左右边界对齐 */
 .gallery { margin: 40rpx 32rpx 0; }
-/* 主标题「作品展示」：在上方，44rpx/#222/font-weight:500，左对齐与 Tab 视觉一致；距下方英文副标题 16rpx */
+/* 主标题「作品展示」：在上方，44rpx/#222/font-weight:500，左对齐与 Tab 视觉一致；距下方英文副标题 12rpx（收紧） */
 .gallery-title {
   font-size: 44rpx; font-weight: 500; color: #222222; letter-spacing: 2rpx; line-height: 1.2;
-  margin-bottom: 16rpx;
+  margin-bottom: 12rpx;
 }
-/* 英文副标题：在中文主标题下方，浅灰小字 28rpx/#999999，左对齐；距下方 Tab 48rpx */
+/* 英文副标题：在中文主标题下方，浅灰小字 28rpx/#999999，左对齐；距下方 Tab 32rpx（收紧，原 48rpx） */
 .gallery-sub {
   font-size: 28rpx; color: #999999; line-height: 1.2;
-  margin-bottom: 48rpx;
+  margin-bottom: 32rpx;
 }
 
-/* 分类标签：左对齐、横向滚动自适应、字号42rpx、选中500/#111、未选中400/#999、下划线贴合文字宽度#48c8b0、距文字底12rpx、标签栏下间距48rpx */
+/* 分类标签：左对齐、横向滚动自适应、字号42rpx、选中500/#111、未选中400/#999、下划线贴合文字宽度#48c8b0、距文字底12rpx */
 .cat-bar {
-  margin-bottom: 48rpx;
+  margin-bottom: 8rpx;
   white-space: nowrap;
+}
+/* Tab 栏底部浅灰分割线（高度 8rpx），区分标签与作品列表；距下方网格 24rpx（整体收紧） */
+.cat-divider {
+  height: 8rpx;
+  background: #eee;
+  margin: 0 0 24rpx;
 }
 .cat-wrap {
   display: inline-flex;
@@ -146,40 +152,42 @@ page { background: #f8f6f2; }
   background: #48c8b0; border-radius: 2rpx;
 }
 
-/* 作品网格：两列等宽、行对齐（非瀑布流），列 gap 24rpx、行 gap 40rpx（收紧）；封面固定4:3、文字区固定高度 */
+/* 作品网格：两列等宽，列 gap 24rpx、行 gap 36rpx（收紧提升屏效）；
+   右侧预留 80rpx 安全区，整体左移避让右下角悬浮按钮（仅左对齐基准与 Tab 一致）；
+   align-items:end 保证同一行两张卡片底部对齐（文字块固定高度，图片高度可变） */
 .works-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   column-gap: 24rpx;
-  row-gap: 40rpx;
+  row-gap: 36rpx;
+  padding-right: 80rpx;
+  align-items: end;
 }
 .work-card { width: 100%; }
-/* 封面容器：强制 4:3 横版（padding-bottom:75%），圆角 8rpx，overflow hidden；
-   图片 aspectFill 居中裁剪填满；无白色卡片外壳，页面底色米白直接铺底 */
+/* 封面容器：widthFix 原比例完整展示，不写死 4:3、不裁剪；圆角 8rpx，overflow hidden；
+   图片 height:auto 跟随原图比例；无白色卡片外壳，页面底色米白直接铺底 */
 .work-cover-wrap {
   width: 100%;
-  position: relative;
-  padding-bottom: 75%; /* 4:3 横版 */
   border-radius: 8rpx;
   overflow: hidden;
   background: #eee;
 }
 .work-cover {
-  position: absolute; top: 0; left: 0;
-  width: 100%; height: 100%;
+  width: 100%;
+  height: auto;
   display: block;
 }
 /* 文字区在图片下方，距图 28rpx */
 .work-info { margin-top: 28rpx; }
-/* 标题：32rpx / #222222 / 500，单行省略；固定高度避免标题长短造成卡片高低错落 */
+/* 标题容器：固定高度 88rpx（含单行标题 32rpx/#222/500 + 居中），单行省略；禁止换行撑高 */
 .work-title {
-  height: 48rpx; line-height: 48rpx;
+  height: 88rpx; line-height: 88rpx;
   font-size: 32rpx; font-weight: 500; color: #222222;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-/* 分类标签：26rpx / #888888，前带#；距标题14rpx；固定高度 */
+/* 分类标签容器：固定高度 44rpx（距标题 14rpx），26rpx/#888 带#；固定高度消除高低锯齿 */
 .work-tag {
-  height: 36rpx; line-height: 36rpx; margin-top: 14rpx;
+  height: 44rpx; line-height: 44rpx; margin-top: 14rpx;
   font-size: 26rpx; color: #888888;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
