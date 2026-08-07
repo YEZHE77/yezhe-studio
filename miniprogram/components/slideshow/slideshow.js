@@ -38,6 +38,7 @@ Component({
     bgmOn: true,
     cur: '',
     curIsVideo: false,
+    imgLoaded: false,    // 当前图片是否已加载完成（bindload 触发前不计时）
     animClass: 'ss-anim-fade',
     progress: 0,        // 0..1 当前素材进度
     curTime: 0,         // 当前素材已播秒数
@@ -48,6 +49,9 @@ Component({
     attached() {
       this._timer = null;        // 自动轮播 setTimeout
       this._progressTimer = null; // 进度条 setInterval
+      this._loadGuard = null;    // 图片加载兜底超时 setTimeout
+      this._pendingStart = false;// 是否正在等待图片加载完成后启动
+      this._waitingSrc = null;   // 正在等待加载的图片地址（防止旧图 load 误触发）
       this._vc = null;            // video context
       this._unsub = Bgm.subscribe(() => {});
     },
@@ -69,6 +73,7 @@ Component({
           bgmOn: true,
           cur: p.preview || p.url || '',
           curIsVideo: isVideo(p),
+          imgLoaded: false,
           curDuration: this.data.dwell / 1000,
           curTime: 0,
           progress: 0,
@@ -93,6 +98,7 @@ Component({
       this.setData({
         cur: p.preview || p.url || '',
         curIsVideo: isVideo(p),
+        imgLoaded: false,
         curDuration: this.data.dwell / 1000,
         curTime: 0,
         progress: 0
@@ -103,6 +109,8 @@ Component({
     _clearAll() {
       if (this._timer) { clearTimeout(this._timer); this._timer = null; }
       if (this._progressTimer) { clearInterval(this._progressTimer); this._progressTimer = null; }
+      if (this._loadGuard) { clearTimeout(this._loadGuard); this._loadGuard = null; }
+      this._pendingStart = false;
     },
 
     _pickAnim() {
@@ -122,9 +130,9 @@ Component({
       this.setData({ animClass: '' }, () => {
         this.setData({ index: ni });
         this._setCur();
+        this._start();
         setTimeout(() => { this.setData({ animClass: 'ss-anim-' + anim }); }, 20);
       });
-      this._start();
     },
 
     next() { this._goto(this.data.index + 1); },
@@ -139,6 +147,26 @@ Component({
         this.setData({ progress: 0, curTime: 0 });
         return;
       }
+      // 图片尚未加载完成：等待 onImgLoad 触发后再开始 dwell 倒计时，
+      // 避免“缓存未完成 / 只加载一半就切下一张”的问题
+      if (!this.data.imgLoaded) {
+        this._pendingStart = true;
+        this._waitingSrc = this.data.cur;
+        // 兜底保护：极端弱网下最多等待 8s，避免永久卡住
+        this._loadGuard = setTimeout(() => {
+          this._loadGuard = null;
+          if (this._pendingStart && this._waitingSrc === this.data.cur) {
+            this._pendingStart = false;
+            this._runDwell();
+          }
+        }, 8000);
+        return;
+      }
+      this._runDwell();
+    },
+
+    // 图片已就绪：启动 dwell 倒计时 + 进度条
+    _runDwell() {
       const dwell = this.data.dwell;
       const start = Date.now();
       this._progressTimer = setInterval(() => {
@@ -195,6 +223,24 @@ Component({
     },
 
     onVideoEnded() { this.next(); },
+
+    // 图片解码完成：若正在等待加载，则启动 dwell 倒计时（核心修复点）
+    onImgLoad() {
+      // 只响应“当前正在等待的那张图片”的 load，避免旧图延迟 load 误触发新图计时
+      if (this._waitingSrc !== this.data.cur) return;
+      if (this._loadGuard) { clearTimeout(this._loadGuard); this._loadGuard = null; }
+      this.setData({ imgLoaded: true });
+      if (this._pendingStart) { this._pendingStart = false; this._runDwell(); }
+    },
+
+    // 图片加载失败：当作已就绪，避免无限等待（按 dwell 继续播放）
+    onImgError() {
+      if (this._waitingSrc !== this.data.cur) return;
+      if (this._loadGuard) { clearTimeout(this._loadGuard); this._loadGuard = null; }
+      this.setData({ imgLoaded: true });
+      if (this._pendingStart) { this._pendingStart = false; this._runDwell(); }
+    },
+
     onVideoTimeUpdate(e) {
       const d = (e.detail && e.detail.duration) || this.data.dwell / 1000;
       const c = (e.detail && e.detail.currentTime) || 0;
