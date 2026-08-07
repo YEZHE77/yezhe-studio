@@ -21,7 +21,13 @@ export function lunarOf(dateStr) {
 router.get('/availability', async (req, res) => {
   try {
     const month = (req.query.month || '').trim();
-    if (!/^\d{4}-\d{2}$/.test(month)) return res.status(400).json({ error: 'month 参数格式应为 YYYY-MM' });
+    // 仅做格式校验 YYYY-MM；允许任意年份（含未来 1~N 年、历史月份），
+    // 禁止写死「不能大于当前月」的硬编码拦截，未来年份正常返回当月档期状态
+    const m = /^(\d{4})-(\d{2})$/.exec(month);
+    if (!m) return res.status(400).json({ error: 'month 参数格式应为 YYYY-MM' });
+    const yy = Number(m[1]);
+    const mm = Number(m[2]);
+    if (mm < 1 || mm > 12) return res.status(400).json({ error: 'month 月份必须在 01-12 之间' });
 
     // 预约全局设置（开放开关 + 每周开放日）
     let bookingCfg = { open: true, openDays: [0, 1, 2, 3, 4, 5, 6] };
@@ -38,7 +44,7 @@ router.get('/availability', async (req, res) => {
       .map((s) => ({ date: s.date, period: s.period }));
 
     // 每周开放日 → 非开放日整日置灰（period=full 表示整日）
-    const [yy, mm] = month.split('-').map(Number);
+    // yy / mm 已由上方解析（mm 为 1-12，与入参一致）
     const daysInMonth = new Date(yy, mm, 0).getDate();
     const openDays = bookingCfg.openDays || [];
     for (let d = 1; d <= daysInMonth; d++) {
