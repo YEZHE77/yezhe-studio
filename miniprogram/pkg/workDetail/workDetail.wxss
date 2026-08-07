@@ -139,7 +139,7 @@
 /* 播放：空心三角轮廓图标（浅灰线条） */
 .tool-play .play-tri {
   position: absolute;
-  left: 8rpx; top: 0;
+  left: 10rpx; top: 0;
   width: 0; height: 0;
   border-left: 22rpx solid #9a9a9a;
   border-top: 17rpx solid transparent;
@@ -147,7 +147,7 @@
 }
 .tool-play .play-tri-inner {
   position: absolute;
-  left: 15rpx; top: 50%;
+  left: 17rpx; top: 50%;
   transform: translateY(-50%);
   width: 0; height: 0;
   border-left: 13rpx solid #ffffff;
