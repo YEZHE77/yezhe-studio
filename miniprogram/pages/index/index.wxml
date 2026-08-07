@@ -40,8 +40,8 @@
 
   <!-- 作品展示 -->
   <view class="gallery">
-    <view class="gallery-title">作品展示</view>
     <view class="gallery-sub">Works Exhibition</view>
+    <view class="gallery-title">作品展示</view>
 
     <!-- 分类标签：仅渲染「全部」+ 后端返回分类，不写死额外分类 -->
     <scroll-view class="cat-bar" scroll-x scroll-with-animation>
@@ -60,7 +60,7 @@
         <view class="work-info">
           <view class="work-title">{{item.customer_name || item.title}}</view>
           <view class="work-tag">#{{item.category_name || '作品'}}</view>
-r        </view>
+        </view>
       </view>
     </view>
 

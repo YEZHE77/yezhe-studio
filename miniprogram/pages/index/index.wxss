@@ -103,19 +103,20 @@ page { background: #f8f6f2; }
   background: #eee;
 }
 
-/* 分割线底部 → 作品展示标题顶部：64rpx；左右 margin 32rpx，不贴屏幕边缘 */
+/* 分割线底部 → 作品展示标题顶部：64rpx；左右 margin 32rpx，与 Tab/网格左右边界对齐 */
 .gallery { margin: 64rpx 32rpx 0; }
-/* 英文小标题在上，中文标题在下，居中 */
+/* 英文副标题：在上方，浅灰小字 28rpx/#999999；距主标题底部 16rpx */
 .gallery-sub {
-  text-align: center; margin-bottom: 8rpx;
-  font-size: 20rpx; letter-spacing: 4rpx; color: #bbb; line-height: 1.2;
+  font-size: 28rpx; color: #999999; line-height: 1.2;
+  margin-bottom: 16rpx;
 }
+/* 主标题「作品展示」：44rpx/#222/font-weight:500，左对齐与 Tab 视觉一致；距下方 Tab 48rpx */
 .gallery-title {
-  text-align: center; font-size: 40rpx; font-weight: 600; color: #2c2c2c; letter-spacing: 4rpx;
+  font-size: 44rpx; font-weight: 500; color: #222222; letter-spacing: 2rpx; line-height: 1.2;
   margin-bottom: 48rpx;
 }
 
-/* 分类标签：左对齐、横向滚动自适应、字号48rpx、选中700/#111、未选中400/#999、下划线贴合文字宽度#48c8b0、距文字底16rpx、标签栏下间距48rpx */
+/* 分类标签：左对齐、横向滚动自适应、字号42rpx、选中500/#111、未选中400/#999、下划线贴合文字宽度#48c8b0、距文字底12rpx、标签栏下间距48rpx */
 .cat-bar {
   margin-bottom: 48rpx;
   white-space: nowrap;
@@ -129,20 +130,20 @@ page { background: #f8f6f2; }
 .cat-item {
   position: relative;
   flex: 0 0 auto;
-  font-size: 48rpx;
+  font-size: 42rpx;
   color: #999999;
   font-weight: 400;
   line-height: 1.2;
-  padding-bottom: 16rpx;   /* 文字底部 → 下划线：16rpx */
+  padding-bottom: 12rpx;   /* 文字底部 → 下划线：12rpx */
   white-space: nowrap;
   transition: color .2s;
 }
-.cat-item.active { color: #111111; font-weight: 700; }
-/* 下划线宽度 = 选中文字本身宽度（item 收缩到内容宽度，width:100% 即文字宽），高度6rpx，薄荷绿#48c8b0 */
+.cat-item.active { color: #111111; font-weight: 500; }
+/* 下划线宽度 = 选中文字本身宽度（item 收缩到内容宽度，width:100% 即文字宽），高度4rpx，薄荷绿#48c8b0 */
 .cat-item.active::after {
   content: ''; position: absolute; left: 0; bottom: 0;
-  width: 100%; height: 6rpx;
-  background: #48c8b0; border-radius: 3rpx;
+  width: 100%; height: 4rpx;
+  background: #48c8b0; border-radius: 2rpx;
 }
 
 /* 作品网格：两列等宽等比例矩阵，列 gap 24rpx、行 gap 48rpx，禁止瀑布流高低错落 */
@@ -170,16 +171,16 @@ page { background: #f8f6f2; }
 }
 /* 文字区在图片下方，距图 28rpx */
 .work-info { margin-top: 28rpx; }
-/* 标题：36rpx / #222222 / 500，单行省略；固定高度避免标题长短造成卡片高低错落 */
+/* 标题：32rpx / #222222 / 500，单行省略；固定高度避免标题长短造成卡片高低错落 */
 .work-title {
   height: 48rpx; line-height: 48rpx;
-  font-size: 36rpx; font-weight: 500; color: #222222;
+  font-size: 32rpx; font-weight: 500; color: #222222;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-/* 分类标签：28rpx / #888888，前带#；距标题14rpx；固定高度 */
+/* 分类标签：26rpx / #888888，前带#；距标题14rpx；固定高度 */
 .work-tag {
   height: 36rpx; line-height: 36rpx; margin-top: 14rpx;
-  font-size: 28rpx; color: #888888;
+  font-size: 26rpx; color: #888888;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 
