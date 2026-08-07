@@ -103,93 +103,48 @@ page { background: #f8f6f2; }
   background: #eee;
 }
 
-/* 分割线底部 → 作品展示标题顶部：收紧上方留白(40rpx，原64rpx)；左右 margin 32rpx，与 Tab/网格左右边界对齐 */
-.gallery { margin: 40rpx 32rpx 0; }
-/* 主标题「作品展示」：在上方，44rpx/#222/font-weight:500，左对齐与 Tab 视觉一致；距下方英文副标题 12rpx（收紧） */
+/* 分割线底部 → 作品展示标题顶部：64rpx（收紧） */
+.gallery { margin-top: 64rpx; padding: 0 32rpx; }
 .gallery-title {
-  font-size: 44rpx; font-weight: 500; color: #222222; letter-spacing: 2rpx; line-height: 1.2;
-  margin-bottom: 12rpx;
+  text-align: center; font-size: 40rpx; font-weight: 600; color: #2c2c2c; letter-spacing: 4rpx;
 }
-/* 英文副标题：在中文主标题下方，浅灰小字 28rpx/#999999，左对齐；距下方 Tab 32rpx（收紧，原 48rpx） */
 .gallery-sub {
-  font-size: 28rpx; color: #999999; line-height: 1.2;
-  margin-bottom: 32rpx;
+  text-align: center; margin-top: 4rpx; font-size: 20rpx; letter-spacing: 2rpx; color: #bbb; line-height: 1.2;
 }
 
-/* 分类标签：左对齐、横向滚动自适应、字号42rpx、选中500/#111、未选中400/#999、下划线贴合文字宽度#48c8b0、距文字底12rpx */
-.cat-bar {
-  margin-bottom: 8rpx;
-  white-space: nowrap;
-}
-/* Tab 栏底部浅灰分割线（高度 8rpx），区分标签与作品列表；距下方网格 24rpx（整体收紧） */
-.cat-divider {
-  height: 8rpx;
-  background: #eee;
-  margin: 0 0 24rpx;
-}
-.cat-wrap {
-  display: inline-flex;
-  align-items: flex-end;
-  gap: 60rpx;
-  padding: 4rpx 0;
-}
+/* 分类标签 */
+.cat-bar { margin-top: 16rpx; white-space: nowrap; }
+.cat-wrap { display: inline-flex; gap: 24rpx; padding: 4rpx 4rpx 20rpx; }
 .cat-item {
-  position: relative;
-  flex: 0 0 auto;
-  font-size: 42rpx;
-  color: #999999;
-  font-weight: 400;
-  line-height: 1.2;
-  padding-bottom: 12rpx;   /* 文字底部 → 下划线：12rpx */
-  white-space: nowrap;
-  transition: color .2s;
+  display: inline-block; font-size: 26rpx; color: #888; padding: 10rpx 6rpx;
+  position: relative; transition: color .2s;
 }
-.cat-item.active { color: #111111; font-weight: 500; }
-/* 下划线宽度 = 选中文字本身宽度（item 收缩到内容宽度，width:100% 即文字宽），高度4rpx，薄荷绿#48c8b0 */
+.cat-item.active { color: #2c2c2c; font-weight: 600; }
 .cat-item.active::after {
-  content: ''; position: absolute; left: 0; bottom: 0;
-  width: 100%; height: 4rpx;
-  background: #48c8b0; border-radius: 2rpx;
+  content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 4rpx;
+  background: var(--brand-green); border-radius: 4rpx;
 }
 
-/* 作品网格：两列等宽，列 gap 24rpx、行 gap 36rpx（收紧提升屏效）；
-   右侧预留 80rpx 安全区，整体左移避让右下角悬浮按钮（仅左对齐基准与 Tab 一致）；
-   align-items:end 保证同一行两张卡片底部对齐（文字块固定高度，图片高度可变） */
-.works-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  column-gap: 24rpx;
-  row-gap: 36rpx;
-  padding-right: 80rpx;
-  align-items: end;
+/* 作品网格：两列瀑布流（按索引奇偶分列，高度自适应，照片保持原比例不裁切） */
+.masonry { display: flex; align-items: flex-start; margin: 8rpx -8rpx 0; }
+.masonry-col { flex: 1 1 0; min-width: 0; padding: 0 8rpx; display: flex; flex-direction: column; }
+.grid-item {
+  width: 100%; margin-bottom: 16rpx; position: relative; border-radius: 16rpx;
+  overflow: hidden; background: #eee;
 }
-.work-card { width: 100%; }
-/* 封面容器：widthFix 原比例完整展示，不写死 4:3、不裁剪；圆角 8rpx，overflow hidden；
-   图片 height:auto 跟随原图比例；无白色卡片外壳，页面底色米白直接铺底 */
-.work-cover-wrap {
-  width: 100%;
-  border-radius: 8rpx;
-  overflow: hidden;
-  background: #eee;
+/* widthFix：按图片原始比例展示，不裁切摄影画面；统一间距 16rpx */
+.grid-cover { width: 100%; display: block; }
+.grid-cap {
+  position: absolute; left: 0; right: 0; bottom: 0;
+  padding: 60rpx 18rpx 18rpx;
+  background: linear-gradient(to top, rgba(0,0,0,0.55), transparent);
 }
-.work-cover {
-  width: 100%;
-  height: auto;
-  display: block;
-}
-/* 文字区在图片下方，距图 28rpx */
-.work-info { margin-top: 28rpx; }
-/* 标题容器：固定高度 88rpx（含单行标题 32rpx/#222/500 + 居中），单行省略；禁止换行撑高 */
-.work-title {
-  height: 88rpx; line-height: 88rpx;
-  font-size: 32rpx; font-weight: 500; color: #222222;
+.grid-title {
+  display: block; color: #fff; font-size: 26rpx; font-weight: 500;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-/* 分类标签容器：固定高度 44rpx（距标题 14rpx），26rpx/#888 带#；固定高度消除高低锯齿 */
-.work-tag {
-  height: 44rpx; line-height: 44rpx; margin-top: 14rpx;
-  font-size: 26rpx; color: #888888;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+.grid-tag {
+  display: block; margin-top: 6rpx; color: rgba(255,255,255,0.85); font-size: 22rpx;
 }
 
 /* MORE / 空态 */

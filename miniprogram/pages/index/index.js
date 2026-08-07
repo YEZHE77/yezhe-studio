@@ -8,11 +8,13 @@ Page({
     activeCat: 0,
     works: [],
     page: 1,
-    pageSize: 20,
+    pageSize: 8,
     hasMore: true,
     loading: false,
     banners: [],
     bookingOpen: false,
+    colLeft: [],    // 瀑布流左列
+    colRight: [],   // 瀑布流右列
     // 顶部自定义导航栏：状态栏高度（px，动态） + 导航内容区总高度（px，动态）
     statusBarHeight: 20,
     navHeight: 64
@@ -56,7 +58,7 @@ Page({
   onUnload() {
     this._tasks.forEach((t) => { try { t.abort(); } catch (e) {} });
     this._tasks = [];
-    this.setData({ works: [], banners: [], categories: [] });
+    this.setData({ works: [], banners: [], categories: [], colLeft: [], colRight: [] });
   },
 
   // 统一请求封装：收集 abort 句柄，供 onUnload 终止未完成请求
@@ -67,8 +69,6 @@ Page({
   },
 
   onPullDownRefresh() {
-    // 下拉刷新：重置选中分类为「全部」，再重新拉取
-    this.setData({ activeCat: 0 });
     this.loadAll().then(() => wx.stopPullDownRefresh());
   },
 
@@ -147,8 +147,13 @@ Page({
       const fallbackBanners = reset && !this.data.banners.length
         ? items.slice(0, 3).map((w) => getImageUrl(w.cover_url || '', 'thumb')).filter(Boolean)
         : this.data.banners;
+      // 两列瀑布流：按索引奇偶稳定分列（追加加载不改变已有项所属列，避免跳动）
+      const colLeft = [], colRight = [];
+      merged.forEach((w, i) => { (i % 2 === 0 ? colLeft : colRight).push(w); });
       this.setData({
         works: merged,
+        colLeft,
+        colRight,
         page,
         hasMore: merged.length < (r.total || 0),
         banners: fallbackBanners
@@ -193,7 +198,7 @@ Page({
     wx.makePhoneCall({ phoneNumber: phone });
   },
 
-  goAppointment() { wx.navigateTo({ url: '/pkg/appointment/appointment' }); },
+  goAppointment() { wx.navigateTo({ url: '/pkg/schedule/schedule' }); },
   goAbout() { wx.navigateTo({ url: '/pkg/about/about' }); },
   goMy() { wx.navigateTo({ url: '/pages/my/my' }); },
 
