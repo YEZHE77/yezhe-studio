@@ -22,8 +22,8 @@ services:
         sync: false
       - key: WX_SECRET          # 微信小程序 AppSecret（控制台填）
         sync: false
-      - key: CORS_ORIGIN        # 网页后台公网域名，逗号分隔可写多个
-        value: https://yezhe-studio.netlify.app
+      - key: CORS_ORIGIN        # 网页后台(H5)公网域名，逗号分隔可写多个
+        value: https://yezhe-studio.pages.dev
       - key: R2_ENDPOINT        # Cloudflare R2（私有桶 + Worker 代理，图片持久化）。五项(R2_ENDPOINT/R2_BUCKET/R2_WORKER_DOMAIN/R2_ACCESS_KEY/R2_SECRET_KEY)齐全才启用。
         sync: false
       - key: R2_BUCKET           # R2 桶名（私有，不公开）
@@ -33,6 +33,16 @@ services:
       - key: R2_ACCESS_KEY
         sync: false
       - key: R2_SECRET_KEY
+        sync: false
+      - key: COS_SECRET_ID       # 腾讯云 COS（S3 兼容，推荐主用）。COS_* 五项齐全即启用，优先级高于 R2。
+        sync: false
+      - key: COS_SECRET_KEY
+        sync: false
+      - key: COS_BUCKET          # COS 桶名（私有，不公开）
+        sync: false
+      - key: COS_REGION          # COS 地域，如 ap-guangzhou
+        sync: false
+      - key: COS_CDN_DOMAIN      # COS 自定义加速域名（公网 HTTPS），如 https://img.yezhe.com；数据库只存此域名，前端不直连 COS 源站
         sync: false
       - key: CF_API_TOKEN        # Cloudflare API 令牌（只读 analytics，用于容量/流量统计）。可选；填了才显示真实用量。
         sync: false
