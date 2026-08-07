@@ -13,13 +13,8 @@
 //      ③ 仅页面 onUnload 才 destroy 释放内存。
 //  8. 缓冲加载时通过 subscribe 暴露 loading 状态，界面展示「音乐加载中」。
 
-// 本地打包默认 BGM（主包静态资源，路径 /assets/bgm/bgm.mp3）
-// 当前默认曲：《The Way You Look Tonight - Tony Bennett》（标准 MP3，可替换）。
-// 体积说明：主包硬上限 2MB，本曲压到 64kbps 单声道整曲约 1.55MB，
-// 加上主包其余代码后主包共约 1.63MB，仍 < 2MB，合规。
-// 放在主包（而非分包）是为了避免「主包代码引用分包资源」的跨包限制导致加载失败。
-// 后台未配置 bgmUrl 时自动回退到此本地文件，规避网易云/QQ 音乐等防盗链导致播放失败。
-const LOCAL_BGM = '/assets/bgm/bgm.mp3';
+// BGM 统一走线上 mp3 地址（不打包进小程序包），由页面从 settings API 取 bgmUrl 注入。
+// 后台未配置 bgmUrl 时无音乐，不再保留本地大体积音频文件，避免主包超限。
 
 let ctx = null;        // 唯一音频实例
 let url = '';          // BGM 地址（后台配置优先，否则 LOCAL_BGM）
@@ -49,9 +44,9 @@ function subscribe(fn) {
 }
 
 // 注入 BGM 地址（页面加载时调用，不触发播放）
-// 后台未配置 bgmUrl（空）时回退到本地打包的默认 BGM 文件，避免防盗链失败。
+// 后台未配置 bgmUrl（空）时 url 置空，音频不播放，避免打包大文件。
 function init(u) {
-  url = (u && u.trim()) ? u : LOCAL_BGM;
+  url = (u && u.trim()) ? u : '';
   return getState();
 }
 

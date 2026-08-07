@@ -5,6 +5,7 @@
     "pages/package/package",
     "pages/my/my"
   ],
+  "lazyCodeLoading": "requiredComponents",
   "subPackages": [
     {
       "root": "pkg",
