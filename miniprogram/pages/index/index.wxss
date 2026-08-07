@@ -129,7 +129,7 @@ page { background: #ffffff; }
 .masonry { display: flex; align-items: flex-start; margin: 8rpx -8rpx 0; }
 .masonry-col { flex: 1 1 0; min-width: 0; padding: 0 8rpx; display: flex; flex-direction: column; }
 .grid-item {
-  width: 100%; margin-bottom: 16rpx; position: relative; border-radius: 16rpx;
+  width: 100%; margin-bottom: 16rpx; position: relative; border-radius: 0;
   overflow: hidden; background: transparent;
 }
 /* widthFix：按图片原始比例展示，不裁切摄影画面；统一间距 16rpx */
