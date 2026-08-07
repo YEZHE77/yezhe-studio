@@ -105,25 +105,32 @@ page { background: #f8f6f2; }
 
 /* 分割线底部 → 作品展示标题顶部：64rpx；左右 margin 32rpx，不贴屏幕边缘 */
 .gallery { margin: 64rpx 32rpx 0; }
+/* 英文小标题在上，中文标题在下，居中 */
+.gallery-sub {
+  text-align: center; margin-bottom: 8rpx;
+  font-size: 20rpx; letter-spacing: 4rpx; color: #bbb; line-height: 1.2;
+}
 .gallery-title {
   text-align: center; font-size: 40rpx; font-weight: 600; color: #2c2c2c; letter-spacing: 4rpx;
-}
-.gallery-sub {
-  text-align: center; margin-top: 4rpx; margin-bottom: 48rpx;
-  font-size: 20rpx; letter-spacing: 2rpx; color: #bbb; line-height: 1.2;
+  margin-bottom: 48rpx;
 }
 
-/* 分类标签 */
-.cat-bar { white-space: nowrap; }
-.cat-wrap { display: inline-flex; gap: 60rpx; padding: 4rpx 0 20rpx; }
+/* 分类标签：等比例居中分布，下划线随文字宽度 */
+.cat-bar { display: flex; justify-content: center; }
+.cat-wrap {
+  display: flex; justify-content: space-evenly; align-items: center;
+  width: 100%; padding: 4rpx 0 20rpx;
+}
 .cat-item {
-  display: inline-block; font-size: 26rpx; color: #888; padding: 10rpx 0;
+  flex: 1 1 0; text-align: center;
+  font-size: 26rpx; color: #888; padding: 10rpx 0;
   position: relative; transition: color .2s;
 }
 .cat-item.active { color: #2c2c2c; font-weight: 600; }
-/* 下划线宽度跟随文字：cat-item 无水平 padding，伪元素 left/right:0 即文字宽度 */
+/* 下划线宽度跟随文字：伪元素居中，宽度 1em */
 .cat-item.active::after {
-  content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 4rpx;
+  content: ''; position: absolute; left: 50%; transform: translateX(-50%); bottom: 0;
+  width: 1em; height: 4rpx;
   background: var(--brand-green); border-radius: 4rpx;
 }
 
