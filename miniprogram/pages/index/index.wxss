@@ -112,9 +112,9 @@ page { background: #f8f6f2; }
   text-align: center; margin-top: 4rpx; font-size: 20rpx; letter-spacing: 2rpx; color: #bbb; line-height: 1.2;
 }
 
-/* 分类标签：分类少时整体居中对齐，分类超出屏幕宽度时横向滚动且从左侧开始 */
-.cat-bar { margin-top: 16rpx; white-space: nowrap; text-align: center; }
-.cat-wrap { display: inline-flex; gap: 24rpx; padding: 4rpx 4rpx 20rpx; }
+/* 分类标签：自适应居中——分类少时整体居中，超出屏幕宽度时左起横向滚动（margin:auto 在溢出时自动归零，不会裁切左侧） */
+.cat-bar { margin-top: 16rpx; display: flex; }
+.cat-wrap { display: inline-flex; gap: 24rpx; padding: 4rpx 4rpx 20rpx; margin: 0 auto; }
 .cat-item {
   display: inline-block; font-size: 26rpx; color: #888; padding: 10rpx 6rpx;
   position: relative; transition: color .2s;
