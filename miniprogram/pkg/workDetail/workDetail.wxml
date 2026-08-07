@@ -42,7 +42,7 @@
           </view>
         </view>
         <view wx:if="{{category}}" class="info-tag">{{category}}</view>
-        <view wx:if="{{albumCopy}}" class="info-copy">{{albumCopy}}</view>
+        <view wx:if="{{brand.slogan}}" class="info-copy">{{brand.slogan}}</view>
       </view>
 
       <!-- 照片内容：流式/网格 -->
