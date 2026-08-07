@@ -220,7 +220,7 @@ export default function AlbumGrid({ gallery, onBack, albumId }) {
           )}
           <div className="ml-3 min-w-0">
             <div className="text-sm font-medium text-white truncate">{brand_name || 'YEZHE WORKSHOP'}</div>
-            {(brand_intro || brand_slogan) && <div className="text-[11px] text-neutral-400 truncate">{brand_intro || brand_slogan}</div>}
+            {(brand_slogan || brand_intro) && <div className="text-[11px] text-neutral-400 truncate">{brand_slogan || brand_intro}</div>}
           </div>
         </div>
         <div className="flex items-center gap-4 shrink-0">

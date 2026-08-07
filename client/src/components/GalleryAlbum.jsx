@@ -150,7 +150,7 @@ export default function GalleryAlbum({ gallery, startIndex = 0, onClose }) {
             )}
             <div className="min-w-0">
               <div className="text-sm font-medium truncate">{brand_name || 'YEZHE WORKSHOP'}</div>
-              {(brand_intro || brand_slogan) && <div className="text-[10px] text-white/55 truncate">{brand_intro || brand_slogan}</div>}
+              {(brand_slogan || brand_intro) && <div className="text-[10px] text-white/55 truncate">{brand_slogan || brand_intro}</div>}
             </div>
           </div>
           <div className="flex items-center gap-5 shrink-0">

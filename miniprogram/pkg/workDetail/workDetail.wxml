@@ -71,7 +71,7 @@
           <image wx:if="{{brand.logo}}" class="brand-logo" src="{{brand.logo}}" mode="aspectFill" binderror="onImgError" />
           <view class="brand-text">
             <view class="brand-name">{{brand.name || 'YEZHE WORKSHOP'}}</view>
-            <view class="brand-slogan">{{brand.intro || brand.slogan || '记录时光中的最美瞬间'}}</view>
+            <view class="brand-slogan">{{brand.slogan || brand.intro || '记录时光中的最美瞬间'}}</view>
           </view>
         </view>
         <view class="brand-tools">
