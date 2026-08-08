@@ -21,7 +21,6 @@
   </block>
   <block wx:else>
     <image class="ss-media ss-photo {{animClass}}" src="{{cur}}" mode="aspectFit"
-      bindload="onImgLoad" binderror="onImgError"
       catchtap="noop"
       catchtouchstart="onImgTouchStart" catchtouchend="onImgTouchEnd" />
   </block>
