@@ -38,15 +38,19 @@ async function doConfirm(req, res) {
     if (a.status !== 'pending') return res.status(400).json({ error: '仅「待确认」预约可被接受' });
     const b = req.body || {};
     const date = b.date || a.hope_date;
-    const period = ['full', 'am', 'pm', 'night'].includes(b.period) ? b.period : (a.period || 'full');
+    const period = ['full', 'half'].includes(b.period) ? b.period : (a.period || 'full');
     if (!date) return res.status(400).json({ error: '请指定拍摄日期' });
 
-    // 冲突检测：同 date+period 已 booked/locked 视为冲突（不可重复占用）
-    const conflictRow = await query(
-      "SELECT * FROM schedules WHERE date = ? AND period = ? AND status IN ('booked','locked')",
-      [date, period]
+    // 冲突检测：全天(full) 与任何时段冲突；半天(half) 与全天或其它半天冲突
+    const conflictRows = await query(
+      "SELECT * FROM schedules WHERE date = ? AND status IN ('booked','locked')",
+      [date]
     );
-    if (conflictRow.length) return res.status(409).json({ error: '该日期同时段已被占用或锁定，无法确认' });
+    const hasConflict = conflictRows.some((r) => {
+      if (period === 'full' || r.period === 'full') return true;
+      return r.period === period;
+    });
+    if (hasConflict) return res.status(409).json({ error: '该日期同时段已被占用或锁定，无法确认' });
 
     // 绑定 / 创建档期（booked 占用，锁定时间）
     let scheduleId = b.schedule_id ? Number(b.schedule_id) : null;
@@ -353,7 +357,7 @@ router.get('/schedules/export', async (req, res) => {
       { key: 'date', label: '日期' }, { key: 'period', label: '时段' }, { key: 'status', label: '状态' },
       { key: 'order_no', label: '订单号' }, { key: 'photographer', label: '摄影师' }, { key: 'note', label: '备注' }
     ];
-    const PERIOD = { full: '全天', am: '上午', pm: '下午' };
+    const PERIOD = { full: '全天', half: '半天' };
     const SSTATUS = { free: '空闲', booked: '已约', locked: '锁场' };
     const data = rows.map((r) => ({
       ...r,

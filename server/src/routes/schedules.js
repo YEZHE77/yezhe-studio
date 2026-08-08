@@ -90,13 +90,17 @@ router.get('/:id', authRequired, async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// 冲突检测：同一 date + period 已 booked/locked 视为冲突
+// 冲突检测：同一 date + period 已 booked/locked 视为冲突。
+// 全天(full) 与任何时段冲突；半天(half) 与全天或其它半天冲突。
 async function conflict(date, period, excludeId) {
   const rows = await query(
-    'SELECT * FROM schedules WHERE date = ? AND period = ? AND status != ?' + (excludeId ? ' AND id != ?' : ''),
-    excludeId ? [date, period, 'free', excludeId] : [date, period, 'free']
+    'SELECT * FROM schedules WHERE date = ? AND status IN (?,?)' + (excludeId ? ' AND id != ?' : ''),
+    excludeId ? [date, 'booked', 'locked', excludeId] : [date, 'booked', 'locked']
   );
-  return rows.find((r) => r.status === 'booked' || r.status === 'locked') || null;
+  return rows.find((r) => {
+    if (period === 'full' || r.period === 'full') return true;
+    return r.period === period;
+  }) || null;
 }
 
 // 创建

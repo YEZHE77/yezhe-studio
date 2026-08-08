@@ -12,7 +12,7 @@ const STATUS = {
   locked: { label: '锁场', dot: 'bg-red-500', cls: 'border-red-500/40 bg-red-500/5' },
   pending: { label: '待确认预约', dot: 'bg-amber-400', cls: 'border-amber-400/50 bg-amber-400/10' }
 };
-const PERIOD_LABEL = { full: '全天', am: '上午', pm: '下午', night: '晚上' };
+const PERIOD_LABEL = { full: '全天', half: '半天' };
 
 export default function Schedule() {
   const initMonth = new Date().toISOString().slice(0, 7);
@@ -201,9 +201,7 @@ export default function Schedule() {
               <select value={editing.period} onChange={(e) => setEditing({ ...editing, period: e.target.value })}
                 className="w-full mb-3 px-2 py-2 rounded bg-panel2 border border-line text-white text-sm outline-none">
                 <option value="full">全天</option>
-                <option value="am">上午</option>
-                <option value="pm">下午</option>
-                <option value="night">晚上</option>
+                <option value="half">半天</option>
               </select>
               <label className="text-xs text-muted">状态</label>
               <div className="flex gap-2 mb-3 flex-wrap">

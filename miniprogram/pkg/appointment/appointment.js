@@ -4,9 +4,7 @@ const { requestTask } = require('../../utils/req.js');
 const STATUS_TEXT = { pending: '待确认', confirmed: '已确认·已转单', rejected: '已拒绝', cancelled: '已取消' };
 const PERIOD_OPTS = [
   { value: 'full', label: '全天' },
-  { value: 'am', label: '上午' },
-  { value: 'pm', label: '下午' },
-  { value: 'night', label: '晚上' }
+  { value: 'half', label: '半天' }
 ];
 
 Page({

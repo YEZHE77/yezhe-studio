@@ -10,7 +10,7 @@ const STATUS_LABEL = {
   rejected: '已拒绝',
   cancelled: '已取消'
 };
-const PERIOD_LABEL = { full: '全天', am: '上午', pm: '下午', night: '晚上' };
+const PERIOD_LABEL = { full: '全天', half: '半天' };
 
 export default function Appointments() {
   const [state, setState] = useViewState('appointments', { status: '', q: '' });
@@ -208,9 +208,7 @@ export default function Appointments() {
             <select value={confirming.period} onChange={(e) => setConfirming({ ...confirming, period: e.target.value })}
               className="w-full mb-3 px-3 py-2 rounded bg-panel2 border border-line text-white text-sm outline-none">
               <option value="full">全天</option>
-              <option value="am">上午</option>
-              <option value="pm">下午</option>
-              <option value="night">晚上</option>
+              <option value="half">半天</option>
             </select>
             <label className="text-xs text-muted">执行人 / 团队</label>
             <input value={confirming.photographer} onChange={(e) => setConfirming({ ...confirming, photographer: e.target.value })} placeholder="如 叶哲 / 小李"
@@ -260,9 +258,7 @@ export default function Appointments() {
             <select value={form.period} onChange={(e) => setForm({ ...form, period: e.target.value })}
               className="w-full mb-3 px-3 py-2 rounded bg-panel2 border border-line text-white text-sm outline-none">
               <option value="full">全天</option>
-              <option value="am">上午</option>
-              <option value="pm">下午</option>
-              <option value="night">晚上</option>
+              <option value="half">半天</option>
             </select>
             <textarea value={form.remark} onChange={(e) => setForm({ ...form, remark: e.target.value })} placeholder="备注"
               className="w-full mb-3 px-3 py-2 rounded bg-panel2 border border-line text-white text-sm outline-none h-16" />

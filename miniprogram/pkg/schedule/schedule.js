@@ -1,8 +1,8 @@
 const { requestTask } = require('../../utils/req.js');
 
 const WEEK = ['一', '二', '三', '四', '五', '六', '日'];
-const PERIODS = ['am', 'pm', 'night'];
-const PERIOD_LABEL = { am: '上午', pm: '下午', night: '晚上', full: '全天' };
+const PERIODS = ['half', 'full'];
+const PERIOD_LABEL = { half: '半天', full: '全天' };
 const DOT = { booked: '约满', pending: '待确认', closed: '关闭', partial: '紧张', free: '' };
 
 function pad(n) { return n < 10 ? '0' + n : '' + n; }
@@ -135,11 +135,10 @@ Page({
     for (const c of cells) {
       if (!c) continue;
       const occ = occupied[c.date], clo = closed[c.date], pen = pending[c.date];
-      const occAll = occ && PERIODS.every((x) => occ[x]);
       let st = 'free';
-      if (occAll) st = 'booked';
-      else if (clo && clo.full && !occ) st = 'closed';
+      if (occ && occ.full) st = 'booked';
       else if (occ && Object.keys(occ).length) st = 'partial';
+      else if (clo && clo.full && !occ) st = 'closed';
       else if (pen && Object.keys(pen).length) st = 'pending';
       c.status = st;
       c.dot = DOT[st];

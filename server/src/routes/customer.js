@@ -32,7 +32,7 @@ router.post('/appointment/submit', customerRequired, async (req, res) => {
     const name = (b.name || '').trim();
     const phone = (b.phone || '').trim();
     if (!name || !phone) return res.status(400).json({ error: '请填写称呼与联系电话' });
-    const period = ['full', 'am', 'pm', 'night'].includes(b.period) ? b.period : 'full';
+    const period = ['full', 'half'].includes(b.period) ? b.period : 'full';
     let pkgName = '';
     if (b.packageId) {
       const p = await get('SELECT name FROM packages WHERE id = ?', [b.packageId]);
