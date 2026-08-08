@@ -30,8 +30,6 @@ export default function Orders() {
   const [pay, setPay] = useState(null); // {type, amount, method, note}
   const [err, setErr] = useState('');
   const [trash, setTrash] = useState(false);
-  const [storage, setStorage] = useState(null);
-  const [storageForm, setStorageForm] = useState({ raw_storage_days: 30, retouch_storage_days: 180 });
   const [share, setShare] = useState(null); // 分享二维码 {share_token, share_url, qr_url}
   const [shareModal, setShareModal] = useState(false);
   const [shareBusy, setShareBusy] = useState(false);
@@ -215,22 +213,6 @@ export default function Orders() {
     } catch (e) { setErr((e.response && e.response.data && e.response.data.error) || '登记失败'); }
   }
 
-  function openStorage() {
-    if (!detail) return;
-    setStorageForm({
-      raw_storage_days: detail.raw_storage_days || 30,
-      retouch_storage_days: detail.retouch_storage_days || 180
-    });
-    setStorage(true);
-  }
-  async function saveStorage() {
-    try {
-      await http.post('/api/orders/' + detail.id + '/storage', storageForm);
-      setStorage(false);
-      openDetail(detail.id); refreshOrderList();
-    } catch (e) { alert((e.response && e.response.data && e.response.data.error) || '保存失败'); }
-  }
-
   // 生成 / 刷新客户影集分享二维码
   async function openShare() {
     if (!detail) return;
@@ -397,10 +379,41 @@ export default function Orders() {
             {pkgInfo && pkgInfo.name && pkgInfo.name !== '—' && (
               <div className="bg-panel2 rounded-lg p-3 mb-3 text-sm">
                 <div className="text-white font-medium mb-2">套系信息</div>
-                <div className="text-base text-white font-semibold mb-1">{pkgInfo.name}</div>
-                {pkgInfo.spec && pkgInfo.spec.name && (
-                  <div className="text-xs text-emerald-400 mb-2">已选规格：{pkgInfo.spec.name} · ¥{Number(pkgInfo.spec.price || 0).toLocaleString()}</div>
+                <div className="flex gap-3 mb-3">
+                  {pkgInfo.cover_url && (
+                    <img src={img(pkgInfo.cover_url)} alt="cover" className="w-20 h-20 rounded-lg object-cover border border-line flex-shrink-0" />
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <div className="text-base text-white font-semibold mb-1">{pkgInfo.name}</div>
+                    {pkgInfo.spec && pkgInfo.spec.name && (
+                      <div className="text-xs text-emerald-400 mb-1.5">已选规格：{pkgInfo.spec.name}</div>
+                    )}
+                    <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs">
+                      {pkgInfo.price !== undefined && pkgInfo.price !== '' && (
+                        <div><span className="text-muted">套系总价</span> <span className="text-white ml-1">¥{Number(pkgInfo.price || 0).toLocaleString()}</span></div>
+                      )}
+                      {pkgInfo.deposit !== undefined && pkgInfo.deposit !== '' && (
+                        <div><span className="text-muted">定金</span> <span className="text-white ml-1">¥{Number(pkgInfo.deposit || 0).toLocaleString()}</span></div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* 营销标签 */}
+                {pkgInfo.marketing && Object.keys(pkgInfo.marketing).length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 mb-3">
+                    {pkgInfo.marketing.tag && (
+                      <span className="px-2 py-0.5 rounded bg-amber-500/15 text-amber-400 text-xs border border-amber-500/20">{pkgInfo.marketing.tag}</span>
+                    )}
+                    {pkgInfo.marketing.hot && (
+                      <span className="px-2 py-0.5 rounded bg-red-500/15 text-red-400 text-xs border border-red-500/20">热门</span>
+                    )}
+                    {pkgInfo.marketing.recommend && (
+                      <span className="px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-400 text-xs border border-emerald-500/20">推荐</span>
+                    )}
+                  </div>
                 )}
+
                 <div className="grid grid-cols-2 gap-2 text-xs mb-2">
                   {pkgInfo.duration !== undefined && pkgInfo.duration !== '' && (
                     <div><span className="text-muted">拍摄时长</span> <span className="text-white ml-1">{pkgInfo.duration}</span></div>
@@ -412,11 +425,31 @@ export default function Orders() {
                     <div className="col-span-2"><span className="text-muted">底片政策</span> <span className="text-white ml-1">{pkgInfo.raw_policy}</span></div>
                   )}
                 </div>
+
                 {pkgInfo.description && (
-                  <div className="text-xs text-muted whitespace-pre-line leading-relaxed">{pkgInfo.description}</div>
+                  <div className="text-xs text-muted whitespace-pre-line leading-relaxed mt-2">{pkgInfo.description}</div>
                 )}
+
+                {/* 规格列表 */}
+                {pkgInfo.specs.length > 0 && (
+                  <div className="mt-3">
+                    <div className="text-xs text-muted mb-1.5">可选规格</div>
+                    <div className="space-y-1.5">
+                      {pkgInfo.specs.map((s, i) => {
+                        const active = pkgInfo.spec && pkgInfo.spec.name === s.name;
+                        return (
+                          <div key={i} className={'flex items-center justify-between px-2 py-1.5 rounded text-xs border ' + (active ? 'border-emerald-500/40 bg-emerald-500/10' : 'border-line bg-panel')}>
+                            <span className={active ? 'text-emerald-400' : 'text-white'}>{s.name}{active ? '（已选）' : ''}</span>
+                            <span className="text-muted">¥{Number(s.price || 0).toLocaleString()}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
                 {pkgInfo.addons.length > 0 && (
-                  <div className="mt-2">
+                  <div className="mt-3">
                     <div className="text-xs text-muted mb-1">增值服务</div>
                     <div className="flex flex-wrap gap-1">
                       {pkgInfo.addons.map((a, i) => (
@@ -449,27 +482,6 @@ export default function Orders() {
                         </div>
                       </div>
                     ))}
-                  </div>
-                </div>
-              );
-            })()}
-
-            {/* 文件保存期限提示栏 */}
-            {(() => {
-              const dl = (exp) => { if (!exp) return null; return Math.ceil((new Date(exp).getTime() - Date.now()) / 86400000); };
-              const rawLeft = dl(detail.raw_expire_at);
-              const retLeft = dl(detail.retouch_expire_at);
-              const fmt = (v) => v === null ? '未设置' : (v >= 0 ? v + ' 天' : '已过期');
-              const cls = (v) => v !== null && v < 7 ? 'text-red-400' : 'text-white';
-              return (
-                <div className="bg-panel2 rounded-lg p-3 mb-3 text-sm">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-white font-medium">文件保存期限</span>
-                    <button onClick={openStorage} className="px-2 py-1 rounded bg-panel border border-line text-xs text-white">设置保存时长</button>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2 text-xs">
-                    <div><div className="text-muted">原片剩余</div><div className={cls(rawLeft)}>{fmt(rawLeft)}</div></div>
-                    <div><div className="text-muted">精修剩余</div><div className={cls(retLeft)}>{fmt(retLeft)}</div></div>
                   </div>
                 </div>
               );
@@ -628,30 +640,6 @@ export default function Orders() {
               className="w-full mt-3 px-3 py-2 rounded bg-panel2 border border-line text-white text-sm outline-none" />
             <div className="flex gap-2 justify-end mt-4">
               <button type="button" onClick={() => setEdit(false)} className="px-4 py-2 rounded text-sm text-muted">取消</button>
-              <button type="submit" className="px-4 py-2 rounded bg-brand text-white text-sm">保存</button>
-            </div>
-          </form>
-        </div>
-      )}
-
-      {/* 存储时长设置弹窗 */}
-      {storage && detail && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[70] p-4" onClick={() => setStorage(false)}>
-          <form onClick={(e) => e.stopPropagation()} onSubmit={(e) => { e.preventDefault(); saveStorage(); }} className="w-full max-w-sm bg-panel border border-line rounded-xl2 p-6">
-            <div className="text-white font-medium mb-4">设置文件保存时长 · {detail.order_no}</div>
-            <div className="grid grid-cols-2 gap-3">
-              <label className="text-xs text-muted">原片保存(天)
-                <input type="number" min="1" value={storageForm.raw_storage_days} onChange={(e) => setStorageForm({ ...storageForm, raw_storage_days: e.target.value })}
-                  className="w-full mt-1 px-3 py-2 rounded bg-panel2 border border-line text-white text-sm outline-none" />
-              </label>
-              <label className="text-xs text-muted">精修保存(天)
-                <input type="number" min="1" value={storageForm.retouch_storage_days} onChange={(e) => setStorageForm({ ...storageForm, retouch_storage_days: e.target.value })}
-                  className="w-full mt-1 px-3 py-2 rounded bg-panel2 border border-line text-white text-sm outline-none" />
-              </label>
-            </div>
-            <div className="text-xs text-muted mt-3">保存后立即按今天计算到期日，到期前 7 天标红预警。</div>
-            <div className="flex gap-2 justify-end mt-4">
-              <button type="button" onClick={() => setStorage(false)} className="px-4 py-2 rounded text-sm text-muted">取消</button>
               <button type="submit" className="px-4 py-2 rounded bg-brand text-white text-sm">保存</button>
             </div>
           </form>
