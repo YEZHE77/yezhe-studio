@@ -165,7 +165,7 @@ page { background: #ffffff; }
 /* ===== 底部联系 ===== */
 .footer {
   margin: 70rpx 32rpx 0; padding: 48rpx 40rpx 36rpx;
-  background: #2c2c2c; border-radius: 24rpx; color: #fff;
+  background: rgba(44, 44, 44, 0.82); border-radius: 24rpx; color: #fff;
 }
 .footer-title {
   text-align: center; font-size: 32rpx; font-weight: 600; letter-spacing: 4rpx; margin-bottom: 30rpx;
