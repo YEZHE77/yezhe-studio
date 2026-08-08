@@ -435,18 +435,6 @@ export async function uploadImageChunked(file, opts = {}) {
   return { url: data.url, name: metaName ?? file.name, size: metaSize ?? file.size, timing };
 }
 
-// 拉取某相册已存在图片的签名集合（originalName_size），用于上传前重复检测。
-// 失败时返回空集合（降级：不拦截，避免误伤正常上传）。
-export async function getExistSigns(workId) {
-  try {
-    const { data } = await http.get('/api/works/' + workId + '/albums/exist-signs');
-    return new Set(data.existSignList || []);
-  } catch (e) {
-    console.warn('[dedup] 获取已存在签名失败，降级为不拦截：', e.message);
-    return new Set();
-  }
-}
-
 // 手动导出全量业务 JSON 备份（管理员下载到本地）。后端已过滤明文密钥。
 export async function downloadBackup() {
   const { data } = await http.get('/api/admin/backup/export', { responseType: 'blob' });

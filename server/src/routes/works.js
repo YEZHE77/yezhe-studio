@@ -295,21 +295,6 @@ router.post('/:id/albums', authRequired, async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// 去重签名列表：传入相册（作品）ID，返回该相册全部已上传图片签名数组
-// 签名 key = `${original_name}_${original_size}`；小程序端 original_name 为文件 digest。
-router.get('/:id/albums/exist-signs', authRequired, async (req, res) => {
-  try {
-    const rows = await query(
-      'SELECT original_name, original_size FROM albums WHERE work_id = ? AND original_name IS NOT NULL',
-      [req.params.id]
-    );
-    const existSignList = rows
-      .filter((r) => r.original_name)
-      .map((r) => `${r.original_name}_${r.original_size != null ? r.original_size : ''}`);
-    res.json({ existSignList });
-  } catch (e) { res.status(500).json({ error: e.message }); }
-});
-
 // 更新单张照片排序
 router.put('/albums/:id/sort', authRequired, async (req, res) => {
   try {

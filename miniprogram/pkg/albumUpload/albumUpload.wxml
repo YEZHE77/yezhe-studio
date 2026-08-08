@@ -1,7 +1,7 @@
 <view class="page">
   <view class="header">
     <text class="title">上传到相册</text>
-    <text class="sub">分区：{{zone}} · 待上传 {{toUploadCount}} 张 · 已存在 {{dupCount}} 张<text wx:if="{{overCount}}" class="sub-over"> · 超过3M {{overCount}} 张（已过滤）</text></text>
+    <text class="sub">分区：{{zone}} · 待上传 {{toUploadCount}} 张<text wx:if="{{overCount}}" class="sub-over"> · 超过3M {{overCount}} 张（已过滤）</text></text>
   </view>
 
   <view class="toolbar">
@@ -22,17 +22,13 @@
   </view>
 
   <view class="grid" wx:if="{{previews.length}}">
-    <view wx:for="{{previews}}" wx:key="index" class="cell {{item.dup ? 'cell--dup' : ''}} {{item.oversize ? 'cell--over' : ''}} {{item.status === 'failed' ? 'cell--fail' : ''}} {{item.status === 'done' ? 'cell--done' : ''}}">
+    <view wx:for="{{previews}}" wx:key="index" class="cell {{item.oversize ? 'cell--over' : ''}} {{item.status === 'failed' ? 'cell--fail' : ''}} {{item.status === 'done' ? 'cell--done' : ''}}">
       <image src="{{item.tempFilePath}}" mode="aspectFill" class="thumb" />
-      <view wx:if="{{item.dup}}" class="mask"></view>
-      <text wx:if="{{item.dup}}" class="tag">已存在</text>
-      <text wx:if="{{item.dup}}" class="tag tag--skip">已跳过</text>
-
       <view wx:if="{{item.oversize}}" class="mask"></view>
       <text wx:if="{{item.oversize}}" class="tag tag--over">超过3M限制</text>
       <text wx:if="{{item.oversize}}" class="tag tag--skip">已过滤</text>
 
-      <block wx:if="{{!item.dup && !item.error && !item.oversize}}">
+      <block wx:if="{{!item.error && !item.oversize}}">
         <view wx:if="{{item.status === 'uploading'}}" class="cell__bar"><view class="cell__bar-fill" style="width:{{item.progress}}%"></view></view>
         <view wx:if="{{item.status === 'failed'}}" class="cell__retry" bindtap="retryOne" data-idx="{{index}}"><text class="tag tag--fail">↻ 重试</text></view>
         <text wx:if="{{item.status === 'done'}}" class="tag tag--ok">完成</text>
@@ -46,6 +42,6 @@
   </view>
 
   <view wx:else class="empty">
-    <text>点击「选择照片」，已上传过的照片会自动置灰并跳过</text>
+    <text>点击「选择照片」开始上传，所有照片均可上传</text>
   </view>
 </view>

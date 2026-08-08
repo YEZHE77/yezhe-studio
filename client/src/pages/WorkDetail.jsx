@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import http, { img, compressImage, uploadImage, getExistSigns } from '../api.js';
+import http, { img, compressImage, uploadImage } from '../api.js';
 import bgm from '../bgm.js';
 import Slideshow from '../components/Slideshow.jsx';
 import Lightbox from '../components/Lightbox.jsx';
@@ -88,7 +88,7 @@ export default function WorkDetail() {
   const [reordering, setReordering] = useState(false);
   // 上传去重弹窗状态
   const [uploadOpen, setUploadOpen] = useState(false);
-  const [uploadPreviews, setUploadPreviews] = useState([]); // { file, name, size, sign, dup, url, error }
+  const [uploadPreviews, setUploadPreviews] = useState([]); // { file, name, size, url, error, oversize }
   const [preparing, setPreparing] = useState(false);
   const [slideOpen, setSlideOpen] = useState(false);
   const [slidePhotos, setSlidePhotos] = useState([]);
@@ -287,25 +287,21 @@ export default function WorkDetail() {
     if (fileRef.current) fileRef.current.click();
   }
 
-  // 选图后立即：①拉取本相册已存在签名；②读取每张原图 name+size 生成签名；③标记重复项；④打开预览弹窗
+  // 选图后：读取每张原图 name+size，打开预览弹窗（不限制重复上传）
   async function onPickFiles(e) {
     const files = e.target.files;
     if (!fileRef.current) return;
     if (!files || !files.length) return;
     setPreparing(true);
     try {
-      // 第一时间请求后端，拿到本相册 existSignList（原有图片签名集合）
-      const existSet = await getExistSigns(id);
       const MAX = 3 * 1024 * 1024; // 单张硬性限制 3M
-      // H5 直接读取 File 真实原始文件名与字节（压缩前），不拿临时路径名
       const previews = [];
       const overNames = [];
       for (const f of Array.from(files)) {
         let name = f.name, size = f.size, error = false, oversize = false;
         if (!name || !size) { error = true; name = name || 'unknown'; size = size || 0; } // 读取失败 → 放行（防误拦）
         else if (f.size > MAX) { oversize = true; overNames.push(name); } // 单张 >3M → 标记超限，不加入上传队列
-        const sign = `${name}_${size}`;
-        previews.push({ file: f, name, size, sign, dup: !error && !oversize && existSet.has(sign), error, oversize, url: URL.createObjectURL(f) });
+        previews.push({ file: f, name, size, error, oversize, url: URL.createObjectURL(f) });
       }
       setUploadPreviews(previews);
       setUploadOpen(true);
@@ -396,9 +392,9 @@ export default function WorkDetail() {
     recomputeOverall();
   }
 
-  // 确认上传：仅上传非重复项；并发 3 张、逐项进度、暂停/继续、单张失败标红+重试、弱网提示
+  // 确认上传：所有照片（含重复）均可上传；并发 3 张、逐项进度、暂停/继续、单张失败标红+重试、弱网提示
   async function confirmUpload() {
-    const toUpload = uploadPreviews.filter((p) => !p.dup && !p.error && !p.oversize);
+    const toUpload = uploadPreviews.filter((p) => !p.error && !p.oversize);
     if (!toUpload.length) { setUploadOpen(false); return; }
     setUploading(true);
     setOverallPct(0);
@@ -445,10 +441,9 @@ export default function WorkDetail() {
         alert((err.response && err.response.data && err.response.data.error) || '相册保存失败');
       }
     }
-    const dupCount = uploadPreviews.length - toUpload.length;
     const failCount = rowsRef.current.filter((r) => r.status === 'failed').length;
-    if (failCount) alert(`成功 ${bodyItems.length} 张，已自动跳过重复 ${dupCount} 张，失败 ${failCount} 张（失败项可单张重试）`);
-    else alert(`成功上传 ${bodyItems.length} 张（已自动跳过 ${dupCount} 张重复照片）`);
+    if (failCount) alert(`成功 ${bodyItems.length} 张，失败 ${failCount} 张（失败项可单张重试）`);
+    else alert(`成功上传 ${bodyItems.length} 张`);
     setUploading(false);
     setUploadOpen(false);
     uploadPreviews.forEach((p) => URL.revokeObjectURL(p.url));
@@ -905,15 +900,13 @@ export default function WorkDetail() {
           </div>
         </div>
       </div>
-      {/* 上传去重预览弹窗：选图后展示缩略图，重复项灰色蒙层 + 【已存在】标签，仅上传新照片 */}
+      {/* 上传预览弹窗：选图后展示缩略图，所有照片（含重复）均可上传 */}
       {uploadOpen && (() => {
-        const toUpload = uploadPreviews.filter((p) => !p.dup && !p.error && !p.oversize);
-        const dupCount = uploadPreviews.filter((p) => p.dup).length;
+        const toUpload = uploadPreviews.filter((p) => !p.error && !p.oversize);
         const errCount = uploadPreviews.filter((p) => p.error).length;
         const overCount = uploadPreviews.filter((p) => p.oversize).length;
-        // 每个预览对应类型与（非重复）行索引
+        // 每个预览对应类型与（非超限/非失败）行索引
         const kinds = uploadPreviews.map((p) => {
-          if (p.dup) return { kind: 'dup' };
           if (p.error) return { kind: 'err' };
           if (p.oversize) return { kind: 'over' };
           return { kind: 'up', ri: toUpload.indexOf(p) };
@@ -927,7 +920,7 @@ export default function WorkDetail() {
               <div>
                 <h3 className="text-base font-semibold text-fg">上传到「{ZONES.find((z) => z.key === zone).label}」相册</h3>
                 <p className="text-xs text-muted mt-0.5">
-                  待上传 {toUpload.length} 张 · 已存在 {dupCount} 张（自动跳过）{errCount ? ` · 读取失败 ${errCount} 张` : ''}{overCount ? ` · 超过3M ${overCount} 张（已过滤）` : ''}
+                  待上传 {toUpload.length} 张{errCount ? ` · 读取失败 ${errCount} 张` : ''}{overCount ? ` · 超过3M ${overCount} 张（已过滤）` : ''}
                 </p>
               </div>
               <button onClick={closeUpload} disabled={uploading} className="text-muted hover:text-fg text-sm disabled:opacity-40">✕</button>
@@ -957,20 +950,12 @@ export default function WorkDetail() {
                   const isUploading = row && row.status === 'uploading';
                   return (
                   <div key={i} className={'relative aspect-square rounded-xl2 overflow-hidden bg-ink border ' + (
-                    k.kind === 'dup' ? 'border-line'
-                    : k.kind === 'over' ? 'border-red-400'
+                    k.kind === 'over' ? 'border-red-400'
                     : isFailed ? 'border-red-400'
                     : isDone ? 'border-green-400/70'
                     : 'border-brand/40'
                   )}>
                     <img src={p.url} className="w-full h-full object-cover" alt={p.name} />
-                    {k.kind === 'dup' && (
-                      <>
-                        <div className="absolute inset-0 bg-black/55" />
-                        <span className="absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded bg-black/70 text-white text-[10px]">已存在</span>
-                        <span className="absolute bottom-1.5 right-1.5 text-white/80 text-[10px]">已跳过</span>
-                      </>
-                    )}
                     {k.kind === 'over' && (
                       <>
                         <div className="absolute inset-0 bg-black/55" />
@@ -1018,7 +1003,7 @@ export default function WorkDetail() {
             )}
             <div className="p-4 border-t border-line flex items-center justify-between gap-3">
               <span className="text-xs text-muted">
-                {failCount ? `失败 ${failCount} 张可单张重试 · ` : ''}{overCount ? `超过3M ${overCount} 张已过滤 · ` : ''}已自动过滤重复照片，仅上传新照片
+                {failCount ? `失败 ${failCount} 张可单张重试 · ` : ''}{overCount ? `超过3M ${overCount} 张已过滤 · ` : ''}所有照片均可上传
               </span>
               <div className="flex gap-2">
                 {uploading ? (

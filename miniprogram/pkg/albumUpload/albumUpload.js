@@ -1,5 +1,5 @@
-// 相册上传页（小程序端，对应需求 C + 需求 D 优化）
-// 依赖 pkg/uploadDedup —— 选图后自动置灰重复照片、过滤后仅上传新照片。
+// 相册上传页（小程序端，对应需求 D 优化）
+// 依赖 pkg/uploadDedup —— 选图 + 单张 3M 超限检测，重复照片不再过滤，全部可上传。
 // 依赖 pkg/uploadOpt —— 本地压缩 + 分片上传 + 断点续传 + 失败重试（需求 D）。
 //
 // ⚠️ 说明：当前小程序为 C 端（客户浏览/选片），相册上传接口需管理员会话（admin token）。
@@ -16,9 +16,8 @@ Page({
   data: {
     workId: '',
     zone: 'sample',
-    previews: [],      // { tempFilePath, digest, size, sign, dup, error, status, progress, url }
-    toUploadCount: 0,  // 待上传数（已剔除重复）
-    dupCount: 0,       // 重复数
+    previews: [],      // { tempFilePath, digest, size, oversize, error, status, progress, url }
+    toUploadCount: 0,  // 待上传数
     overCount: 0,      // 超过3M限制数
     uploading: false,
     paused: false,
@@ -38,14 +37,14 @@ Page({
     if (!token) return;
     if (this.data.uploading) return;
     dedup.chooseAndDedup(this.data.workId, token, 9)
-      .then(({ previews, toUploadCount, dupCount, overCount }) => {
+      .then(({ previews, toUploadCount, overCount }) => {
         // 注入状态字段用于逐项进度渲染
         const withStatus = previews.map((p) => ({
           ...p,
-          status: p.oversize ? 'over' : (p.dup ? 'dup' : (p.error ? 'error' : 'pending')),
+          status: p.oversize ? 'over' : (p.error ? 'error' : 'pending'),
           progress: 0
         }));
-        this.setData({ previews: withStatus, toUploadCount, dupCount, overCount: overCount || 0, overallPct: 0, weakNet: false });
+        this.setData({ previews: withStatus, toUploadCount, overCount: overCount || 0, overallPct: 0, weakNet: false });
       })
       .catch(() => wx.showToast({ title: '选图失败', icon: 'none' }));
   },
@@ -55,10 +54,10 @@ Page({
     if (!token) return;
     const previews = this.data.previews;
     const uploadIdx = [];
-    previews.forEach((p, i) => { if (!p.dup && !p.error && !p.oversize) uploadIdx.push(i); });
+    previews.forEach((p, i) => { if (!p.error && !p.oversize) uploadIdx.push(i); });
     if (!uploadIdx.length) { wx.showToast({ title: '无新照片', icon: 'none' }); return; }
 
-    const init = previews.map((p) => ({ ...p, status: p.dup ? 'dup' : (p.error ? 'error' : 'pending'), progress: 0 }));
+    const init = previews.map((p) => ({ ...p, status: p.oversize ? 'over' : (p.error ? 'error' : 'pending'), progress: 0 }));
     this.setData({ uploading: true, paused: false, overallPct: 0, weakNet: false, previews: init });
 
     const ctrl = { aborted: false };
@@ -124,9 +123,8 @@ Page({
             fail: reject
           });
         });
-        const dupCount = this.data.previews.length - uploadIdx.length;
-        wx.showToast({ title: `上传成功 ${items.length} 张（跳过 ${dupCount} 重复）`, icon: 'none' });
-        this.setData({ previews: [], toUploadCount: 0, dupCount: 0, overallPct: 0 });
+        wx.showToast({ title: `上传成功 ${items.length} 张`, icon: 'none' });
+        this.setData({ previews: [], toUploadCount: 0, overallPct: 0 });
       } catch (e) {
         wx.showToast({ title: (e && e.message) || '相册保存失败', icon: 'none' });
       }
@@ -156,7 +154,7 @@ Page({
       });
       setP({ status: 'done', progress: 100, url });
       const done = this.data.previews.filter((x) => x.status === 'done').length;
-      const up = this.data.previews.filter((x) => !x.dup && !x.error && !x.oversize).length;
+      const up = this.data.previews.filter((x) => !x.error && !x.oversize).length;
       this.setData({ overallPct: up ? Math.round((done / up) * 100) : 0 });
     } catch (err) {
       if (err && err.type === 'cancel') return;
@@ -181,7 +179,7 @@ Page({
 
   onClose() {
     if (this.data.uploading) return;
-    this.setData({ previews: [], toUploadCount: 0, dupCount: 0, overallPct: 0 });
+    this.setData({ previews: [], toUploadCount: 0, overallPct: 0 });
   },
 
   onWeakClose() {
