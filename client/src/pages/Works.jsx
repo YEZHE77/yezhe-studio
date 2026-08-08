@@ -273,7 +273,7 @@ export default function Works() {
               {w.cover_url ? <img src={img(w.cover_url)} className="w-full h-full object-cover" alt="" /> : '▣'}
               {!sortMode && (
                 <button onClick={(e) => togglePublic(w, e)} title={w.is_public ? '已公开 · 点击隐藏' : '已隐藏 · 点击公开'}
-                  className="absolute top-2 right-2 bg-black/55 text-white p-1.5 rounded-full hover:bg-black/75 transition">
+                  className="absolute top-2 right-2 bg-black/55 !text-white p-1.5 rounded-full hover:bg-black/75 transition">
                   {w.is_public ? (
                     <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>
                   ) : (
