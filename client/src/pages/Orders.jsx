@@ -254,14 +254,15 @@ export default function Orders() {
     const live = pkgs.find((p) => p.id === detail.package_id) || {};
     const arr = (v) => Array.isArray(v) ? v : [];
     const obj = (v) => (v && typeof v === 'object' && !Array.isArray(v)) ? v : {};
+    const val = (s, l) => (s !== undefined && s !== null && s !== '' ? s : l);
     return {
       name: snap.name || live.name || '—',
-      price: snap.price !== undefined ? snap.price : live.price,
-      deposit: snap.deposit !== undefined ? snap.deposit : live.deposit,
-      duration: snap.duration !== undefined ? snap.duration : live.duration,
-      retouch_count: snap.retouch_count !== undefined ? snap.retouch_count : live.retouch_count,
-      raw_policy: snap.raw_policy !== undefined ? snap.raw_policy : live.raw_policy,
-      description: snap.description !== undefined ? snap.description : live.description,
+      price: val(snap.price, live.price),
+      deposit: val(snap.deposit, live.deposit),
+      duration: val(snap.duration, live.duration),
+      retouch_count: val(snap.retouch_count, live.retouch_count),
+      raw_policy: val(snap.raw_policy, live.raw_policy),
+      description: val(snap.description, live.description),
       cover_url: snap.cover_url || live.cover_url,
       spec: snap.spec || live.spec || null,
       addons: arr(snap.addons).length ? snap.addons : arr(live.addons),
