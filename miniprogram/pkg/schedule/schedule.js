@@ -70,9 +70,9 @@ Page({
 
   async loadAvailability(year, monthIdx) {
     // ① 单独取出年、月纯数字（month 仅传「年-月」字符串 YYYY-MM），禁止传入 Date 对象
-    // 支持外部传入，避免 setData 异步导致读到旧值
-    const y = Number.isFinite(year) ? year : this.data.year;
-    const m0 = Number.isFinite(monthIdx) ? monthIdx : this.data.monthIdx;
+    // 支持外部传入，避免 setData 异步导致读到旧值；同时强制 Number 防止旧数据污染
+    const y = Number.isFinite(year) ? Number(year) : Number(this.data.year) || new Date().getFullYear();
+    const m0 = Number.isFinite(monthIdx) ? Number(monthIdx) : Number(this.data.monthIdx) || new Date().getMonth();
     const month = this.monthStr(y, m0);
     this.setData({ month, year: y, monthIdx: m0 });
     if (!month) {
@@ -150,8 +150,10 @@ Page({
     this.setData({ cells });
   },
 
-  shift(delta) {
-    let y = this.data.year, m = this.data.monthIdx + delta;
+  shift(e) {
+    const delta = Number(e.currentTarget.dataset.d) || 0;
+    let y = Number(this.data.year) || new Date().getFullYear();
+    let m = (Number(this.data.monthIdx) || 0) + delta;
     if (m < 0) { m = 11; y--; } else if (m > 11) { m = 0; y++; }
     this.setData({ year: y, monthIdx: m, selDate: '', selPeriod: '', picking: false });
     // 直接传新值，setData 异步，不能立刻 this.loadAvailability()
