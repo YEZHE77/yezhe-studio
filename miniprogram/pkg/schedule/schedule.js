@@ -1,4 +1,4 @@
-const { request } = require('../../utils/req.js');
+const { requestTask } = require('../../utils/req.js');
 
 const WEEK = ['一', '二', '三', '四', '五', '六', '日'];
 const PERIODS = ['am', 'pm', 'night'];
@@ -26,13 +26,15 @@ Page({
     WEEK, PERIODS, PERIOD_LABEL,
     month: '', year: 0, monthIdx: 0,
     cells: [],
+    loading: false,
     bookingOpen: true,
     occupied: {}, closed: {}, pending: {}, // date -> {am:true,...}
     selDate: '', selPeriod: '', picking: false,
     msg: ''
   },
 
-  _loading: false,
+  _cache: {}, // month -> { occupied, closed, pending }
+  _req: null,
   _tasks: [],
 
   onLoad() {
@@ -43,8 +45,10 @@ Page({
   },
 
   onUnload() {
+    if (this._req) { try { this._req.abort(); } catch (e) {} this._req = null; }
     this._tasks.forEach((t) => { try { t.abort(); } catch (e) {} });
     this._tasks = [];
+    this._cache = {};
     this.setData({ cells: [] });
   },
 
@@ -70,28 +74,57 @@ Page({
     if (!month) {
       // 兜底：年月非法时绝不直接拼接进 url，避免污染参数导致 400
       console.error('[schedule] 非法年月，无法请求档期', { year: this.data.year, monthIdx: this.data.monthIdx });
-      wx.showToast({ title: '获取档期失败', icon: 'none' });
+      wx.showToast({ title: '档期获取失败，请稍后重试', icon: 'none' });
       this.decorate();
       return;
     }
+
+    // ③ 本地缓存命中：已加载过的月份直接复用，不再请求接口
+    if (this._cache[month]) {
+      const cached = this._cache[month];
+      this.setData({ occupied: cached.occupied, closed: cached.closed, pending: cached.pending, loading: false });
+      this.decorate();
+      return;
+    }
+
+    // 切换月份时立刻发起请求，并取消上一个月未完成的请求
+    if (this._req) { try { this._req.abort(); } catch (e) {} this._req = null; }
+    this.setData({ loading: true, cells: [], occupied: {}, closed: {}, pending: {}, selDate: '', selPeriod: '', picking: false });
+
     try {
-      const av = await request('/api/schedules/availability?month=' + month);
+      const task = requestTask('/api/schedules/availability?month=' + encodeURIComponent(month), 'GET', {}, { timeout: 8000 });
+      this._req = task;
+      this._tasks.push(task);
+      const av = await task.promise;
+
       const occupied = {}, closed = {}, pending = {};
       const fill = (map, x) => {
+        if (!x || !x.date) return; // 兼容兜底：缺少 date 字段的脏数据直接跳过
         const ps = x.period === 'full' ? PERIODS : [x.period];
         map[x.date] = map[x.date] || {};
         ps.forEach((p) => { map[x.date][p] = true; });
       };
-      (av.occupied || []).forEach((x) => fill(occupied, x));
-      (av.closed || []).forEach((x) => fill(closed, x));
-      (av.pending || []).forEach((x) => fill(pending, x));
-      this.setData({ occupied, closed, pending });
+      // 数据格式校验：若不是对象/数组，按空数组兜底，避免 forEach 崩溃
+      const arr = (v) => Array.isArray(v) ? v : [];
+      arr(av && av.occupied).forEach((x) => fill(occupied, x));
+      arr(av && av.closed).forEach((x) => fill(closed, x));
+      arr(av && av.pending).forEach((x) => fill(pending, x));
+
+      this._cache[month] = { occupied, closed, pending };
+      this.setData({ occupied, closed, pending, loading: false });
       this.decorate();
     } catch (e) {
-      // ② 容错兜底：接口 400/异常不崩溃，打印实际传入的 month 参数，UI 提示「获取档期失败」
+      // ② 容错兜底：接口 400/500/网络/超时均不崩溃，该月全部日期默认可选空闲
       console.error('[schedule] 获取档期失败 month=', month, 'err=', e && (e.errMsg || e.message || e));
-      wx.showToast({ title: '获取档期失败', icon: 'none' });
+      wx.showToast({ title: '档期获取失败，请稍后重试', icon: 'none' });
+      this.setData({ occupied: {}, closed: {}, pending: {}, loading: false });
       this.decorate();
+    } finally {
+      // 清理已完成的请求句柄
+      if (this._req) {
+        this._tasks = this._tasks.filter((t) => t !== this._req);
+        this._req = null;
+      }
     }
   },
 

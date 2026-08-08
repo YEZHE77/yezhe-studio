@@ -11,8 +11,12 @@
 .cal-month { font-size: 30rpx; font-weight: 600; color: #111; }
 .cal-week { display: flex; }
 .cal-wd { flex: 1; text-align: center; font-size: 24rpx; color: #999; padding: 8rpx 0; }
-.cal-grid { display: flex; flex-wrap: wrap; }
+.cal-grid { display: flex; flex-wrap: wrap; position: relative; min-height: 480rpx; }
 .cal-cell { width: 14.28%; height: 96rpx; box-sizing: border-box; padding: 6rpx; }
+.cal-loading { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(255,255,255,0.85); z-index: 10; }
+.cal-loading-spin { width: 40rpx; height: 40rpx; border: 4rpx solid #e3e6ea; border-top-color: #2f7cf6; border-radius: 50%; animation: spin 1s linear infinite; }
+.cal-loading-txt { margin-top: 16rpx; font-size: 24rpx; color: #8a9099; }
+@keyframes spin { to { transform: rotate(360deg); } }
 .cal-cell { display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: 12rpx; margin-bottom: 8rpx; }
 .cal-d { font-size: 28rpx; color: #222; }
 .cal-dot { font-size: 18rpx; margin-top: 2rpx; padding: 0 8rpx; border-radius: 8rpx; }

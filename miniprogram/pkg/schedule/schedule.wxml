@@ -21,6 +21,11 @@
           <text wx:if="{{c.dot}}" class="cal-dot {{c.status === 'pending' ? 'pd' : c.status === 'closed' ? 'gy' : c.status === 'partial' ? 'pt' : ''}}">{{c.dot}}</text>
         </block>
       </view>
+      <!-- 切换月份 loading -->
+      <view wx:if="{{loading}}" class="cal-loading">
+        <view class="cal-loading-spin"></view>
+        <text class="cal-loading-txt">档期加载中…</text>
+      </view>
     </view>
     <view class="cal-legend muted small">
       <text class="lg lg-booked">红 约满</text>

@@ -29,7 +29,7 @@ function getToken() {
  * 核心请求方法：{ promise, abort }
  * 页面 onUnload 时调用 abort() 取消请求，避免卸载后 setData
  */
-function requestTask(path, method = 'GET', data = {}) {
+function requestTask(path, method = 'GET', data = {}, options = {}) {
   let task = null;
   let aborted = false;
 
@@ -40,7 +40,7 @@ function requestTask(path, method = 'GET', data = {}) {
         url: CONFIG.API_BASE + path,
         method,
         data,
-        timeout: TIMEOUT,
+        timeout: options.timeout || TIMEOUT,
         header: {
           'Content-Type': 'application/json',
           ...(token ? { Authorization: 'Bearer ' + token } : {})
@@ -108,8 +108,8 @@ function requestTask(path, method = 'GET', data = {}) {
  * 向后兼容的简单请求（无取消能力）
  * 新页面建议用 requestTask 以便 onUnload 清理
  */
-function request(path, method = 'GET', data = {}) {
-  return requestTask(path, method, data).promise;
+function request(path, method = 'GET', data = {}, options = {}) {
+  return requestTask(path, method, data, options).promise;
 }
 
 module.exports = { request, requestTask, getToken, TIMEOUT };
