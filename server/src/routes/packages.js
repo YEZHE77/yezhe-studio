@@ -122,16 +122,19 @@ router.put('/:id', authRequired, requireRole(['admin', 'photographer']), async (
     const b = req.body;
     const cur = await get('SELECT * FROM packages WHERE id = ?', [req.params.id]);
     if (!cur) return res.status(404).json({ error: '套系不存在' });
+    // 数值字段：前端未传或传空字符串时，回退到当前值，避免 NaN 进数据库
+    const toFloat = (v, fallback) => (v === '' || v === null || v === undefined || Number.isNaN(parseFloat(v))) ? fallback : parseFloat(v);
+    const toInt = (v, fallback) => (v === '' || v === null || v === undefined || Number.isNaN(parseInt(v, 10))) ? fallback : parseInt(v, 10);
     await run(
       `UPDATE packages SET name=?, price=?, category_id=?, cover_url=?, description=?, addons=?, marketing=?, status=?, sort=?, deposit=?, retouch_count=?, raw_policy=?, duration=?, questionnaire=?, specs=?
        WHERE id=?`,
       [
-        b.name ?? cur.name, parseFloat(b.price) ?? cur.price, b.category_id ?? cur.category_id,
+        b.name ?? cur.name, toFloat(b.price, cur.price), b.category_id ?? cur.category_id,
         b.cover_url ?? cur.cover_url, b.description ?? cur.description,
         JSON.stringify(b.addons ?? (cur.addons ? JSON.parse(cur.addons) : [])),
         JSON.stringify(b.marketing ?? (cur.marketing ? JSON.parse(cur.marketing) : {})),
-        b.status ?? cur.status, parseInt(b.sort) ?? cur.sort,
-        parseFloat(b.deposit) ?? cur.deposit, parseInt(b.retouch_count) ?? cur.retouch_count,
+        b.status ?? cur.status, toInt(b.sort, cur.sort),
+        toFloat(b.deposit, cur.deposit), toInt(b.retouch_count, cur.retouch_count),
         b.raw_policy ?? cur.raw_policy, b.duration ?? cur.duration, b.questionnaire ?? cur.questionnaire,
         JSON.stringify(sanitizeSpecs(b.specs ?? (cur.specs ? JSON.parse(cur.specs) : []))),
         req.params.id
