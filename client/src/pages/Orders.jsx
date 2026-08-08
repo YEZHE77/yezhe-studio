@@ -376,6 +376,28 @@ export default function Orders() {
               </div>
             )}
 
+            {/* 客户问卷（客户在小程序填写，后台查看）*/}
+            {detail.package_snapshot && Array.isArray(detail.package_snapshot.questionnaire) && detail.package_snapshot.questionnaire.length > 0 && (() => {
+              let ans = {};
+              try { ans = detail.questionnaire_answers ? (typeof detail.questionnaire_answers === 'string' ? JSON.parse(detail.questionnaire_answers) : detail.questionnaire_answers) : {}; } catch { ans = {}; }
+              const qs = detail.package_snapshot.questionnaire;
+              return (
+                <div className="bg-panel2 rounded-lg p-3 mb-3">
+                  <div className="text-white font-medium mb-2">客户问卷</div>
+                  <div className="space-y-2">
+                    {qs.map((q, i) => (
+                      <div key={i} className="text-sm">
+                        <div className="text-muted">{i + 1}. {q.q}{q.required ? ' *' : ''}</div>
+                        <div className="text-white mt-0.5">
+                          {ans[i] !== undefined && ans[i] !== '' ? ans[i] : <span className="text-muted">（未填写）</span>}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
+
             {/* 文件保存期限提示栏 */}
             {(() => {
               const dl = (exp) => { if (!exp) return null; return Math.ceil((new Date(exp).getTime() - Date.now()) / 86400000); };
