@@ -39,9 +39,10 @@ Page({
 
   onLoad() {
     const now = new Date();
-    this.setData({ year: now.getFullYear(), monthIdx: now.getMonth() });
+    const year = now.getFullYear(), monthIdx = now.getMonth();
+    this.setData({ year, monthIdx });
     this.loadBooking();
-    this.loadAvailability();
+    this.loadAvailability(year, monthIdx);
   },
 
   onUnload() {
@@ -67,10 +68,13 @@ Page({
     return `${yy}-${pad(mm)}`;
   },
 
-  async loadAvailability() {
+  async loadAvailability(year, monthIdx) {
     // ① 单独取出年、月纯数字（month 仅传「年-月」字符串 YYYY-MM），禁止传入 Date 对象
-    const month = this.monthStr(this.data.year, this.data.monthIdx);
-    this.setData({ month });
+    // 支持外部传入，避免 setData 异步导致读到旧值
+    const y = Number.isFinite(year) ? year : this.data.year;
+    const m0 = Number.isFinite(monthIdx) ? monthIdx : this.data.monthIdx;
+    const month = this.monthStr(y, m0);
+    this.setData({ month, year: y, monthIdx: m0 });
     if (!month) {
       // 兜底：年月非法时绝不直接拼接进 url，避免污染参数导致 400
       console.error('[schedule] 非法年月，无法请求档期', { year: this.data.year, monthIdx: this.data.monthIdx });
@@ -150,7 +154,8 @@ Page({
     let y = this.data.year, m = this.data.monthIdx + delta;
     if (m < 0) { m = 11; y--; } else if (m > 11) { m = 0; y++; }
     this.setData({ year: y, monthIdx: m, selDate: '', selPeriod: '', picking: false });
-    this.loadAvailability();
+    // 直接传新值，setData 异步，不能立刻 this.loadAvailability()
+    this.loadAvailability(y, m);
   },
 
   onPickDay(e) {
