@@ -32,6 +32,7 @@ import shareRoutes from './routes/share.js';
 import sharesRoutes from './routes/shares.js';
 import galleriesRoutes from './routes/galleries.js';
 import uploadChunkRoutes from './routes/uploadChunk.js';
+import uploadFileRoutes from './routes/uploadFile.js';
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -115,6 +116,7 @@ app.use('/api/share', shareRoutes);
 app.use('/api/shares', sharesRoutes);
 app.use('/api/galleries', galleriesRoutes);
 app.use('/api/upload', uploadChunkRoutes);
+app.use('/api/files', uploadFileRoutes);
 
 // multer / 通用错误
 app.use((err, req, res, next) => {
