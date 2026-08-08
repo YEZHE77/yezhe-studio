@@ -112,7 +112,13 @@ router.get('/stats', authRequired, async (req, res) => {
         AND NOT EXISTS (SELECT 1 FROM photo_select ps WHERE ps.order_id = orders.id AND ps.submitted = 1)`,
       [today]
     );
-    res.json({ expiringSoon: Number(exp.c) || 0, selectionTimeout: Number(sel.c) || 0 });
+    // 订单总数（筛选栏「所有订单 (N)」用，后端动态返回，前端禁止硬编码）
+    const tot = await get('SELECT COUNT(*) AS c FROM orders WHERE cancelled = 0 AND is_deleted = 0');
+    res.json({
+      expiringSoon: Number(exp.c) || 0,
+      selectionTimeout: Number(sel.c) || 0,
+      total: Number(tot.c) || 0
+    });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
