@@ -37,6 +37,7 @@ export default function OrderCreateModal({ visible, packages, initialPackageId, 
       shoot_date: form.shoot_date, executor: form.executor, remark: form.remark
     };
     if (!pkg) { setErr('请选择套系（或填写定金/尾款金额）'); return; }
+    if (payload.deposit <= 0) { setErr('请填写定金金额（必须大于 0，未收定金不能建立订单）'); return; }
     try {
       await http.post('/api/orders', payload); // 后端保存完毕
       onClose();        // 弹窗关闭逻辑不变
@@ -62,7 +63,11 @@ export default function OrderCreateModal({ visible, packages, initialPackageId, 
           <input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} placeholder="拍摄地址"
             className="px-3 py-2 rounded bg-panel2 border border-line text-white text-sm outline-none" />
         </div>
-        <select value={form.package_id} onChange={(e) => setForm({ ...form, package_id: e.target.value })} required
+          <select value={form.package_id} onChange={(e) => {
+            const pid = e.target.value;
+            const pkg = packages.find((p) => String(p.id) === String(pid));
+            setForm((f) => ({ ...f, package_id: pid, deposit: pkg ? (parseFloat(pkg.deposit) || f.deposit) : f.deposit }));
+          }} required
           className="w-full mt-3 px-3 py-2 rounded bg-panel2 border border-line text-white text-sm outline-none">
           <option value="">选择套系</option>
           {packages.map((p) => <option key={p.id} value={p.id}>{p.name} · ¥{p.price}</option>)}

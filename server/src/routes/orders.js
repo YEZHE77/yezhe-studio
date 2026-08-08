@@ -82,6 +82,7 @@ router.post('/', authRequired, requireRole(['admin', 'photographer', 'finance'])
     }
     const deposit = parseFloat(b.deposit) || 0;
     const balance = parseFloat(b.balance) || 0;
+    if (deposit <= 0) return res.status(400).json({ error: '定金必须大于 0，未收定金不能建立订单' });
     if (!package_snapshot) total = deposit + balance;
     const order_no = b.order_no || ('NO' + Date.now());
     const logs = JSON.stringify([{ t: nowISO(), text: '创建订单' }]);
@@ -95,11 +96,16 @@ router.post('/', authRequired, requireRole(['admin', 'photographer', 'finance'])
        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
       [
         order_no, customer_name, b.customer_phone || '', b.package_id || null,
-        JSON.stringify(package_snapshot), JSON.stringify(addons), b.status || 'unpaid',
+        JSON.stringify(package_snapshot), JSON.stringify(addons), 'deposit',
         deposit, balance, b.deposit_method || 'offline', b.balance_method || 'offline',
-        b.shoot_date || '', b.executor || '', total, 0, b.remark || '', logs,
+        b.shoot_date || '', b.executor || '', total, deposit, b.remark || '', logs,
         groom, bride, b.address || ''
       ]
+    );
+    // 建单即视为已收定金，登记定金收款流水
+    await insert(
+      `INSERT INTO payments (order_id, order_no, type, amount, method, note) VALUES (?,?,?,?,?,?)`,
+      [id, order_no, 'deposit', deposit, b.deposit_method || 'offline', '创建订单时收取定金']
     );
     res.json({ id, order_no });
   } catch (e) { res.status(500).json({ error: e.message }); }
@@ -112,6 +118,7 @@ router.put('/:id', authRequired, requireRole(['admin', 'photographer', 'finance'
     const cur = await get('SELECT * FROM orders WHERE id = ?', [req.params.id]);
     if (!cur) return res.status(404).json({ error: '订单不存在' });
     const status = b.status ?? cur.status;
+    if (status === 'unpaid') return res.status(400).json({ error: '预约转单已统一为「已付定金」，不可使用待付定金状态' });
     const groom = (b.groom_name ?? cur.groom_name ?? '').trim();
     const bride = (b.bride_name ?? cur.bride_name ?? '').trim();
     const customer_name = groom || bride ? [groom, bride].filter(Boolean).join(' & ') : (b.customer_name ?? cur.customer_name);
@@ -123,7 +130,7 @@ router.put('/:id', authRequired, requireRole(['admin', 'photographer', 'finance'
        groom, bride, b.address ?? cur.address, cur.id]
     );
     if (b.status && b.status !== cur.status) {
-      const MAP = { unpaid: '待付定金', deposit: '已付定金', shot: '已拍摄', selecting: '选片中', retouching: '精修中', delivered: '已交付', completed: '已完成' };
+      const MAP = { deposit: '已付定金', shot: '已拍摄', selecting: '选片中', retouching: '精修中', delivered: '已交付', completed: '已完成' };
       await appendLog(cur.id, '阶段推进 → ' + (MAP[status] || status));
     }
     res.json({ ok: true });
@@ -155,8 +162,8 @@ router.post('/:id/payments', authRequired, requireRole(['admin', 'photographer',
     await run('UPDATE orders SET paid_amount = ? WHERE id = ?', [paid, o.id]);
     const TYPE_LABEL = { deposit: '定金', balance: '尾款', extra: '加片/增值', refund: '退款' };
     await appendLog(o.id, `收款登记：${TYPE_LABEL[type]} ¥${amount}（${b.method === 'online' ? '线上' : '线下'}）`);
-    // 收到定金自动进入已付定金
-    if (type === 'deposit' && o.status === 'unpaid') {
+    // 收到定金确保订单处于「已付定金」状态（兼容旧数据由 unpaid 归一）
+    if (type === 'deposit' && o.status !== 'deposit') {
       await run("UPDATE orders SET status = 'deposit' WHERE id = ?", [o.id]);
     }
     res.json({ ok: true, paymentId: pid, paid });

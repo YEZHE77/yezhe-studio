@@ -5,7 +5,6 @@ import { useViewState } from '../tabMemory.js';
 const WEEK = ['一', '二', '三', '四', '五', '六', '日'];
 const STATUS = {
   free: { label: '空闲', dot: 'bg-emerald-500', cls: 'border-line' },
-  unpaid: { label: '未付定金', dot: 'bg-amber-500', cls: 'border-amber-500/40 bg-amber-500/5' },
   shoot: { label: '等待拍摄', dot: 'bg-sky-500', cls: 'border-sky-500/40 bg-sky-500/5' },
   closed: { label: '档期关闭', dot: 'bg-line', cls: 'border-line bg-black/20 opacity-60' },
   booked: { label: '已排', dot: 'bg-red-500', cls: 'border-red-500/40 bg-red-500/5' },

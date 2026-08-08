@@ -32,7 +32,6 @@ router.get('/', authRequired, async (req, res) => {
     const pending = {};
     for (const r of statusRows) pending[r.status] = r.c;
     const pendingBlocks = {
-      unpaid: pending.unpaid || 0,      // 未支付定金
       shoot: pending.shoot || 0,        // 等待拍摄
       selecting: pending.selecting || 0,// 待选片
       retouching: pending.retouching || 0, // 待精修

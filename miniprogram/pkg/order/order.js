@@ -1,7 +1,7 @@
 const { requestTask } = require('../../utils/req.js');
 
 const STATUS = {
-  unpaid: '待付定金', deposit: '已付定金', shot: '已拍摄',
+  deposit: '已付定金', shot: '已拍摄',
   selecting: '选片中', retouching: '精修中', delivered: '已交付',
   completed: '已完成', cancelled: '已取消'
 };

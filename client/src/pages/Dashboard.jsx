@@ -5,7 +5,6 @@ import Icon from '../components/Icon.jsx';
 
 // 待处理订单：白底卡片 + 底部彩色细线 + hover 高亮（参考拾光盒子）
 const PENDING = [
-  { key: 'unpaid', label: '未支付定金', bar: 'bg-red-400', tx: 'text-red-500' },
   { key: 'shoot', label: '等待拍摄', bar: 'bg-teal-400', tx: 'text-teal-500' },
   { key: 'selecting', label: '待选片', bar: 'bg-sky-400', tx: 'text-sky-500' },
   { key: 'retouching', label: '待精修', bar: 'bg-amber-400', tx: 'text-amber-500' },

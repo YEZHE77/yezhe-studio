@@ -41,6 +41,11 @@ async function doConfirm(req, res) {
     const period = ['full', 'half'].includes(b.period) ? b.period : (a.period || 'full');
     if (!date) return res.status(400).json({ error: '请指定拍摄日期' });
 
+    // 定金是建立订单 + 锁定档期的前置硬条件：未收定金不得建单、不得占档期
+    const deposit = parseFloat(b.deposit) || 0;
+    const deposit_method = b.deposit_method || 'offline';
+    if (deposit <= 0) return res.status(400).json({ error: '必须先收取定金才能建立订单并锁定档期' });
+
     // 冲突检测：全天(full) 与任何时段冲突；半天(half) 与全天或其它半天冲突
     const conflictRows = await query(
       "SELECT * FROM schedules WHERE date = ? AND status IN ('booked','locked')",
@@ -72,7 +77,7 @@ async function doConfirm(req, res) {
       const p = await get('SELECT * FROM packages WHERE id = ?', [a.package_id]);
       if (p) {
         let price = parseFloat(p.price) || 0;
-        let deposit = parseFloat(p.deposit) || 0;
+        let pkgDeposit = parseFloat(p.deposit) || 0;
         let spec = null;
         if (a.spec_id) {
           try {
@@ -80,9 +85,9 @@ async function doConfirm(req, res) {
             spec = specs.find((s) => s.id === a.spec_id) || null;
           } catch { spec = null; }
         }
-        if (spec) { price = parseFloat(spec.price) || price; deposit = parseFloat(spec.deposit) || deposit; }
+        if (spec) { price = parseFloat(spec.price) || price; pkgDeposit = parseFloat(spec.deposit) || pkgDeposit; }
         package_snapshot = {
-          id: p.id, name: p.name, price, deposit,
+          id: p.id, name: p.name, price, deposit: pkgDeposit,
           description: p.description || '', retouch_count: p.retouch_count,
           raw_policy: p.raw_policy || '', duration: p.duration || '', cover_url: p.cover_url || '',
           category_id: p.category_id,
@@ -97,10 +102,16 @@ async function doConfirm(req, res) {
     const logs = JSON.stringify([{ t: nowISO(), text: '由预约 #' + a.id + ' 确认转单' }]);
     const orderId = await insert(
       `INSERT INTO orders (order_no, customer_name, customer_phone, package_id, package_snapshot,
-        status, deposit, balance, total_amount, paid_amount, openid, remark, logs, shoot_date)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+        status, deposit, balance, total_amount, paid_amount, deposit_method, openid, remark, logs, shoot_date)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
       [order_no, a.name, a.phone, a.package_id || null, JSON.stringify(package_snapshot),
-        'unpaid', 0, total, total, 0, a.openid || null, a.remark || '', logs, date]
+        'deposit', deposit, total, total, deposit, deposit_method, a.openid || null, a.remark || '', logs, date]
+    );
+
+    // 建单即视为已收定金，登记定金收款流水
+    await insert(
+      `INSERT INTO payments (order_id, order_no, type, amount, method, note) VALUES (?,?,?,?,?,?)`,
+      [orderId, order_no, 'deposit', deposit, deposit_method, '接受预约时收取定金']
     );
 
     await run(
@@ -314,7 +325,7 @@ router.get('/selections', async (req, res) => {
 
 // ===== 6. 数据导出（CSV，Excel 可直接打开，零依赖）=====
 const STATUS_MAP = {
-  unpaid: '待付定金', deposit: '已付定金', shot: '已拍摄', selecting: '选片中',
+  deposit: '已付定金', shot: '已拍摄', selecting: '选片中',
   retouching: '精修中', delivered: '已交付', completed: '已完成', cancelled: '已作废'
 };
 function num(v) { return Math.round((parseFloat(v) || 0) * 100) / 100; }

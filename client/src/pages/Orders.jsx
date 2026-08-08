@@ -7,12 +7,12 @@ import bgm from '../bgm.js';
 import Slideshow from '../components/Slideshow.jsx';
 
 const STATUS_LABEL = {
-  unpaid: '待付定金', deposit: '已付定金', shot: '已拍摄', selecting: '选片中',
+  deposit: '已付定金', shot: '已拍摄', selecting: '选片中',
   retouching: '精修中', delivered: '已交付', completed: '已完成', cancelled: '已作废'
 };
-const STAGE_SEQ = ['unpaid', 'deposit', 'shot', 'selecting', 'retouching', 'delivered', 'completed'];
+const STAGE_SEQ = ['deposit', 'shot', 'selecting', 'retouching', 'delivered', 'completed'];
 const STAGE_COLOR = {
-  unpaid: 'bg-red-500', deposit: 'bg-amber-500', shot: 'bg-sky-500', selecting: 'bg-indigo-500',
+  deposit: 'bg-amber-500', shot: 'bg-sky-500', selecting: 'bg-indigo-500',
   retouching: 'bg-purple-500', delivered: 'bg-teal-500', completed: 'bg-emerald-500', cancelled: 'bg-line'
 };
 const TYPE_LABEL = { deposit: '定金', balance: '尾款', extra: '加片/增值', refund: '退款' };
@@ -338,7 +338,7 @@ export default function Orders() {
                 <td className="p-3 text-white">¥{Number(o.total_amount || 0).toLocaleString()}</td>
                 <td className="p-3 text-emerald-400">¥{Number(o.paid_amount || 0).toLocaleString()}</td>
                 <td className="p-3 text-muted">{o.shoot_date || '—'}</td>
-                <td className="p-3"><span className={'px-2 py-1 rounded-full text-xs ' + badge(o.status)}>{STATUS_LABEL[o.status]}</span></td>
+                <td className="p-3"><span className={'px-2 py-1 rounded-full text-xs ' + badge(o.status)}>{STATUS_LABEL[o.status] || '历史订单'}</span></td>
               </tr>
             ))}
             {list.length === 0 && <tr><td colSpan="7" className="p-8 text-center text-muted">暂无订单</td></tr>}
@@ -620,7 +620,7 @@ export default function Orders() {
               className="w-full mt-3 px-3 py-2 rounded bg-panel2 border border-line text-white text-sm outline-none" />
             <select value={editForm.status} onChange={(e) => setEditForm({ ...editForm, status: e.target.value })}
               className="w-full mt-3 px-3 py-2 rounded bg-panel2 border border-line text-white text-sm outline-none">
-              <option value="unpaid">待付定金</option><option value="deposit">已付定金</option><option value="shot">已拍摄</option>
+              <option value="deposit">已付定金</option><option value="shot">已拍摄</option>
               <option value="selecting">选片中</option><option value="retouching">精修中</option><option value="delivered">已交付</option>
               <option value="completed">已完成</option><option value="cancelled">已作废</option>
             </select>
@@ -692,7 +692,7 @@ function btn(active, label) {
 }
 function badge(status) {
   return {
-    unpaid: 'bg-red-500/15 text-red-400', deposit: 'bg-amber-500/15 text-amber-400', shot: 'bg-sky-500/15 text-sky-400',
+    deposit: 'bg-amber-500/15 text-amber-400', shot: 'bg-sky-500/15 text-sky-400',
     selecting: 'bg-indigo-500/15 text-indigo-400', retouching: 'bg-purple-500/15 text-purple-400', delivered: 'bg-teal-500/15 text-teal-400',
     completed: 'bg-emerald-500/15 text-emerald-400', cancelled: 'bg-line text-muted'
   }[status] || 'bg-line text-muted';

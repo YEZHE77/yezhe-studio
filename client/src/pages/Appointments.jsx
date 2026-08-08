@@ -40,13 +40,16 @@ export default function Appointments() {
   // 接受预约 → 生成订单并锁定档期（双向绑定）
   function openConfirm(a) {
     setDetail(null);
-    setConfirming({ a, date: a.hope_date || '', period: a.period || 'full', photographer: '' });
+    const pkg = pkgs.find((p) => String(p.id) === String(a.package_id));
+    const defDeposit = pkg ? (parseFloat(pkg.deposit) || 0) : 0;
+    setConfirming({ a, date: a.hope_date || '', period: a.period || 'full', photographer: '', deposit: defDeposit, deposit_method: 'offline' });
   }
   async function doConfirm() {
-    const { a, date, period, photographer } = confirming;
+    const { a, date, period, photographer, deposit, deposit_method } = confirming;
     if (!date) return alert('请指定拍摄日期');
+    if (!(parseFloat(deposit) > 0)) return alert('请填写已收取的定金金额（必须大于 0，未收定金不能建立订单）');
     try {
-      const r = await http.post('/api/admin/appointments/' + a.id + '/confirm', { date, period, photographer });
+      const r = await http.post('/api/admin/appointments/' + a.id + '/confirm', { date, period, photographer, deposit: parseFloat(deposit) || 0, deposit_method });
       setConv({ name: a.name, ...r.data });
       setConfirming(null);
       load();
@@ -213,6 +216,15 @@ export default function Appointments() {
             <label className="text-xs text-muted">执行人 / 团队</label>
             <input value={confirming.photographer} onChange={(e) => setConfirming({ ...confirming, photographer: e.target.value })} placeholder="如 叶哲 / 小李"
               className="w-full mb-4 px-3 py-2 rounded bg-panel2 border border-line text-white text-sm outline-none" />
+            <label className="text-xs text-muted">已收定金（建立订单的前提，必须大于 0）</label>
+            <input value={confirming.deposit} onChange={(e) => setConfirming({ ...confirming, deposit: e.target.value })} type="number" placeholder="定金金额"
+              className="w-full mb-3 px-3 py-2 rounded bg-panel2 border border-line text-white text-sm outline-none" />
+            <label className="text-xs text-muted">定金收取方式</label>
+            <select value={confirming.deposit_method} onChange={(e) => setConfirming({ ...confirming, deposit_method: e.target.value })}
+              className="w-full mb-4 px-3 py-2 rounded bg-panel2 border border-line text-white text-sm outline-none">
+              <option value="offline">线下收取</option>
+              <option value="online">线上收取</option>
+            </select>
             <div className="flex gap-2 justify-end">
               <button onClick={() => setConfirming(null)} className="px-4 py-2 rounded text-sm text-muted">取消</button>
               <button onClick={doConfirm} className="px-4 py-2 rounded bg-brand text-white text-sm">确认接受</button>

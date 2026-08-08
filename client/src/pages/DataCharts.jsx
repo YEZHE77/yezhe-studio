@@ -102,7 +102,6 @@ export default function DataCharts() {
           <div className="text-[15px] font-semibold text-fg mb-3">待处理订单分布</div>
           <div className="grid grid-cols-5 gap-3">
             {[
-              { k: 'unpaid', label: '待付定金', c: 'text-red-500', b: 'bg-red-400' },
               { k: 'shoot', label: '等待拍摄', c: 'text-teal-500', b: 'bg-teal-400' },
               { k: 'selecting', label: '待选片', c: 'text-sky-500', b: 'bg-sky-400' },
               { k: 'retouching', label: '待精修', c: 'text-amber-500', b: 'bg-amber-400' },
