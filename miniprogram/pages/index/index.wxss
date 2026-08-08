@@ -202,7 +202,8 @@ page { background: #ffffff; }
   position: relative;
   /* 左右 margin 64rpx → 卡片宽 = 100% - 128rpx */
   width: calc(100% - 128rpx);
-  background: #ffffff;
+  /* 半透明卡片：蒙层呈毛玻璃透底效果，二维码白卡与文字仍清晰 */
+  background: rgba(255, 255, 255, 0.92);
   border-radius: 24rpx;
   /* 内部上下 padding 60rpx；左右内边距 40rpx 保证标题/二维码呼吸空间 */
   padding: 60rpx 40rpx;
