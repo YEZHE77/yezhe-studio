@@ -373,7 +373,11 @@ export async function initSchema() {
     ['groom_name', 'TEXT'],
     ['bride_name', 'TEXT'],
     ['contact_phone', 'TEXT'],
-    ['address', 'TEXT']
+    ['address', 'TEXT'],
+    ['periods', 'TEXT'], // 时间段数组（00:00-23:00 小时标签多选），JSON 存储
+    ['date_tbd', 'INTEGER NOT NULL DEFAULT 0'], // 1=日期待定（意向档期，不占具体日历日）
+    ['executor_id', 'INTEGER'], // 绑定执行人（personnel.id）
+    ['executor_name', 'TEXT'] // 绑定执行人姓名（冗余，便于筛选/展示）
   ];
   for (const [col, def] of SCHEDULES_NEW_COLUMNS) await ensureColumn('schedules', col, def);
 

@@ -388,7 +388,9 @@ router.get('/orders/export', async (req, res) => {
 
 router.get('/schedules/export', async (req, res) => {
   try {
-    const rows = await query('SELECT * FROM schedules ORDER BY date ASC, id ASC');
+    const { month } = req.query;
+    const w = month ? 'WHERE date LIKE ?' : '';
+    const rows = await query('SELECT * FROM schedules ' + w + ' ORDER BY date ASC, id ASC', month ? [month + '%'] : []);
     const headers = [
       { key: 'date', label: '日期' }, { key: 'period', label: '时段' }, { key: 'status', label: '状态' },
       { key: 'order_no', label: '订单号' }, { key: 'photographer', label: '摄影师' }, { key: 'note', label: '备注' }
