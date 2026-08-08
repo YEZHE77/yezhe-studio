@@ -389,7 +389,9 @@ export default function Orders() {
                       <div key={i} className="text-sm">
                         <div className="text-muted">{i + 1}. {q.q}{q.required ? ' *' : ''}</div>
                         <div className="text-white mt-0.5">
-                          {ans[i] !== undefined && ans[i] !== '' ? ans[i] : <span className="text-muted">（未填写）</span>}
+                          {ans[i] !== undefined && ans[i] !== '' && !(Array.isArray(ans[i]) && ans[i].length === 0)
+                            ? (Array.isArray(ans[i]) ? ans[i].join('、') : ans[i])
+                            : <span className="text-muted">（未填写）</span>}
                         </div>
                       </div>
                     ))}

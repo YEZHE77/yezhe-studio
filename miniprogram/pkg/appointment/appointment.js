@@ -18,7 +18,7 @@ Page({
     list: [],
     submitting: false,
     // 拍摄问卷弹窗
-    qModal: false, qAppt: null, qAnswers: {}, qSubmitting: false
+    qModal: false, qAppt: null, qAnswers: {}, qMultiFlags: {}, qSubmitting: false
   },
   _tasks: [],
 
@@ -93,8 +93,18 @@ Page({
     );
     if (hit) {
       const answers = {};
-      (hit.package_questionnaire || []).forEach((q, i) => { answers[i] = ''; });
-      this.setData({ qModal: true, qAppt: hit, qAnswers: answers });
+      const multiFlags = {};
+      (hit.package_questionnaire || []).forEach((q, i) => {
+        if (q.type === 'multi') {
+          answers[i] = [];
+          multiFlags[i] = (q.options || []).map(() => false);
+        } else if (q.type === 'select') {
+          answers[i] = '';
+        } else {
+          answers[i] = '';
+        }
+      });
+      this.setData({ qModal: true, qAppt: hit, qAnswers: answers, qMultiFlags: multiFlags });
     }
   },
 
@@ -161,6 +171,30 @@ Page({
     const i = e.currentTarget.dataset.i;
     const answers = { ...this.data.qAnswers, [i]: e.detail.value };
     this.setData({ qAnswers: answers });
+  },
+  // 单选题：选中即覆盖
+  onQSelect(e) {
+    const i = e.currentTarget.dataset.i;
+    const opt = e.currentTarget.dataset.opt;
+    const answers = { ...this.data.qAnswers, [i]: opt };
+    this.setData({ qAnswers: answers });
+  },
+  // 多选题：切换某选项选中态
+  onQMulti(e) {
+    const i = e.currentTarget.dataset.i;
+    const opt = e.currentTarget.dataset.opt;
+    const q = this.data.qAppt.package_questionnaire[i];
+    const options = (q && q.options) || [];
+    const oi = options.indexOf(opt);
+    if (oi < 0) return;
+    const flags = { ...(this.data.qMultiFlags[i] || []) };
+    flags[oi] = !flags[oi];
+    const selected = options.filter((o, idx) => flags[idx]).map((o) => o);
+    const answers = { ...this.data.qAnswers, [i]: selected };
+    this.setData({
+      qMultiFlags: { ...this.data.qMultiFlags, [i]: flags },
+      qAnswers: answers
+    });
   },
   async submitQ() {
     if (this.data.qSubmitting) return;

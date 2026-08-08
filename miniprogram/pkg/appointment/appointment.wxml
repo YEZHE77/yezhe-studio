@@ -64,9 +64,31 @@
       <view class="q-sub">为更好地准备您的拍摄，请填写以下信息</view>
       <view class="q-list">
         <view class="q-item" wx:for="{{qAppt.package_questionnaire}}" wx:key="index" wx:for-index="qi">
-          <view class="q-label">{{item.q}}</view>
-          <input wx:if="{{item.type !== 'bool'}}" class="q-input" value="{{qAnswers[qi]}}" data-i="{{qi}}" bindinput="onQInput" placeholder="请输入" />
-          <switch wx:else checked="{{qAnswers[qi] === '是'}}" data-i="{{qi}}" bindchange="onQInputSwitch" color="#2f7cf6" />
+          <view class="q-label">{{item.q}}<text wx:if="{{item.required}}" class="q-req"> *</text></view>
+
+          <!-- 单选 -->
+          <view wx:if="{{item.type === 'select'}}" class="q-opts">
+            <view wx:for="{{item.options}}" wx:for-item="opt" wx:key="*this" wx:for-index="oi"
+                  class="q-opt {{qAnswers[qi] === opt ? 'on' : ''}}" data-i="{{qi}}" data-opt="{{opt}}" bindtap="onQSelect">
+              <view class="q-radio"><view wx:if="{{qAnswers[qi] === opt}}" class="q-radio-dot"></view></view>
+              <text class="q-opt-txt">{{opt}}</text>
+            </view>
+          </view>
+
+          <!-- 多选 -->
+          <view wx:elif="{{item.type === 'multi'}}" class="q-opts">
+            <view wx:for="{{item.options}}" wx:for-item="opt" wx:key="*this" wx:for-index="oi"
+                  class="q-opt {{qMultiFlags[qi][oi] ? 'on' : ''}}" data-i="{{qi}}" data-opt="{{opt}}" bindtap="onQMulti">
+              <view class="q-check {{qMultiFlags[qi][oi] ? 'on' : ''}}"></view>
+              <text class="q-opt-txt">{{opt}}</text>
+            </view>
+          </view>
+
+          <!-- 布尔 -->
+          <switch wx:elif="{{item.type === 'bool'}}" checked="{{qAnswers[qi] === '是'}}" data-i="{{qi}}" bindchange="onQInputSwitch" color="#2f7cf6" />
+
+          <!-- 文本/日期 -->
+          <input wx:else class="q-input" value="{{qAnswers[qi]}}" data-i="{{qi}}" bindinput="onQInput" placeholder="请输入" />
         </view>
       </view>
       <view class="q-actions">
