@@ -181,6 +181,80 @@ page { background: #ffffff; }
 .footer-copy {
   margin-top: 30rpx; text-align: center; font-size: 22rpx; color: #777;
 }
+/* 添加客服：页脚文字按钮（胶囊样式，display:table 实现收缩居中，兼容各基础库版本） */
+.footer-service {
+  display: table;
+  margin: 30rpx auto 0;
+  font-size: 26rpx; color: var(--brand-green);
+  padding: 10rpx 32rpx;
+  border: 1rpx solid var(--brand-green);
+  border-radius: 999rpx;
+}
+
+/* ===== 添加客服弹窗 ===== */
+.svc-mask {
+  position: fixed; left: 0; top: 0; right: 0; bottom: 0;
+  background: rgba(0, 0, 0, 0.65);
+  z-index: 999;
+  display: flex; align-items: center; justify-content: center;
+}
+.svc-card {
+  position: relative;
+  /* 左右 margin 64rpx → 卡片宽 = 100% - 128rpx */
+  width: calc(100% - 128rpx);
+  background: #ffffff;
+  border-radius: 24rpx;
+  /* 内部上下 padding 60rpx；左右内边距 40rpx 保证标题/二维码呼吸空间 */
+  padding: 60rpx 40rpx;
+  box-sizing: border-box;
+}
+.svc-close {
+  position: absolute;
+  top: 32rpx; right: 32rpx;
+  width: 48rpx; height: 48rpx;
+  font-size: 44rpx; line-height: 48rpx; text-align: center;
+  color: #999999;
+}
+.svc-head {
+  display: flex; align-items: center;
+  /* 避让右上角 ×：头部整体下移，避免与叉号重叠 */
+  margin-top: 8rpx;
+}
+.svc-logo {
+  width: 64rpx; height: 64rpx; border-radius: 50%;
+  margin-right: 20rpx; background: #eee; flex: none;
+}
+.svc-name {
+  flex: 1; min-width: 0;
+  font-size: 30rpx; font-weight: 600; color: #2c2c2c;
+  overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+}
+.svc-title {
+  margin-top: 40rpx; margin-bottom: 48rpx;
+  text-align: center; font-size: 40rpx; font-weight: bold; color: #222222;
+}
+/* 二维码容器：白色圆角卡片，宽度占弹窗内宽 88%；图片 widthFix 不裁切不拉伸 */
+.svc-qr-wrap {
+  width: 88%; margin: 0 auto;
+  background: #ffffff; border: 1rpx solid #eeeeee; border-radius: 16rpx;
+  padding: 24rpx; box-sizing: border-box; text-align: center;
+}
+.svc-qr { width: 100%; display: block; }
+/* 未配置二维码：友好提示 + 占位卡片 */
+.svc-empty {
+  width: 88%; margin: 0 auto;
+  padding: 64rpx 20rpx; text-align: center;
+  background: #f7f7f7; border-radius: 16rpx;
+  color: #999999; font-size: 28rpx;
+}
+.svc-wxid {
+  margin-top: 32rpx; text-align: center;
+  font-size: 30rpx; color: #666666;
+}
+.svc-tip {
+  margin-top: 16rpx; text-align: center;
+  font-size: 24rpx; color: #999999;
+}
 
 /* ===== 右侧悬浮按钮组（固定右侧不随滚动；右距 32rpx；底部预留安全距离 + 避开 iPhone 底部小黑条） ===== */
 .fab-group {

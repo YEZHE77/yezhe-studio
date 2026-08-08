@@ -101,8 +101,27 @@
       <text class="footer-label">地址</text>
       <text class="footer-value">{{studio.contact.address}}</text>
     </view>
+    <view class="footer-service" bindtap="openServiceModal">添加客服 ›</view>
     <view class="footer-copy" wx:if="{{studio.slogan}}">{{studio.name || '叶哲 STUDIO'}} · {{studio.slogan}}</view>
     <view class="footer-copy" wx:else>{{studio.name || '叶哲 STUDIO'}}</view>
+  </view>
+
+  <!-- 添加客服弹窗：蒙层点击 / 右上角叉号均可关闭；二维码来自后台配置，仅展示不识别 -->
+  <view wx:if="{{showServiceModal}}" class="svc-mask" catchtap="closeServiceModal">
+    <view class="svc-card" catchtap="noop">
+      <view class="svc-close" catchtap="closeServiceModal">×</view>
+      <view class="svc-head">
+        <image wx:if="{{studio.logo}}" class="svc-logo" src="{{studio.logo}}" mode="aspectFill" />
+        <view class="svc-name">{{studio.name || '叶哲 STUDIO'}}</view>
+      </view>
+      <view class="svc-title">长按添加微信</view>
+      <view wx:if="{{studio.serviceQr}}" class="svc-qr-wrap">
+        <image class="svc-qr" src="{{studio.serviceQr}}" mode="widthFix" show-menu-by-longpress />
+      </view>
+      <view wx:else class="svc-empty">暂未配置客服二维码</view>
+      <view wx:if="{{studio.contact.wechat}}" class="svc-wxid">微信号：{{studio.contact.wechat}}</view>
+      <view wx:if="{{studio.contact.wechat}}" class="svc-tip">长按二维码保存图片，微信扫一扫添加客服</view>
+    </view>
   </view>
 
   <!-- 右侧固定悬浮按钮组：right:40rpx / bottom:100rpx(右下角) / 间距16rpx / 圆形96rpx / 图标在上文字在下 -->

@@ -6,6 +6,8 @@ const EMPTY = {
   name: '叶哲 Studio', logo: '', cover: '', heroImages: [],
   // 幻灯片背景音乐（BGM）HTTPS 地址；留空则用前端内置打包的本地 MP3（当前默认《The Way You Look Tonight - Tony Bennett》）
   bgmUrl: '',
+  // 客服微信二维码：小程序首页「添加客服」弹窗展示，客户长按保存添加；不裁剪、保持完整
+  serviceQr: '',
   intro: '海口婚礼 / 人像摄影 · YEZHE WORKSHOP',
   // 品牌 Slogan：首页工作室名称下方浅灰小字（为空则不渲染）
   slogan: '拍摄有温度的照片，记录平凡生活中的美好。',
@@ -31,6 +33,7 @@ export default function Settings() {
   const logoRef = useRef();
   const coverRef = useRef();
   const heroRef = useRef();
+  const serviceQrRef = useRef();
   const [heroBusy, setHeroBusy] = useState(false);
   const [crop, setCrop] = useState(null);
   const [heroDragged, setHeroDragged] = useState(null);
@@ -73,6 +76,7 @@ export default function Settings() {
         logo: d.logo || '', cover: d.cover || '',
         heroImages: Array.isArray(d.heroImages) ? d.heroImages : [],
         bgmUrl: d.bgmUrl !== undefined ? d.bgmUrl : EMPTY.bgmUrl,
+        serviceQr: d.serviceQr || '',
         intro: d.intro || EMPTY.intro,
         slogan: d.slogan !== undefined ? d.slogan : EMPTY.slogan,
         contact: { phone: (d.contact && d.contact.phone) || '', wechat: (d.contact && d.contact.wechat) || '', address: (d.contact && d.contact.address) || '' }
@@ -125,6 +129,19 @@ export default function Settings() {
       await upload(croppedFile, crop.kind);
     } finally {
       setCrop(null);
+    }
+  }
+
+  // 客服微信二维码：原图直传、不裁剪、不压缩，保证二维码清晰可扫
+  async function uploadQr(file) {
+    if (!file) return;
+    try {
+      const r = await uploadImage(file, { category: 'backup', isPublic: true });
+      set('serviceQr', r.url);
+    } catch (e) {
+      const msg = e.response?.data?.error || e.message || '上传失败';
+      setTip('二维码上传失败：' + msg);
+      setTimeout(() => setTip(''), 5000);
     }
   }
 
@@ -267,6 +284,15 @@ export default function Settings() {
               <button onClick={() => coverRef.current.click()} className="px-3 py-1.5 rounded-lg border border-line text-sm text-muted hover:text-brand hover:border-brand">上传封面</button>
               <input ref={coverRef} type="file" accept="image/*" className="hidden" onChange={(e) => startCrop(e.target.files[0], 'cover', 16 / 9, 1200, 675)} />
             </div>
+          </Field>
+          <Field label="客服微信二维码（小程序首页「添加客服」弹窗展示）">
+            <div className="flex items-center gap-3">
+              {form.serviceQr && <img src={img(form.serviceQr)} alt="" loading="lazy" decoding="async" className="w-28 h-28 rounded-lg object-contain border border-line bg-panel2" />}
+              <button onClick={() => serviceQrRef.current.click()} className="px-3 py-1.5 rounded-lg border border-line text-sm text-muted hover:text-brand hover:border-brand">上传二维码</button>
+              {form.serviceQr && <button onClick={() => set('serviceQr', '')} className="px-2 py-1.5 rounded-lg border border-line text-sm text-muted hover:text-red-500 hover:border-red-300">移除</button>}
+              <input ref={serviceQrRef} type="file" accept="image/*" className="hidden" onChange={(e) => uploadQr(e.target.files[0])} />
+            </div>
+            <p className="text-xs text-muted mt-1">建议上传正方形微信二维码 PNG/JPG；小程序弹窗内客户<b>长按即可保存图片、扫码添加客服</b>。请勿使用裁剪，保持二维码完整。留空则小程序弹窗提示「暂未配置客服二维码」。</p>
           </Field>
           <Field label={`首页轮播图（多张 · ${form.heroImages.length} 张）`}>
             <div className="flex flex-wrap gap-3 items-start">

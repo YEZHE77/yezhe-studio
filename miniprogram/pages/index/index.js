@@ -13,6 +13,7 @@ Page({
     loading: false,
     banners: [],
     bookingOpen: false,
+    showServiceModal: false, // 添加客服弹窗
     colLeft: [],    // 瀑布流左列
     colRight: [],   // 瀑布流右列
     // 顶部自定义导航栏：状态栏高度（px，动态） + 导航内容区总高度（px，动态）
@@ -201,6 +202,11 @@ Page({
   goAppointment() { wx.navigateTo({ url: '/pkg/schedule/schedule' }); },
   goAbout() { wx.navigateTo({ url: '/pkg/about/about' }); },
   goMy() { wx.navigateTo({ url: '/pages/my/my' }); },
+
+  // 添加客服弹窗：仅展示后台配置的二维码，不做识别解析
+  openServiceModal() { this.setData({ showServiceModal: true }); },
+  closeServiceModal() { this.setData({ showServiceModal: false }); },
+  noop() {},
 
   openWork(e) {
     const id = e.currentTarget.dataset.id;
