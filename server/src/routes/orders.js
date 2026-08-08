@@ -61,12 +61,18 @@ router.post('/', authRequired, requireRole(['admin', 'photographer', 'finance'])
   try {
     const b = req.body;
     let package_snapshot = null, total = 0, addons = [];
+    const safeParse = (v, fallback = '') => { try { return v ? JSON.parse(v) : fallback; } catch { return v || fallback; } };
     if (b.package_id) {
       const p = await get('SELECT * FROM packages WHERE id = ?', [b.package_id]);
       if (p) {
-        let questionnaire = '';
-        try { questionnaire = p.questionnaire ? JSON.parse(p.questionnaire) : ''; } catch { questionnaire = p.questionnaire || ''; }
-        package_snapshot = { id: p.id, name: p.name, price: p.price, questionnaire };
+        package_snapshot = {
+          id: p.id, name: p.name, price: p.price, deposit: p.deposit,
+          description: p.description || '', retouch_count: p.retouch_count,
+          raw_policy: p.raw_policy || '', duration: p.duration || '', cover_url: p.cover_url || '',
+          category_id: p.category_id,
+          addons: safeParse(p.addons, []), marketing: safeParse(p.marketing, {}),
+          specs: safeParse(p.specs, []), questionnaire: safeParse(p.questionnaire, '')
+        };
         total += parseFloat(p.price) || 0;
         if (b.addons && b.addons.length) {
           addons = b.addons;

@@ -265,6 +265,30 @@ export default function Orders() {
   const refundAmt = detail ? Number(detail.refund_amount || 0) : 0;
   const remain = total - paid;
 
+  // 订单详情套系信息：优先用创建时的 package_snapshot，旧订单缺少字段时以当前套系补充
+  const pkgInfo = useMemo(() => {
+    if (!detail) return null;
+    const snap = detail.package_snapshot || {};
+    const live = pkgs.find((p) => p.id === detail.package_id) || {};
+    const arr = (v) => Array.isArray(v) ? v : [];
+    const obj = (v) => (v && typeof v === 'object' && !Array.isArray(v)) ? v : {};
+    return {
+      name: snap.name || live.name || '—',
+      price: snap.price !== undefined ? snap.price : live.price,
+      deposit: snap.deposit !== undefined ? snap.deposit : live.deposit,
+      duration: snap.duration !== undefined ? snap.duration : live.duration,
+      retouch_count: snap.retouch_count !== undefined ? snap.retouch_count : live.retouch_count,
+      raw_policy: snap.raw_policy !== undefined ? snap.raw_policy : live.raw_policy,
+      description: snap.description !== undefined ? snap.description : live.description,
+      cover_url: snap.cover_url || live.cover_url,
+      spec: snap.spec || live.spec || null,
+      addons: arr(snap.addons).length ? snap.addons : arr(live.addons),
+      marketing: Object.keys(obj(snap.marketing)).length ? snap.marketing : obj(live.marketing),
+      specs: arr(snap.specs).length ? snap.specs : arr(live.specs),
+      questionnaire: arr(snap.questionnaire).length ? snap.questionnaire : arr(live.questionnaire),
+    };
+  }, [detail, pkgs]);
+
   return (
     <div className="max-w-6xl mx-auto">
       <div className="flex items-center justify-between mb-4">
@@ -369,10 +393,40 @@ export default function Orders() {
               <div className="bg-panel2 rounded-lg p-3"><div className="text-xs text-muted">待收/退</div><div className="text-white">{refundAmt > 0 ? '退¥' + refundAmt : '¥' + remain}</div></div>
             </div>
 
-            {/* 套系快照 */}
-            {detail.package_snapshot && (
+            {/* 套系信息 */}
+            {pkgInfo && pkgInfo.name && pkgInfo.name !== '—' && (
               <div className="bg-panel2 rounded-lg p-3 mb-3 text-sm">
-                <div className="text-white">{detail.package_snapshot.name} · ¥{detail.package_snapshot.price}</div>
+                <div className="text-white font-medium mb-2">套系信息</div>
+                <div className="text-base text-white font-semibold mb-1">{pkgInfo.name}</div>
+                {pkgInfo.spec && pkgInfo.spec.name && (
+                  <div className="text-xs text-emerald-400 mb-2">已选规格：{pkgInfo.spec.name} · ¥{Number(pkgInfo.spec.price || 0).toLocaleString()}</div>
+                )}
+                <div className="grid grid-cols-2 gap-2 text-xs mb-2">
+                  {pkgInfo.duration !== undefined && pkgInfo.duration !== '' && (
+                    <div><span className="text-muted">拍摄时长</span> <span className="text-white ml-1">{pkgInfo.duration}</span></div>
+                  )}
+                  {pkgInfo.retouch_count !== undefined && pkgInfo.retouch_count !== '' && (
+                    <div><span className="text-muted">精修张数</span> <span className="text-white ml-1">{pkgInfo.retouch_count}</span></div>
+                  )}
+                  {pkgInfo.raw_policy !== undefined && pkgInfo.raw_policy !== '' && (
+                    <div className="col-span-2"><span className="text-muted">底片政策</span> <span className="text-white ml-1">{pkgInfo.raw_policy}</span></div>
+                  )}
+                </div>
+                {pkgInfo.description && (
+                  <div className="text-xs text-muted whitespace-pre-line leading-relaxed">{pkgInfo.description}</div>
+                )}
+                {pkgInfo.addons.length > 0 && (
+                  <div className="mt-2">
+                    <div className="text-xs text-muted mb-1">增值服务</div>
+                    <div className="flex flex-wrap gap-1">
+                      {pkgInfo.addons.map((a, i) => (
+                        <span key={i} className="px-2 py-0.5 rounded bg-panel text-white text-xs border border-line">
+                          {a.name}{a.price ? ` +¥${Number(a.price).toLocaleString()}` : ''}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 

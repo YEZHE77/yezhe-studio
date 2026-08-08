@@ -67,13 +67,12 @@ async function doConfirm(req, res) {
 
     // 生成订单并绑定 openid + schedule
     let package_snapshot = null, total = 0;
+    const safeParse = (v, fallback = '') => { try { return v ? JSON.parse(v) : fallback; } catch { return v || fallback; } };
     if (a.package_id) {
       const p = await get('SELECT * FROM packages WHERE id = ?', [a.package_id]);
       if (p) {
         let price = parseFloat(p.price) || 0;
         let deposit = parseFloat(p.deposit) || 0;
-        let questionnaire = '';
-        try { questionnaire = p.questionnaire ? JSON.parse(p.questionnaire) : ''; } catch { questionnaire = p.questionnaire || ''; }
         let spec = null;
         if (a.spec_id) {
           try {
@@ -84,8 +83,12 @@ async function doConfirm(req, res) {
         if (spec) { price = parseFloat(spec.price) || price; deposit = parseFloat(spec.deposit) || deposit; }
         package_snapshot = {
           id: p.id, name: p.name, price, deposit,
+          description: p.description || '', retouch_count: p.retouch_count,
+          raw_policy: p.raw_policy || '', duration: p.duration || '', cover_url: p.cover_url || '',
+          category_id: p.category_id,
           spec: spec ? { id: spec.id, name: spec.name, price: parseFloat(spec.price) || 0, deposit: parseFloat(spec.deposit) || 0 } : null,
-          questionnaire
+          addons: safeParse(p.addons, []), marketing: safeParse(p.marketing, {}),
+          specs: safeParse(p.specs, []), questionnaire: safeParse(p.questionnaire, '')
         };
         total = price;
       }
