@@ -4,6 +4,7 @@ import crypto from 'node:crypto';
 import QRCode from 'qrcode';
 import { query, get, insert, run } from '../db.js';
 import { shareBaseUrl } from '../shareUtil.js';
+import { generateMiniProgramQr } from '../miniQr.js';
 import { authRequired, requireRole } from '../auth.js';
 import { parseRow } from '../schema.js';
 
@@ -415,6 +416,25 @@ router.post('/:id/share', authRequired, requireRole(['admin', 'photographer', 'f
     await run('UPDATE orders SET share_token = ?, qr_url = ? WHERE id = ?', [token, qrUrl, o.id]);
     await appendLog(o.id, '生成客户影集分享二维码');
     res.json({ ok: true, share_token: token, share_url: shareUrl, qr_url: qrUrl });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// 生成微信小程序风格订单二维码（用于后台「分享订单」悬浮弹窗）
+router.post('/:id/mini-qr', authRequired, requireRole(['admin', 'photographer', 'finance']), async (req, res) => {
+  try {
+    const o = await get('SELECT * FROM orders WHERE id = ?', [req.params.id]);
+    if (!o) return res.status(404).json({ error: '订单不存在' });
+    let token = o.share_token;
+    if (!token) token = crypto.randomBytes(16).toString('hex');
+
+    const base = shareBaseUrl(req);
+    const shareUrl = `${base}/share/${token}`;
+    // 先生成/复用网页分享 token，再生成小程序风格二维码（SVG 数据 URL）
+    if (!o.share_token) {
+      await run('UPDATE orders SET share_token = ? WHERE id = ?', [token, o.id]);
+    }
+    const miniQrUrl = await generateMiniProgramQr(shareUrl);
+    res.json({ ok: true, order_id: o.id, qr_url: miniQrUrl });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 

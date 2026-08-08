@@ -104,6 +104,9 @@ export default function Orders() {
   const [shareBusy, setShareBusy] = useState(false);
   const [shareKind, setShareKind] = useState('album'); // album=分享订单 / survey=问卷邀请
 
+  // 订单二维码悬浮弹窗（点击卡片右下角「分享订单」唤起）
+  const [qrPopover, setQrPopover] = useState(null); // { orderId, qrUrl, loading, error, rect }
+
   const abortRef = useRef(null);
 
   /* ------------------------------ 数据加载 ------------------------------ */
@@ -202,6 +205,25 @@ export default function Orders() {
       alert((e.response && e.response.data && e.response.data.error) || '生成失败');
     } finally { setShareBusy(false); }
   };
+
+  // 订单二维码悬浮弹窗：点击「分享订单」按钮时，在按钮上方弹出
+  const openQrPopover = async (o, e) => {
+    const btn = e.currentTarget;
+    const rect = btn.getBoundingClientRect();
+    setQrPopover({ orderId: o.id, qrUrl: '', loading: true, error: '', rect });
+    try {
+      const r = await http.post('/api/orders/' + o.id + '/mini-qr');
+      setQrPopover((prev) => (prev && prev.orderId === o.id
+        ? { ...prev, loading: false, qrUrl: r.data.qr_url, error: '' }
+        : prev));
+    } catch (err) {
+      setQrPopover((prev) => (prev && prev.orderId === o.id
+        ? { ...prev, loading: false, qrUrl: '', error: (err.response?.data?.error) || '二维码生成失败' }
+        : prev));
+    }
+  };
+  const closeQrPopover = () => setQrPopover(null);
+
   const copyShare = () => {
     if (!share) return;
     navigator.clipboard?.writeText(share.share_url);
@@ -416,7 +438,7 @@ export default function Orders() {
                   <button onClick={() => nav('/orders/' + o.id)}
                     className="px-3 py-1.5 rounded text-xs border"
                     style={{ background: '#ffffff', borderColor: '#e0e0e0', color: '#666666' }}>查看订单</button>
-                  <button onClick={() => openShareFor(o, 'album')} disabled={shareBusy}
+                  <button onClick={(e) => openQrPopover(o, e)} disabled={shareBusy}
                     className="px-3 py-1.5 rounded text-xs disabled:opacity-40"
                     style={{ background: '#2f7cf6', color: '#fff' }}>分享订单</button>
                 </div>
@@ -454,7 +476,7 @@ export default function Orders() {
                   <button onClick={() => nav('/orders/' + o.id)}
                     className="px-3 py-1 rounded text-xs border"
                     style={{ background: '#ffffff', borderColor: '#e0e0e0', color: '#666666' }}>查看订单</button>
-                  <button onClick={() => openShareFor(o, 'album')} disabled={shareBusy}
+                  <button onClick={(e) => openQrPopover(o, e)} disabled={shareBusy}
                     className="px-3 py-1 rounded text-xs disabled:opacity-40"
                     style={{ background: '#2f7cf6', color: '#fff' }}>分享订单</button>
                 </span>
@@ -508,6 +530,50 @@ export default function Orders() {
               </>
             ) : (<div className="text-muted text-sm py-10">生成中…</div>)}
           </div>
+        </div>
+      )}
+
+      {/* 订单二维码悬浮弹窗：紧贴「分享订单」按钮上方，白底阴影、无关闭叉号、点击蒙层关闭 */}
+      {qrPopover && (
+        <div className="fixed inset-0 z-[90]" style={{ background: 'rgba(0,0,0,0.35)' }} onClick={closeQrPopover}>
+          {(() => {
+            const { rect } = qrPopover;
+            const popW = 300;
+            const padding = 16;
+            const left = Math.max(12, Math.min(window.innerWidth - popW - 12, rect.left + rect.width / 2 - popW / 2));
+            const top = rect.top - 280 - 12; // 弹窗高约 280，留 12px 间隙
+            const adjustedTop = top < 12 ? rect.bottom + 12 : top;
+            return (
+              <div
+                onClick={(e) => e.stopPropagation()}
+                className="absolute bg-white rounded-xl2"
+                style={{
+                  left,
+                  top: adjustedTop,
+                  width: popW,
+                  padding,
+                  boxShadow: '0 12px 40px rgba(0,0,0,0.16)',
+                }}
+              >
+                <div className="text-sm font-medium mb-3" style={{ color: '#1f2329' }}>订单二维码</div>
+                <div className="flex items-center justify-center" style={{ minHeight: 200 }}>
+                  {qrPopover.loading ? (
+                    <div className="text-xs" style={{ color: '#9ca3af' }}>二维码生成中…</div>
+                  ) : qrPopover.error ? (
+                    <div className="text-xs text-center px-4" style={{ color: '#e53e3e' }}>{qrPopover.error}</div>
+                  ) : qrPopover.qrUrl ? (
+                    <img
+                      src={qrPopover.qrUrl}
+                      alt="订单二维码"
+                      className="block"
+                      style={{ width: 240, height: 240 }}
+                      onError={() => setQrPopover((p) => p ? { ...p, error: '二维码加载失败' } : p)}
+                    />
+                  ) : null}
+                </div>
+              </div>
+            );
+          })()}
         </div>
       )}
     </div>
