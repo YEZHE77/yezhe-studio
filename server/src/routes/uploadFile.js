@@ -33,7 +33,9 @@ router.post('/upload', authRequired, upload.single('file'), async (req, res) => 
     const buf = fs.readFileSync(req.file.path);
     fs.unlinkSync(req.file.path); // 收完即转存云端，不落本地磁盘
     const ext = path.extname(req.file.originalname || '').toLowerCase() || '.mp3';
-    const contentType = req.file.mimetype || EXT_CONTENT[ext] || 'application/octet-stream';
+    // 优先按扩展名映射（curl 等客户端常把 mp3 标成 octet-stream，会导致音频 MIME 错误），
+    // 仅在扩展名未知时才回退到客户端上报的 mimetype。
+    const contentType = EXT_CONTENT[ext] || req.file.mimetype || 'application/octet-stream';
     const result = await saveBuffer(buf, ext, 'bgm', {
       category: 'bgm',
       isPublic: true,
