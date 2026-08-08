@@ -45,21 +45,74 @@ async function appendLog(orderId, text) {
   await run('UPDATE orders SET logs = ? WHERE id = ?', [JSON.stringify(logs), orderId]);
 }
 
-// 列表
+// 列表（分页 + 搜索 + 状态/执行人/排序/时间范围筛选；全部后端过滤）
 router.get('/', authRequired, async (req, res) => {
   try {
-    const { status, q, customer, from, to } = req.query;
+    const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+    const pageSize = Math.min(100, Math.max(1, parseInt(req.query.pageSize, 10) || 12));
+    const { status, q, executor, sort, shootFrom, shootTo } = req.query;
     const where = ['cancelled = 0', 'is_deleted = 0'];
     const params = [];
-    if (status) { where.push('status = ?'); params.push(status); }
-    if (q) {
-      where.push('(customer_name LIKE ? OR order_no LIKE ? OR COALESCE(order_name, \'\') LIKE ?)');
-      params.push('%' + q + '%', '%' + q + '%', '%' + q + '%');
+    // 状态：unpaid 是「未付定金」意向态，映射到 payment_status；其余按 status 列
+    if (status) {
+      if (status === 'unpaid') { where.push('payment_status = ?'); params.push('unpaid'); }
+      else { where.push('status = ?'); params.push(status); }
     }
-    if (customer) { where.push('customer_name LIKE ?'); params.push('%' + customer + '%'); }
-    if (from && to) { where.push('created_at >= ? AND created_at <= ?'); params.push(from, to); }
-    const rows = await query('SELECT * FROM orders WHERE ' + where.join(' AND ') + ' ORDER BY id DESC', params);
-    res.json(rows.map((r) => parseRow(r, JSON_COLS)));
+    if (q) {
+      // 搜索：客户姓名 / 订单编号 / 订单名称 / 套系名(package_snapshot 内含 name)
+      where.push('(customer_name LIKE ? OR order_no LIKE ? OR COALESCE(order_name, \'\') LIKE ? OR COALESCE(package_snapshot, \'\') LIKE ?)');
+      params.push('%' + q + '%', '%' + q + '%', '%' + q + '%', '%' + q + '%');
+    }
+    // 执行人：executors 为 JSON 数组，按 id 精准匹配（避免 1 命中 11/12…）
+    if (executor) {
+      where.push('executors LIKE ?');
+      params.push('%"id":' + Number(executor) + ',"name"%');
+    }
+    if (shootFrom) { where.push('shoot_date >= ?'); params.push(shootFrom); }
+    if (shootTo) { where.push('shoot_date <= ?'); params.push(shootTo); }
+    const whereSql = where.join(' AND ');
+
+    const totalRow = await get('SELECT COUNT(*) AS c FROM orders WHERE ' + whereSql, params);
+    const total = Number(totalRow.c) || 0;
+
+    let orderSql = 'id DESC';
+    if (sort === 'shoot_date') orderSql = "(shoot_date IS NULL OR shoot_date = '') ASC, shoot_date ASC";
+    else if (sort === 'amount') orderSql = 'total_amount DESC';
+
+    const rows = await query(
+      `SELECT *,
+        (SELECT stars FROM evaluates WHERE order_id = orders.id ORDER BY created_at DESC LIMIT 1) AS eval_stars,
+        (SELECT created_at FROM evaluates WHERE order_id = orders.id ORDER BY created_at DESC LIMIT 1) AS eval_at,
+        (SELECT submitted FROM photo_select WHERE order_id = orders.id ORDER BY updated_at DESC LIMIT 1) AS selection_submitted
+       FROM orders WHERE ${whereSql} ORDER BY ${orderSql} LIMIT ? OFFSET ?`,
+      [...params, pageSize, (page - 1) * pageSize]
+    );
+    res.json({
+      list: rows.map((r) => parseRow(r, JSON_COLS)),
+      total, page, pageSize,
+      pages: Math.max(1, Math.ceil(total / pageSize))
+    });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// 到期 / 选片超时统计（顶部预警栏）
+router.get('/stats', authRequired, async (req, res) => {
+  try {
+    const today = new Date().toISOString().slice(0, 10);
+    const soon = new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10);
+    const exp = await get(
+      `SELECT COUNT(*) AS c FROM orders WHERE cancelled = 0 AND is_deleted = 0
+        AND ((raw_expire_at IS NOT NULL AND raw_expire_at <> '' AND raw_expire_at > ? AND raw_expire_at <= ?)
+          OR (retouch_expire_at IS NOT NULL AND retouch_expire_at <> '' AND retouch_expire_at > ? AND retouch_expire_at <= ?))`,
+      [today, soon, today, soon]
+    );
+    const sel = await get(
+      `SELECT COUNT(*) AS c FROM orders WHERE cancelled = 0 AND is_deleted = 0
+        AND shoot_date IS NOT NULL AND shoot_date <> '' AND shoot_date < ?
+        AND NOT EXISTS (SELECT 1 FROM photo_select ps WHERE ps.order_id = orders.id AND ps.submitted = 1)`,
+      [today]
+    );
+    res.json({ expiringSoon: Number(exp.c) || 0, selectionTimeout: Number(sel.c) || 0 });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 

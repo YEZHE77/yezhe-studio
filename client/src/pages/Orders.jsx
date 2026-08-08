@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import http, { img, debounce } from '../api.js';
+import http, { img } from '../api.js';
 import { useViewState } from '../tabMemory.js';
 import OrderCreateModal from '../components/OrderCreateModal.jsx';
 import bgm from '../bgm.js';
@@ -36,9 +36,15 @@ function asArr(v) {
 
 export default function Orders() {
   const [params, setParams] = useSearchParams();
-  const [state, setState] = useViewState('orders', { status: '', q: '' });
+  const [state, setState] = useViewState('orders', { status: '', q: '', executor: '', sort: 'recent', shootFrom: '', shootTo: '' });
   const [list, setList] = useState([]);
+  const [listTotal, setListTotal] = useState(0);
+  const [page, setPage] = useState(1);
+  const [pageSize] = useState(12);
+  const pageRef = useRef(1);
   const [pkgs, setPkgs] = useState([]);
+  const [personnel, setPersonnel] = useState([]);
+  const [stats, setStats] = useState({ expiringSoon: 0, selectionTimeout: 0 });
   const [detail, setDetail] = useState(null);
   const [sel, setSel] = useState(null); // 选片结果 {selection, photos}
   const [selSaving, setSelSaving] = useState(false);
@@ -52,6 +58,13 @@ export default function Orders() {
   const [shareBusy, setShareBusy] = useState(false);
   const [slideOpen, setSlideOpen] = useState(false);
   const [slidePhotos, setSlidePhotos] = useState([]);
+  // 工具栏 / 筛选 / 卡片交互
+  const [qInput, setQInput] = useState(state.q || '');
+  const [advancedOpen, setAdvancedOpen] = useState(false); // 高级选项面板
+  const [filtersCollapsed, setFiltersCollapsed] = useState(false); // 筛选条收起
+  const [renamingId, setRenamingId] = useState(null);
+  const [renameVal, setRenameVal] = useState('');
+  const [aiTipOpen, setAiTipOpen] = useState(() => (typeof localStorage !== 'undefined' ? localStorage.getItem('order_ai_tip') !== '1' : true));
 
   const abortRef = useRef(null);
 
@@ -67,11 +80,9 @@ export default function Orders() {
     setSlideOpen(false);
   }
 
-  // 搜索防抖 300ms（避免逐字发请求）
-  const setQ = useMemo(() => debounce((v) => setState((s) => ({ ...s, q: v }))), [setState]);
-
-  // 刷新订单列表：重新拉取接口并更新 list state（不做 location.reload）
-  const refreshOrderList = useCallback(async () => {
+  // 刷新订单列表：分页 + 全后端过滤；reset=true 重置到第 1 页并替换，否则追加（load more）
+  const refreshOrderList = useCallback(async (opts = {}) => {
+    const reset = opts.reset !== false;
     if (abortRef.current) abortRef.current.abort();
     const ctrl = new AbortController();
     abortRef.current = ctrl;
@@ -79,20 +90,34 @@ export default function Orders() {
       if (trash) {
         const r = await http.get('/api/orders/recycle', { signal: ctrl.signal });
         setList(r.data);
-      } else {
-        const p = new URLSearchParams();
-        if (state.status) p.set('status', state.status);
-        if (state.q) p.set('q', state.q);
-        const r = await http.get('/api/orders?' + p.toString(), { signal: ctrl.signal });
-        setList(r.data);
+        setListTotal(r.data.length);
+        pageRef.current = 1; setPage(1);
+        return;
       }
+      const nextPage = reset ? 1 : pageRef.current + 1;
+      const p = new URLSearchParams();
+      if (state.status) p.set('status', state.status);
+      if (state.q) p.set('q', state.q);
+      if (state.executor) p.set('executor', state.executor);
+      if (state.sort && state.sort !== 'recent') p.set('sort', state.sort);
+      if (state.shootFrom) p.set('shootFrom', state.shootFrom);
+      if (state.shootTo) p.set('shootTo', state.shootTo);
+      p.set('page', nextPage);
+      p.set('pageSize', pageSize);
+      const r = await http.get('/api/orders?' + p.toString(), { signal: ctrl.signal });
+      const rows = r.data.list || [];
+      setList((prev) => (reset ? rows : [...prev, ...rows]));
+      setListTotal(r.data.total || 0);
+      pageRef.current = nextPage; setPage(nextPage);
     } catch (e) {
       if (e.name !== 'AbortError') { /* 忽略请求中断外的错误 */ }
     }
-  }, [state, trash]);
+  }, [state, pageSize, trash]);
+
+  const loadMore = useCallback(() => { refreshOrderList({ reset: false }); }, [refreshOrderList]);
 
   useEffect(() => {
-    refreshOrderList();
+    refreshOrderList({ reset: true });
   }, [refreshOrderList]);
 
   useEffect(() => () => { if (abortRef.current) abortRef.current.abort(); }, []);
@@ -101,6 +126,19 @@ export default function Orders() {
     http.get('/api/packages?status=all', { signal: ctrl.signal }).then((r) => setPkgs(r.data)).catch(() => {});
     return () => ctrl.abort();
   }, []);
+  useEffect(() => {
+    const ctrl = new AbortController();
+    http.get('/api/admin/personnel', { signal: ctrl.signal }).then((r) => setPersonnel(r.data || [])).catch(() => {});
+    return () => ctrl.abort();
+  }, []);
+  useEffect(() => {
+    const ctrl = new AbortController();
+    http.get('/api/orders/stats', { signal: ctrl.signal }).then((r) => setStats(r.data || { expiringSoon: 0, selectionTimeout: 0 })).catch(() => {});
+    return () => ctrl.abort();
+  }, []);
+
+  const doSearch = () => setState((s) => ({ ...s, q: qInput }));
+  const setFilter = (k, v) => setState((s) => ({ ...s, [k]: v }));
 
   // 套系复用开单：从 /orders?pkg= 进入自动打开新建并预选套系
   useEffect(() => {
@@ -153,6 +191,30 @@ export default function Orders() {
   };
 
   const openNew = () => { setInitialPkg(null); setShowForm(true); };
+
+  // 卡片快速改名：点击订单名旁 ✎ 进入内联编辑，回车/失焦提交
+  const startRename = (o) => { setRenamingId(o.id); setRenameVal(o.order_name || ''); };
+  const commitRename = async () => {
+    if (!renamingId) return;
+    const name = (renameVal || '').trim();
+    setRenamingId(null);
+    if (!name) { refreshOrderList({ reset: true }); return; }
+    try {
+      await http.put('/api/orders/' + renamingId, { order_name: name });
+      refreshOrderList({ reset: true });
+    } catch (e) { alert((e.response && e.response.data && e.response.data.error) || '重命名失败'); }
+  };
+
+  // 卡片「分享订单」：按订单 ID 生成客片分享链接（复用订单分享接口），弹出复制
+  const shareFromCard = async (o) => {
+    setShareBusy(true);
+    try {
+      const r = await http.post('/api/orders/' + o.id + '/share');
+      setShare(r.data);
+      setShareModal(true);
+    } catch (e) { alert((e.response && e.response.data && e.response.data.error) || '生成失败'); }
+    finally { setShareBusy(false); }
+  };
 
   // 编辑订单（基本信息；金额通过收款/退款调整，不在本处改）
   const [edit, setEdit] = useState(null);
@@ -291,68 +353,175 @@ export default function Orders() {
 
   return (
     <div className="max-w-6xl mx-auto">
-      <div className="flex items-center justify-between mb-4">
-        <h1 className="text-xl font-semibold text-white">订单中心</h1>
-        <button onClick={openNew} className="px-4 py-2 rounded bg-brand text-white text-sm hover:opacity-90">+ 新建订单</button>
+      <h1 className="text-xl font-semibold text-white mb-3">订单中心</h1>
+
+      {/* 顶部预警栏（到期 / 选片超时统计） */}
+      {(stats.expiringSoon > 0 || stats.selectionTimeout > 0) && (
+        <div className="flex items-center gap-4 mb-3 px-4 py-2 rounded-xl2 bg-amber-500/10 border border-amber-500/30 text-sm">
+          <span className="text-amber-400">⏰ 预警</span>
+          <span className="text-white">图片即将到期 <b className="text-amber-300">{stats.expiringSoon}</b></span>
+          <span className="text-white">选片超时 <b className="text-amber-300">{stats.selectionTimeout}</b></span>
+        </div>
+      )}
+
+      {/* AI 提示条（可关闭） */}
+      {aiTipOpen && (
+        <div className="flex items-center gap-3 mb-3 px-4 py-2 rounded-xl2 bg-brand/10 border border-brand/30 text-sm">
+          <span className="text-brand">💡</span>
+          <span className="text-white/90 flex-1">提示：点击卡片「查看订单」可编辑全部字段；「分享订单」生成客片分享链接，客户在手机即可查看成品影集。</span>
+          <button onClick={() => { setAiTipOpen(false); try { localStorage.setItem('order_ai_tip', '1'); } catch { /* ignore */ } }}
+            className="text-muted hover:text-white text-xs shrink-0">✕</button>
+        </div>
+      )}
+
+      {/* 工具栏：搜索 + 高级选项 + 添加新订单 + 筛选收起 */}
+      <div className="flex items-center gap-2 mb-3 flex-wrap">
+        <div className="flex items-center gap-2 flex-1 min-w-[200px]">
+          <input value={qInput} onChange={(e) => setQInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && doSearch()}
+            placeholder="姓名、套系名…" className="flex-1 px-3 py-2 rounded bg-panel border border-line text-white text-sm outline-none" />
+          <button onClick={doSearch} className="px-3 py-2 rounded bg-panel2 border border-line text-white text-sm hover:border-brand">搜索</button>
+        </div>
+        <button onClick={() => setAdvancedOpen((v) => !v)} className={btn(advancedOpen, '高级选项')}>高级选项</button>
+        <button onClick={openNew} className="px-4 py-2 rounded bg-brand text-white text-sm hover:opacity-90 whitespace-nowrap">+ 添加新订单</button>
+        <button onClick={() => setFiltersCollapsed((v) => !v)} title="收起 / 展开筛选"
+          className="px-3 py-2 rounded bg-panel2 border border-line text-muted hover:text-white text-sm whitespace-nowrap">{filtersCollapsed ? '▸ 筛选' : '▾ 筛选'}</button>
       </div>
 
-      {/* 状态筛选 + 搜索 */}
-      <div className="flex gap-2 mb-3 flex-wrap">
-        <button onClick={() => setState((s) => ({ ...s, status: '' }))} className={btn(state.status === '', '全部')}>全部</button>
-        {STAGE_SEQ.map((s) => (
-          <button key={s} onClick={() => setState((x) => ({ ...x, status: s }))} className={btn(state.status === s, STATUS_LABEL[s])}>{STATUS_LABEL[s]}</button>
-        ))}
-        <button onClick={() => { setTrash((t) => !t); setState((s) => ({ ...s, status: '', q: '' })); }} className={btn(trash, '回收站')}>回收站</button>
-        <input value={state.q} onChange={(e) => setQ(e.target.value)} placeholder="搜索客户 / 订单号"
-          className="ml-auto w-56 px-3 py-2 rounded bg-panel border border-line text-white text-sm outline-none" />
-      </div>
+      {/* 筛选行：状态 / 执行者 / 排序 */}
+      {!filtersCollapsed && (
+        <div className="flex gap-2 mb-3 flex-wrap">
+          <select value={state.status} onChange={(e) => setFilter('status', e.target.value)}
+            className="px-3 py-2 rounded bg-panel border border-line text-white text-sm outline-none">
+            <option value="">所有订单</option>
+            <option value="unpaid">未付定金</option>
+            <option value="deposit">已付定金</option>
+            <option value="shot">已拍摄</option>
+            <option value="selecting">选片中</option>
+            <option value="retouching">精修中</option>
+            <option value="delivered">已交付</option>
+            <option value="completed">已完成</option>
+            <option value="cancelled">已作废</option>
+          </select>
+          <select value={state.executor} onChange={(e) => setFilter('executor', e.target.value)}
+            className="px-3 py-2 rounded bg-panel border border-line text-white text-sm outline-none">
+            <option value="">执行者：所有人</option>
+            {personnel.map((p) => (<option key={p.id} value={p.id}>{p.name}</option>))}
+          </select>
+          <select value={state.sort} onChange={(e) => setFilter('sort', e.target.value)}
+            className="px-3 py-2 rounded bg-panel border border-line text-white text-sm outline-none">
+            <option value="recent">排序：最近</option>
+            <option value="shoot_date">拍摄时间</option>
+            <option value="amount">订单金额</option>
+          </select>
+          <button onClick={() => { setTrash((t) => !t); setFilter('status', ''); setQInput(''); }}
+            className={btn(trash, '回收站')}>回收站</button>
+        </div>
+      )}
 
-      {trash && <div className="text-xs text-amber-400 mb-2">回收站：以下订单已软删除，可「恢复」或「彻底删除」（彻底删除不可恢复）。</div>}
+      {/* 高级选项面板：拍摄日期范围 */}
+      {advancedOpen && !filtersCollapsed && (
+        <div className="flex gap-2 mb-3 flex-wrap items-center">
+          <span className="text-xs text-muted">拍摄日期</span>
+          <input type="date" value={state.shootFrom} onChange={(e) => setFilter('shootFrom', e.target.value)}
+            className="px-3 py-2 rounded bg-panel border border-line text-white text-sm outline-none" />
+          <span className="text-xs text-muted">至</span>
+          <input type="date" value={state.shootTo} onChange={(e) => setFilter('shootTo', e.target.value)}
+            className="px-3 py-2 rounded bg-panel border border-line text-white text-sm outline-none" />
+          <button onClick={() => { setFilter('shootFrom', ''); setFilter('shootTo', ''); }}
+            className="px-3 py-2 rounded bg-panel2 border border-line text-muted text-xs">清除</button>
+        </div>
+      )}
 
-      {/* 列表 */}
-      <div className="bg-panel border border-line rounded-xl2 overflow-hidden">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="text-muted text-left border-b border-line">
-              <th className="p-3 font-medium">订单号</th>
-              <th className="p-3 font-medium">客户</th>
-              <th className="p-3 font-medium">套系</th>
-              <th className="p-3 font-medium">应收</th>
-              <th className="p-3 font-medium">已收</th>
-              <th className="p-3 font-medium">拍摄日</th>
-              <th className="p-3 font-medium">状态</th>
-            </tr>
-          </thead>
-          <tbody>
-            {list.map((o) => (
-              <tr key={o.id} onClick={() => openDetail(o.id)} className="border-b border-line last:border-0 cursor-pointer hover:bg-panel2">
-                <td className="p-3 text-white">
-                  {o.order_no}
-                  {o.order_name && <div className="text-[11px] text-muted mt-0.5 max-w-[160px] truncate">{o.order_name}</div>}
-                  {Number(o.date_tbd) === 1 && <div className="text-[10px] text-amber-400 mt-0.5">日期待定</div>}
-                </td>
-                <td className="p-3 text-white">
-                  {(o.groom_name || o.bride_name) ? (
-                    <span>{[o.groom_name, o.bride_name].filter(Boolean).join(' & ')}</span>
-                  ) : o.customer_name}
-                  <span className="text-muted ml-1">{o.customer_phone}</span>
-                  {o.openid && <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-sky-500/15 text-sky-400">C端</span>}
-                </td>
-                <td className="p-3 text-muted">{(o.package_snapshot && o.package_snapshot.name) || '—'}</td>
-                <td className="p-3 text-white">¥{Number(o.total_amount || 0).toLocaleString()}</td>
-                <td className="p-3 text-emerald-400">¥{Number(o.paid_amount || 0).toLocaleString()}</td>
-                <td className="p-3 text-muted">{o.shoot_date || '—'}</td>
-                <td className="p-3">
-                  <span className={'px-2 py-1 rounded-full text-xs ' + (o.status === 'deposit' && o.payment_status === 'unpaid' ? 'bg-red-500/15 text-red-400' : badge(o.status))}>
-                    {stageLabel(o)}
+      {trash && <div className="text-xs text-amber-400 mb-2">回收站：以下订单已软删除，可在详情中「恢复」或「彻底删除」。</div>}
+
+      {/* 卡片流式列表 */}
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+        {list.map((o) => {
+          const snap = (typeof o.package_snapshot === 'object' && o.package_snapshot) || {};
+          const pkgType = [snap.name, snap.spec && snap.spec.name].filter(Boolean).join('｜') || '—';
+          const execs = asArr(o.executors);
+          const ms = mediaStatusOf(o);
+          const thumb = snap.cover_url ? img(snap.cover_url) : '';
+          const reviewTxt = o.eval_stars ? (Number(o.eval_stars) >= 4 ? '好评' : '中评') : '好评';
+          const reviewDate = fmtDate(o.eval_at || o.created_at);
+          return (
+            <div key={o.id} className="bg-panel border border-line rounded-xl2 p-4 flex flex-col">
+              {/* 头部：名称 + 改名 / 编号 + 状态 */}
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0 flex-1">
+                  {renamingId === o.id ? (
+                    <input autoFocus value={renameVal} onChange={(e) => setRenameVal(e.target.value)}
+                      onBlur={commitRename} onKeyDown={(e) => { if (e.key === 'Enter') commitRename(); if (e.key === 'Escape') setRenamingId(null); }}
+                      className="w-full px-2 py-1 rounded bg-panel2 border border-line text-white text-sm outline-none" />
+                  ) : (
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-white font-medium truncate">{o.order_name || '未命名订单'}</span>
+                      <button onClick={() => startRename(o)} title="改名" className="text-muted hover:text-brand text-xs shrink-0">✎</button>
+                    </div>
+                  )}
+                  <div className="text-[11px] text-faint mt-0.5">{o.order_no}</div>
+                </div>
+                <span className={'px-2 py-1 rounded-full text-xs shrink-0 ' + (o.status === 'deposit' && o.payment_status === 'unpaid' ? 'bg-red-500/15 text-red-400' : badge(o.status))}>
+                  {stageLabel(o)}
+                </span>
+              </div>
+
+              {/* 缩略图 + 套系类型 + 金额 */}
+              <div className="flex gap-3 mt-3">
+                <div className="w-16 h-16 rounded-lg bg-panel2 border border-line overflow-hidden shrink-0 flex items-center justify-center">
+                  {thumb ? <img src={thumb} alt="" className="w-full h-full object-cover" /> : <span className="text-[10px] text-muted">无图</span>}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="text-white text-sm truncate">{pkgType}</div>
+                  <div className="text-red-400 font-semibold mt-1">¥{Number(o.total_amount || 0).toLocaleString()}</div>
+                  <div className="text-[11px] text-muted mt-0.5">
+                    {Number(o.date_tbd) === 1 ? <span className="text-amber-400">日期待定</span> : (o.shoot_date || '未排期')}
+                  </div>
+                </div>
+              </div>
+
+              {/* 评价行 + 媒体状态 */}
+              <div className="flex items-center justify-between mt-3 text-xs">
+                <span className="text-amber-400">★ {reviewTxt}{reviewDate && <span className="text-muted ml-1">{reviewDate}</span>}</span>
+                <span className={ms.c}>{ms.t}</span>
+              </div>
+
+              {/* 备注 */}
+              <div className="text-xs text-muted mt-2 line-clamp-2">
+                {o.remark ? o.remark : '备注：无'}
+              </div>
+
+              {/* 执行人头像 */}
+              <div className="flex items-center gap-1.5 mt-3">
+                {execs.length === 0 && <span className="text-[11px] text-faint">无执行人</span>}
+                {execs.map((p, i) => (
+                  <span key={i} className="flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-panel2 border border-line">
+                    {p.avatar ? <img src={img(p.avatar)} alt="" className="w-5 h-5 rounded-full object-cover" />
+                      : <span className="w-5 h-5 rounded-full bg-brand/20 text-brand text-[10px] flex items-center justify-center">{String(p.name || '?').slice(0, 1)}</span>}
+                    <span className="text-white text-[11px]">{p.name}</span>
                   </span>
-                </td>
-              </tr>
-            ))}
-            {list.length === 0 && <tr><td colSpan="7" className="p-8 text-center text-muted">暂无订单</td></tr>}
-          </tbody>
-        </table>
+                ))}
+              </div>
+
+              {/* 操作按钮 */}
+              <div className="flex gap-2 mt-4 pt-3 border-t border-line">
+                <button onClick={() => openDetail(o.id)} className="flex-1 px-3 py-2 rounded bg-panel2 border border-line text-white text-xs hover:border-brand">查看订单</button>
+                <button onClick={() => shareFromCard(o)} disabled={shareBusy}
+                  className="flex-1 px-3 py-2 rounded bg-panel2 border border-line text-sky-400 text-xs hover:border-sky-400 disabled:opacity-40">分享订单</button>
+              </div>
+            </div>
+          );
+        })}
       </div>
+
+      {list.length === 0 && <div className="text-center text-muted py-16">暂无订单</div>}
+
+      {/* 分页：加载更多（后端分页，避免一次性渲染全部） */}
+      {!trash && list.length < listTotal && (
+        <div className="flex justify-center mt-6">
+          <button onClick={loadMore} className="px-6 py-2 rounded bg-panel2 border border-line text-white text-sm hover:border-brand">加载更多（{list.length}/{listTotal}）</button>
+        </div>
+      )}
 
       {/* 详情抽屉 */}
       {detail && (
@@ -834,4 +1003,19 @@ function badge(status) {
     selecting: 'bg-indigo-500/15 text-indigo-400', retouching: 'bg-purple-500/15 text-purple-400', delivered: 'bg-teal-500/15 text-teal-400',
     completed: 'bg-emerald-500/15 text-emerald-400', cancelled: 'bg-line text-muted'
   }[status] || 'bg-line text-muted';
+}
+
+// 卡片辅助：日期格式化 / 媒体状态（已过期·待选片·正常）
+function fmtDate(s) {
+  if (!s) return '';
+  const d = new Date(s);
+  if (isNaN(d.getTime())) return String(s).slice(0, 10);
+  return d.toLocaleDateString('zh-CN');
+}
+function mediaStatusOf(o) {
+  const today = new Date().toISOString().slice(0, 10);
+  const expired = (o.raw_expire_at && o.raw_expire_at < today) || (o.retouch_expire_at && o.retouch_expire_at < today);
+  if (expired) return { t: '照片已过期', c: 'text-red-400' };
+  if (!o.selection_submitted) return { t: '待选片', c: 'text-amber-400' };
+  return { t: '正常', c: 'text-emerald-400' };
 }
