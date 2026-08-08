@@ -65,7 +65,7 @@ router.get('/', async (req, res) => {
     const total = (await get('SELECT COUNT(*) AS c FROM works ' + w, params)).c;
     const offset = (Math.max(1, parseInt(page)) - 1) * parseInt(pageSize);
     const rows = await query(
-      'SELECT * FROM works ' + w + ' ORDER BY sort ASC, id DESC LIMIT ? OFFSET ?',
+      'SELECT *, (SELECT COUNT(*) FROM albums WHERE work_id = works.id) AS image_count FROM works ' + w + ' ORDER BY sort ASC, id DESC LIMIT ? OFFSET ?',
       [...params, parseInt(pageSize), offset]
     );
     const items = rows.map((r) => safeWork(parseRow(r, ['tags'])));
@@ -91,7 +91,7 @@ router.get('/public', async (req, res) => {
     const total = (await get('SELECT COUNT(*) AS c FROM works w ' + w, params)).c;
     const offset = (Math.max(1, parseInt(page)) - 1) * parseInt(pageSize);
     const rows = await query(
-      `SELECT w.*, c.name AS category_name FROM works w LEFT JOIN categories c ON c.id = w.category_id ${w} ORDER BY w.sort ASC, w.id DESC LIMIT ? OFFSET ?`,
+      `SELECT w.*, c.name AS category_name, (SELECT COUNT(*) FROM albums WHERE work_id = w.id) AS image_count FROM works w LEFT JOIN categories c ON c.id = w.category_id ${w} ORDER BY w.sort ASC, w.id DESC LIMIT ? OFFSET ?`,
       [...params, parseInt(pageSize), offset]
     );
     res.json({ items: rows.map((r) => parseRow(r, ['tags'])), total, page: parseInt(page), pageSize: parseInt(pageSize) });
@@ -105,6 +105,8 @@ router.get('/public/:id', async (req, res) => {
   try {
     const w = await get('SELECT * FROM works WHERE id = ? AND is_public = 1', [req.params.id]);
     if (!w) return res.status(404).json({ error: '作品不存在或未公开' });
+    // 浏览量自增（C 端打开作品详情即计一次）
+    await run('UPDATE works SET views = COALESCE(views, 0) + 1 WHERE id = ?', [w.id]);
     const work = parseRow(w, ['tags']);
     const albums = await query("SELECT * FROM albums WHERE work_id = ? AND zone != 'local' ORDER BY zone, sort", [w.id]);
     res.json({ work, albums });
@@ -194,7 +196,19 @@ router.post('/', authRequired, async (req, res) => {
   }
 });
 
-// 更新
+// 切换作品公开 / 隐藏（眼睛图标，点击即切换，无需弹窗）
+router.patch('/:id/public', authRequired, async (req, res) => {
+  try {
+    const cur = await get('SELECT id, is_public FROM works WHERE id = ?', [req.params.id]);
+    if (!cur) return res.status(404).json({ error: '作品不存在' });
+    const next = req.body && typeof req.body.is_public === 'number' ? req.body.is_public : (cur.is_public ? 0 : 1);
+    await run('UPDATE works SET is_public = ? WHERE id = ?', [next ? 1 : 0, cur.id]);
+    res.json({ id: cur.id, is_public: next ? 1 : 0 });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 router.put('/:id', authRequired, async (req, res) => {
   try {
     const b = req.body;

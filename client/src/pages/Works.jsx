@@ -96,6 +96,19 @@ export default function Works() {
     }
   }
 
+  // 眼睛图标：点击直接切换公开 / 隐藏，无需弹窗；乐观更新卡片图标即时翻转，失败回滚
+  async function togglePublic(w, e) {
+    e.stopPropagation();
+    const next = w.is_public ? 0 : 1;
+    setData((d) => ({ ...d, items: (d.items || []).map((it) => it.id === w.id ? { ...it, is_public: next } : it) }));
+    try {
+      await http.patch('/api/works/' + w.id + '/public', { is_public: next });
+    } catch (err) {
+      setData((d) => ({ ...d, items: (d.items || []).map((it) => it.id === w.id ? { ...it, is_public: w.is_public } : it) }));
+      alert((err.response && err.response.data && err.response.data.error) || '切换失败');
+    }
+  }
+
   // 新流程：点击「+ 新建作品组」不再弹窗，直接进入作品详情编辑页（页面式新建）
   const openNew = () => navigate('/works/new');
 
@@ -258,6 +271,16 @@ export default function Works() {
               ${isDragged ? 'opacity-40' : ''}`}>
             <div className="h-40 bg-ink flex items-center justify-center text-muted text-3xl relative">
               {w.cover_url ? <img src={img(w.cover_url)} className="w-full h-full object-cover" alt="" /> : '▣'}
+              {!sortMode && (
+                <button onClick={(e) => togglePublic(w, e)} title={w.is_public ? '已公开 · 点击隐藏' : '已隐藏 · 点击公开'}
+                  className="absolute top-2 right-2 bg-black/55 text-white p-1.5 rounded-full hover:bg-black/75 transition">
+                  {w.is_public ? (
+                    <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>
+                  ) : (
+                    <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 19c-6.5 0-10-7-10-7a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c6.5 0 10 7 10 7a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                  )}
+                </button>
+              )}
               {sortMode && (
                 <div className="absolute top-2 left-2 bg-black/60 text-white text-[10px] px-2 py-1 rounded flex items-center gap-1">
                   <svg viewBox="0 0 24 24" className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="12" r="1"/><circle cx="9" cy="5" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="15" cy="19" r="1"/></svg>
@@ -273,6 +296,16 @@ export default function Works() {
               </div>
               {!sortMode && (
                 <>
+                  <div className="text-xs text-muted mt-2 flex items-center gap-4">
+                    <span className="inline-flex items-center gap-1">
+                      <svg viewBox="0 0 24 24" className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="M21 15l-5-5L5 21"/></svg>
+                      {w.image_count ?? 0} 张
+                    </span>
+                    <span className="inline-flex items-center gap-1">
+                      <svg viewBox="0 0 24 24" className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>
+                      {w.views ?? 0} 浏览
+                    </span>
+                  </div>
                   <button onClick={(e) => toggleDownload(w, e)}
                     className={'mt-2 w-full text-xs py-1.5 rounded border ' + (w.allow_download ? 'bg-emerald-50 text-emerald-600 border-emerald-200' : 'bg-panel2 text-muted border-line')}>
                     {w.allow_download ? '✓ 允许下载' : '禁止下载'}
