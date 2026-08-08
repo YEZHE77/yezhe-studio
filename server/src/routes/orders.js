@@ -8,9 +8,34 @@ import { authRequired, requireRole } from '../auth.js';
 import { parseRow } from '../schema.js';
 
 const router = Router();
-const JSON_COLS = ['package_snapshot', 'addons_snapshot', 'logs'];
+const JSON_COLS = ['package_snapshot', 'addons_snapshot', 'logs', 'phones', 'time_slots', 'extra_items', 'executors'];
 
 function nowISO() { return new Date().toISOString(); }
+
+// —— 新增订单弹窗字段的规范化助手（多值字段统一 JSON 文本落库） ——
+const PAYMENT_STATUS = ['unpaid', 'deposit', 'paid']; // 未付定金 / 已付定金 / 已付全款
+function normPhones(v) {
+  const arr = Array.isArray(v) ? v : (v ? [v] : []);
+  return arr.map((x) => String(x || '').trim()).filter(Boolean);
+}
+function normSlots(v) {
+  const arr = Array.isArray(v) ? v : [];
+  return arr.map((x) => String(x || '').trim()).filter(Boolean);
+}
+function normExtras(v) {
+  const arr = Array.isArray(v) ? v : [];
+  return arr
+    .map((x) => ({ name: String((x && x.name) || '').trim(), amount: parseFloat(x && x.amount) || 0 }))
+    .filter((x) => x.name || x.amount);
+}
+function normExecutors(v) {
+  const arr = Array.isArray(v) ? v : [];
+  return arr
+    .map((x) => (typeof x === 'object' && x
+      ? { id: x.id ?? null, name: String(x.name || '').trim(), avatar: String(x.avatar || '') }
+      : { id: null, name: String(x || '').trim(), avatar: '' }))
+    .filter((x) => x.name || x.id);
+}
 
 async function appendLog(orderId, text) {
   const cur = await get('SELECT logs FROM orders WHERE id = ?', [orderId]);
@@ -27,7 +52,10 @@ router.get('/', authRequired, async (req, res) => {
     const where = ['cancelled = 0', 'is_deleted = 0'];
     const params = [];
     if (status) { where.push('status = ?'); params.push(status); }
-    if (q) { where.push('(customer_name LIKE ? OR order_no LIKE ?)'); params.push('%' + q + '%', '%' + q + '%'); }
+    if (q) {
+      where.push('(customer_name LIKE ? OR order_no LIKE ? OR COALESCE(order_name, \'\') LIKE ?)');
+      params.push('%' + q + '%', '%' + q + '%', '%' + q + '%');
+    }
     if (customer) { where.push('customer_name LIKE ?'); params.push('%' + customer + '%'); }
     if (from && to) { where.push('created_at >= ? AND created_at <= ?'); params.push(from, to); }
     const rows = await query('SELECT * FROM orders WHERE ' + where.join(' AND ') + ' ORDER BY id DESC', params);
@@ -62,51 +90,90 @@ router.post('/', authRequired, requireRole(['admin', 'photographer', 'finance'])
     const b = req.body;
     let package_snapshot = null, total = 0, addons = [];
     const safeParse = (v, fallback = '') => { try { return v ? JSON.parse(v) : fallback; } catch { return v || fallback; } };
+    // 手动改价：前端可覆盖套系价格 / 定金，未传则用套系库默认值
+    const overridePrice = b.package_price !== undefined && b.package_price !== null && b.package_price !== '';
     if (b.package_id) {
       const p = await get('SELECT * FROM packages WHERE id = ?', [b.package_id]);
       if (p) {
+        const usePrice = overridePrice ? (parseFloat(b.package_price) || 0) : (parseFloat(p.price) || 0);
         package_snapshot = {
-          id: p.id, name: p.name, price: p.price, deposit: p.deposit,
+          id: p.id, name: p.name, price: usePrice, list_price: parseFloat(p.price) || 0, deposit: p.deposit,
           description: p.description || '', retouch_count: p.retouch_count,
           raw_policy: p.raw_policy || '', duration: p.duration || '', cover_url: p.cover_url || '',
           category_id: p.category_id,
           addons: safeParse(p.addons, []), marketing: safeParse(p.marketing, {}),
           specs: safeParse(p.specs, []), questionnaire: safeParse(p.questionnaire, '')
         };
-        total += parseFloat(p.price) || 0;
+        total += usePrice;
         if (b.addons && b.addons.length) {
           addons = b.addons;
           total += addons.reduce((s, a) => s + (parseFloat(a.price) || 0), 0);
         }
       }
     }
+    // 其他消费计入应收总额
+    const extra_items = normExtras(b.extra_items);
+    const extraTotal = extra_items.reduce((s, x) => s + x.amount, 0);
+
+    const payment_status = PAYMENT_STATUS.includes(b.payment_status) ? b.payment_status : 'deposit';
     const deposit = parseFloat(b.deposit) || 0;
-    const balance = parseFloat(b.balance) || 0;
-    if (deposit <= 0) return res.status(400).json({ error: '定金必须大于 0，未收定金不能建立订单' });
-    if (!package_snapshot) total = deposit + balance;
+    // 「未付定金」= 意向订单，允许定金为 0；其余收款状态仍要求定金大于 0
+    if (payment_status === 'deposit' && deposit <= 0) {
+      return res.status(400).json({ error: '收款状态为「已付定金」时，定金必须大于 0' });
+    }
+    if (!package_snapshot) total = deposit + (parseFloat(b.balance) || 0);
+    total += extraTotal;
+    // 实收金额由收款状态推导：未付=0 / 已付定金=定金 / 已付全款=应收总额
+    const paid = payment_status === 'unpaid' ? 0 : (payment_status === 'paid' ? total : deposit);
+    const balance = Math.max(0, total - paid);
+
     const order_no = b.order_no || ('NO' + Date.now());
     const logs = JSON.stringify([{ t: nowISO(), text: '创建订单' }]);
     const groom = (b.groom_name || '').trim();
     const bride = (b.bride_name || '').trim();
-    const customer_name = groom || bride ? [groom, bride].filter(Boolean).join(' & ') : (b.customer_name || '');
+    const phones = normPhones(b.phones ?? b.customer_phone);
+    const time_slots = normSlots(b.time_slots);
+    const executors = normExecutors(b.executors);
+    const date_tbd = b.date_tbd ? 1 : 0;
+    const shoot_date = date_tbd ? '' : (b.shoot_date || '');
+    const customer_name = groom || bride
+      ? [groom, bride].filter(Boolean).join(' & ')
+      : (b.customer_name || '');
+    const order_name = (b.order_name || '').trim() || (customer_name ? customer_name + ' 拍摄订单' : '未命名订单');
     const id = await insert(
       `INSERT INTO orders (order_no, customer_name, customer_phone, package_id, package_snapshot, addons_snapshot, status,
         deposit, balance, deposit_method, balance_method, shoot_date, executor, total_amount, paid_amount, remark, logs,
-        groom_name, bride_name, address)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+        groom_name, bride_name, address,
+        order_name, phones, time_slots, extra_items, executors, channel, channel_id, date_tbd, payment_status)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
       [
-        order_no, customer_name, b.customer_phone || '', b.package_id || null,
+        order_no, customer_name, phones[0] || '', b.package_id || null,
         JSON.stringify(package_snapshot), JSON.stringify(addons), 'deposit',
         deposit, balance, b.deposit_method || 'offline', b.balance_method || 'offline',
-        b.shoot_date || '', b.executor || '', total, deposit, b.remark || '', logs,
-        groom, bride, b.address || ''
+        shoot_date, executors.map((x) => x.name).filter(Boolean).join('、'), total, paid, b.remark || '', logs,
+        groom, bride, b.address || '',
+        order_name, JSON.stringify(phones), JSON.stringify(time_slots), JSON.stringify(extra_items),
+        JSON.stringify(executors), b.channel || '', b.channel_id || null, date_tbd, payment_status
       ]
     );
-    // 建单即视为已收定金，登记定金收款流水
-    await insert(
-      `INSERT INTO payments (order_id, order_no, type, amount, method, note) VALUES (?,?,?,?,?,?)`,
-      [id, order_no, 'deposit', deposit, b.deposit_method || 'offline', '创建订单时收取定金']
-    );
+    // 按收款状态登记流水：已付定金→定金一笔；已付全款→定金 + 尾款；未付定金→不登记
+    if (payment_status !== 'unpaid') {
+      if (deposit > 0) {
+        await insert(
+          `INSERT INTO payments (order_id, order_no, type, amount, method, note) VALUES (?,?,?,?,?,?)`,
+          [id, order_no, 'deposit', deposit, b.deposit_method || 'offline', '创建订单时收取定金']
+        );
+      }
+      if (payment_status === 'paid') {
+        const rest = Math.max(0, total - deposit);
+        if (rest > 0) {
+          await insert(
+            `INSERT INTO payments (order_id, order_no, type, amount, method, note) VALUES (?,?,?,?,?,?)`,
+            [id, order_no, 'balance', rest, b.balance_method || 'offline', '创建订单时结清全款']
+          );
+        }
+      }
+    }
     res.json({ id, order_no });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -122,12 +189,30 @@ router.put('/:id', authRequired, requireRole(['admin', 'photographer', 'finance'
     const groom = (b.groom_name ?? cur.groom_name ?? '').trim();
     const bride = (b.bride_name ?? cur.bride_name ?? '').trim();
     const customer_name = groom || bride ? [groom, bride].filter(Boolean).join(' & ') : (b.customer_name ?? cur.customer_name);
+    // 新增订单弹窗新增字段：未传则保留原值（JSON 列按原文本回写）
+    const keepJSON = (val, normalize, curText) => (val === undefined ? (curText ?? null) : JSON.stringify(normalize(val)));
+    const phonesText = keepJSON(b.phones, normPhones, cur.phones);
+    const slotsText = keepJSON(b.time_slots, normSlots, cur.time_slots);
+    const extrasText = keepJSON(b.extra_items, normExtras, cur.extra_items);
+    const execsText = keepJSON(b.executors, normExecutors, cur.executors);
+    const firstPhone = b.phones !== undefined ? (normPhones(b.phones)[0] || '') : (b.customer_phone ?? cur.customer_phone);
+    const execText = b.executors !== undefined
+      ? normExecutors(b.executors).map((x) => x.name).filter(Boolean).join('、')
+      : (b.executor ?? cur.executor);
+    const date_tbd = b.date_tbd === undefined ? cur.date_tbd : (b.date_tbd ? 1 : 0);
+    const shoot_date = date_tbd ? '' : (b.shoot_date ?? cur.shoot_date);
+    const payment_status = PAYMENT_STATUS.includes(b.payment_status) ? b.payment_status : (cur.payment_status || 'deposit');
     await run(
       `UPDATE orders SET customer_name=?, customer_phone=?, shoot_date=?, executor=?, remark=?, status=?,
-        groom_name=?, bride_name=?, address=? WHERE id=?`,
-      [customer_name, b.customer_phone ?? cur.customer_phone,
-       b.shoot_date ?? cur.shoot_date, b.executor ?? cur.executor, b.remark ?? cur.remark, status,
-       groom, bride, b.address ?? cur.address, cur.id]
+        groom_name=?, bride_name=?, address=?,
+        order_name=?, phones=?, time_slots=?, extra_items=?, executors=?, channel=?, channel_id=?, date_tbd=?, payment_status=?
+       WHERE id=?`,
+      [customer_name, firstPhone,
+       shoot_date, execText, b.remark ?? cur.remark, status,
+       groom, bride, b.address ?? cur.address,
+       b.order_name ?? cur.order_name, phonesText, slotsText, extrasText, execsText,
+       b.channel ?? cur.channel, b.channel_id ?? cur.channel_id, date_tbd, payment_status,
+       cur.id]
     );
     if (b.status && b.status !== cur.status) {
       const MAP = { deposit: '已付定金', shot: '已拍摄', selecting: '选片中', retouching: '精修中', delivered: '已交付', completed: '已完成' };

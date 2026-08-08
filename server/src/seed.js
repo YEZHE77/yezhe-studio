@@ -36,6 +36,16 @@ export async function seedIfNeeded() {
     }
   }
 
+  // 渠道来源（默认 7 项，后台可增删改，前端下拉实时读取绝不写死）
+  const chCount = await get('SELECT COUNT(*) AS c FROM channels');
+  if (Number(chCount.c) === 0) {
+    const presets = ['抖音', '小红书', '美团', '小程序', '客户推荐', '自然进店', '其他来源'];
+    for (let i = 0; i < presets.length; i++) {
+      await insert('INSERT INTO channels (name, sort, is_active, deleted) VALUES (?,?,1,0)', [presets[i], i + 1]);
+    }
+    console.log('✓ 已创建默认渠道来源（抖音/小红书/美团/小程序/客户推荐/自然进店/其他来源）');
+  }
+
   // 套系（2 条）
   const pkgCount = await get('SELECT COUNT(*) AS c FROM packages');
   let firstPkgId = null;

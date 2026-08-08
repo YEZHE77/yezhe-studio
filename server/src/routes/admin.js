@@ -14,6 +14,22 @@ router.use(authRequired);
 
 function nowISO() { return new Date().toISOString(); }
 
+// ===== 0. 人员列表（订单执行人多选组件的数据源，复用 users 表） =====
+// 返回 id / 姓名 / 角色 / 头像；头像可为空，前端用姓名首字兜底。
+router.get('/personnel', async (req, res) => {
+  try {
+    const rows = await query(
+      `SELECT id, username, name, role, avatar FROM users ORDER BY id ASC`
+    );
+    res.json(rows.map((u) => ({
+      id: u.id,
+      name: u.name || u.username,
+      role: u.role || 'photographer',
+      avatar: u.avatar || ''
+    })));
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // ===== 1. 预约管理 =====
 // 列表（含套系名，状态 pending/converted）
 router.get('/appointments', async (req, res) => {
@@ -100,12 +116,18 @@ async function doConfirm(req, res) {
     }
     const order_no = 'NO' + Date.now();
     const logs = JSON.stringify([{ t: nowISO(), text: '由预约 #' + a.id + ' 确认转单' }]);
+    const orderName = (a.name ? a.name + ' ' : '') + (package_snapshot ? package_snapshot.name : '拍摄订单');
     const orderId = await insert(
       `INSERT INTO orders (order_no, customer_name, customer_phone, package_id, package_snapshot,
-        status, deposit, balance, total_amount, paid_amount, deposit_method, openid, remark, logs, shoot_date)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+        status, deposit, balance, total_amount, paid_amount, deposit_method, openid, remark, logs, shoot_date,
+        order_name, phones, time_slots, extra_items, executors, channel, date_tbd, payment_status)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
       [order_no, a.name, a.phone, a.package_id || null, JSON.stringify(package_snapshot),
-        'deposit', deposit, total, total, deposit, deposit_method, a.openid || null, a.remark || '', logs, date]
+        'deposit', deposit, Math.max(0, total - deposit), total, deposit, deposit_method,
+        a.openid || null, a.remark || '', logs, date,
+        orderName, JSON.stringify(a.phone ? [a.phone] : []), JSON.stringify([]), JSON.stringify([]),
+        JSON.stringify(b.photographer ? [{ id: null, name: b.photographer, avatar: '' }] : []),
+        a.source || '小程序', 0, 'deposit']
     );
 
     // 建单即视为已收定金，登记定金收款流水

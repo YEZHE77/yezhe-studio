@@ -26,7 +26,8 @@ const GROUPS = [
   {
     title: '获客工具',
     items: [
-      { to: '/card', label: '生成名片', icon: 'link' }
+      { to: '/card', label: '生成名片', icon: 'link' },
+      { to: '/channels', label: '渠道管理', icon: 'tag' }
     ]
   },
   {

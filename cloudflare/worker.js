@@ -7,6 +7,14 @@ export default {
   async fetch(request, env) {
     const url = new URL(request.url);
 
+    // R2 绑定缺失时给出明确错误，便于排查（而非返回难懂的空 502）
+    if (!env.R2) {
+      return new Response('R2 binding missing', {
+        status: 500,
+        headers: { 'Access-Control-Allow-Origin': '*' }
+      });
+    }
+
     // 只允许读操作
     if (request.method !== 'GET' && request.method !== 'HEAD') {
       return new Response('Method Not Allowed', { status: 405 });

@@ -16,6 +16,23 @@ const STAGE_COLOR = {
   retouching: 'bg-purple-500', delivered: 'bg-teal-500', completed: 'bg-emerald-500', cancelled: 'bg-line'
 };
 const TYPE_LABEL = { deposit: '定金', balance: '尾款', extra: '加片/增值', refund: '退款' };
+// 新增订单弹窗的「收款状态」枚举（unpaid/deposit/paid）
+const PAY_STATUS_LABEL = { unpaid: '未付定金', deposit: '已付定金', paid: '已付全款' };
+const PAY_STATUS_COLOR = { unpaid: 'text-red-400', deposit: 'text-amber-400', paid: 'text-emerald-400' };
+// JSON 列容错解析：后端已 JSON.parse，但旧数据/异常情况下可能仍是字符串
+// 首阶段 status 恒为 deposit（订单已建立），但收款状态可能是「未付定金」，
+// 直接显示「已付定金」会误导，这里按 payment_status 做展示层修正（不改后端阶段机）。
+function stageLabel(o) {
+  if (o && o.status === 'deposit' && o.payment_status === 'unpaid') return '未付定金';
+  return STATUS_LABEL[o && o.status] || '历史订单';
+}
+function asArr(v) {
+  if (Array.isArray(v)) return v;
+  if (typeof v === 'string' && v.trim()) {
+    try { const p = JSON.parse(v); return Array.isArray(p) ? p : []; } catch { return []; }
+  }
+  return [];
+}
 
 export default function Orders() {
   const [params, setParams] = useSearchParams();
@@ -309,7 +326,11 @@ export default function Orders() {
           <tbody>
             {list.map((o) => (
               <tr key={o.id} onClick={() => openDetail(o.id)} className="border-b border-line last:border-0 cursor-pointer hover:bg-panel2">
-                <td className="p-3 text-white">{o.order_no}</td>
+                <td className="p-3 text-white">
+                  {o.order_no}
+                  {o.order_name && <div className="text-[11px] text-muted mt-0.5 max-w-[160px] truncate">{o.order_name}</div>}
+                  {Number(o.date_tbd) === 1 && <div className="text-[10px] text-amber-400 mt-0.5">日期待定</div>}
+                </td>
                 <td className="p-3 text-white">
                   {(o.groom_name || o.bride_name) ? (
                     <span>{[o.groom_name, o.bride_name].filter(Boolean).join(' & ')}</span>
@@ -321,7 +342,11 @@ export default function Orders() {
                 <td className="p-3 text-white">¥{Number(o.total_amount || 0).toLocaleString()}</td>
                 <td className="p-3 text-emerald-400">¥{Number(o.paid_amount || 0).toLocaleString()}</td>
                 <td className="p-3 text-muted">{o.shoot_date || '—'}</td>
-                <td className="p-3"><span className={'px-2 py-1 rounded-full text-xs ' + badge(o.status)}>{STATUS_LABEL[o.status] || '历史订单'}</span></td>
+                <td className="p-3">
+                  <span className={'px-2 py-1 rounded-full text-xs ' + (o.status === 'deposit' && o.payment_status === 'unpaid' ? 'bg-red-500/15 text-red-400' : badge(o.status))}>
+                    {stageLabel(o)}
+                  </span>
+                </td>
               </tr>
             ))}
             {list.length === 0 && <tr><td colSpan="7" className="p-8 text-center text-muted">暂无订单</td></tr>}
@@ -336,7 +361,8 @@ export default function Orders() {
           <div onClick={(e) => e.stopPropagation()} className="w-full max-w-md bg-panel border-l border-line h-full overflow-auto p-5">
             <div className="flex items-center justify-between mb-4">
               <div>
-                <div className="text-white font-medium">{detail.order_no}</div>
+                <div className="text-white font-medium">{detail.order_name || detail.order_no}</div>
+                {detail.order_name && <div className="text-[11px] text-faint">{detail.order_no}</div>}
                 <div className="text-xs text-muted">
                   {(detail.groom_name || detail.bride_name) ? (
                     <>
@@ -361,7 +387,9 @@ export default function Orders() {
                   <React.Fragment key={s}>
                     <div className={'flex flex-col items-center ' + (active ? '' : 'opacity-40')}>
                       <div className={'w-3 h-3 rounded-full ' + (active ? STAGE_COLOR[s] : 'bg-line')} />
-                      <span className="text-[10px] text-muted mt-1 whitespace-nowrap">{STATUS_LABEL[s]}</span>
+                      <span className="text-[10px] text-muted mt-1 whitespace-nowrap">
+                        {s === 'deposit' && detail.payment_status === 'unpaid' ? '未付定金' : STATUS_LABEL[s]}
+                      </span>
                     </div>
                     {i < STAGE_SEQ.length - 1 && <div className={'flex-1 h-0.5 ' + (i < cur ? STAGE_COLOR[s] : 'bg-line')} />}
                   </React.Fragment>
@@ -375,6 +403,127 @@ export default function Orders() {
               <div className="bg-panel2 rounded-lg p-3"><div className="text-xs text-muted">已收</div><div className="text-emerald-400">¥{paid.toLocaleString()}</div></div>
               <div className="bg-panel2 rounded-lg p-3"><div className="text-xs text-muted">待收/退</div><div className="text-white">{refundAmt > 0 ? '退¥' + refundAmt : '¥' + remain}</div></div>
             </div>
+
+            {/* 订单资料：新增订单弹窗录入的完整字段 */}
+            {(() => {
+              const phones = asArr(detail.phones);
+              const phoneList = phones.length ? phones : (detail.customer_phone ? [detail.customer_phone] : []);
+              const slots = asArr(detail.time_slots);
+              const extras = asArr(detail.extra_items);
+              const execs = asArr(detail.executors);
+              const extraSum = extras.reduce((s, x) => s + (Number(x.amount) || 0), 0);
+              const tbd = Number(detail.date_tbd) === 1;
+              const payKey = detail.payment_status || 'deposit';
+              return (
+                <div className="bg-panel2 rounded-lg p-3 mb-3 text-sm space-y-2.5">
+                  <div className="text-white font-medium">订单资料</div>
+
+                  {detail.order_name && (
+                    <div className="flex gap-2">
+                      <span className="text-muted shrink-0 w-16">订单名称</span>
+                      <span className="text-white flex-1 break-all">{detail.order_name}</span>
+                    </div>
+                  )}
+
+                  <div className="flex gap-2">
+                    <span className="text-muted shrink-0 w-16">联系电话</span>
+                    <span className="flex-1 flex flex-wrap gap-1.5">
+                      {phoneList.length === 0 ? <span className="text-muted">—</span> : phoneList.map((p, i) => (
+                        <a key={i} href={'tel:' + p} className="px-1.5 py-0.5 rounded bg-panel border border-line text-white text-xs hover:text-brand">{p}</a>
+                      ))}
+                    </span>
+                  </div>
+
+                  <div className="flex gap-2">
+                    <span className="text-muted shrink-0 w-16">档期时间</span>
+                    <span className="flex-1">
+                      {tbd ? (
+                        <span className="px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-400 text-xs border border-amber-500/20">日期待定（不占用日历档期）</span>
+                      ) : (
+                        <>
+                          <span className="text-white">{detail.shoot_date || '—'}</span>
+                          {slots.length > 0 && (
+                            <span className="flex flex-wrap gap-1 mt-1">
+                              {slots.map((h, i) => (
+                                <span key={i} className="px-1.5 py-0.5 rounded bg-panel border border-line text-white text-[11px]">{h}</span>
+                              ))}
+                            </span>
+                          )}
+                        </>
+                      )}
+                    </span>
+                  </div>
+
+                  <div className="flex gap-2">
+                    <span className="text-muted shrink-0 w-16">收款状态</span>
+                    <span className={'flex-1 ' + (PAY_STATUS_COLOR[payKey] || 'text-white')}>
+                      {PAY_STATUS_LABEL[payKey] || payKey}
+                    </span>
+                  </div>
+
+                  {extras.length > 0 && (
+                    <div className="flex gap-2">
+                      <span className="text-muted shrink-0 w-16">其他消费</span>
+                      <span className="flex-1 space-y-1">
+                        {extras.map((x, i) => (
+                          <span key={i} className="flex items-center justify-between text-xs">
+                            <span className="text-white">{x.name}</span>
+                            <span className="text-emerald-400">+¥{Number(x.amount || 0).toLocaleString()}</span>
+                          </span>
+                        ))}
+                        <span className="flex items-center justify-between text-xs border-t border-line pt-1">
+                          <span className="text-muted">小计</span>
+                          <span className="text-white">¥{extraSum.toLocaleString()}</span>
+                        </span>
+                      </span>
+                    </div>
+                  )}
+
+                  {detail.channel && (
+                    <div className="flex gap-2">
+                      <span className="text-muted shrink-0 w-16">渠道来源</span>
+                      <span className="flex-1">
+                        <span className="px-1.5 py-0.5 rounded bg-sky-500/15 text-sky-400 text-xs border border-sky-500/20">{detail.channel}</span>
+                      </span>
+                    </div>
+                  )}
+
+                  {(execs.length > 0 || detail.executor) && (
+                    <div className="flex gap-2">
+                      <span className="text-muted shrink-0 w-16">执行人</span>
+                      <span className="flex-1 flex flex-wrap gap-2">
+                        {execs.length > 0 ? execs.map((p, i) => (
+                          <span key={i} className="flex items-center gap-1.5 px-1.5 py-0.5 rounded-full bg-panel border border-line">
+                            {p.avatar ? (
+                              <img src={img(p.avatar)} alt="" className="w-5 h-5 rounded-full object-cover" />
+                            ) : (
+                              <span className="w-5 h-5 rounded-full bg-brand/20 text-brand text-[10px] flex items-center justify-center">
+                                {String(p.name || '?').slice(0, 1)}
+                              </span>
+                            )}
+                            <span className="text-white text-xs">{p.name}</span>
+                          </span>
+                        )) : <span className="text-white text-xs">{detail.executor}</span>}
+                      </span>
+                    </div>
+                  )}
+
+                  {detail.address && (
+                    <div className="flex gap-2">
+                      <span className="text-muted shrink-0 w-16">拍摄地点</span>
+                      <span className="text-white flex-1 break-all">{detail.address}</span>
+                    </div>
+                  )}
+
+                  {detail.remark && (
+                    <div className="flex gap-2">
+                      <span className="text-muted shrink-0 w-16">备注</span>
+                      <span className="text-white flex-1 whitespace-pre-line break-all">{detail.remark}</span>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
 
             {/* 套系信息 */}
             {pkgInfo && pkgInfo.name && pkgInfo.name !== '—' && (

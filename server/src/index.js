@@ -15,6 +15,7 @@ import { seedIfNeeded } from './seed.js';
 import authRoutes from './routes/auth.js';
 import worksRoutes from './routes/works.js';
 import categoriesRoutes from './routes/categories.js';
+import channelsRoutes from './routes/channels.js';
 import albumsRoutes from './routes/albums.js';
 import selectionRoutes from './routes/selection.js';
 import ordersRoutes from './routes/orders.js';
@@ -99,6 +100,7 @@ app.post('/api/upload-multiple', authRequired, upload.array('files', 500), async
 app.use('/api/auth', authRoutes);
 app.use('/api/works', worksRoutes);
 app.use('/api/categories', categoriesRoutes);
+app.use('/api/channels', channelsRoutes);
 app.use('/api/albums', albumsRoutes);
 app.use('/api/selection', selectionRoutes);
 app.use('/api/orders', ordersRoutes);

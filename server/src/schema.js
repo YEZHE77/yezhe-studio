@@ -244,8 +244,32 @@ const ORDERS_NEW_COLUMNS = [
   ['questionnaire_answers', 'TEXT'], // 客户拍摄问卷答案（确认后回写，与下单时刻套系快照隔离）
   ['groom_name', 'TEXT'], // 新郎姓名
   ['bride_name', 'TEXT'], // 新娘姓名
-  ['address', 'TEXT'] // 拍摄地址
+  ['address', 'TEXT'], // 拍摄地址
+  // ↓↓ 新增订单弹窗（2026-08 重构）：多值字段统一以 JSON 文本存储，读取时 parseRow 解析
+  ['order_name', 'TEXT'], // 订单名称（如「张先生婚礼跟拍」）
+  ['phones', 'TEXT'], // 联系电话数组 JSON: ["138...","139..."]
+  ['time_slots', 'TEXT'], // 场次时间标签数组 JSON: ["09:00","10:00"]
+  ['extra_items', 'TEXT'], // 其他消费数组 JSON: [{name,amount}]
+  ['executors', 'TEXT'], // 执行人数组 JSON: [{id,name,avatar}]
+  ['channel', 'TEXT'], // 渠道来源名称快照（渠道被删也保留历史）
+  ['channel_id', 'INTEGER'], // 渠道 id（关联 channels 表）
+  ['date_tbd', 'INTEGER NOT NULL DEFAULT 0'], // 1=日期待定（意向订单，不占日历档期）
+  ['payment_status', `TEXT NOT NULL DEFAULT 'deposit'`] // unpaid 未付定金 / deposit 已付定金 / paid 已付全款
 ];
+
+// 渠道来源表（后端可配置，前端下拉实时读取，绝不写死）
+const PG_CHANNELS = `
+CREATE TABLE IF NOT EXISTS channels (
+  id SERIAL PRIMARY KEY, name TEXT NOT NULL, sort INTEGER NOT NULL DEFAULT 0,
+  is_active INTEGER NOT NULL DEFAULT 1, deleted INTEGER NOT NULL DEFAULT 0,
+  created_at TIMESTAMPTZ DEFAULT now()
+);`;
+const SQLITE_CHANNELS = `
+CREATE TABLE IF NOT EXISTS channels (
+  id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, sort INTEGER NOT NULL DEFAULT 0,
+  is_active INTEGER NOT NULL DEFAULT 1, deleted INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP
+);`;
 
 async function colsOf(table) {
   if (dialect === 'pg') {
@@ -289,8 +313,13 @@ export async function initSchema() {
   // 客片电子相册表（C 端对外分享）
   for (const s of (dialect === 'pg' ? PG_GALLERIES : SQLITE_GALLERIES).split(';').map((x) => x.trim()).filter(Boolean)) await run(s);
 
+  // 渠道来源表（新增订单弹窗「渠道来源」下拉的数据源，后端可配置）
+  for (const s of (dialect === 'pg' ? PG_CHANNELS : SQLITE_CHANNELS).split(';').map((x) => x.trim()).filter(Boolean)) await run(s);
+
   // orders 增量补列
   for (const [col, def] of ORDERS_NEW_COLUMNS) await ensureColumn('orders', col, def);
+  // 执行人头像（复用 users 表作为人员表，头像可空）
+  await ensureColumn('users', 'avatar', 'TEXT');
   // 客户绑定列 + 成片下载开关
   await ensureColumn('orders', 'openid', 'TEXT');
   await ensureColumn('works', 'allow_download', 'INTEGER NOT NULL DEFAULT 0');

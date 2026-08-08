@@ -26,6 +26,7 @@ const BusinessCard = React.lazy(() => import('./pages/BusinessCard.jsx'));
 const SelectionAdmin = React.lazy(() => import('./pages/SelectionAdmin.jsx'));
 const ShareAlbum = React.lazy(() => import('./pages/ShareAlbum.jsx'));
 const CapacityManagement = React.lazy(() => import('./pages/CapacityManagement.jsx'));
+const Channels = React.lazy(() => import('./pages/Channels.jsx'));
 // 客户前端（公开，无需登录）：首页 / 我的 / 公开作品相册
 const Home = React.lazy(() => import('./pages/Home.jsx'));
 const My = React.lazy(() => import('./pages/My.jsx'));
@@ -65,6 +66,7 @@ function AppShell() {
                 <Route path="/datacharts" element={<DataCharts />} />
                 <Route path="/card" element={<BusinessCard />} />
                 <Route path="/selections" element={<SelectionAdmin />} />
+                <Route path="/channels" element={<Channels />} />
                 <Route path="/finance" element={<Finance />} />
                 <Route path="/capacity" element={<CapacityManagement />} />
                 <Route path="*" element={<Navigate to="/" replace />} />
