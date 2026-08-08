@@ -62,11 +62,16 @@ router.get('/qrcode', async (req, res) => {
 router.put('/studio', authRequired, async (req, res) => {
   try {
     const body = req.body || {};
-    // 与默认值合并：旧版前端可能缺少新增字段（如 heroImages），避免直接覆盖导致字段丢失
+    // 以「库里已有值」为基准合并，再叠加本次提交的字段。
+    // 关键修复：之前以 DEFAULT_STUDIO 为基准，导致只提交部分字段（如仅 bgmUrl）时，
+    // 会把其它已存字段（slogan/intro/名称/轮播图等）覆盖回默认值、造成数据丢失。
+    const r = await get("SELECT value FROM settings WHERE key = 'studio'");
+    const existing = safeParse(r && r.value) || {};
     const merged = {
       ...DEFAULT_STUDIO,
+      ...existing,
       ...body,
-      contact: { ...DEFAULT_STUDIO.contact, ...(body.contact || {}) }
+      contact: { ...DEFAULT_STUDIO.contact, ...(existing.contact || {}), ...(body.contact || {}) }
     };
     const value = JSON.stringify(merged);
     const exists = await get("SELECT key FROM settings WHERE key = 'studio'");
