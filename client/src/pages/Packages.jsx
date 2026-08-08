@@ -52,7 +52,13 @@ export default function Packages() {
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState(null);
   const [trace, setTrace] = useState(null); // 订单溯源
-  const [sharePkg, setSharePkg] = useState(null); // 私有分享弹窗
+  const [sharePkg, setSharePkg] = useState(null); // 套系分享二维码弹窗（H5 / 小程序）
+  const [shareTab, setShareTab] = useState('h5'); // h5 | miniprogram
+  const [shareQr, setShareQr] = useState('');
+  const [shareUrl, setShareUrl] = useState('');
+  const [shareLoading, setShareLoading] = useState(false);
+  const [shareErr, setShareErr] = useState('');
+  const [copyTip, setCopyTip] = useState('');
   const [form, setForm] = useState(emptyForm());
   const [tab, setTab] = useState(0); // 编辑弹窗 4 个 Tab
 
@@ -97,6 +103,34 @@ export default function Packages() {
     });
     setTab(0);
     setShowForm(true);
+  };
+
+  // 套系分享二维码弹窗：H5 / 小程序 Tab 共用后端 /api/shares（type=package）生成的专属二维码
+  const openShareQr = async (pkg) => {
+    setSharePkg(pkg);
+    setShareTab('h5');
+    setShareQr(''); setShareUrl(''); setShareErr(''); setCopyTip('');
+    setShareLoading(true);
+    try {
+      const list = await http.get('/api/shares?type=package&ref_id=' + pkg.id);
+      let s = (list.data || []).find((x) => !x.disabled) || (list.data || [])[0];
+      if (!s || !s.qr_url) {
+        const r = await http.post('/api/shares', { type: 'package', ref_id: pkg.id });
+        s = r.data;
+      }
+      setShareQr(s.qr_url || '');
+      setShareUrl(s.share_url || '');
+    } catch (e) {
+      setShareErr((e.response && e.response.data && e.response.data.error) || '二维码生成失败');
+    } finally {
+      setShareLoading(false);
+    }
+  };
+  const copyShareLink = () => {
+    if (!shareUrl) return;
+    navigator.clipboard?.writeText(shareUrl);
+    setCopyTip('链接已复制');
+    setTimeout(() => setCopyTip(''), 2000);
   };
 
   const addAddon = () => setForm({ ...form, addons: [...form.addons, { name: '', price: '' }] });
@@ -279,7 +313,7 @@ export default function Packages() {
 
               {/* 右侧操作按钮组：分享 / 编辑 / 下架 / 删除 */}
               <div className="flex flex-row sm:flex-col items-stretch sm:items-end gap-2 sm:gap-1.5 text-sm">
-                <button onClick={() => setSharePkg(p)} className="px-3 py-1.5 rounded text-left sm:text-right hover:text-brand" style={{ color: '#1f2329' }}>分享</button>
+                <button onClick={() => openShareQr(p)} className="px-3 py-1.5 rounded text-left sm:text-right hover:text-brand" style={{ color: '#1f2329' }}>分享</button>
                 <button onClick={() => openEdit(p)} className="px-3 py-1.5 rounded text-left sm:text-right hover:text-brand" style={{ color: '#1f2329' }}>编辑</button>
                 <button onClick={() => toggleStatus(p)} className="px-3 py-1.5 rounded text-left sm:text-right hover:text-brand" style={{ color: '#1f2329' }}>{off ? '上架' : '下架'}</button>
                 <button onClick={() => del(p.id)} className="px-3 py-1.5 rounded text-left sm:text-right hover:text-red-400" style={{ color: '#1f2329' }}>删除</button>
@@ -419,83 +453,100 @@ export default function Packages() {
         </div>
       )}
 
-      {/* 单套系私有分享弹窗 */}
+      {/* 套系分享二维码弹窗（H5 / 小程序） */}
       {sharePkg && (
-        <ShareModal pkg={sharePkg} onClose={() => setSharePkg(null)} refresh={load} />
+        <PackageShareModal
+          pkg={sharePkg}
+          tab={shareTab} setTab={setShareTab}
+          qr={shareQr} url={shareUrl}
+          loading={shareLoading} err={shareErr}
+          copyTip={copyTip} onCopy={copyShareLink}
+          onClose={() => setSharePkg(null)}
+        />
       )}
     </div>
   );
 }
 
-function ShareModal({ pkg, onClose, refresh }) {
-  const [shares, setShares] = useState([]);
-  const [password, setPassword] = useState('');
-  const [expireDays, setExpireDays] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [tip, setTip] = useState('');
+// 套系分享二维码弹窗：H5 / 小程序 Tab 切换；二维码来自后端 /api/shares（type=package）动态生成，绑定当前套系 ID，不写死。
+function PackageShareModal({ pkg, tab, setTab, qr, url, loading, err, copyTip, onCopy, onClose }) {
+  const IconH5 = (p) => (
+    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2"
+      strokeLinecap="round" strokeLinejoin="round" {...p}>
+      <circle cx="12" cy="12" r="9" /><path d="M3 12h18M12 3c2.5 2.5 2.5 15.5 0 18M12 3c-2.5 2.5-2.5 15.5 0 18" />
+    </svg>
+  );
+  const IconMini = (p) => (
+    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2"
+      strokeLinecap="round" strokeLinejoin="round" {...p}>
+      <path d="M21 11.5a8.4 8.4 0 0 1-8.5 8.5 8.5 8.5 0 0 1-3.9-.9L3 21l1.9-5.6A8.4 8.4 0 0 1 4 11.5 8.5 8.5 0 0 1 12.5 3 8.4 8.4 0 0 1 21 11.5Z" />
+      <circle cx="9" cy="10" r="1" fill="currentColor" stroke="none" /><circle cx="15" cy="10" r="1" fill="currentColor" stroke="none" />
+    </svg>
+  );
 
-  const loadShares = () => http.get('/api/shares?type=package&ref_id=' + pkg.id).then((r) => setShares(r.data || [])).catch(() => {});
-  useEffect(() => { loadShares(); }, []);
-
-  async function create() {
-    setBusy(true); setTip('');
-    try {
-      const expire_at = expireDays ? new Date(Date.now() + parseInt(expireDays) * 86400000).toISOString().slice(0, 10) : null;
-      await http.post('/api/shares', { type: 'package', ref_id: pkg.id, password: password || undefined, expire_at });
-      setPassword(''); setExpireDays('');
-      setTip('已生成分享（下架套系也可分享）');
-      loadShares();
-      if (refresh) refresh();
-    } catch (e) { setTip('生成失败：' + (e.response?.data?.error || e.message)); }
-    setBusy(false);
-    setTimeout(() => setTip(''), 3000);
-  }
-  async function toggle(s) {
-    await http.post('/api/shares/' + s.token + '/toggle');
-    loadShares(); if (refresh) refresh();
-  }
-  async function remove(s) {
-    if (!confirm('确认后将永久删除，建议先做好本地备份，确定继续？')) return;
-    await http.delete('/api/shares/' + s.token);
-    loadShares(); if (refresh) refresh();
-  }
-  const copy = (url) => { navigator.clipboard?.writeText(url); setTip('链接已复制'); setTimeout(() => setTip(''), 2000); };
+  const tabBtn = (key, label, Icon) => {
+    const active = tab === key;
+    return (
+      <button onClick={() => setTab(key)}
+        className={'flex-1 flex items-center justify-center gap-1.5 pb-2.5 border-b-2 ' + (active ? 'border-brand' : 'border-transparent')}
+        style={{ color: active ? '#2f7cf6' : '#9ca3af' }}>
+        <Icon />{label}
+      </button>
+    );
+  };
 
   return (
-    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" onClick={onClose}>
-      <div onClick={(e) => e.stopPropagation()} className="w-full max-w-lg bg-panel border border-line rounded-xl2 p-6 max-h-[90vh] overflow-auto">
-        <div className="text-white font-medium mb-1">套系私有分享 · {pkg.name}</div>
-        <div className="text-xs text-muted mb-4">生成二维码 + 访问密码 + 有效期；可分享下架内部套餐，不受主页上架状态限制。</div>
-        {tip && <div className="mb-3 text-sm px-3 py-2 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200">{tip}</div>}
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.4)' }} onClick={onClose}>
+      <div onClick={(e) => e.stopPropagation()} className="w-full max-w-sm bg-white rounded-2xl p-6 relative"
+        style={{ boxShadow: '0 20px 60px rgba(0,0,0,0.18)' }}>
+        {/* 右上角关闭叉号 */}
+        <button onClick={onClose} className="absolute top-3 right-3 p-1.5 rounded hover:bg-panel2" style={{ color: '#6b7280' }}>
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M18 6 6 18M6 6l12 12" />
+          </svg>
+        </button>
 
-        <div className="flex gap-2 mb-4">
-          <input value={password} onChange={(e) => setPassword(e.target.value)} placeholder="访问密码(可选)" className="flex-1 px-3 py-2 rounded bg-panel2 border border-line text-white text-sm outline-none" />
-          <input value={expireDays} onChange={(e) => setExpireDays(e.target.value)} type="number" placeholder="有效期天数" className="w-28 px-3 py-2 rounded bg-panel2 border border-line text-white text-sm outline-none" />
-          <button onClick={create} disabled={busy} className="px-4 py-2 rounded bg-brand text-white text-sm disabled:opacity-50">生成</button>
+        <div className="text-center text-fg font-medium mb-4">套系分享</div>
+
+        {/* Tab 切换栏 */}
+        <div className="flex border-b border-line mb-5">
+          {tabBtn('h5', 'H5', IconH5)}
+          {tabBtn('miniprogram', '小程序', IconMini)}
         </div>
 
-        <div className="space-y-3">
-          {shares.length === 0 && <div className="text-muted text-sm text-center py-4">暂无分享链接</div>}
-          {shares.map((s) => (
-            <div key={s.token} className="flex gap-3 border border-line rounded-lg p-3 bg-panel2">
-              {s.qr_url ? <img src={s.qr_url} className="w-20 h-20 rounded object-contain bg-white" /> : null}
-              <div className="flex-1 min-w-0">
-                <div className="text-white text-sm truncate">{s.title}</div>
-                <div className="text-xs text-muted mt-0.5">
-                  {s.has_password ? '🔒 密码保护 · ' : ''}{s.expire_at ? '有效期至 ' + s.expire_at : '长期有效'} · {s.disabled ? '已关闭' : '生效中'}
+        {/* 二维码区域 */}
+        <div className="flex items-center justify-center" style={{ minHeight: 200 }}>
+          {loading ? (
+            <div className="text-sm" style={{ color: '#9ca3af' }}>二维码生成中…</div>
+          ) : err ? (
+            <div className="text-sm text-center px-4" style={{ color: '#e53e3e' }}>{err}</div>
+          ) : qr ? (
+            tab === 'h5' ? (
+              <img src={qr} alt="套系 H5 分享二维码" className="w-44 h-44 rounded-lg bg-white" />
+            ) : (
+              <div className="relative" style={{ width: 184, height: 184 }}>
+                <div className="w-full h-full rounded-full overflow-hidden bg-white"
+                  style={{ boxShadow: '0 0 0 6px #fff, 0 0 0 7px #07C160' }}>
+                  <img src={qr} alt="套系小程序二维码" className="w-full h-full object-cover" />
                 </div>
-                <div className="text-xs text-brand mt-1 truncate" onClick={() => copy(s.share_url)}>复制链接</div>
+                <span className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full flex items-center justify-center"
+                  style={{ background: '#07C160' }}>
+                  <IconMini style={{ color: '#fff' }} />
+                </span>
               </div>
-              <div className="flex flex-col gap-2 items-end">
-                <button onClick={() => toggle(s)} className="text-xs text-muted hover:text-white">{s.disabled ? '启用' : '关闭'}</button>
-                <button onClick={() => remove(s)} className="text-xs text-red-400 hover:underline">删除</button>
-              </div>
-            </div>
-          ))}
+            )
+          ) : (
+            <div className="text-sm" style={{ color: '#9ca3af' }}>暂无二维码</div>
+          )}
         </div>
 
-        <div className="flex justify-end mt-4">
-          <button onClick={onClose} className="px-4 py-2 rounded text-sm text-muted">关闭</button>
+        {/* 提示文字 */}
+        <div className="text-center text-sm mt-4" style={{ color: '#666' }}>使用微信扫描以上二维码</div>
+
+        {/* 复制链接 */}
+        <div className="text-center mt-2">
+          <button onClick={onCopy} className="text-sm font-medium hover:underline" style={{ color: '#2f7cf6' }}>复制链接</button>
+          {copyTip && <span className="ml-2 text-xs" style={{ color: '#16a34a' }}>{copyTip}</span>}
         </div>
       </div>
     </div>
