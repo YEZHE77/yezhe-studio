@@ -23,7 +23,7 @@ export default function BusinessCard() {
       const d = r.data || {};
       setForm({
         name: d.name || '叶哲 Studio',
-        intro: d.intro || '海口婚礼 / 人像摄影',
+        intro: d.slogan || d.intro || '海口婚礼 / 人像摄影',
         logo: d.logo || '',
         phone: (d.contact && d.contact.phone) || '',
         wechat: (d.contact && d.contact.wechat) || '',
@@ -113,7 +113,7 @@ export default function BusinessCard() {
         <div className="bg-panel border border-line rounded-xl2 p-5 space-y-3">
           <label className="block"><div className="text-xs text-muted mb-1.5">名称</div>
             <input className={inputCls} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></label>
-          <label className="block"><div className="text-xs text-muted mb-1.5">简介</div>
+          <label className="block"><div className="text-xs text-muted mb-1.5">品牌 Slogan</div>
             <input className={inputCls} value={form.intro} onChange={(e) => setForm({ ...form, intro: e.target.value })} /></label>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <label className="block"><div className="text-xs text-muted mb-1.5">电话</div>
