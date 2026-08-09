@@ -201,74 +201,65 @@ export default function Schedule() {
       </div>
 
       <div className="flex flex-col lg:flex-row lg:items-start gap-4">
-        {/* 日历卡片容器（白色大卡片，内部日期为独立卡片） */}
+        {/* 日历主体：直接渲染在白色主内容容器内（直角网格，无卡片包裹） */}
         <div className="lg:flex-1 min-w-0">
-          <div className="bg-white rounded-lg p-5 overflow-x-auto" style={{ boxShadow: '0 2px 12px rgba(0,0,0,0.08)' }}>
-            <div className="min-w-[720px]">
+          <div className="bg-white border border-line overflow-x-auto">
+            <div className="min-w-[680px]">
               {/* 星期表头 */}
-              <div className="grid grid-cols-7 mb-4">
-                {WEEK.map((w) => <div key={w} className="text-center text-[13px] font-medium" style={{ color: '#333333' }}>{w}</div>)}
+              <div className="grid grid-cols-7">
+                {WEEK.map((w) => <div key={w} className="text-center text-xs py-2 border-r border-b border-line" style={{ color: '#888888', background: '#fafafa' }}>{w}</div>)}
               </div>
-              {/* 日期卡片 */}
-              <div className="grid grid-cols-7 gap-3">
+              {/* 日期格（直角网格单元） */}
+              <div className="grid grid-cols-7">
                 {cells.map((day, i) => {
-                  if (day == null) return <div key={i} className="min-h-[130px]" />;
+                  if (day == null) return <div key={i} className="border-r border-b border-line min-h-[88px]" />;
                   const date = `${y}-${pad(m)}-${pad(day)}`;
                   const rows = map[date] || [];
                   const pends = pendMap[date] || [];
                   const st = dayState(rows);
                   const lunar = lunarMap[date] || '';
                   const selected = selDate === date;
-                  let cellCls = 'relative rounded p-3 cursor-pointer transition flex flex-col min-h-[130px] ';
+                  let cellCls = 'border-r border-b border-line';
                   let style = {};
                   if (st.kind === 'closed') {
-                    cellCls += 'hover:ring-1 hover:ring-inset hover:ring-[#2890F0]';
                     style = { background: 'repeating-linear-gradient(45deg,' + CLOSED_BG + ',' + CLOSED_BG + ' 6px,#e8e8e8 6px,#e8e8e8 12px)', color: '#999999' };
-                  } else {
-                    cellCls += 'bg-white border border-[#EEEEEE] hover:shadow-sm hover:ring-1 hover:ring-inset hover:ring-[#2890F0]';
-                    if (st.kind === 'unpaid' || st.kind === 'wait') {
-                      style = { background: BOOKED_BG, borderColor: '#f3a6ad' };
-                    }
-                  }
-                  if (selected) {
-                    cellCls = cellCls.replace('hover:ring-1 hover:ring-inset hover:ring-[#2890F0]', '').replace('hover:shadow-sm', '') + ' ring-2 ring-inset ring-[#2890F0]';
+                  } else if (st.kind === 'unpaid' || st.kind === 'wait') {
+                    style = { background: BOOKED_BG, borderColor: '#f3a6ad' };
                   }
                   const orderRow = st.orderRows[0];
                   const statusColor = cellStatusColor(orderRow);
                   return (
-                    <div key={i} onClick={() => setSelDate(date)} className={cellCls} style={style}>
-                      {/* 第一行：状态色块 + 公历 + 待确认点 */}
+                    <div key={i} onClick={() => setSelDate(date)}
+                      className={'min-h-[88px] p-2 cursor-pointer transition flex flex-col hover:ring-1 hover:ring-inset hover:ring-[#2890F0] ' + cellCls + (selected ? ' ring-2 ring-inset ring-[#2890F0]' : '')}
+                      style={style}>
+                      {/* 左上角状态小色块 + 公历日期 */}
                       <div className="flex items-start justify-between gap-1">
                         <div className="flex items-center gap-1.5">
-                          {statusColor && <span className="w-2 h-2 rounded-[2px] mt-1.5" style={{ background: statusColor }} />}
-                          <span className="text-base font-medium" style={{ color: st.kind === 'closed' ? '#999999' : '#333333' }}>{day}</span>
+                          {statusColor && <span className="w-2.5 h-2.5 mt-0.5 inline-block" style={{ background: statusColor }} />}
+                          <span className={'text-sm ' + (st.kind === 'closed' ? 'text-[#999999]' : 'text-[#333333]')}>{day}</span>
                         </div>
-                        {pends.length > 0 && <span className="w-2 h-2 rounded-full mt-1.5" style={{ background: '#f0a020' }} />}
+                        {pends.length > 0 && <span className="w-2 h-2 mt-1 inline-block" style={{ background: '#f0a020' }} />}
                       </div>
                       {/* 农历 */}
-                      {lunar && <div className="text-[10px] mt-0.5" style={{ color: st.kind === 'closed' ? '#999999' : '#888888' }}>{lunar}</div>}
+                      {lunar && <div className={'text-[10px] leading-tight ' + (st.kind === 'closed' ? 'text-[#999999]' : 'text-[#888888]')}>{lunar}</div>}
                       {/* 关闭态提示 */}
-                      {st.kind === 'closed' && <div className="mt-2 text-xs" style={{ color: '#999999' }}>档期已关闭</div>}
+                      {st.kind === 'closed' && <div className="mt-1 text-[11px] text-[#999999]">档期已关闭</div>}
                       {/* 预约/档期信息 */}
                       {st.kind !== 'closed' && st.orderRows[0] && (
-                        <div className="mt-1.5">
-                          <div className="text-xs truncate" style={{ color: '#7a1f3d' }}>{st.orderRows[0].order_customer || st.orderRows[0].order_no}</div>
-                        </div>
+                        <div className="mt-1"><div className="text-xs truncate" style={{ color: '#7a1f3d' }}>{st.orderRows[0].order_customer || st.orderRows[0].order_no}</div></div>
                       )}
                       {st.kind !== 'closed' && !st.orderRows[0] && rows[0] && (
-                        <div className="mt-1.5">
-                          <div className="text-xs truncate" style={{ color: '#333333' }}>{rows[0].photographer || SSTATUS[rows[0].status] || '档期'}</div>
-                        </div>
+                        <div className="mt-1"><div className="text-xs truncate" style={{ color: '#333333' }}>{rows[0].photographer || SSTATUS[rows[0].status] || '档期'}</div></div>
                       )}
                       {pends.length > 0 && <div className="mt-1 text-[10px] truncate" style={{ color: '#b9742a' }}>待确认 ×{pends.length}</div>}
                       {rows.length > 1 && <div className="text-[10px] mt-0.5" style={{ color: '#888888' }}>+{rows.length - 1} 档期</div>}
                       {/* 底部：左下角 +添加 / 右下角 订单数量 */}
-                      <div className="mt-auto flex items-end justify-between gap-1 pt-2">
+                      <div className="mt-auto flex items-end justify-between gap-1 pt-1">
                         <button onClick={(e) => { e.stopPropagation(); openNew(day); }}
-                          className="inline-flex items-center gap-0.5 text-[11px] hover:opacity-80"
-                          style={{ color: BLUE }}>+ 添加</button>
+                          className="inline-flex items-center gap-0.5 px-2 py-1 text-white text-[11px] hover:opacity-90"
+                          style={{ background: BLUE }}>+ 添加</button>
                         {st.orderRows.length > 0 && (
-                          <span className="shrink-0 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-medium text-white rounded-[2px]" style={{ background: COUNT_BG }}>{st.orderRows.length}</span>
+                          <span className="shrink-0 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-medium text-white" style={{ background: COUNT_BG }}>{st.orderRows.length}</span>
                         )}
                       </div>
                     </div>
@@ -279,8 +270,8 @@ export default function Schedule() {
           </div>
         </div>
 
-        {/* 右侧深色卡片面板 */}
-        <div className="w-full rounded-lg p-4 lg:w-[280px] lg:flex-none lg:sticky lg:top-4 lg:self-start lg:max-h-[calc(100vh-2rem)] lg:overflow-auto" style={{ background: PANEL_BG, boxShadow: '0 2px 12px rgba(0,0,0,0.12)' }}>
+        {/* 右侧固定悬浮深色侧边面板（非卡片，直角） */}
+        <div className="w-full p-4 lg:w-[280px] lg:flex-none lg:sticky lg:top-4 lg:self-start lg:max-h-[calc(100vh-2rem)] lg:overflow-auto border border-[#222]" style={{ background: PANEL_BG }}>
           <div className="text-sm mb-2 text-center" style={{ color: '#ffffff' }}>{y}年{m}月</div>
           <div className="flex justify-center mb-3">
             <div className="w-16 h-16 flex items-center justify-center" style={{ background: DATE_CIRCLE }}>
