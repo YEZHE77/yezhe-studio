@@ -34,35 +34,47 @@ const IconClose = (p) => (
   </svg>
 );
 const IconShare = (p) => (
-  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2"
+  // 向右弯曲箭头分享图形
+  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.8"
     strokeLinecap="round" strokeLinejoin="round" {...p}>
-    <circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" />
-    <path d="m8.6 13.5 6.8 4M15.4 6.5 8.6 10.5" />
+    <path d="M10 14c0-3 2.5-5 6-5h2" />
+    <path d="M15 6l5 3-5 3" />
   </svg>
 );
 const IconEdit = (p) => (
-  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2"
+  // 方形方框内部放置一支铅笔编辑图标
+  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.8"
     strokeLinecap="round" strokeLinejoin="round" {...p}>
-    <path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
+    <rect x="3" y="3" width="18" height="18" rx="2" />
+    <path d="M16 8l2 2-8 8h-2v-2l8-8Z" />
   </svg>
 );
-const IconEye = (p) => (
-  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2"
+const IconCartDown = (p) => (
+  // 购物小车 + 向下箭头下架图形
+  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.8"
     strokeLinecap="round" strokeLinejoin="round" {...p}>
-    <path d="M2 12s3 8 10 8 10-8 10-8-3-8-10-8-10 8-10 8Z" /><circle cx="12" cy="12" r="3" />
+    <path d="M2 5h4l2 10h12l2-8H8" />
+    <circle cx="10" cy="19" r="1.5" fill="currentColor" stroke="none" />
+    <circle cx="18" cy="19" r="1.5" fill="currentColor" stroke="none" />
+    <path d="M17 3v6M14 6l3 3 3-3" />
   </svg>
 );
-const IconEyeOff = (p) => (
-  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2"
+const IconCartUp = (p) => (
+  // 购物小车 + 向上箭头上架图形（下架的反向操作，保持同一购物车轮廓）
+  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.8"
     strokeLinecap="round" strokeLinejoin="round" {...p}>
-    <path d="M9.9 4.2A9.8 9.8 0 0 1 12 4c7 0 10 8 10 8a13 13 0 0 1-2 2.7M6.6 6.6A13 13 0 0 0 2 12s3 8 10 8a9.6 9.6 0 0 0 5.4-1.6" />
-    <path d="m2 2 20 20" />
+    <path d="M2 5h4l2 10h12l2-8H8" />
+    <circle cx="10" cy="19" r="1.5" fill="currentColor" stroke="none" />
+    <circle cx="18" cy="19" r="1.5" fill="currentColor" stroke="none" />
+    <path d="M17 9V3M14 6l3-3 3 3" />
   </svg>
 );
 const IconTrash = (p) => (
-  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2"
+  // 垃圾桶轮廓图标
+  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.8"
     strokeLinecap="round" strokeLinejoin="round" {...p}>
     <path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" />
+    <path d="M10 11v6M14 11v6" />
   </svg>
 );
 const IconList = (p) => (
@@ -82,12 +94,12 @@ const IconFilter = (p) => (
     <path d="M3 4h18l-7 8v6l-4 2v-8L3 4Z" />
   </svg>
 );
-// 列表项右侧图标按钮（无文字，纯图标，hover 高亮）
-const IconBtn = ({ title, danger, onClick, children }) => (
+// 列表项右侧【图标 + 文字】操作按钮（无背景框、无圆角，默认 #666，hover #333）
+const ActionBtn = ({ title, onClick, children }) => (
   <button title={title} onClick={onClick}
-    className="p-2 rounded-lg hover:bg-panel2 transition-colors"
-    style={{ color: danger ? '#e4393c' : '#6b7280' }}>
+    className="flex items-center gap-2 text-[13px] leading-4 text-[#666666] hover:text-[#333333] transition-colors cursor-pointer bg-transparent border-0 p-0 whitespace-nowrap">
     {children}
+    <span>{title}</span>
   </button>
 );
 
@@ -304,14 +316,14 @@ export default function Packages() {
                     </div>
                   </div>
 
-                  {/* 右侧图标按钮组：分享｜编辑｜下架｜删除 */}
-                  <div className="flex items-center gap-0.5 ml-auto shrink-0 self-center">
-                    <IconBtn title="分享" onClick={() => openShareQr(p)}><IconShare /></IconBtn>
-                    <IconBtn title="编辑" onClick={() => nav('/packages/' + p.id + '/edit')}><IconEdit /></IconBtn>
-                    <IconBtn title={off ? '上架' : '下架'} onClick={() => toggleStatus(p)}>
-                      {off ? <IconEye /> : <IconEyeOff />}
-                    </IconBtn>
-                    <IconBtn title="删除" danger onClick={() => del(p.id)}><IconTrash /></IconBtn>
+                  {/* 右侧操作按钮组：分享 → 编辑 → 下架 → 删除（图标 + 文字） */}
+                  <div className="flex items-center gap-8 ml-auto shrink-0 self-center">
+                    <ActionBtn title="分享" onClick={() => openShareQr(p)}><IconShare /></ActionBtn>
+                    <ActionBtn title="编辑" onClick={() => nav('/packages/' + p.id + '/edit')}><IconEdit /></ActionBtn>
+                    <ActionBtn title={off ? '上架' : '下架'} onClick={() => toggleStatus(p)}>
+                      {off ? <IconCartUp /> : <IconCartDown />}
+                    </ActionBtn>
+                    <ActionBtn title="删除" onClick={() => del(p.id)}><IconTrash /></ActionBtn>
                   </div>
                 </div>
               );
