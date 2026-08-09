@@ -1,0 +1,13 @@
+{
+  "name": "studio-e2e-visual",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "订单详情页真实浏览器 UI 回归：启动 Chrome 走完整交互流程并截图（本质是调已验证接口，价值在视觉与弹窗交互回归）",
+  "scripts": {
+    "visual": "node order-detail-visual.mjs"
+  },
+  "dependencies": {
+    "puppeteer-core": "^23.0.0"
+  }
+}

@@ -1,6 +1,17 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import http, { img, uploadImage, uploadBatch } from '../api.js';
+import CropperModal from '../components/CropperModal.jsx';
+
+// dataURL → File（裁切结果保存时上传用）
+function dataURLtoFile(dataUrl, name = 'cover.jpg') {
+  const [meta, b64] = dataUrl.split(',');
+  const mime = (meta.match(/:(.*?);/) || [])[1] || 'image/jpeg';
+  const bin = atob(b64);
+  const arr = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+  return new File([arr], name, { type: mime });
+}
 
 /* ==========================================================================
    套系编辑页面（后台管理 → 工作台 > 套系 > 套系编辑）
@@ -192,6 +203,11 @@ export default function PackageEdit() {
   const [editRaw, setEditRaw] = useState(false);
   const [editDisc, setEditDisc] = useState(false);
   const [editAgr, setEditAgr] = useState(false);
+  // 套系封面裁切：选中图存 cropSrc 唤起弹窗；裁切结果存 coverPending（仅保存时上传）
+  const [coverPending, setCoverPending] = useState(null);
+  const [cropOpen, setCropOpen] = useState(false);
+  const [cropSrc, setCropSrc] = useState(null);
+  const coverInputRef = useRef(null);
 
   const setD = (patch) => setForm((f) => ({ ...f, details: { ...f.details, ...patch } }));
   const setF = (patch) => setForm((f) => ({ ...f, ...patch }));
@@ -219,17 +235,21 @@ export default function PackageEdit() {
   }, [id]);
 
   // ---- 上传 ----
-  const onCover = async (e) => {
+  // 选图：仅做格式/大小校验并唤起裁切弹窗，不直接上传后端
+  const onCoverSelect = (e) => {
     const file = e.target.files && e.target.files[0];
     e.target.value = '';
     if (!file) return;
-    setUploading('cover');
-    try {
-      const r = await uploadImage(file, { category: 'cover-sample', isPublic: true });
-      setF({ cover_url: r.url });
-    } catch (err) { alert('封面上传失败：' + (err.message || err)); }
-    finally { setUploading(''); }
+    const OK_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+    if (!OK_TYPES.includes(file.type)) { alert('仅支持 jpg / png / jpeg / webp 格式'); return; }
+    if (file.size > 3 * 1024 * 1024) { alert('图片大小不能超过 3MB'); return; }
+    const reader = new FileReader();
+    reader.onload = () => { setCropSrc(reader.result); setCropOpen(true); };
+    reader.readAsDataURL(file);
   };
+  const handleCropConfirm = (dataUrl) => { setCoverPending(dataUrl); setCropOpen(false); setCropSrc(null); };
+  const handleCropCancel = () => { setCropOpen(false); setCropSrc(null); };
+  const clearCover = () => { setCoverPending(null); setF({ cover_url: '' }); };
   const onDetailImages = async (e) => {
     const files = Array.from(e.target.files || []);
     e.target.value = '';
@@ -295,7 +315,12 @@ export default function PackageEdit() {
   ];
   const validate = () => {
     const errs = [];
+    const coverVal = form.cover_url || coverPending;
     for (const r of REQUIRED) {
+      if (r.k === 'cover_url') {
+        if (!coverVal) errs.push(r);
+        continue;
+      }
       const v = r.d ? form.details[r.k] : form[r.k];
       if (v === '' || v === null || v === undefined || (typeof v === 'string' && !v.trim())) {
         errs.push(r);
@@ -308,21 +333,28 @@ export default function PackageEdit() {
     if (e && e.preventDefault) e.preventDefault();
     const errs = validate();
     if (errs.length) {
-      setErrors(errs.map((x) => x.label));
+      setErrors(errs.map((x) => (x.k === 'cover_url' ? '请上传并裁切套系封面' : x.label)));
       setTab(errs[0].tabs[0]);
       return;
     }
     setErrors([]);
     setSaving(true);
-    const d = form.details;
-    const payload = {
-      name: form.name, price: parseFloat(form.price) || 0, deposit: parseFloat(form.deposit) || 0,
-      category_id: form.category_id || null, cover_url: form.cover_url || '', description: form.description || '',
-      status: form.status, addons: form.addons || [], marketing: form.marketing || {}, specs: form.specs || [],
-      questionnaire: Array.isArray(d.questionnaire) ? JSON.stringify(d.questionnaire) : '',
-      details: d
-    };
     try {
+      // 仅当存在裁切结果时才上传图片，未裁切则不提交图片
+      let coverUrl = form.cover_url || '';
+      if (coverPending) {
+        const file = dataURLtoFile(coverPending, 'cover.jpg');
+        const r = await uploadImage(file, { category: 'cover', isPublic: true });
+        coverUrl = r.url;
+      }
+      const d = form.details;
+      const payload = {
+        name: form.name, price: parseFloat(form.price) || 0, deposit: parseFloat(form.deposit) || 0,
+        category_id: form.category_id || null, cover_url: coverUrl, description: form.description || '',
+        status: form.status, addons: form.addons || [], marketing: form.marketing || {}, specs: form.specs || [],
+        questionnaire: Array.isArray(d.questionnaire) ? JSON.stringify(d.questionnaire) : '',
+        details: d
+      };
       if (isEdit) await http.put('/api/packages/' + id, payload);
       else await http.post('/api/packages', payload);
       nav('/packages');
@@ -370,24 +402,41 @@ export default function PackageEdit() {
           {/* ============ Tab1 套系名称 ============ */}
           {tab === 0 && (
             <div>
-              {/* 套系封面：预览 240x180，虚线 1px #D1D5DB，圆角 4px；移除按钮在组件下方 */}
+              {/* 套系封面：虚线框上传区；选图唤起裁切弹窗，裁切后回显预览；保存时才上传 */}
               <Field label="套系封面" required>
                 <div className="flex items-center gap-4">
-                  <label className="relative w-60 h-[180px] rounded border border-dashed flex items-center justify-center cursor-pointer overflow-hidden shrink-0"
-                    style={{ borderColor: INPUT_BORDER, background: '#fff' }}>
-                    {form.cover_url
-                      ? <img src={img(form.cover_url)} alt="" className="w-full h-full object-cover" />
-                      : <span className="w-12 h-12 rounded-full flex items-center justify-center" style={{ background: '#f0f2f5', color: '#9aa0a8' }}><IconPlus width={24} height={24} /></span>}
-                    <input type="file" accept="image/*" onChange={onCover} className="hidden" />
-                  </label>
+                  {coverPending || form.cover_url ? (
+                    <div className="relative w-60 h-[180px] rounded border overflow-hidden shrink-0 group"
+                      style={{ borderColor: INPUT_BORDER, background: '#fff' }}>
+                      <img src={coverPending || img(form.cover_url)} alt="" className="w-full h-full object-cover" />
+                      {/* 悬浮：重新上传 / 重新裁切 */}
+                      <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                        style={{ background: 'rgba(0,0,0,0.45)' }}
+                        onClick={() => coverInputRef.current && coverInputRef.current.click()}>
+                        <span className="text-white text-xs">重新上传 / 重新裁切</span>
+                      </div>
+                      {/* 删除图标 */}
+                      <button type="button" onClick={clearCover}
+                        className="absolute top-1 right-1 p-1 rounded-full bg-black/60 text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                        aria-label="删除封面"><IconClose /></button>
+                    </div>
+                  ) : (
+                    <label className="relative w-60 h-[180px] rounded border border-dashed flex items-center justify-center cursor-pointer overflow-hidden shrink-0"
+                      style={{ borderColor: INPUT_BORDER, background: '#fff' }}
+                      onClick={() => coverInputRef.current && coverInputRef.current.click()}>
+                      <span className="w-12 h-12 rounded-full flex items-center justify-center" style={{ background: '#f0f2f5', color: '#9aa0a8' }}><IconPlus width={24} height={24} /></span>
+                    </label>
+                  )}
                   <div className="flex flex-col gap-1.5">
-                    <span className="text-xs" style={{ color: NOTE }}>{uploading === 'cover' ? '上传中…' : '点击虚线框上传封面'}</span>
-                    {form.cover_url && (
-                      <button type="button" onClick={() => setF({ cover_url: '' })}
+                    <span className="text-xs" style={{ color: NOTE }}>{coverPending ? '已裁切，保存时上传' : '点击虚线框上传封面'}</span>
+                    {(coverPending || form.cover_url) && (
+                      <button type="button" onClick={clearCover}
                         className="text-xs w-fit hover:opacity-80" style={{ color: NOTE }}>移除</button>
                     )}
                   </div>
                 </div>
+                <input ref={coverInputRef} type="file" accept="image/jpeg,image/png,image/webp"
+                  onChange={onCoverSelect} className="hidden" />
               </Field>
 
               {/* 基础信息：套系名称 占满整行（拉宽到卡片右侧边界） */}
@@ -789,6 +838,11 @@ export default function PackageEdit() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* 套系封面临时裁切弹窗：选图后唤起，确认才生成裁切图 */}
+      {cropOpen && cropSrc && (
+        <CropperModal src={cropSrc} onCancel={handleCropCancel} onConfirm={handleCropConfirm} />
       )}
     </div>
   );
