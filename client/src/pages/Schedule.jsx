@@ -11,7 +11,7 @@ const SSTATUS = { free: '空闲', booked: '已约', locked: '锁场', closed: '�
 
 // 档期页色号（对齐 1:1 复刻 spec）
 const PAGE_BG = '#F7F8FA';
-const PANEL_BG = '#333333';         // 右侧面板深色
+const PANEL_BG = '#3A3A3A';         // 右侧面板深色
 const DATE_CIRCLE = '#FFBC00';      // 右侧面板日期黄块（白字）
 const BLUE = '#2196F3';             // 弹窗/链接蓝
 const ADD_BLUE = '#1677ff';         // 单元格内「+添加」按钮蓝
@@ -205,7 +205,7 @@ export default function Schedule() {
         </div>
 
       {/* ===================== 日历主体 + 右侧面板（同处一个白色大卡片内） ===================== */}
-      <div className="flex items-stretch" style={{ gap: 24 }}>
+      <div className="flex items-stretch" style={{ gap: 0 }}>
         {/* 左侧日历网格（flex:1，不另起白色卡片，直接在大卡片内；flex 列布局让网格填充容器高度） */}
         <div className="flex-1 min-w-0 flex flex-col" style={{ minHeight: 700 }}>
           {/* 星期表头 */}
@@ -278,61 +278,66 @@ export default function Schedule() {
           </div>
         </div>
 
-        {/* 右侧深色信息面板（在大卡片 flex 内，固定 220px，高度继承左侧） */}
-        <div className="w-[220px] shrink-0 flex flex-col" style={{ background: PANEL_BG, color: '#FFFFFF', borderRadius: 8, padding: '20px 16px' }}>
-          {/* 顶部：年月 + 黄色日期块 + 农历 */}
-          <div className="text-center" style={{ fontSize: 12, color: '#bbbbbb', marginBottom: 14 }}>{y}年{m}月</div>
-          <div className="flex justify-center">
-            <div className="flex items-center justify-center" style={{ background: DATE_CIRCLE, width: 84, height: 84, borderRadius: 6, margin: '0 auto 14px' }}>
-              <span style={{ fontSize: 48, fontWeight: 700, color: '#ffffff' }}>{selParts[2] || '--'}</span>
+        {/* 右侧深色信息面板（在大卡片 flex 内；按钮在剩余空间内纵向居中，不贴底） */}
+        <div className="calendar-side-info shrink-0 flex flex-col" style={{ width: 200, minHeight: 620, marginLeft: 20, background: PANEL_BG, color: '#FFFFFF', borderRadius: 8, padding: '16px 12px' }}>
+          {/* 顶部内容：年月 + 黄色日期块 + 农历 + 档期列表（保持靠上、左对齐） */}
+          <div className="side-info-top" style={{ display: 'flex', flexDirection: 'column' }}>
+            <div className="text-center" style={{ fontSize: 12, color: '#bbbbbb', marginBottom: 14 }}>{y}年{m}月</div>
+            <div className="flex justify-center">
+              <div className="flex items-center justify-center" style={{ background: DATE_CIRCLE, width: 84, height: 84, borderRadius: 6, margin: '0 auto 14px' }}>
+                <span style={{ fontSize: 48, fontWeight: 700, color: '#ffffff' }}>{selParts[2] || '--'}</span>
+              </div>
             </div>
-          </div>
-          <div className="text-center" style={{ fontSize: 14, color: '#cccccc', marginBottom: 20 }}>{selDate ? (lunarMap[selDate] || '') : ''}</div>
+            <div className="text-center" style={{ fontSize: 14, color: '#cccccc', marginBottom: 20 }}>{selDate ? (lunarMap[selDate] || '') : ''}</div>
 
-          <div style={{ borderTop: '1px solid #555555', margin: '16px 0' }} />
+            <div style={{ borderTop: '1px solid #555555', margin: '16px 0' }} />
 
-          <div className="flex-1">
-            {dayRows.length === 0 && dayPends.length === 0 && (
-              <div className="text-center" style={{ fontSize: 14, color: '#eeeeee' }}>无档期安排</div>
-            )}
+            <div className="flex-1">
+              {dayRows.length === 0 && dayPends.length === 0 && (
+                <div className="text-center" style={{ fontSize: 14, color: '#eeeeee' }}>无档期安排</div>
+              )}
 
-            {dayRows.map((s) => (
-              <div key={s.id} className="flex items-start justify-between p-3 mb-2" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }}>
-                <div className="min-w-0">
-                  <div className="text-sm" style={{ color: '#ffffff' }}>{s.periods && s.periods.length ? s.periods.join('、') : (SSTATUS[s.status] || s.period || '全天')}</div>
-                  <div className="text-[11px] mt-0.5" style={{ color: '#b9bdc4' }}>
-                    {s.order_customer ? `客户：${s.order_customer}` : (s.executor_name || s.photographer || '未指派')}
-                    {s.order_no ? ' · ' + s.order_no : ''}
+              {dayRows.map((s) => (
+                <div key={s.id} className="flex items-start justify-between p-3 mb-2" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }}>
+                  <div className="min-w-0">
+                    <div className="text-sm" style={{ color: '#ffffff' }}>{s.periods && s.periods.length ? s.periods.join('、') : (SSTATUS[s.status] || s.period || '全天')}</div>
+                    <div className="text-[11px] mt-0.5" style={{ color: '#b9bdc4' }}>
+                      {s.order_customer ? `客户：${s.order_customer}` : (s.executor_name || s.photographer || '未指派')}
+                      {s.order_no ? ' · ' + s.order_no : ''}
+                    </div>
+                    {s.order_pay_status === 'unpaid' && <span className="inline-block mt-1 text-[10px] px-1.5 py-0.5" style={{ background: LEGEND_UNPAID, color: '#8a6d00' }}>未付定</span>}
+                    {s.order_status === 'deposit' && <span className="inline-block mt-1 text-[10px] px-1.5 py-0.5" style={{ background: LEGEND_WAIT, color: '#2e7d32' }}>等待拍</span>}
+                    {s.date_tbd ? <span className="inline-block mt-1 text-[10px] px-1.5 py-0.5 ml-1" style={{ background: 'rgba(255,255,255,0.12)', color: '#e5c07b' }}>日期待定</span> : null}
                   </div>
-                  {s.order_pay_status === 'unpaid' && <span className="inline-block mt-1 text-[10px] px-1.5 py-0.5" style={{ background: LEGEND_UNPAID, color: '#8a6d00' }}>未付定</span>}
-                  {s.order_status === 'deposit' && <span className="inline-block mt-1 text-[10px] px-1.5 py-0.5" style={{ background: LEGEND_WAIT, color: '#2e7d32' }}>等待拍</span>}
-                  {s.date_tbd ? <span className="inline-block mt-1 text-[10px] px-1.5 py-0.5 ml-1" style={{ background: 'rgba(255,255,255,0.12)', color: '#e5c07b' }}>日期待定</span> : null}
+                  <button onClick={() => openEdit(s)} className="shrink-0 ml-2 px-2 py-1 text-xs hover:opacity-80" style={{ color: '#ffffff', border: '1px solid rgba(255,255,255,0.25)' }}>编辑</button>
                 </div>
-                <button onClick={() => openEdit(s)} className="shrink-0 ml-2 px-2 py-1 text-xs hover:opacity-80" style={{ color: '#ffffff', border: '1px solid rgba(255,255,255,0.25)' }}>编辑</button>
-              </div>
-            ))}
+              ))}
 
-            {dayPends.map((a) => (
-              <div key={a.id} className="border p-3 mb-2" style={{ background: 'rgba(251,191,36,0.12)', borderColor: 'rgba(251,191,36,0.4)' }}>
-                <div className="flex items-center justify-between">
-                  <div className="text-sm truncate" style={{ color: '#ffffff' }}>{a.name} · {a.phone}</div>
-                  <div className="text-[11px] shrink-0 ml-2" style={{ color: '#fbbf24' }}>{a.period ? (a.period === 'full' ? '全天' : '半天') : ''}</div>
+              {dayPends.map((a) => (
+                <div key={a.id} className="border p-3 mb-2" style={{ background: 'rgba(251,191,36,0.12)', borderColor: 'rgba(251,191,36,0.4)' }}>
+                  <div className="flex items-center justify-between">
+                    <div className="text-sm truncate" style={{ color: '#ffffff' }}>{a.name} · {a.phone}</div>
+                    <div className="text-[11px] shrink-0 ml-2" style={{ color: '#fbbf24' }}>{a.period ? (a.period === 'full' ? '全天' : '半天') : ''}</div>
+                  </div>
+                  {a.package_name && <div className="text-[11px]" style={{ color: '#b9bdc4' }}>套系：{a.package_name}</div>}
+                  {a.remark && <div className="text-[11px]" style={{ color: '#b9bdc4' }}>备注：{a.remark}</div>}
+                  <div className="flex gap-2 mt-2 justify-end">
+                    <button onClick={async () => { if (!confirm(`拒绝「${a.name}」的预约？`)) return; try { await http.post('/api/admin/appointments/' + a.id + '/reject', { reason: '该日期已排满' }); load(); } catch (e) { alert((e.response && e.response.data && e.response.data.error) || '拒绝失败'); } }} className="px-2 py-1 text-xs" style={{ color: '#f87171', border: '1px solid rgba(248,113,113,0.4)' }}>拒绝</button>
+                    <button onClick={async () => { if (!a.hope_date) return alert('该预约缺少期望日期'); if (!confirm(`接受「${a.name}」的预约并生成订单、锁定档期？`)) return; try { await http.post('/api/admin/appointments/' + a.id + '/confirm', { date: a.hope_date, period: a.period || 'full', photographer: a.photographer || '' }); alert('已接受：订单已生成并锁定档期'); load(); } catch (e) { alert((e.response && e.response.data && e.response.data.error) || '接受失败'); } }} className="px-2 py-1 text-white text-xs" style={{ background: BLUE }}>接受并锁档期</button>
+                  </div>
                 </div>
-                {a.package_name && <div className="text-[11px]" style={{ color: '#b9bdc4' }}>套系：{a.package_name}</div>}
-                {a.remark && <div className="text-[11px]" style={{ color: '#b9bdc4' }}>备注：{a.remark}</div>}
-                <div className="flex gap-2 mt-2 justify-end">
-                  <button onClick={async () => { if (!confirm(`拒绝「${a.name}」的预约？`)) return; try { await http.post('/api/admin/appointments/' + a.id + '/reject', { reason: '该日期已排满' }); load(); } catch (e) { alert((e.response && e.response.data && e.response.data.error) || '拒绝失败'); } }} className="px-2 py-1 text-xs" style={{ color: '#f87171', border: '1px solid rgba(248,113,113,0.4)' }}>拒绝</button>
-                  <button onClick={async () => { if (!a.hope_date) return alert('该预约缺少期望日期'); if (!confirm(`接受「${a.name}」的预约并生成订单、锁定档期？`)) return; try { await http.post('/api/admin/appointments/' + a.id + '/confirm', { date: a.hope_date, period: a.period || 'full', photographer: a.photographer || '' }); alert('已接受：订单已生成并锁定档期'); load(); } catch (e) { alert((e.response && e.response.data && e.response.data.error) || '接受失败'); } }} className="px-2 py-1 text-white text-xs" style={{ background: BLUE }}>接受并锁档期</button>
-                </div>
-              </div>
-            ))}
+              ))}
+            </div>
+
+            <div style={{ borderTop: '1px solid #555555', margin: '16px 0' }} />
           </div>
 
-          <div style={{ borderTop: '1px solid #555555', margin: '16px 0' }} />
-
-          <button onClick={selClosed ? undefined : () => openNew(selDate ? Number(selDate.slice(8, 10)) : null)} disabled={selClosed}
-            className="w-full text-white hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
-            style={{ marginTop: 'auto', background: ADD_BTN, height: 38, borderRadius: 4, fontSize: 13 }}>+ 添加档期</button>
+          {/* 按钮容器：上下 auto → 在面板剩余空间内纵向居中（不再贴底） */}
+          <div className="side-info-button-wrapper" style={{ marginTop: 'auto', marginBottom: 'auto', display: 'flex', justifyContent: 'center', width: '100%' }}>
+            <button onClick={selClosed ? undefined : () => openNew(selDate ? Number(selDate.slice(8, 10)) : null)} disabled={selClosed}
+              className="btn-add-schedule w-full text-white hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+              style={{ maxWidth: 160, height: 36, background: ADD_BTN, borderRadius: 4, fontSize: 13 }}>+ 添加档期</button>
+          </div>
         </div>
       </div>
 
