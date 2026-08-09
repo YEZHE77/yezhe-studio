@@ -15,7 +15,6 @@ const STAGE_COLOR = {
 };
 const TYPE_LABEL = { deposit: '定金', balance: '尾款', extra: '加片/增值', refund: '退款' };
 const PAY_STATUS_LABEL = { unpaid: '未付定金', deposit: '已付定金', paid: '已付全款' };
-const PAY_STATUS_COLOR = { unpaid: 'text-red-400', deposit: 'text-amber-400', paid: 'text-emerald-400' };
 
 // 订单详情 11 步流程进度条（由 status + 关键标记派生，不新建接口）
 const ORDER_STEPS = [
@@ -37,6 +36,28 @@ function computeStep(detail) {
   if (detail.status === 'cancelled') return -1;
   return STATUS_STEP[detail.status] ?? 2;
 }
+
+// —— 复刻 spec：订单头部 4 步进度条（支付订单‑完成拍摄‑上传底片‑完成），由订单状态驱动 ——
+const FLOW_STEPS = ['支付订单', '完成拍摄', '上传底片', '完成'];
+function getFlow(detail, photos) {
+  const paid = detail.payment_status && detail.payment_status !== 'unpaid';
+  const s = detail.status;
+  const done = [];
+  done[0] = !!paid; // 支付订单
+  done[1] = ['shot', 'selecting', 'retouching', 'delivered', 'completed'].includes(s); // 完成拍摄
+  done[2] = (photos.raw.length > 0) || ['selecting', 'retouching', 'delivered', 'completed'].includes(s); // 上传底片
+  done[3] = ['delivered', 'completed'].includes(s); // 完成
+  if (s === 'cancelled') return { done: [false, false, false, false], cur: -1 };
+  let cur = done.findIndex((d) => !d);
+  if (cur === -1) cur = done.length - 1;
+  return { done, cur };
+}
+
+// spec 全局色号
+const MINT = '#48c8b0';   // 主题薄荷绿 / 已完成节点 / 顶线 / 查看记录 / 调查问卷
+const BLUE = '#2b88e6';   // 主蓝色 / 当前节点 / 完成拍摄 / Tab 选中
+const DIV = '#e5e7eb';    // 分割线
+const CARD_SHADOW = '0 1px 4px rgba(0,0,0,0.06)';
 
 function asArr(v) {
   if (Array.isArray(v)) return v;
@@ -317,338 +338,356 @@ export default function OrderDetail() {
     ...(sel && sel.photos ? sel.photos.map((p) => ({ url: p.photo_url, kind: '选片' })) : [])
   ];
 
+  const flow = getFlow(detail, photos);
+  const statusText =
+    (detail.payment_status === 'unpaid' ? '未付定金' : (PAY_STATUS_LABEL[payKey] || '')) +
+    (detail.status ? '，' + (STATUS_LABEL[detail.status] || '') : '');
+  const custName = ([detail.groom_name, detail.bride_name].filter(Boolean).join(' & ') || detail.customer_name || '—');
+  const custInitial = (custName && custName !== '—') ? custName.slice(0, 1) : '客';
+  const offlinePay = detail.pay_method === 'offline' || detail.channel === 'offline' || detail.source === 'offline';
+
+  const CheckIcon = () => (
+    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="m5 13 4 4 10-10" /></svg>
+  );
+
   return (
-    <div className="max-w-6xl mx-auto">
-      {/* 面包屑由全局 <Breadcrumb /> 渲染 */}
-
-      {/* 顶部浅绿色顶边横线 */}
-      <div className="rounded-xl2 overflow-hidden border border-line bg-panel">
-        <div style={{ height: 4, background: '#7ecdbb' }} />
-
-        {/* 订单编号 + 状态 */}
-        <div className="flex items-center justify-between gap-4 flex-wrap px-5 pt-4">
-          <div>
-            <h1 className="text-2xl font-semibold text-fg">{detail.order_name || detail.order_no}</h1>
-            <div className="text-xs text-faint mt-1">订单编号：{detail.order_no}</div>
-          </div>
-          <span className="px-3 py-1 rounded-full text-xs bg-panel2 border border-line text-muted">
-            {detail.status === 'deposit' && detail.payment_status === 'unpaid' ? '未付定金' : (STATUS_LABEL[detail.status] || '历史订单')}
-          </span>
-        </div>
-
-        {/* 11 步流程进度条 */}
-        <div className="px-5 py-5">
-          <div className="flex items-center gap-1 overflow-x-auto">
-            {ORDER_STEPS.map((s, i) => {
-              const done = isStepDone(i);
-              const current = i === curStep && curStep >= 0;
-              return (
-                <React.Fragment key={s.key}>
-                  <div className={'flex flex-col items-center ' + (done ? '' : 'opacity-50')}>
-                    <div className={'w-3.5 h-3.5 rounded-full flex items-center justify-center ' + (done ? 'bg-brand' : 'bg-line') + (current ? ' ring-2 ring-brand/40' : '')}>
-                      {done && i === curStep && <span className="w-1.5 h-1.5 rounded-full bg-white" />}
-                    </div>
-                    <span className={'text-[10px] mt-1 whitespace-nowrap ' + (current ? 'text-brand font-medium' : 'text-muted')}>{s.label}</span>
-                  </div>
-                  {i < ORDER_STEPS.length - 1 && <div className={'flex-1 h-0.5 min-w-[12px] ' + (i < curStep ? 'bg-brand' : 'bg-line')} />}
-                </React.Fragment>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* 主体：左侧垂直按钮组 + 右侧内容 */}
-        <div className="flex gap-4 px-5 pb-5 items-start">
-          {/* 左侧垂直按钮组 */}
-          <div className="flex flex-col items-stretch gap-2 w-32 shrink-0">
-            <button onClick={finishShoot} disabled={detail.status === 'cancelled'}
-              className="px-3 py-2 rounded-lg bg-brand text-white text-sm disabled:opacity-40">完成拍摄</button>
-            <div className="relative">
-              <button onClick={openMiniQr} disabled={miniQrLoading}
-                className="w-full px-3 py-2 rounded-lg bg-white border border-line text-fg text-sm hover:border-brand disabled:opacity-40">分享订单</button>
-              {miniQr !== null && (
-                <>
-                  <div className="fixed inset-0 z-40 bg-black/30" onClick={closeMiniQr} />
-                  <div onClick={(e) => e.stopPropagation()}
-                    className="absolute bottom-full right-0 mb-2 z-50 w-60 bg-white rounded-xl p-4 shadow-2xl">
-                    <div className="text-fg font-medium mb-2">订单二维码</div>
-                    {miniQr ? (
-                      <img src={miniQr} alt="订单二维码" className="w-44 h-44 mx-auto rounded-lg" />
-                    ) : (
-                      <div className="text-muted text-sm py-8 text-center">生成中…</div>
-                    )}
-                    <div className="text-[11px] text-muted text-center mt-2">微信扫码查看订单（右键 / 长按可保存）</div>
-                  </div>
-                </>
-              )}
+    <div style={{ background: '#f5f7fa' }}>
+      {/* ============ Module 3：订单头部操作栏 ============ */}
+      <section style={{ background: '#ffffff', borderTop: '3px solid ' + MINT, borderBottom: '1px solid ' + DIV, borderRadius: 6, overflow: 'hidden' }}>
+        <div style={{ padding: '16px 24px' }}>
+          {/* 顶行：左 订单编号 / 右 状态 + 查看记录 */}
+          <div className="flex items-center justify-between" style={{ marginBottom: 20 }}>
+            <div style={{ fontSize: 14, color: '#333333' }}>
+              订单编号：<span style={{ fontWeight: 500 }}>{detail.order_no}</span>
             </div>
-            <button onClick={cancel} className="px-3 py-2 rounded-lg bg-white border border-line text-red-400 text-sm">关闭订单</button>
-            <div className="relative">
-              <button onClick={() => setMoreMenu((m) => !m)}
-                className="w-full px-3 py-2 rounded-lg bg-white border border-line text-fg text-sm hover:border-brand">更多设置</button>
+            <div className="flex items-center gap-3" style={{ fontSize: 14, color: '#666666' }}>
+              <span>{statusText}</span>
+              <button type="button" onClick={() => { setBottomTab('status'); }}
+                style={{ color: MINT, background: 'none', border: 'none', cursor: 'pointer', fontSize: 14 }}>查看记录</button>
+            </div>
+          </div>
+
+          {/* 主体：左 垂直按钮组 + 右 4 步进度条 */}
+          <div className="flex items-start" style={{ gap: 32 }}>
+            {/* 左侧垂直按钮组 */}
+            <div className="flex flex-col shrink-0" style={{ width: 140, gap: 12 }}>
+              <button type="button" onClick={finishShoot} disabled={detail.status === 'cancelled'}
+                style={{ width: 140, height: 40, borderRadius: 4, background: BLUE, color: '#fff', fontSize: 14, border: 'none', opacity: detail.status === 'cancelled' ? 0.4 : 1, cursor: 'pointer' }}>完成拍摄</button>
+              <button type="button" onClick={openMiniQr} disabled={miniQrLoading}
+                style={{ width: 140, height: 40, borderRadius: 4, background: '#222222', color: '#fff', fontSize: 14, border: 'none', cursor: 'pointer', opacity: miniQrLoading ? 0.6 : 1 }}>分享订单</button>
+              <button type="button" onClick={cancel}
+                style={{ background: 'none', border: 'none', color: '#666666', fontSize: 14, textAlign: 'left', cursor: 'pointer', padding: 0 }}>关闭订单</button>
+              <button type="button" onClick={() => setMoreMenu((m) => !m)}
+                style={{ background: 'none', border: 'none', color: '#666666', fontSize: 14, textAlign: 'left', cursor: 'pointer', padding: 0, position: 'relative' }}>更多设置</button>
               {moreMenu && (
-                <div className="absolute top-full right-0 mt-1 z-50 w-36 bg-white border border-line rounded-lg shadow-xl py-1 text-sm">
-                  <button onClick={() => { setMoreMenu(false); openEdit(); }} className="block w-full text-left px-3 py-2 hover:bg-panel2">编辑订单</button>
-                  <button onClick={() => { setMoreMenu(false); setPay({ type: 'deposit', amount: '', method: 'offline', note: '' }); }} className="block w-full text-left px-3 py-2 hover:bg-panel2">+ 收款</button>
-                  <button onClick={() => { setMoreMenu(false); refund(); }} className="block w-full text-left px-3 py-2 hover:bg-panel2">退款</button>
+                <div style={{ position: 'absolute', zIndex: 50, marginTop: 4, background: '#fff', border: '1px solid ' + DIV, borderRadius: 4, boxShadow: '0 6px 20px rgba(0,0,0,0.10)', padding: '4px 0', fontSize: 14, width: 140 }}>
+                  <button type="button" onClick={() => { setMoreMenu(false); openEdit(); }} style={moreItemStyle}>编辑订单</button>
+                  <button type="button" onClick={() => { setMoreMenu(false); setPay({ type: 'deposit', amount: '', method: 'offline', note: '' }); }} style={moreItemStyle}>+ 收款</button>
+                  <button type="button" onClick={() => { setMoreMenu(false); refund(); }} style={moreItemStyle}>退款</button>
                   {!detail.is_deleted
-                    ? <button onClick={() => { setMoreMenu(false); removeOrder(); }} className="block w-full text-left px-3 py-2 hover:bg-panel2 text-red-400">删除</button>
-                    : <button onClick={() => { setMoreMenu(false); restoreOrder(); }} className="block w-full text-left px-3 py-2 hover:bg-panel2 text-emerald-400">恢复</button>}
+                    ? <button type="button" onClick={() => { setMoreMenu(false); removeOrder(); }} style={{ ...moreItemStyle, color: '#ef4444' }}>删除</button>
+                    : <button type="button" onClick={() => { setMoreMenu(false); restoreOrder(); }} style={{ ...moreItemStyle, color: '#10b981' }}>恢复</button>}
                 </div>
               )}
+            </div>
+
+            {/* 右侧 4 步进度条 */}
+            <div className="flex-1" style={{ minWidth: 0 }}>
+              <div className="flex items-center" style={{ height: 64 }}>
+                {FLOW_STEPS.map((s, i) => (
+                  <React.Fragment key={s}>
+                    <div className="flex flex-col items-center" style={{ minWidth: 110 }}>
+                      <div style={{
+                        width: 28, height: 28, borderRadius: '50%',
+                        background: flow.done[i] ? MINT : (i === flow.cur ? BLUE : '#ffffff'),
+                        border: flow.done[i] || i === flow.cur ? 'none' : '2px solid #cccccc',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff'
+                      }}>
+                        {flow.done[i] ? <CheckIcon /> : (i === flow.cur ? <span style={{ fontSize: 13, fontWeight: 600 }}>{i + 1}</span> : null)}
+                      </div>
+                      <span style={{ fontSize: 13, marginTop: 8, color: (flow.done[i] || i === flow.cur) ? '#111111' : '#999999', fontWeight: i === flow.cur ? 600 : 400 }}>{s}</span>
+                    </div>
+                    {i < FLOW_STEPS.length - 1 && (
+                      <div style={{ flex: 1, height: 2, minWidth: 36, background: flow.done[i] ? MINT : '#e2e2e2' }} />
+                    )}
+                  </React.Fragment>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ============ Module 4：客户 & 订单信息卡片 ============ */}
+      <section style={{ margin: '16px 24px 0', background: '#ffffff', borderRadius: 6, boxShadow: CARD_SHADOW, padding: 24 }}>
+        {/* 顶部：左客户模块 / 右按钮组 */}
+        <div className="flex items-start justify-between" style={{ gap: 24 }}>
+          <div className="flex items-start" style={{ gap: 12 }}>
+            <div style={{ width: 48, height: 48, borderRadius: '50%', background: '#ede9fe', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#7c3aed', fontSize: 18, fontWeight: 600, flexShrink: 0 }}>
+              {custInitial}
+            </div>
+            <div>
+              <div className="flex items-center" style={{ gap: 8 }}>
+                <span style={{ background: '#fef2f2', color: '#ef4444', fontSize: 12, borderRadius: 4, padding: '2px 6px' }}>客户信息</span>
+                <span style={{ fontSize: 16, color: '#222222', fontWeight: 500 }}>{custName}</span>
+              </div>
+              <div style={{ marginTop: 16, width: 160, height: 120, borderRadius: 4, overflow: 'hidden', background: '#f3f4f6' }}>
+                {pkgInfo && pkgInfo.cover_url
+                  ? <img src={img(pkgInfo.cover_url)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#999', fontSize: 12 }}>套系缩略图</div>}
+              </div>
             </div>
           </div>
 
-          {/* 右侧内容列 */}
-          <div className="flex-1 min-w-0 space-y-4">
-            {/* 金额 */}
-            <div className="grid grid-cols-3 gap-3">
-              <div className="bg-panel2 border border-line rounded-xl2 p-4"><div className="text-xs text-muted">应收</div><div className="text-fg text-lg font-semibold">¥{total.toLocaleString()}</div></div>
-              <div className="bg-panel2 border border-line rounded-xl2 p-4"><div className="text-xs text-muted">已收</div><div className="text-emerald-400 text-lg font-semibold">¥{paid.toLocaleString()}</div></div>
-              <div className="bg-panel2 border border-line rounded-xl2 p-4"><div className="text-xs text-muted">待收 / 退款</div><div className="text-fg text-lg font-semibold">{refundAmt > 0 ? '退¥' + refundAmt.toLocaleString() : '¥' + remain.toLocaleString()}</div></div>
-            </div>
+          {/* 右上角按钮组 */}
+          <div className="flex items-center" style={{ gap: 12 }}>
+            <button type="button" onClick={() => setBottomTab('status')}
+              style={{ height: 36, borderRadius: 4, background: MINT, color: '#fff', fontSize: 14, border: 'none', padding: '0 14px', cursor: 'pointer' }}>调查问卷</button>
+            <button type="button" onClick={openEdit}
+              style={secBtnStyle}>编辑订单</button>
+            <button type="button" onClick={() => setPay({ type: 'extra', amount: '', method: 'offline', note: '' })}
+              style={secBtnStyle}>加片设置</button>
+            <button type="button" onClick={() => setMoreMenu((m) => !m)}
+              style={secBtnStyle}>更多设置</button>
+          </div>
+        </div>
 
-            {/* 客户与订单基础信息卡片 */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              <div className="bg-panel border border-line rounded-xl2 p-4 text-sm space-y-2.5">
-                <div className="text-fg font-medium">客户与订单信息</div>
-                {(detail.groom_name || detail.bride_name) ? (
-                  <div className="flex gap-2"><span className="text-muted shrink-0 w-16">客户</span>
-                    <span className="text-fg flex-1">{[detail.groom_name, detail.bride_name].filter(Boolean).join(' & ')}</span></div>
-                ) : detail.customer_name && (
-                  <div className="flex gap-2"><span className="text-muted shrink-0 w-16">客户</span><span className="text-fg flex-1">{detail.customer_name}</span></div>
-                )}
-                <div className="flex gap-2">
-                  <span className="text-muted shrink-0 w-16">联系电话</span>
-                  <span className="flex-1 flex flex-wrap gap-1.5">
-                    {phoneList.length === 0 ? <span className="text-muted">—</span> : phoneList.map((p, i) => (
-                      <a key={i} href={'tel:' + p} className="px-1.5 py-0.5 rounded bg-panel2 border border-line text-fg text-xs hover:text-brand">{p}</a>
-                    ))}
-                  </span>
-                </div>
-                <div className="flex gap-2">
-                  <span className="text-muted shrink-0 w-16">档期时间</span>
-                  <span className="flex-1">
-                    {tbd ? <span className="px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-400 text-xs border border-amber-500/20">日期待定（不占用日历档期）</span>
-                      : <><span className="text-fg">{detail.shoot_date || '—'}</span>
-                        {slots.length > 0 && <span className="flex flex-wrap gap-1 mt-1">{slots.map((h, i) => (<span key={i} className="px-1.5 py-0.5 rounded bg-panel2 border border-line text-fg text-[11px]">{h}</span>))}</span>}</>}
-                  </span>
-                </div>
-                <div className="flex gap-2">
-                  <span className="text-muted shrink-0 w-16">收款状态</span>
-                  <span className={'flex-1 ' + (PAY_STATUS_COLOR[payKey] || 'text-fg')}>{PAY_STATUS_LABEL[payKey] || payKey}</span>
-                </div>
-                {execs.length > 0 && (
-                  <div className="flex gap-2">
-                    <span className="text-muted shrink-0 w-16">参与者</span>
-                    <span className="flex-1 flex flex-wrap gap-2">
-                      {execs.map((p, i) => (
-                        <span key={i} className="flex items-center gap-1.5 px-1.5 py-0.5 rounded-full bg-panel2 border border-line">
-                          {p.avatar ? <img src={img(p.avatar)} alt="" className="w-5 h-5 rounded-full object-cover" />
-                            : <span className="w-5 h-5 rounded-full bg-brand/20 text-brand text-[10px] flex items-center justify-center">{String(p.name || '?').slice(0, 1)}</span>}
-                          <span className="text-fg text-xs">{p.name}</span>
-                        </span>
-                      ))}
-                    </span>
-                  </div>
-                )}
-                {detail.address && <div className="flex gap-2"><span className="text-muted shrink-0 w-16">拍摄地点</span><span className="text-fg flex-1 break-all">{detail.address}</span></div>}
-                <div className="flex gap-2">
-                  <span className="text-muted shrink-0 w-16">备注</span>
-                  <span className="text-fg flex-1 whitespace-pre-line break-all">{detail.remark || '无'}</span>
-                </div>
+        {/* 中部：双列信息区 */}
+        <div className="grid grid-cols-2" style={{ gap: '14px 40px', marginTop: 24 }}>
+          <InfoRow label="套系名称" value={pkgInfo && pkgInfo.name && pkgInfo.name !== '—' ? pkgInfo.name : '—'} />
+          <InfoRow label="定金" value={'¥' + Number(pkgInfo?.deposit || 0).toLocaleString()} />
+          <InfoRow label="已付加片费" value={'¥' + extraSum.toLocaleString()} />
+          <InfoRow label="渠道来源" value={detail.channel || detail.source || '—'} />
+          <InfoRow label="拍摄时间" value={tbd ? '日期待定' : (detail.shoot_date || '—')} extra={slots} />
+          <InfoRow label="尾款" value={'¥' + remain.toLocaleString()} />
+          <InfoRow label="拍摄地址" value={detail.address || '—'} />
+          <InfoRow label="客户" value={custName} />
+          <InfoRow label="联系电话" value={phoneList.length ? phoneList.join(' / ') : '—'} />
+          <InfoRow label="收款状态" value={PAY_STATUS_LABEL[payKey] || payKey}
+            tags={[
+              offlinePay ? { t: '线下收取', bg: '#d1fae5', fg: '#065f46' } : null,
+              remain > 0 ? { t: '未结算', bg: '#fef3c7', fg: '#92400e' } : null
+            ].filter(Boolean)} />
+          <InfoRow label="参与者" value={execs.length ? execs.map((p) => p.name).join('、') : '—'} />
+          <InfoRow label="备注" value={detail.remark || '无'} />
+        </div>
+
+        {/* 底部摘要栏 */}
+        <div style={{ marginTop: 20, background: '#f9fafb', borderRadius: 4, padding: '16px 20px' }}>
+          <div className="flex items-stretch" style={{ flexWrap: 'wrap' }}>
+            {[
+              { t: '总价', v: '¥' + total.toLocaleString() },
+              { t: '拍摄时长', v: pkgInfo?.duration ? String(pkgInfo.duration) : '—' },
+              { t: '服务详情', v: pkgInfo?.description ? String(pkgInfo.description).slice(0, 16) : '—' },
+              { t: '拍摄张数', v: pkgInfo?.raw_count ? String(pkgInfo.raw_count) + ' 张' : '—' },
+              { t: '底片全送', v: pkgInfo?.raw_policy ? String(pkgInfo.raw_policy) : '—' },
+              { t: '精修张数', v: pkgInfo?.retouch_count ? String(pkgInfo.retouch_count) + ' 张' : '—' },
+              { t: '加片费', v: '¥' + extraSum.toLocaleString() }
+            ].map((f, i, arr) => (
+              <div key={f.t} style={{ flex: '1 1 0', minWidth: 110, padding: '0 12px', borderLeft: i === 0 ? 'none' : '1px solid ' + DIV }}>
+                <div style={{ fontSize: 13, color: '#777777' }}>{f.t}</div>
+                <div style={{ fontSize: 14, color: '#222222', marginTop: 4 }}>{f.v}</div>
               </div>
+            ))}
+          </div>
+          {detail.remark ? (
+            <div style={{ marginTop: 12, fontSize: 14, color: '#666666' }}>备注：{detail.remark}</div>
+          ) : null}
+        </div>
+      </section>
 
-              {/* 套系信息 */}
-              {pkgInfo && pkgInfo.name && pkgInfo.name !== '—' && (
-                <div className="bg-panel border border-line rounded-xl2 p-4 text-sm">
-                  <div className="text-fg font-medium mb-2">套系信息</div>
-                  <div className="flex gap-3 mb-3">
-                    {pkgInfo.cover_url && <img src={img(pkgInfo.cover_url)} alt="cover" className="w-20 h-20 rounded-lg object-cover border border-line flex-shrink-0" />}
-                    <div className="flex-1 min-w-0">
-                      <div className="text-base text-fg font-semibold mb-1">{pkgInfo.name}</div>
-                      {pkgInfo.spec && pkgInfo.spec.name && <div className="text-xs text-emerald-400 mb-1.5">已选规格：{pkgInfo.spec.name}</div>}
-                      <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs">
-                        {pkgInfo.price !== undefined && pkgInfo.price !== '' && (<div><span className="text-muted">套系总价</span> <span className="text-fg ml-1">¥{Number(pkgInfo.price || 0).toLocaleString()}</span></div>)}
-                        {pkgInfo.deposit !== undefined && pkgInfo.deposit !== '' && (<div><span className="text-muted">定金</span> <span className="text-fg ml-1">¥{Number(pkgInfo.deposit || 0).toLocaleString()}</span></div>)}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2 text-xs mb-2">
-                    {pkgInfo.duration !== undefined && pkgInfo.duration !== '' && (<div><span className="text-muted">拍摄时长</span> <span className="text-fg ml-1">{pkgInfo.duration}</span></div>)}
-                    {pkgInfo.retouch_count !== undefined && pkgInfo.retouch_count !== '' && (<div><span className="text-muted">精修张数</span> <span className="text-fg ml-1">{pkgInfo.retouch_count}</span></div>)}
-                    {pkgInfo.raw_policy !== undefined && pkgInfo.raw_policy !== '' && (<div className="col-span-2"><span className="text-muted">底片政策</span> <span className="text-fg ml-1">{pkgInfo.raw_policy}</span></div>)}
-                  </div>
-                  {pkgInfo.description && <div className="text-xs text-muted whitespace-pre-line leading-relaxed mt-2">{pkgInfo.description}</div>}
+      {/* ============ Module 5：底片上传 Tab 卡片 ============ */}
+      <section style={{ margin: '24px 24px 0', background: '#ffffff', borderRadius: 6 }}>
+        {/* Tab 头部 */}
+        <div className="flex" style={{ height: 44, borderBottom: '1px solid ' + DIV }}>
+          {[{ k: 'raw', t: '原片' }, { k: 'sel', t: '选片' }, { k: 'retouched', t: '精修片' }].map((tb) => {
+            const active = imgTab === tb.k;
+            const count = tb.k === 'raw' ? photos.raw.length : tb.k === 'retouched' ? photos.retouched.length : (sel && sel.photos ? sel.photos.length : 0);
+            return (
+              <button key={tb.k} type="button" onClick={() => setImgTab(tb.k)}
+                style={{
+                  padding: '0 20px', height: 44, background: 'none', border: 'none', cursor: 'pointer', fontSize: 14,
+                  color: active ? BLUE : '#666666',
+                  borderBottom: active ? '2px solid ' + BLUE : '2px solid transparent', fontWeight: active ? 500 : 400
+                }}>{tb.t}（{count}）</button>
+            );
+          })}
+        </div>
+
+        <div style={{ padding: '12px 24px 24px' }}>
+          {/* 提示警告条 */}
+          <div style={{ background: '#fffde7', color: '#b58900', fontSize: 13, padding: '8px 16px' }}>
+            请先上传完整原片后再通知客户选片；精修片交付前请确认已通过全部精修。
+          </div>
+
+          {/* 筛选操作栏 */}
+          <div className="flex items-center" style={{ height: 40, marginTop: 12, gap: 12, fontSize: 14, color: '#444444', flexWrap: 'wrap' }}>
+            <select style={filterCtrlStyle}><option>全部相册</option></select>
+            <button type="button" style={filterBtnStyle}>底片（{photos.raw.length}）</button>
+            <button type="button" style={filterBtnStyle}>推荐（0）</button>
+            <label className="flex items-center" style={{ gap: 6, fontSize: 14, color: '#444444' }}>
+              <input type="checkbox" /> 全选
+            </label>
+            <select style={filterCtrlStyle}><option>仅下载精修片</option><option>全部素材</option></select>
+            <button type="button" style={{ ...filterBtnStyle, marginLeft: 'auto' }}>更多</button>
+          </div>
+
+          {/* Tab 内容 */}
+          <div style={{ marginTop: 16 }}>
+            {imgTab === 'raw' && (
+              <PhotoZone kind="raw" title="原片" photos={photos.raw} uploading={uploading.raw}
+                onAdd={(files) => addPhotos('raw', files)} onRemove={(u) => removePhoto('raw', u)} />
+            )}
+            {imgTab === 'sel' && (
+              <div>
+                <div className="flex items-center justify-between" style={{ fontSize: 12, color: '#666666', marginBottom: 8 }}>
+                  <span>选片（来自客户相册选片结果，可在此勾选确认）</span>
+                  {sel && sel.selection && <span style={{ color: sel.selection.submitted ? '#10b981' : '#b58900' }}>{sel.selection.submitted ? '已提交' : '草稿'}</span>}
                 </div>
-              )}
-            </div>
-
-            {/* 浅米绿色服务详情信息条 */}
-            <div className="rounded-xl2 px-4 py-3 flex flex-wrap items-center gap-x-6 gap-y-1 text-sm"
-              style={{ background: '#eaf5ef', border: '1px solid #cfe9dd' }}>
-              <span className="text-emerald-700 font-medium">服务详情</span>
-              <span className="text-emerald-900/80">套系：{pkgInfo && pkgInfo.name && pkgInfo.name !== '—' ? pkgInfo.name : '—'}</span>
-              {pkgInfo && pkgInfo.duration !== undefined && pkgInfo.duration !== '' && <span className="text-emerald-900/80">拍摄时长：{pkgInfo.duration}</span>}
-              {pkgInfo && pkgInfo.retouch_count !== undefined && pkgInfo.retouch_count !== '' && <span className="text-emerald-900/80">精修：{pkgInfo.retouch_count} 张</span>}
-              {pkgInfo && pkgInfo.raw_policy !== undefined && pkgInfo.raw_policy !== '' && <span className="text-emerald-900/80">底片：{pkgInfo.raw_policy}</span>}
-            </div>
-
-            {/* 图片管理 Tab */}
-            <div className="bg-panel border border-line rounded-xl2">
-              <div className="flex border-b border-line">
-                {[{ k: 'raw', t: '原片' }, { k: 'sel', t: '选片' }, { k: 'retouched', t: '精修片' }].map((tb) => (
-                  <button key={tb.k} onClick={() => setImgTab(tb.k)}
-                    className={'px-5 py-3 text-sm border-b-2 -mb-px ' + (imgTab === tb.k ? 'border-brand text-brand font-medium' : 'border-transparent text-muted hover:text-fg')}>
-                    {tb.t}{tb.k === 'raw' ? `（${photos.raw.length}）` : tb.k === 'retouched' ? `（${photos.retouched.length}）` : ''}
-                  </button>
-                ))}
-              </div>
-              <div className="p-4">
-                {imgTab === 'raw' && (
-                  <PhotoZone kind="raw" title="原片" photos={photos.raw} uploading={uploading.raw}
-                    onAdd={(files) => addPhotos('raw', files)} onRemove={(u) => removePhoto('raw', u)} />
-                )}
-                {imgTab === 'sel' && (
-                  <div>
-                    <div className="text-xs text-muted mb-2 flex items-center justify-between">
-                      <span>选片（来自客户相册选片结果，可在此勾选确认）</span>
-                      {sel && sel.selection && <span className={sel.selection.submitted ? 'text-emerald-400' : 'text-amber-400'}>{sel.selection.submitted ? '已提交' : '草稿'}</span>}
-                    </div>
-                    {!sel && <div className="text-muted text-sm py-2">加载中…</div>}
-                    {sel && !sel.selection && <div className="text-muted text-sm py-2">该订单暂无客户选片</div>}
-                    {sel && sel.selection && (
-                      <>
-                        <div className="grid grid-cols-4 md:grid-cols-6 gap-2 mb-3">
-                          {sel.photos.map((p) => {
-                            const on = sel.selection.marks.includes(p.photo_url);
-                            return (
-                              <button key={p.id} onClick={() => toggleSel(p.photo_url)}
-                                className={'relative rounded-lg overflow-hidden border ' + (on ? 'border-brand' : 'border-line')}>
-                                <img src={img(p.photo_url)} className="w-full h-20 object-cover" />
-                                <span className={'absolute top-1 right-1 w-4 h-4 rounded-full text-[10px] flex items-center justify-center ' + (on ? 'bg-brand text-white' : 'bg-black/50 text-white')}>{on ? '✓' : ''}</span>
-                              </button>
-                            );
-                          })}
-                          {sel.photos.length === 0 && <div className="col-span-full text-muted text-sm py-2">该订单无可选样片（需在作品相册中上传 sample 区照片）</div>}
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs text-muted">已选 {sel.selection.marks.length} 张</span>
-                          <button onClick={saveSel} disabled={selSaving} className="px-3 py-1.5 rounded bg-brand text-white text-xs disabled:opacity-40">保存修改</button>
-                        </div>
-                      </>
-                    )}
-                  </div>
-                )}
-                {imgTab === 'retouched' && (
-                  <PhotoZone kind="retouched" title="精修片" photos={photos.retouched} uploading={uploading.retouched}
-                    onAdd={(files) => addPhotos('retouched', files)} onRemove={(u) => removePhoto('retouched', u)} />
-                )}
-              </div>
-            </div>
-
-            {/* 底部 Tab：订单状态详情 / 交易记录 / 下载记录 */}
-            <div className="bg-panel border border-line rounded-xl2">
-              <div className="flex border-b border-line">
-                {[{ k: 'status', t: '订单状态详情' }, { k: 'trade', t: '交易记录' }, { k: 'download', t: '下载记录' }].map((tb) => (
-                  <button key={tb.k} onClick={() => setBottomTab(tb.k)}
-                    className={'px-5 py-3 text-sm border-b-2 -mb-px ' + (bottomTab === tb.k ? 'border-brand text-brand font-medium' : 'border-transparent text-muted hover:text-fg')}>
-                    {tb.t}
-                  </button>
-                ))}
-              </div>
-              <div className="p-4 text-sm space-y-3">
-                {bottomTab === 'status' && (
+                {!sel && <div style={{ color: '#666666', fontSize: 14, padding: '8px 0' }}>加载中…</div>}
+                {sel && !sel.selection && <div style={{ color: '#666666', fontSize: 14, padding: '8px 0' }}>该订单暂无客户选片</div>}
+                {sel && sel.selection && (
                   <>
-                    {detail.package_snapshot && Array.isArray(detail.package_snapshot.questionnaire) && detail.package_snapshot.questionnaire.length > 0 && (() => {
-                      let ans = {};
-                      try { ans = detail.questionnaire_answers ? (typeof detail.questionnaire_answers === 'string' ? JSON.parse(detail.questionnaire_answers) : detail.questionnaire_answers) : {}; } catch { ans = {}; }
-                      const qs = detail.package_snapshot.questionnaire;
-                      return (
-                        <div>
-                          <div className="text-fg font-medium mb-2">客户问卷</div>
-                          <div className="space-y-2">
-                            {qs.map((q, i) => (
-                              <div key={i}>
-                                <div className="text-muted">{i + 1}. {q.q}{q.required ? ' *' : ''}</div>
-                                <div className="text-fg mt-0.5">
-                                  {ans[i] !== undefined && ans[i] !== '' && !(Array.isArray(ans[i]) && ans[i].length === 0)
-                                    ? (Array.isArray(ans[i]) ? ans[i].join('、') : ans[i]) : <span className="text-muted">（未填写）</span>}
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      );
-                    })()}
-                    <div>
-                      <div className="text-fg font-medium mb-2">操作日志</div>
-                      <div className="text-xs text-muted space-y-1">
-                        {(detail.logs || []).length === 0 && <div className="py-2">暂无日志</div>}
-                        {(detail.logs || []).map((l, i) => (<div key={i}>· {new Date(l.t).toLocaleString('zh-CN')} {l.text}</div>))}
-                      </div>
+                    <div className="grid grid-cols-4 md:grid-cols-6" style={{ gap: 8, marginBottom: 12 }}>
+                      {sel.photos.map((p) => {
+                        const on = sel.selection.marks.includes(p.photo_url);
+                        return (
+                          <button key={p.id} type="button" onClick={() => toggleSel(p.photo_url)}
+                            style={{ position: 'relative', borderRadius: 4, overflow: 'hidden', border: on ? '2px solid ' + BLUE : '1px solid ' + DIV }}>
+                            <img src={img(p.photo_url)} style={{ width: '100%', height: 80, objectFit: 'cover' }} />
+                            <span style={{ position: 'absolute', top: 4, right: 4, width: 16, height: 16, borderRadius: '50%', fontSize: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', background: on ? BLUE : 'rgba(0,0,0,0.5)', color: '#fff' }}>{on ? '✓' : ''}</span>
+                          </button>
+                        );
+                      })}
+                      {sel.photos.length === 0 && <div style={{ gridColumn: '1 / -1', color: '#666666', fontSize: 14, padding: '8px 0' }}>该订单无可选样片（需在作品相册中上传 sample 区照片）</div>}
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span style={{ fontSize: 12, color: '#666666' }}>已选 {sel.selection.marks.length} 张</span>
+                      <button type="button" onClick={saveSel} disabled={selSaving}
+                        style={{ padding: '6px 12px', borderRadius: 4, background: BLUE, color: '#fff', fontSize: 12, border: 'none', opacity: selSaving ? 0.4 : 1, cursor: 'pointer' }}>保存修改</button>
                     </div>
                   </>
                 )}
-                {bottomTab === 'trade' && (
-                  <div>
-                    <div className="text-fg font-medium mb-2">收款流水</div>
-                    {(!detail.payments || detail.payments.length === 0) && <div className="text-muted py-2">暂无流水</div>}
-                    {detail.payments && detail.payments.map((p) => (
-                      <div key={p.id} className="flex items-center justify-between border-b border-line py-2">
-                        <div>
-                          <span className="text-fg">{TYPE_LABEL[p.type]}</span>
-                          <span className="text-muted ml-2">{p.method === 'online' ? '线上' : '线下'}</span>
-                        </div>
-                        <div className={p.type === 'refund' ? 'text-red-400' : 'text-emerald-400'}>
-                          {p.type === 'refund' ? '-' : '+'}¥{Number(p.amount).toLocaleString()}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                {bottomTab === 'download' && (
-                  <div>
-                    <div className="text-fg font-medium mb-2">可下载素材（原片 / 精修片 / 选片）</div>
-                    {downloadItems.length === 0 && <div className="text-muted py-2">暂无素材（请在上方可片/原片/精修片 Tab 上传）</div>}
-                    <div className="space-y-1">
-                      {downloadItems.map((it, i) => (
-                        <div key={i} className="flex items-center justify-between border-b border-line py-2">
-                          <div className="flex items-center gap-2 min-w-0">
-                            <span className="px-1.5 py-0.5 rounded bg-panel2 border border-line text-[11px] text-muted shrink-0">{it.kind}</span>
-                            <span className="text-fg text-xs truncate">{it.url}</span>
+              </div>
+            )}
+            {imgTab === 'retouched' && (
+              <PhotoZone kind="retouched" title="精修片" photos={photos.retouched} uploading={uploading.retouched}
+                onAdd={(files) => addPhotos('retouched', files)} onRemove={(u) => removePhoto('retouched', u)} />
+            )}
+          </div>
+
+          {/* 底部链接 */}
+          <button type="button" onClick={() => nav('/works')}
+            style={{ marginTop: 16, background: 'none', border: 'none', color: BLUE, fontSize: 13, cursor: 'pointer' }}>查看选片演示案例 &gt;</button>
+        </div>
+      </section>
+
+      {/* ============ Module 6：底部记录 Tab 卡片 ============ */}
+      <section style={{ margin: '24px 24px 24px', background: '#ffffff', borderRadius: 6 }}>
+        <div className="flex" style={{ height: 44, borderBottom: '1px solid ' + DIV }}>
+          {[{ k: 'status', t: '订单状态详情' }, { k: 'trade', t: '交易记录' }, { k: 'download', t: '下载记录' }].map((tb) => {
+            const active = bottomTab === tb.k;
+            return (
+              <button key={tb.k} type="button" onClick={() => setBottomTab(tb.k)}
+                style={{
+                  padding: '0 20px', height: 44, background: 'none', border: 'none', cursor: 'pointer', fontSize: 14,
+                  color: active ? BLUE : '#666666',
+                  borderBottom: active ? '2px solid ' + BLUE : '2px solid transparent', fontWeight: active ? 500 : 400
+                }}>{tb.t}</button>
+            );
+          })}
+        </div>
+        <div style={{ padding: '20px 24px' }}>
+          {bottomTab === 'status' && (
+            <>
+              {detail.package_snapshot && Array.isArray(detail.package_snapshot.questionnaire) && detail.package_snapshot.questionnaire.length > 0 && (() => {
+                let ans = {};
+                try { ans = detail.questionnaire_answers ? (typeof detail.questionnaire_answers === 'string' ? JSON.parse(detail.questionnaire_answers) : detail.questionnaire_answers) : {}; } catch { ans = {}; }
+                const qs = detail.package_snapshot.questionnaire;
+                return (
+                  <div style={{ marginBottom: 16 }}>
+                    <div style={{ color: '#222222', fontWeight: 500, marginBottom: 8 }}>客户问卷</div>
+                    <div style={{ display: 'grid', gap: 8 }}>
+                      {qs.map((q, i) => (
+                        <div key={i}>
+                          <div style={{ color: '#777777', fontSize: 14 }}>{i + 1}. {q.q}{q.required ? ' *' : ''}</div>
+                          <div style={{ color: '#222222', marginTop: 2, fontSize: 14 }}>
+                            {ans[i] !== undefined && ans[i] !== '' && !(Array.isArray(ans[i]) && ans[i].length === 0)
+                              ? (Array.isArray(ans[i]) ? ans[i].join('、') : ans[i]) : <span style={{ color: '#999999' }}>（未填写）</span>}
                           </div>
-                          <button onClick={() => downloadFile(it.url)} className="px-2 py-1 rounded border border-line text-xs text-fg hover:border-brand shrink-0">下载</button>
                         </div>
                       ))}
                     </div>
                   </div>
-                )}
+                );
+              })()}
+              <div style={{ color: '#222222', fontWeight: 500, marginBottom: 8 }}>操作日志</div>
+              {(detail.logs || []).length === 0 && <div style={{ color: '#999999', fontSize: 14, padding: '4px 0' }}>暂无日志</div>}
+              {(detail.logs || []).map((l, i) => (
+                <div key={i} className="flex items-center" style={{ lineHeight: '28px' }}>
+                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#36d399', marginRight: 8, flexShrink: 0 }} />
+                  <span style={{ fontSize: 14, color: '#444444' }}>{l.text}</span>
+                  <span style={{ fontSize: 13, color: '#999999', marginLeft: 'auto' }}>{new Date(l.t).toLocaleString('zh-CN')}</span>
+                </div>
+              ))}
+            </>
+          )}
+          {bottomTab === 'trade' && (
+            <div>
+              <div style={{ color: '#222222', fontWeight: 500, marginBottom: 8 }}>收款流水</div>
+              {(!detail.payments || detail.payments.length === 0) && <div style={{ color: '#999999', fontSize: 14, padding: '4px 0' }}>暂无流水</div>}
+              {detail.payments && detail.payments.map((p) => (
+                <div key={p.id} className="flex items-center justify-between" style={{ borderBottom: '1px solid ' + DIV, padding: '8px 0' }}>
+                  <div>
+                    <span style={{ color: '#222222' }}>{TYPE_LABEL[p.type]}</span>
+                    <span style={{ color: '#666666', marginLeft: 8 }}>{p.method === 'online' ? '线上' : '线下'}</span>
+                  </div>
+                  <div style={{ color: p.type === 'refund' ? '#ef4444' : '#10b981' }}>
+                    {p.type === 'refund' ? '-' : '+'}¥{Number(p.amount).toLocaleString()}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+          {bottomTab === 'download' && (
+            <div>
+              <div style={{ color: '#222222', fontWeight: 500, marginBottom: 8 }}>可下载素材（原片 / 精修片 / 选片）</div>
+              {downloadItems.length === 0 && <div style={{ color: '#999999', fontSize: 14, padding: '4px 0' }}>暂无素材（请在上方可片/原片/精修片 Tab 上传）</div>}
+              <div style={{ display: 'grid', gap: 4 }}>
+                {downloadItems.map((it, i) => (
+                  <div key={i} className="flex items-center justify-between" style={{ borderBottom: '1px solid ' + DIV, padding: '8px 0' }}>
+                    <div className="flex items-center" style={{ gap: 8, minWidth: 0 }}>
+                      <span style={{ padding: '2px 6px', borderRadius: 4, background: '#f3f4f6', fontSize: 11, color: '#666666', flexShrink: 0 }}>{it.kind}</span>
+                      <span style={{ color: '#222222', fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{it.url}</span>
+                    </div>
+                    <button type="button" onClick={() => downloadFile(it.url)} style={{ padding: '4px 8px', borderRadius: 4, border: '1px solid ' + DIV, fontSize: 12, color: '#222222', background: '#fff', cursor: 'pointer', flexShrink: 0 }}>下载</button>
+                  </div>
+                ))}
               </div>
             </div>
-          </div>
+          )}
         </div>
-      </div>
+      </section>
 
       {/* 收款弹窗 */}
       {pay && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[70] p-4" onClick={() => setPay(null)}>
-          <div onClick={(e) => e.stopPropagation()} className="w-full max-w-sm bg-panel border border-line rounded-xl2 p-6">
-            <div className="text-fg font-medium mb-4">登记收款 · {detail.order_no}</div>
-            <select value={pay.type} onChange={(e) => setPay({ ...pay, type: e.target.value })} className="w-full mb-3 px-3 py-2 rounded bg-panel2 border border-line text-fg text-sm outline-none">
+        <div className="fixed inset-0 flex items-center justify-center z-[70] p-4" style={{ background: 'rgba(0,0,0,0.4)' }} onClick={() => setPay(null)}>
+          <div onClick={(e) => e.stopPropagation()} style={{ width: '100%', maxWidth: 420, background: '#fff', border: '1px solid ' + DIV, borderRadius: 8, padding: 24 }}>
+            <div style={{ color: '#222222', fontWeight: 500, marginBottom: 16 }}>登记收款 · {detail.order_no}</div>
+            <select value={pay.type} onChange={(e) => setPay({ ...pay, type: e.target.value })} style={modalInputStyle}>
               <option value="deposit">定金</option><option value="balance">尾款</option><option value="extra">加片/增值</option>
             </select>
             <input value={pay.amount} onChange={(e) => setPay({ ...pay, amount: e.target.value })} type="number" placeholder="金额"
-              className="w-full mb-3 px-3 py-2 rounded bg-panel2 border border-line text-fg text-sm outline-none" />
-            <select value={pay.method} onChange={(e) => setPay({ ...pay, method: e.target.value })} className="w-full mb-3 px-3 py-2 rounded bg-panel2 border border-line text-fg text-sm outline-none">
+              style={{ ...modalInputStyle, marginTop: 12 }} />
+            <select value={pay.method} onChange={(e) => setPay({ ...pay, method: e.target.value })} style={{ ...modalInputStyle, marginTop: 12 }}>
               <option value="offline">线下</option><option value="online">线上</option>
             </select>
             <input value={pay.note} onChange={(e) => setPay({ ...pay, note: e.target.value })} placeholder="备注(选填)"
-              className="w-full mb-3 px-3 py-2 rounded bg-panel2 border border-line text-fg text-sm outline-none" />
-            {err && <div className="text-xs text-red-400 mb-2">{err}</div>}
-            <div className="flex gap-2 justify-end">
-              <button onClick={() => setPay(null)} className="px-4 py-2 rounded text-sm text-muted">取消</button>
-              <button onClick={savePay} className="px-4 py-2 rounded bg-brand text-white text-sm">保存</button>
+              style={{ ...modalInputStyle, marginTop: 12 }} />
+            {err && <div style={{ color: '#ef4444', fontSize: 12, marginTop: 8 }}>{err}</div>}
+            <div className="flex justify-end" style={{ gap: 8, marginTop: 16 }}>
+              <button onClick={() => setPay(null)} style={modalCancelStyle}>取消</button>
+              <button onClick={savePay} style={modalSaveStyle}>保存</button>
             </div>
           </div>
         </div>
@@ -656,38 +695,34 @@ export default function OrderDetail() {
 
       {/* 编辑订单弹窗 */}
       {edit && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[70] p-4" onClick={() => setEdit(false)}>
-          <form onClick={(e) => e.stopPropagation()} onSubmit={saveEdit} className="w-full max-w-md bg-panel border border-line rounded-xl2 p-6">
-            <div className="text-fg font-medium mb-4">编辑订单 · {detail.order_no}</div>
+        <div className="fixed inset-0 flex items-center justify-center z-[70] p-4" style={{ background: 'rgba(0,0,0,0.4)' }} onClick={() => setEdit(false)}>
+          <form onClick={(e) => e.stopPropagation()} onSubmit={saveEdit} style={{ width: '100%', maxWidth: 448, background: '#fff', border: '1px solid ' + DIV, borderRadius: 8, padding: 24 }}>
+            <div style={{ color: '#222222', fontWeight: 500, marginBottom: 16 }}>编辑订单 · {detail.order_no}</div>
             <input value={editForm.order_name} onChange={(e) => setEditForm({ ...editForm, order_name: e.target.value })} placeholder="订单名称"
-              className="w-full mb-3 px-3 py-2 rounded bg-panel2 border border-line text-fg text-sm outline-none" />
-            <div className="grid grid-cols-2 gap-3">
-              <input value={editForm.groom_name} onChange={(e) => setEditForm({ ...editForm, groom_name: e.target.value })} placeholder="新郎姓名"
-                className="px-3 py-2 rounded bg-panel2 border border-line text-fg text-sm outline-none" />
-              <input value={editForm.bride_name} onChange={(e) => setEditForm({ ...editForm, bride_name: e.target.value })} placeholder="新娘姓名"
-                className="px-3 py-2 rounded bg-panel2 border border-line text-fg text-sm outline-none" />
+              style={modalInputStyle} />
+            <div className="grid grid-cols-2" style={{ gap: 12, marginTop: 12 }}>
+              <input value={editForm.groom_name} onChange={(e) => setEditForm({ ...editForm, groom_name: e.target.value })} placeholder="新郎姓名" style={modalInputStyle} />
+              <input value={editForm.bride_name} onChange={(e) => setEditForm({ ...editForm, bride_name: e.target.value })} placeholder="新娘姓名" style={modalInputStyle} />
             </div>
-            <div className="grid grid-cols-2 gap-3 mt-3">
-              <input value={editForm.customer_phone} onChange={(e) => setEditForm({ ...editForm, customer_phone: e.target.value })} placeholder="联系电话"
-                className="px-3 py-2 rounded bg-panel2 border border-line text-fg text-sm outline-none" />
-              <input value={editForm.address} onChange={(e) => setEditForm({ ...editForm, address: e.target.value })} placeholder="拍摄地址"
-                className="px-3 py-2 rounded bg-panel2 border border-line text-fg text-sm outline-none" />
+            <div className="grid grid-cols-2" style={{ gap: 12, marginTop: 12 }}>
+              <input value={editForm.customer_phone} onChange={(e) => setEditForm({ ...editForm, customer_phone: e.target.value })} placeholder="联系电话" style={modalInputStyle} />
+              <input value={editForm.address} onChange={(e) => setEditForm({ ...editForm, address: e.target.value })} placeholder="拍摄地址" style={modalInputStyle} />
             </div>
             <input value={editForm.shoot_date} onChange={(e) => setEditForm({ ...editForm, shoot_date: e.target.value })} type="date"
-              className="w-full mt-3 px-3 py-2 rounded bg-panel2 border border-line text-fg text-sm outline-none" />
+              style={{ ...modalInputStyle, marginTop: 12 }} />
             <input value={editForm.executor} onChange={(e) => setEditForm({ ...editForm, executor: e.target.value })} placeholder="执行人"
-              className="w-full mt-3 px-3 py-2 rounded bg-panel2 border border-line text-fg text-sm outline-none" />
+              style={{ ...modalInputStyle, marginTop: 12 }} />
             <select value={editForm.status} onChange={(e) => setEditForm({ ...editForm, status: e.target.value })}
-              className="w-full mt-3 px-3 py-2 rounded bg-panel2 border border-line text-fg text-sm outline-none">
+              style={{ ...modalInputStyle, marginTop: 12 }}>
               <option value="deposit">已付定金</option><option value="shot">已拍摄</option>
               <option value="selecting">选片中</option><option value="retouching">精修中</option><option value="delivered">已交付</option>
               <option value="completed">已完成</option><option value="cancelled">已作废</option>
             </select>
             <input value={editForm.remark} onChange={(e) => setEditForm({ ...editForm, remark: e.target.value })} placeholder="备注"
-              className="w-full mt-3 px-3 py-2 rounded bg-panel2 border border-line text-fg text-sm outline-none" />
-            <div className="flex gap-2 justify-end mt-4">
-              <button type="button" onClick={() => setEdit(false)} className="px-4 py-2 rounded text-sm text-muted">取消</button>
-              <button type="submit" className="px-4 py-2 rounded bg-brand text-white text-sm">保存</button>
+              style={{ ...modalInputStyle, marginTop: 12 }} />
+            <div className="flex justify-end" style={{ gap: 8, marginTop: 16 }}>
+              <button type="button" onClick={() => setEdit(false)} style={modalCancelStyle}>取消</button>
+              <button type="submit" style={modalSaveStyle}>保存</button>
             </div>
           </form>
         </div>
@@ -695,24 +730,41 @@ export default function OrderDetail() {
 
       {/* 客户影集分享弹窗 */}
       {shareModal && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[80] p-4" onClick={() => setShareModal(false)}>
-          <div onClick={(e) => e.stopPropagation()} className="w-full max-w-sm bg-panel border border-line rounded-xl2 p-6 text-center">
-            <div className="text-fg font-medium mb-1">客户影集分享</div>
-            <div className="text-xs text-muted mb-4">扫码或复制链接，客户即可在手机上查看成品影集（仅展示样片/成片，不含原片）</div>
+        <div className="fixed inset-0 flex items-center justify-center z-[80] p-4" style={{ background: 'rgba(0,0,0,0.4)' }} onClick={() => setShareModal(false)}>
+          <div onClick={(e) => e.stopPropagation()} style={{ width: '100%', maxWidth: 420, background: '#fff', border: '1px solid ' + DIV, borderRadius: 8, padding: 24, textAlign: 'center' }}>
+            <div style={{ color: '#222222', fontWeight: 500, marginBottom: 4 }}>客户影集分享</div>
+            <div style={{ fontSize: 12, color: '#666666', marginBottom: 16 }}>扫码或复制链接，客户即可在手机上查看成品影集（仅展示样片/成片，不含原片）</div>
             {share && share.qr_url ? (
               <>
-                <img src={share.qr_url} alt="分享二维码" className="w-56 h-56 mx-auto rounded-lg bg-white p-2 border border-line" />
-                <div className="text-xs text-muted mt-3 break-all">{share.share_url}</div>
-                <div className="flex gap-2 justify-center mt-4">
-                  <button onClick={copyShare} className="px-3 py-1.5 rounded bg-brand text-white text-xs">复制链接</button>
-                  <button onClick={openShare} disabled={shareBusy} className="px-3 py-1.5 rounded bg-white border border-line text-fg text-xs disabled:opacity-40">刷新二维码</button>
-                  <button onClick={unshare} className="px-3 py-1.5 rounded bg-white border border-line text-red-400 text-xs">关闭分享</button>
+                <img src={share.qr_url} alt="分享二维码" style={{ width: 224, height: 224, margin: '0 auto', borderRadius: 8, background: '#fff', padding: 8, border: '1px solid ' + DIV }} />
+                <div style={{ fontSize: 12, color: '#666666', marginTop: 12, wordBreak: 'break-all' }}>{share.share_url}</div>
+                <div className="flex justify-center" style={{ gap: 8, marginTop: 16 }}>
+                  <button onClick={copyShare} style={{ ...modalSaveStyle, padding: '6px 12px' }}>复制链接</button>
+                  <button onClick={openShare} disabled={shareBusy} style={{ ...modalCancelStyle, padding: '6px 12px', border: '1px solid ' + DIV }}>刷新二维码</button>
+                  <button onClick={unshare} style={{ ...modalCancelStyle, padding: '6px 12px', color: '#ef4444', border: '1px solid ' + DIV }}>关闭分享</button>
                 </div>
               </>
-            ) : (<div className="text-muted text-sm py-8">生成中…</div>)}
-            <button onClick={() => setShareModal(false)} className="mt-4 px-4 py-2 rounded text-sm text-muted">关闭</button>
+            ) : (<div style={{ color: '#666666', fontSize: 14, padding: 32 }}>生成中…</div>)}
+            <button onClick={() => setShareModal(false)} style={{ marginTop: 16, ...modalCancelStyle }}>关闭</button>
           </div>
         </div>
+      )}
+
+      {/* 分享订单小程序二维码浮层 */}
+      {miniQr !== null && (
+        <>
+          <div className="fixed inset-0 z-[90]" style={{ background: 'rgba(0,0,0,0.3)' }} onClick={closeMiniQr} />
+          <div onClick={(e) => e.stopPropagation()}
+            style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 95, width: 240, background: '#fff', borderRadius: 8, padding: 16, boxShadow: '0 20px 60px rgba(0,0,0,0.18)' }}>
+            <div style={{ color: '#222222', fontWeight: 500, marginBottom: 8 }}>订单二维码</div>
+            {miniQr ? (
+              <img src={miniQr} alt="订单二维码" style={{ width: 176, height: 176, margin: '0 auto', borderRadius: 8 }} />
+            ) : (
+              <div style={{ color: '#666666', fontSize: 14, padding: 32, textAlign: 'center' }}>生成中…</div>
+            )}
+            <div style={{ fontSize: 11, color: '#666666', textAlign: 'center', marginTop: 8 }}>微信扫码查看订单（右键 / 长按可保存）</div>
+          </div>
+        </>
       )}
 
       <Slideshow photos={slidePhotos} open={slideOpen} onClose={closeSlideSel} title={detail.order_name || '订单相册'} />
@@ -720,36 +772,77 @@ export default function OrderDetail() {
   );
 }
 
-// 图片上传区域（原片 / 精修片 真实上传）
+// —— 复刻 spec 样式片段（模块内复用） ——
+const secBtnStyle = {
+  height: 36, borderRadius: 4, background: '#fff', color: '#444444',
+  border: '1px solid ' + DIV, fontSize: 14, padding: '0 14px', cursor: 'pointer'
+};
+const moreItemStyle = {
+  display: 'block', width: '100%', textAlign: 'left', padding: '8px 14px',
+  background: 'none', border: 'none', color: '#222222', cursor: 'pointer', whiteSpace: 'nowrap'
+};
+const filterCtrlStyle = { height: 36, padding: '0 12px', borderRadius: 4, border: '1px solid ' + DIV, color: '#444444', background: '#fff', fontSize: 14 };
+const filterBtnStyle = { height: 36, padding: '0 12px', borderRadius: 4, border: '1px solid ' + DIV, color: '#444444', background: '#fff', fontSize: 14, cursor: 'pointer' };
+const modalInputStyle = { width: '100%', padding: '8px 12px', borderRadius: 4, border: '1px solid ' + DIV, color: '#222222', fontSize: 14, outline: 'none', background: '#fff' };
+const modalCancelStyle = { padding: '8px 16px', borderRadius: 4, fontSize: 14, color: '#666666', background: '#fff', border: '1px solid ' + DIV, cursor: 'pointer' };
+const modalSaveStyle = { padding: '8px 16px', borderRadius: 4, fontSize: 14, color: '#fff', background: BLUE, border: 'none', cursor: 'pointer' };
+
+// 信息行（标签 / 内容 + 可选业务标签）
+function InfoRow({ label, value, tags, extra }) {
+  return (
+    <div className="flex" style={{ alignItems: 'flex-start', gap: 12 }}>
+      <span style={{ fontSize: 14, color: '#777777', flexShrink: 0, minWidth: 64 }}>{label}</span>
+      <span style={{ fontSize: 14, color: '#222222', flex: 1 }}>
+        {value}
+        {extra && extra.length > 0 && (
+          <span style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 4 }}>
+            {extra.map((h, i) => <span key={i} style={{ padding: '1px 6px', borderRadius: 4, background: '#f3f4f6', fontSize: 11, color: '#444' }}>{h}</span>)}
+          </span>
+        )}
+        {tags && tags.length > 0 && (
+          <span style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>
+            {tags.map((t, i) => <span key={i} style={{ padding: '2px 8px', borderRadius: 4, background: t.bg, color: t.fg, fontSize: 12 }}>{t.t}</span>)}
+          </span>
+        )}
+      </span>
+    </div>
+  );
+}
+
+// 图片上传区域（原片 / 精修片 真实上传）—— 复刻 spec 140x140 虚线上传框
 function PhotoZone({ kind, title, photos, uploading, onAdd, onRemove }) {
   const inputRef = React.useRef(null);
   return (
     <div>
-      <div className="flex items-center justify-between mb-3">
-        <span className="text-sm text-fg font-medium">{title}（{photos.length}）</span>
-        <button onClick={() => inputRef.current?.click()}
-          className="px-3 py-1.5 rounded bg-brand text-white text-xs disabled:opacity-40">
+      <div className="flex items-center justify-between" style={{ marginBottom: 12 }}>
+        <span style={{ fontSize: 14, color: '#222222', fontWeight: 500 }}>{title}（{photos.length}）</span>
+        <button type="button" onClick={() => inputRef.current?.click()}
+          style={{ padding: '6px 12px', borderRadius: 4, background: BLUE, color: '#fff', fontSize: 12, border: 'none', opacity: uploading ? 0.6 : 1, cursor: 'pointer' }}>
           {uploading ? '上传中…' : '+ 上传' + title}
         </button>
         <input ref={inputRef} type="file" accept="image/*" multiple className="hidden"
           onChange={(e) => { onAdd(e.target.files); e.target.value = ''; }} />
       </div>
-      {photos.length === 0 && !uploading && (
-        <div className="border border-dashed border-line rounded-xl py-10 text-center text-muted text-sm cursor-pointer"
-          onClick={() => inputRef.current?.click()}>
-          <div className="text-3xl mb-1">+</div>
-          点击或拖拽上传{title}（支持批量）
-        </div>
-      )}
-      <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
+      <div className="flex flex-wrap" style={{ gap: 12, alignItems: 'flex-start' }}>
         {photos.map((u, i) => (
-          <div key={i} className="relative group">
-            <img src={img(u)} className="w-full h-28 object-cover rounded-lg border border-line" />
-            <button onClick={() => onRemove(u)}
-              className="absolute top-1 right-1 w-6 h-6 rounded-full bg-black/60 text-white text-xs flex items-center justify-center opacity-0 group-hover:opacity-100">✕</button>
+          <div key={i} style={{ position: 'relative' }} className="group">
+            <img src={img(u)} style={{ width: 96, height: 96, objectFit: 'cover', borderRadius: 4, border: '1px solid ' + DIV }} />
+            <button type="button" onClick={() => onRemove(u)}
+              style={{ position: 'absolute', top: 4, right: 4, width: 24, height: 24, borderRadius: '50%', background: 'rgba(0,0,0,0.6)', color: '#fff', fontSize: 12, border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: 0 }} className="group-hover:opacity-100">✕</button>
           </div>
         ))}
-        {uploading && <div className="w-full h-28 rounded-lg border border-dashed border-line flex items-center justify-center text-muted text-xs">上传中…</div>}
+        {uploading && <div style={{ width: 96, height: 96, borderRadius: 4, border: '1px dashed ' + DIV, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, color: '#999999' }}>上传中…</div>}
+        {/* spec 上传框 140x140 虚线 + 蓝色加号 + 下方上传按钮 */}
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: 140 }}>
+          <label style={{ width: 140, height: 140, borderRadius: 4, border: '1px dashed #cccccc', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+            onClick={() => inputRef.current?.click()}>
+            <span style={{ width: 36, height: 36, borderRadius: '50%', background: '#e6f0fb', color: BLUE, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12h14" /></svg>
+            </span>
+          </label>
+          <button type="button" onClick={() => inputRef.current?.click()}
+            style={{ marginTop: 8, background: 'none', border: 'none', color: '#222222', fontSize: 14, cursor: 'pointer' }}>上传{title}</button>
+        </div>
       </div>
     </div>
   );
