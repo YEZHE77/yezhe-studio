@@ -196,7 +196,7 @@ export default function Schedule() {
 
       <div className="flex flex-col lg:flex-row lg:items-start gap-0 lg:gap-4">
         {/* 日历（包裹在白色主容器内；移动端横向滚动，7列不挤压） */}
-        <div className="lg:flex-1 lg:mr-[300px]">
+        <div className="lg:flex-1 min-w-0">
           <div className="bg-white border border-line overflow-x-auto">
             <div className="min-w-[680px]">
             {/* 表头 */}
@@ -262,8 +262,8 @@ export default function Schedule() {
           </div>
         </div>
 
-        {/* 右侧固定深色面板 #333（PC fixed 悬浮，窄屏降级为普通块） */}
-        <div className="w-full p-4 lg:w-[280px] lg:flex-none lg:fixed lg:top-4 lg:bottom-4 lg:right-[max(1rem,calc((100vw-72rem)/2+1.5rem))] lg:overflow-auto border border-[#222]" style={{ background: PANEL_BG }}>
+        {/* 右侧固定深色面板 #333（PC sticky 悬浮于主内容右侧，窄屏降级为普通块） */}
+        <div className="w-full p-4 lg:w-[280px] lg:flex-none lg:sticky lg:top-4 lg:self-start lg:max-h-[calc(100vh-2rem)] lg:overflow-auto border border-[#222]" style={{ background: PANEL_BG }}>
           <div className="text-sm mb-2" style={{ color: '#ffffff' }}>{y}年{m}月</div>
           <div className="w-16 h-16 flex items-center justify-center mb-2" style={{ background: DATE_CIRCLE }}>
             <span className="text-2xl font-bold" style={{ color: '#ffffff' }}>{selParts[2] || '--'}</span>
