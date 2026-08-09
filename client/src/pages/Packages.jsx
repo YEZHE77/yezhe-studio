@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import http, { img, uploadImage } from '../api.js';
+import http, { img } from '../api.js';
 import { useViewState } from '../tabMemory.js';
 
 /* ==========================================================================
@@ -106,8 +106,6 @@ export default function Packages() {
   const [state, setState] = useViewState('packages', { status: 'all', q: '', category: '' });
   const [list, setList] = useState([]);
   const [categories, setCategories] = useState([]);
-  const [showForm, setShowForm] = useState(false);
-  const [editing, setEditing] = useState(null);
   const [trace, setTrace] = useState(null); // 订单溯源
   const [sharePkg, setSharePkg] = useState(null); // 套系分享二维码弹窗（H5 / 小程序）
   const [shareTab, setShareTab] = useState('h5'); // h5 | miniprogram
@@ -116,20 +114,12 @@ export default function Packages() {
   const [shareLoading, setShareLoading] = useState(false);
   const [shareErr, setShareErr] = useState('');
   const [copyTip, setCopyTip] = useState('');
-  const [form, setForm] = useState(emptyForm());
-  const [tab, setTab] = useState(0); // 编辑弹窗 4 个 Tab
 
   // 顶部搜索框本地输入（点击【搜索】才提交过滤）
   const [qInput, setQInput] = useState(state.q || '');
   const [advOpen, setAdvOpen] = useState(false); // 高级设置面板
 
-  function emptyForm() {
-    return { id: null, name: '', price: '', description: '', cover: null, cover_url: '', category_id: '',
-      deposit: '', retouch_count: '', raw_policy: '', duration: '', questionnaire: '',
-      addons: [], marketing_coupon: '', marketing_activity: '', status: 'on', specs: [] };
-  }
-
-  const loadCategories = () => http.get('/api/categories').then((r) => setCategories(r.data || [])).catch(() => {});
+    const loadCategories = () => http.get('/api/categories').then((r) => setCategories(r.data || [])).catch(() => {});
   const load = () => {
     const p = new URLSearchParams();
     if (state.status && state.status !== 'all') p.set('status', state.status);
@@ -141,25 +131,6 @@ export default function Packages() {
   useEffect(load, [state]);
 
   const doSearch = () => setState((s) => ({ ...s, q: qInput }));
-
-  const openNew = () => { setEditing(null); setForm(emptyForm()); setTab(0); setShowForm(true); };
-  const openEdit = (pkg) => {
-    setEditing(pkg);
-    setForm({
-      id: pkg.id, name: pkg.name, price: pkg.price, description: pkg.description || '',
-      cover: null, cover_url: pkg.cover_url || '', category_id: pkg.category_id || '',
-      deposit: pkg.deposit || '', retouch_count: pkg.retouch_count || '', raw_policy: pkg.raw_policy || '',
-      duration: pkg.duration || '',
-      questionnaire: typeof pkg.questionnaire === 'string' ? pkg.questionnaire : (pkg.questionnaire ? JSON.stringify(pkg.questionnaire, null, 2) : ''),
-      addons: Array.isArray(pkg.addons) ? pkg.addons : [],
-      marketing_coupon: (pkg.marketing && pkg.marketing.coupon) || '',
-      marketing_activity: (pkg.marketing && pkg.marketing.activity) || '',
-      status: pkg.status || 'on',
-      specs: Array.isArray(pkg.specs) ? pkg.specs : []
-    });
-    setTab(0);
-    setShowForm(true);
-  };
 
   // 套系分享二维码弹窗：H5 / 小程序 Tab 共用后端 /api/shares（type=package）生成的专属二维码
   const openShareQr = async (pkg) => {
@@ -188,38 +159,6 @@ export default function Packages() {
     setCopyTip('链接已复制');
     setTimeout(() => setCopyTip(''), 2000);
   };
-
-  const addAddon = () => setForm({ ...form, addons: [...form.addons, { name: '', price: '' }] });
-  const updAddon = (i, k, v) => setForm({ ...form, addons: form.addons.map((a, j) => j === i ? { ...a, [k]: v } : a) });
-  const delAddon = (i) => setForm({ ...form, addons: form.addons.filter((_, j) => j !== i) });
-
-  const addSpec = () => setForm({ ...form, specs: [...form.specs, { id: 's' + Date.now(), name: '', price: '', deposit: '', duration: '', raw_policy: '', remark: '' }] });
-  const updSpec = (i, k, v) => setForm({ ...form, specs: form.specs.map((s, j) => j === i ? { ...s, [k]: v } : s) });
-  const delSpec = (i) => setForm({ ...form, specs: form.specs.filter((_, j) => j !== i) });
-
-  async function submit(e) {
-    e.preventDefault();
-    let cover_url = form.cover_url || '';
-    if (form.cover) {
-      const r = await uploadImage(form.cover, { category: 'cover', isPublic: true });
-      cover_url = r.url;
-    }
-    const payload = {
-      name: form.name, price: parseFloat(form.price) || 0, description: form.description,
-      cover_url, category_id: form.category_id || null,
-      deposit: parseFloat(form.deposit) || 0, retouch_count: parseInt(form.retouch_count) || 0,
-      raw_policy: form.raw_policy || '', duration: form.duration || '',
-      questionnaire: form.questionnaire || '',
-      addons: form.addons.filter((a) => a.name).map((a) => ({ name: a.name, price: parseFloat(a.price) || 0 })),
-      marketing: { coupon: form.marketing_coupon, activity: form.marketing_activity },
-      status: form.status,
-      specs: form.specs
-    };
-    if (editing) await http.put('/api/packages/' + editing.id, payload);
-    else await http.post('/api/packages', payload);
-    setShowForm(false);
-    load();
-  }
 
   const del = async (id) => {
     if (!confirm('确认后将永久删除，建议先做好本地备份，确定继续？')) return;
@@ -390,109 +329,6 @@ export default function Packages() {
           </div>
         )}
       </div>
-
-      {/* 新建/编辑弹窗 */}
-      {showForm && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" onClick={() => setShowForm(false)}>
-          <form onClick={(e) => e.stopPropagation()} onSubmit={submit}
-            className="w-full max-w-lg bg-panel border border-line rounded-xl2 p-6 max-h-[90vh] overflow-auto">
-            <div className="text-white font-medium mb-4">{editing ? '编辑套系' : '新建套系'}</div>
-            {/* 4 个 Tab */}
-            <div className="flex gap-2 mb-4 flex-wrap">
-              {['基础信息', '服务明细', '多规格配置', '绑定问卷'].map((t, i) => (
-                <button key={t} type="button" onClick={() => setTab(i)}
-                  className={'px-3 py-1.5 rounded text-xs border ' + (tab === i ? 'bg-brand text-white border-brand' : 'bg-panel2 border-line text-muted')}>{t}</button>
-              ))}
-            </div>
-
-            {tab === 0 && (
-              <>
-                <input required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="套系名称"
-                  className="w-full mb-3 px-3 py-2 rounded bg-panel2 border border-line text-white text-sm outline-none" />
-                <label className="text-xs text-muted">套系分类</label>
-                <select value={form.category_id} onChange={(e) => setForm({ ...form, category_id: e.target.value })}
-                  className="w-full mb-3 px-3 py-2 rounded bg-panel2 border border-line text-white text-sm outline-none">
-                  <option value="">未分类</option>
-                  {categories.filter(Boolean).map((c) => <option key={c.id} value={c.id}>{c.name || '未命名'}</option>)}
-                </select>
-                <div className="text-xs text-muted mb-1">封面图（可选）</div>
-                <input type="file" accept="image/*" onChange={(e) => setForm({ ...form, cover: e.target.files[0] })} className="w-full mb-3 text-xs text-muted" />
-                {form.cover_url && <img src={img(form.cover_url)} className="w-20 h-20 object-cover rounded mb-3" />}
-                <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="包含内容描述"
-                  className="w-full mb-3 px-3 py-2 rounded bg-panel2 border border-line text-white text-sm outline-none h-16" />
-                <input value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} type="number" placeholder="套系价格（起）"
-                  className="w-full mb-3 px-3 py-2 rounded bg-panel2 border border-line text-white text-sm outline-none" />
-                <input value={form.deposit} onChange={(e) => setForm({ ...form, deposit: e.target.value })} type="number" placeholder="定金"
-                  className="w-full mb-3 px-3 py-2 rounded bg-panel2 border border-line text-white text-sm outline-none" />
-                <div className="flex items-center gap-4 mb-4">
-                  <span className="text-xs text-muted">对外状态</span>
-                  <label className="flex items-center gap-1 text-sm text-white"><input type="radio" checked={form.status === 'on'} onChange={() => setForm({ ...form, status: 'on' })} /> 上架（小程序展示）</label>
-                  <label className="flex items-center gap-1 text-sm text-white"><input type="radio" checked={form.status === 'off'} onChange={() => setForm({ ...form, status: 'off' })} /> 下架（隐藏）</label>
-                </div>
-              </>
-            )}
-
-            {tab === 1 && (
-              <>
-                <input value={form.retouch_count} onChange={(e) => setForm({ ...form, retouch_count: e.target.value })} type="number" placeholder="精修张数"
-                  className="w-full mb-3 px-3 py-2 rounded bg-panel2 border border-line text-white text-sm outline-none" />
-                <input value={form.raw_policy} onChange={(e) => setForm({ ...form, raw_policy: e.target.value })} placeholder="底片政策（如 300 张底片全送）"
-                  className="w-full mb-3 px-3 py-2 rounded bg-panel2 border border-line text-white text-sm outline-none" />
-                <input value={form.duration} onChange={(e) => setForm({ ...form, duration: e.target.value })} placeholder="拍摄时长（如 全天）"
-                  className="w-full mb-3 px-3 py-2 rounded bg-panel2 border border-line text-white text-sm outline-none" />
-                <div className="text-xs text-muted mb-1">增值服务定价</div>
-                {form.addons.map((a, i) => (
-                  <div key={i} className="flex gap-2 mb-2">
-                    <input value={a.name} onChange={(e) => updAddon(i, 'name', e.target.value)} placeholder="名称(如加精修/张)" className="flex-1 px-2 py-1 rounded bg-panel2 border border-line text-white text-xs outline-none" />
-                    <input value={a.price} onChange={(e) => updAddon(i, 'price', e.target.value)} type="number" placeholder="价格" className="w-24 px-2 py-1 rounded bg-panel2 border border-line text-white text-xs outline-none" />
-                    <button type="button" onClick={() => delAddon(i)} className="px-2 text-red-400 text-xs">✕</button>
-                  </div>
-                ))}
-                <button type="button" onClick={addAddon} className="text-brand text-xs mb-3">+ 添加增值项</button>
-                <div className="text-xs text-muted mb-1 mt-2">营销绑定</div>
-                <input value={form.marketing_coupon} onChange={(e) => setForm({ ...form, marketing_coupon: e.target.value })} placeholder="优惠券(如新客立减200)" className="w-full mb-2 px-3 py-2 rounded bg-panel2 border border-line text-white text-sm outline-none" />
-                <input value={form.marketing_activity} onChange={(e) => setForm({ ...form, marketing_activity: e.target.value })} placeholder="营销活动(如转发送摆台)" className="w-full mb-3 px-3 py-2 rounded bg-panel2 border border-line text-white text-sm outline-none" />
-              </>
-            )}
-
-            {tab === 2 && (
-              <>
-                <div className="text-xs text-muted mb-2">同一套系可配置多个版本（独立价格 / 服务），客户在小程序可切换。</div>
-                {form.specs.map((s, i) => (
-                  <div key={s.id || i} className="border border-line rounded-lg p-3 mb-3 bg-panel2">
-                    <div className="flex items-center justify-between mb-2">
-                      <input value={s.name} onChange={(e) => updSpec(i, 'name', e.target.value)} placeholder="规格名称(如 经典版/旗舰版)" className="flex-1 px-2 py-1 rounded bg-panel border border-line text-white text-xs outline-none" />
-                      <button type="button" onClick={() => delSpec(i)} className="ml-2 px-2 text-red-400 text-xs">删除规格</button>
-                    </div>
-                    <div className="flex gap-2 mb-2">
-                      <input value={s.price} onChange={(e) => updSpec(i, 'price', e.target.value)} type="number" placeholder="价格" className="flex-1 px-2 py-1 rounded bg-panel border border-line text-white text-xs outline-none" />
-                      <input value={s.deposit} onChange={(e) => updSpec(i, 'deposit', e.target.value)} type="number" placeholder="定金" className="flex-1 px-2 py-1 rounded bg-panel border border-line text-white text-xs outline-none" />
-                    </div>
-                    <input value={s.duration} onChange={(e) => updSpec(i, 'duration', e.target.value)} placeholder="拍摄时长(如 全天)" className="w-full mb-2 px-2 py-1 rounded bg-panel border border-line text-white text-xs outline-none" />
-                    <input value={s.raw_policy} onChange={(e) => updSpec(i, 'raw_policy', e.target.value)} placeholder="底片政策" className="w-full mb-2 px-2 py-1 rounded bg-panel border border-line text-white text-xs outline-none" />
-                    <input value={s.remark} onChange={(e) => updSpec(i, 'remark', e.target.value)} placeholder="规格说明(如 含 2 套服装)" className="w-full px-2 py-1 rounded bg-panel border border-line text-white text-xs outline-none" />
-                  </div>
-                ))}
-                <button type="button" onClick={addSpec} className="text-brand text-xs">+ 添加规格</button>
-              </>
-            )}
-
-            {tab === 3 && (
-              <>
-                <div className="text-xs text-muted mb-1">绑定套系专属拍摄问卷（JSON 数组，确认预约后客户填写）</div>
-                <div className="text-xs text-muted mb-2">示例：{'[{"q":"婚礼日期","type":"text"},{"q":"偏好风格","type":"text"},{"q":"是否需要跟拍","type":"bool"}]'}</div>
-                <textarea value={form.questionnaire} onChange={(e) => setForm({ ...form, questionnaire: e.target.value })} placeholder='[{"q":"婚礼日期","type":"text"}]'
-                  className="w-full mb-3 px-3 py-2 rounded bg-panel2 border border-line text-white text-sm outline-none h-32 font-mono" />
-              </>
-            )}
-
-            <div className="flex gap-2 justify-end">
-              <button type="button" onClick={() => setShowForm(false)} className="px-4 py-2 rounded text-sm text-muted">取消</button>
-              <button type="submit" className="px-4 py-2 rounded bg-brand text-white text-sm">保存</button>
-            </div>
-          </form>
-        </div>
-      )}
 
       {/* 订单溯源弹窗 */}
       {trace && (

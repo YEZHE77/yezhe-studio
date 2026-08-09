@@ -187,6 +187,14 @@ export default function PackageEdit() {
   };
   const removeTag = (t) => setD({ tags: form.details.tags.filter((x) => x !== t) });
 
+  // ---- 多规格配置（specs） ----
+  const addSpec = () =>
+    setForm((f) => ({ ...f, specs: [...f.specs, { id: 's' + Date.now(), name: '', price: '', deposit: '', duration: '', raw_policy: '', remark: '' }] }));
+  const updSpec = (i, k, v) =>
+    setForm((f) => ({ ...f, specs: f.specs.map((s, j) => j === i ? { ...s, [k]: v } : s) }));
+  const delSpec = (i) =>
+    setForm((f) => ({ ...f, specs: f.specs.filter((_, j) => j !== i) }));
+
   // ---- 管理分类弹窗 ----
   const [catName, setCatName] = useState('');
   const addCategory = async () => {
@@ -423,6 +431,14 @@ export default function PackageEdit() {
               </div>
             </Field>
 
+            {/* 上架 / 下架状态（迁移至价格及问卷 Tab） */}
+            <Field label="上架 / 下架状态">
+              <label className="flex items-center gap-1.5 text-sm text-muted">
+                <Switch checked={form.status === 'on'} onChange={(v) => setF({ status: v ? 'on' : 'off' })} />
+                {form.status === 'on' ? '上架（小程序展示）' : '下架（隐藏）'}
+              </label>
+            </Field>
+
             {/* 退订政策 + 隐藏 + 红注释 */}
             <Field label="退订政策" required>
               <textarea className={inputCls} style={inputBg} rows={3} value={form.details.refund_policy}
@@ -470,12 +486,31 @@ export default function PackageEdit() {
         {/* ============ Tab3 服务及加片 ============ */}
         {tab === 3 && (
           <div className="max-w-2xl">
-            {/* 对外公开 + 全部可见 */}
-            <Field label="对外公开">
+            {/* 多规格配置（同一套系多个版本，客户可选） */}
+            <Field label="多规格配置" hint="（同一套系可配多个版本，客户在小程序可切换）">
+              <div className="space-y-3">
+                {form.specs.map((s, i) => (
+                  <div key={s.id || i} className="border border-line rounded-lg p-3 flex flex-col gap-2" style={{ background: '#fafbfc' }}>
+                    <div className="flex items-center gap-2">
+                      <input className={inputCls} style={inputBg} value={s.name} onChange={(e) => updSpec(i, 'name', e.target.value)} placeholder="规格名称（如 经典版 / 旗舰版）" />
+                      <button type="button" onClick={() => delSpec(i)} className="px-2 py-1.5 rounded text-xs border border-line text-red-500 hover:border-red-400 whitespace-nowrap">删除</button>
+                    </div>
+                    <div className="flex gap-2">
+                      <input type="number" className={inputCls} style={inputBg} value={s.price} onChange={(e) => updSpec(i, 'price', e.target.value)} placeholder="价格" />
+                      <input type="number" className={inputCls} style={inputBg} value={s.deposit} onChange={(e) => updSpec(i, 'deposit', e.target.value)} placeholder="定金" />
+                    </div>
+                    <input className={inputCls} style={inputBg} value={s.duration} onChange={(e) => updSpec(i, 'duration', e.target.value)} placeholder="拍摄时长（如 全天）" />
+                    <input className={inputCls} style={inputBg} value={s.raw_policy} onChange={(e) => updSpec(i, 'raw_policy', e.target.value)} placeholder="底片政策" />
+                    <input className={inputCls} style={inputBg} value={s.remark} onChange={(e) => updSpec(i, 'remark', e.target.value)} placeholder="规格说明（如 含 2 套服装）" />
+                  </div>
+                ))}
+                <button type="button" onClick={addSpec} className="text-sm" style={{ color: BRAND }}>+ 添加规格</button>
+              </div>
+            </Field>
+
+            {/* 显示设置：全部可见 / 咨询提醒 */}
+            <Field label="显示设置">
               <div className="flex items-center gap-3 flex-wrap">
-                <label className="flex items-center gap-1.5 text-sm text-muted">
-                  <Switch checked={form.status === 'on'} onChange={(v) => setF({ status: v ? 'on' : 'off' })} />{form.status === 'on' ? '已上架' : '已下架'}
-                </label>
                 <label className="flex items-center gap-1.5 text-sm text-muted">
                   <Switch checked={form.details.public_all_visible} onChange={(v) => setD({ public_all_visible: v })} />全部可见
                 </label>
@@ -483,12 +518,6 @@ export default function PackageEdit() {
                   <Switch checked={form.details.consult_reminder} onChange={(v) => setD({ consult_reminder: v })} />咨询提醒
                 </label>
               </div>
-            </Field>
-
-            {/* 温馨提示 */}
-            <Field label="温馨提示">
-              <textarea className={inputCls} style={inputBg} rows={2} value={form.details.warm_tips}
-                onChange={(e) => setD({ warm_tips: e.target.value })} placeholder="如 拍摄前请保持充足睡眠" />
             </Field>
 
             {/* 标签按钮组 */}
@@ -609,6 +638,12 @@ export default function PackageEdit() {
               <textarea className={inputCls} style={inputBg} rows={4} value={form.details.service_detail_text}
                 onChange={(e) => setD({ service_detail_text: e.target.value })} placeholder="补充服务说明（自由文本）" />
             </Field>
+
+            {/* 温馨提示（迁移至服务及加片 Tab） */}
+            <Field label="温馨提示">
+              <textarea className={inputCls} style={inputBg} rows={2} value={form.details.warm_tips}
+                onChange={(e) => setD({ warm_tips: e.target.value })} placeholder="如 拍摄前请保持充足睡眠" />
+            </Field>
           </div>
         )}
       </form>
@@ -625,7 +660,7 @@ export default function PackageEdit() {
           <button type="button" onClick={() => nav('/packages')}
             className="px-5 py-2 rounded-lg text-sm border border-line text-fg hover:border-brand">取消</button>
           <button type="button" onClick={submit} disabled={saving}
-            className="px-6 py-2 rounded-lg text-sm text-white disabled:opacity-60" style={{ background: TEAL }}>
+            className="px-6 py-2 rounded-lg text-sm text-white disabled:opacity-60" style={{ background: BRAND }}>
             {saving ? '保存中…' : '保存'}
           </button>
         </div>
