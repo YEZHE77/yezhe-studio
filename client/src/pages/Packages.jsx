@@ -6,7 +6,7 @@ import { useViewState } from '../tabMemory.js';
 /* ==========================================================================
    套系页面（后台管理 → 套系）
    —— 视觉规范（严格按设计稿取色，禁止改动）：
-        页面底色 #ffffff ／ 深色操作栏 #333333 ／ 浅黄通知栏 #fff8e1＋橙色警示 #ff9f43
+        页面底色 #ffffff ／ 深色操作栏 #333333
         主按钮蓝色 #2f7cf6 ／ 黑色按钮 #2c2c2c ／ 定金普通文字 #555（格式：价格：¥xxxx｜定金：¥xxxx）
         负底栏深色区域白字一律用内联 style={{color:'#fff'}}（全局 .text-white 被覆写）
    —— 全部数据（套系列表 / 分类选项 / 搜索 / 状态）均由后端接口返回，禁止硬编码。
@@ -255,16 +255,6 @@ export default function Packages() {
           </div>
         </div>
       )}
-
-      {/* 浅黄色通知提示栏（促销 / 拼团活动提醒，常驻） */}
-      <div className="flex items-center gap-3 mt-4 px-4 py-3 rounded-lg text-sm flex-wrap"
-        style={{ background: '#fff8e1', color: '#8a6d3b' }}>
-        <span className="inline-flex w-5 h-5 rounded-full items-center justify-center shrink-0"
-          style={{ background: '#ff9f43', color: '#fff', fontSize: 13, fontWeight: 700 }}>!</span>
-        <span>您目前没有上线的促销/拼团活动…</span>
-        <div className="flex-1" />
-        <button onClick={() => setAdvOpen((v) => !v)} className="text-sm font-medium" style={{ color: '#ff9f43' }}>去设置&gt;</button>
-      </div>
 
       {/* 套系列表（横向条目） */}
       <div className="mt-4">
