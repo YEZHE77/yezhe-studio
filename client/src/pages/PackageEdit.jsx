@@ -11,16 +11,18 @@ import http, { img, uploadImage, uploadBatch } from '../api.js';
    —— 不写死任何分类 / 货币 / 标签来源，全部来自后端；新字段聚合在 details JSON，旧列（price/deposit/...）仍兼容。
    ========================================================================== */
 
-const BRAND = '#2185D0';
-const SAVE = '#2196F3';
-const PAGE_BG = '#F8F8F8';
+const BRAND = '#0088EE';        // 链接文字蓝色
+const SAVE = '#2890F0';         // 保存按钮蓝色
+const PAGE_BG = '#F7F7F7';
 const YELLOW = '#FFFDE8';
 const YELLOW_BORDER = '#CCCCCC';
 const DASH = '#CCCCCC';
-const RED = '#E53935';
-const NOTE = '#777777';
+const RED = '#FF3333';          // 必填红色星号
+const NOTE_RED = '#FF2222';     // 红色注释文字
+const NOTE = '#888888';         // 辅助说明灰色文字
 const CANCEL_BG = '#E2E2E2';
-const TEAL = '#81C784';
+const TAB_INACTIVE = '#F0F0F0';
+const TEAL = '#70C870';         // 绿色分隔线
 
 const PRESET_TAGS = ['婚纱类', '亲子类', '写真类', '旅拍类', '情侣类', '婚礼类', '创意类', '其他', '新生儿', '婚礼策划', '美妆'];
 const SVC_PARAMS = ['单规格服务', '多规格服务'];
@@ -313,13 +315,13 @@ export default function PackageEdit() {
       {/* 白色卡片容器：Tab 栏 + 全部 Tab 内容 */}
       <form onSubmit={submit} className="flex-1 flex flex-col m-6 mb-0 bg-white rounded-lg overflow-hidden"
         style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
-        {/* Tab 栏：选中=白底黑字，未选=#F2F2F2底 #666字 */}
-        <div className="flex gap-1 px-4 pt-4">
+        {/* Tab 栏：选中=白底黑字，未选=#F0F0F0底 #666字；移动端横向滚动 */}
+        <div className="flex gap-1 px-4 pt-4 overflow-x-auto">
           {TABS.map((t, i) => (
             <button key={t} type="button" onClick={() => setTab(i)}
-              className="px-5 py-2.5 text-sm rounded-t-md transition-colors"
+              className="px-5 py-2.5 text-sm rounded-t-md transition-colors whitespace-nowrap shrink-0"
               style={{
-                background: tab === i ? '#ffffff' : '#F2F2F2',
+                background: tab === i ? '#ffffff' : TAB_INACTIVE,
                 color: tab === i ? '#1f2329' : '#666666',
                 fontWeight: tab === i ? 700 : 400
               }}>
@@ -416,8 +418,7 @@ export default function PackageEdit() {
                   ) : (
                     <div className="w-40 h-24 rounded-lg border border-line flex items-center justify-center text-xs" style={{ color: '#b0b3b8', background: '#f5f6f8' }}>未上传</div>
                   )}
-                  <label className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm cursor-pointer border"
-                    style={{ borderColor: BRAND, color: BRAND }}>
+                  <label className="inline-flex items-center gap-1.5 text-sm cursor-pointer" style={{ color: BRAND }}>
                     <IconPlus />{uploading === 'video' ? '上传中…' : '点击上传套系视频'}
                     <input type="file" accept="video/*" onChange={onVideo} className="hidden" />
                   </label>
@@ -487,7 +488,7 @@ export default function PackageEdit() {
                   <IconHelp />
                   <Checkbox checked={d.hide_refund} onChange={(v) => setD({ hide_refund: v })} label="隐藏" />
                 </div>
-                <div className="mt-1 text-xs" style={{ color: RED }}>注释：隐藏退订政策后，将按照严格政策进行退订</div>
+                <div className="mt-1 text-xs" style={{ color: NOTE_RED }}>注释：隐藏退订政策后，将按照严格政策进行退订</div>
               </Field>
 
               {/* 底片保存 */}
