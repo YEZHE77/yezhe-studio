@@ -5,7 +5,7 @@ import http, { img, uploadImage, uploadBatch } from '../api.js';
 /* ==========================================================================
    套系编辑页面（后台管理 → 工作台 > 套系 > 套系编辑）
    —— 4 个 Tab：套系名称 / 价格及问卷 / 服务及加片 / 其他详情
-   —— 全局共用：页面底 #F7F8FA；外层白卡 max-w 840px / 圆角 8px / 阴影 0 1px 2px；
+   —— 全局共用：页面底 #ffffff；外层白卡 max-w 840px / 圆角 8px / 阴影 0 1px 4px；
    —— 统一 Tab 方框选中样式；input/select max-w 420px；浅黄模块 #FDFCEB；底部下一步/取消/保存
    —— 真实上传：封面 / 详情图(0-80) / 视频；管理分类弹窗（新建/选择）
    —— 数据全部接口驱动：GET /api/packages/:id / POST /api/packages / PUT /api/packages/:id
@@ -16,7 +16,7 @@ import http, { img, uploadImage, uploadBatch } from '../api.js';
 const LINK = '#2196F3';          // 蓝色文字链接（管理分类/编辑/点击上传视频/下一步）
 const SAVE_BTN = '#3488EB';      // 保存按钮蓝色
 const TOGGLE_ON = '#34C759';     // 开关开启绿色
-const PAGE_BG = '#F7F8FA';
+const PAGE_BG = '#ffffff';
 const YELLOW = '#FDFCEB';        // 浅黄色模块底色
 const YELLOW_BORDER = '#D1D5DB'; // 浅黄色模块虚线边框
 const TAB_BORDER = '#E5E7EB';    // Tab 未选中边框
@@ -171,6 +171,10 @@ const selSm = "max-w-[260px] h-[34px] px-3 rounded bg-white border border-[#D1D5
 const textareaCls = "w-full max-w-[420px] px-3 py-3 rounded bg-white border border-[#D1D5DB] text-sm text-[#333333] placeholder:text-[#9CA3AF] outline-none focus:border-[#2196F3]";
 const textareaFull = "w-full px-3 py-3 rounded bg-white border border-[#D1D5DB] text-[13px] text-[#333333] placeholder:text-[#9CA3AF] outline-none focus:border-[#2196F3]";
 const taBig = "w-full px-3 py-3 rounded bg-white border border-[#D1D5DB] text-[13px] text-[#333333] placeholder:text-[#9CA3AF] outline-none focus:border-[#2196F3]";
+// 拉宽到卡片右侧边界：与 inputCls 一致，仅去掉 max-w 限制（高度/字号/边框/圆角不变）
+const inputFull = "w-full h-9 px-3 rounded bg-white border border-[#D1D5DB] text-sm text-[#333333] placeholder:text-[#9CA3AF] outline-none focus:border-[#2196F3]";
+const selFull = "flex-1 max-w-none h-9 px-3 rounded bg-white border border-[#D1D5DB] text-sm text-[#333333] placeholder:text-[#9CA3AF] outline-none focus:border-[#2196F3]";
+const textareaWide = "w-full px-3 py-3 rounded bg-white border border-[#D1D5DB] text-sm text-[#333333] placeholder:text-[#9CA3AF] outline-none focus:border-[#2196F3]";
 
 export default function PackageEdit() {
   const nav = useNavigate();
@@ -338,7 +342,7 @@ export default function PackageEdit() {
     <div className="-mx-6 -my-6 min-h-screen flex flex-col" style={{ background: PAGE_BG }}>
       {/* 白色卡片容器：Tab 栏 + 全部 Tab 内容；底边距 0 留出底部按钮栏 */}
       <form onSubmit={submit} className="m-6 mb-0 max-w-[840px] mx-auto w-full"
-        style={{ zoom: 0.8, borderRadius: 8, boxShadow: '0 1px 4px rgba(0,0,0,0.06)', padding: '40px 48px', background: '#fbfbf3' }}>
+        style={{ zoom: 0.8, borderRadius: 6, boxShadow: '0 1px 4px rgba(0,0,0,0.06)', padding: '40px 48px', background: '#ffffff' }}>
 
         {/* Tab 栏：选中=方框高亮（黑边白底黑字），未选=灰字灰边透明底；无下划线 */}
         <div className="flex gap-1 overflow-x-auto" style={{ marginBottom: 28 }}>
@@ -387,31 +391,28 @@ export default function PackageEdit() {
                 </div>
               </Field>
 
-              {/* 基础信息：套系名称 + 套系分类 横向两列分组 */}
-              <div className="grid grid-cols-2 gap-x-4">
-                {/* 套系名称 */}
-                <Field label="套系名称" required>
-                  <input className={inputCls} value={form.name}
-                    onChange={(e) => setF({ name: e.target.value })} placeholder="婚礼跟拍｜摄影单机位" />
-                </Field>
+              {/* 基础信息：套系名称 占满整行（拉宽到卡片右侧边界） */}
+              <Field label="套系名称" required>
+                <input className={inputFull} value={form.name}
+                  onChange={(e) => setF({ name: e.target.value })} placeholder="婚礼跟拍｜摄影单机位" />
+              </Field>
 
-                {/* 套系分类 + 管理分类 */}
-                <Field label="套系分类" required>
-                  <div className="flex items-center gap-3">
-                    <select className={inputCls} value={form.category_id}
-                      onChange={(e) => setF({ category_id: e.target.value })}>
-                      <option value="">请选择分类</option>
-                      {categories.filter(Boolean).map((c) => <option key={c.id} value={c.id}>{c.name || '未命名'}</option>)}
-                    </select>
-                    <button type="button" onClick={() => setCatOpen(true)}
-                      className="text-[13px] whitespace-nowrap" style={{ color: LINK }}>管理分类</button>
-                  </div>
-                </Field>
-              </div>
+              {/* 套系分类 + 管理分类（占满整行，下拉自适应 + 管理分类按钮同行） */}
+              <Field label="套系分类" required>
+                <div className="flex items-center gap-3">
+                  <select className={selFull} value={form.category_id}
+                    onChange={(e) => setF({ category_id: e.target.value })}>
+                    <option value="">请选择分类</option>
+                    {categories.filter(Boolean).map((c) => <option key={c.id} value={c.id}>{c.name || '未命名'}</option>)}
+                  </select>
+                  <button type="button" onClick={() => setCatOpen(true)}
+                    className="text-[13px] whitespace-nowrap" style={{ color: LINK }}>管理分类</button>
+                </div>
+              </Field>
 
-              {/* 套系简介 */}
+              {/* 套系简介（拉宽到与套系名称左右对齐，占满整行） */}
               <Field label="套系简介" hint="（列表页截断展示）">
-                <textarea className={textareaCls} rows={2} value={form.description}
+                <textarea className={textareaWide} rows={2} value={form.description}
                   onChange={(e) => setF({ description: e.target.value })} placeholder="一句话介绍套系亮点" />
               </Field>
 
@@ -555,8 +556,8 @@ export default function PackageEdit() {
           {/* ============ Tab3 服务及加片 ============ */}
           {tab === 2 && (
             <div>
-              {/* 标准服务模板浅黄色虚线块（含标题 + 模板切换 + 全部服务字段 + 显示内容） */}
-              <div className="mb-6 rounded border border-dashed" style={{ background: YELLOW, borderColor: YELLOW_BORDER, padding: '24px 28px' }}>
+              {/* 标准服务模板虚线块（含标题 + 模板切换 + 全部服务字段 + 显示内容）；仅此块底色 #fbfbf3，其余区域白色 */}
+              <div className="mb-6 rounded border border-dashed" style={{ background: '#fbfbf3', borderColor: YELLOW_BORDER, padding: '24px 28px' }}>
                 <div className="text-[13px] mb-4" style={{ color: '#666666' }}>标准服务模板</div>
 
                 {/* 摄影 / 摄像模版切换（选中黑底 pill，未选灰边） */}
