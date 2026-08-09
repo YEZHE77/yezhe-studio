@@ -45,7 +45,6 @@ export default function Schedule() {
   const [lunarMap, setLunarMap] = useState({});
   const [selDate, setSelDate] = useState('');
   const [err, setErr] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all'); // all | unpaid | wait
   const [advOpen, setAdvOpen] = useState(false);
   const [dlg, setDlg] = useState(null); // 编辑档期弹窗（保留原档期编辑逻辑）
   const [orderDlg, setOrderDlg] = useState(null); // 新增订单弹窗（原「添加档期」入口）
@@ -118,27 +117,18 @@ export default function Schedule() {
   const selParts = selDate ? selDate.split('-') : [];
 
   return (
-    <div className="max-w-6xl mx-auto pb-10">
+    <div className="-mx-6 -my-6 bg-white min-h-screen">
+      <div className="max-w-6xl mx-auto px-6 pt-6 pb-10">
       {/* 面包屑由全局 <Breadcrumb /> 渲染 */}
-      <h1 className="text-xl font-semibold mb-4" style={{ color: '#1f2329' }}>档期</h1>
 
-      {/* 顶部筛选区：平铺在页面容器内（非独立白卡片） */}
-      <div className="flex flex-wrap items-center gap-3 mb-4">
-        {/* 图例 + 订单状态说明悬浮提示 */}
+      {/* 左上角：图例 + 订单状态说明悬浮提示 */}
+      <div className="mb-3">
         <StatusLegend />
+      </div>
 
-        <div className="flex items-center gap-2">
-          <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-2 py-1.5 rounded border border-line bg-white text-sm outline-none" style={{ color: '#1f2329' }}>
-            <option value="all">全部档期</option>
-            <option value="unpaid">未付定金</option>
-            <option value="wait">等待拍摄</option>
-          </select>
-        </div>
-
-        <div className="flex-1" />
-
-        {/* 年月控件 */}
+      {/* 顶部控制栏：左箭头 / 年 / 月 / 右箭头 / 筛选账号 / 高级选项 */}
+      <div className="flex flex-wrap items-center gap-3 mb-4">
+        {/* 年月翻页控件 */}
         <div className="flex items-center gap-1">
           <button onClick={() => shiftMonth(-1)} className="w-8 h-8 rounded border border-line bg-white hover:bg-panel2" style={{ color: '#1f2329' }}>‹</button>
           <select value={y} onChange={(e) => setYM(Number(e.target.value), m)} className="px-2 py-1.5 rounded border border-line bg-white text-sm outline-none" style={{ color: '#1f2329' }}>
@@ -149,6 +139,8 @@ export default function Schedule() {
           </select>
           <button onClick={() => shiftMonth(1)} className="w-8 h-8 rounded border border-line bg-white hover:bg-panel2" style={{ color: '#1f2329' }}>›</button>
         </div>
+
+        <div className="flex-1" />
 
         {/* 筛选账号 */}
         <select value={state.executor} onChange={(e) => setState((s) => ({ ...s, executor: e.target.value }))}
@@ -170,9 +162,9 @@ export default function Schedule() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+      <div className="flex flex-col lg:flex-row lg:items-start gap-4">
         {/* 日历（平铺，无独立白卡片） */}
-        <div className="lg:col-span-3">
+        <div className="lg:flex-1 lg:mr-[300px]">
           <div className="grid grid-cols-7 gap-2 mb-2">
             {WEEK.map((w) => <div key={w} className="text-center text-xs py-1" style={{ color: '#6b7280' }}>{w}</div>)}
           </div>
@@ -183,21 +175,15 @@ export default function Schedule() {
               const rows = map[date] || [];
               const pends = pendMap[date] || [];
               const st = dayState(rows);
-              const isSel = selDate === date;
               const lunar = lunarMap[date] || '';
               let cellCls = 'bg-panel2 border-line';
               let style = {};
               if (st.kind === 'closed') { cellCls = 'border-line'; style = { background: 'repeating-linear-gradient(45deg,#eee,#eee 6px,#e3e3e3 6px,#e3e3e3 12px)', color: '#888' }; }
-              else if (st.kind === 'unpaid' || st.kind === 'wait') { cellCls = 'border border-[#ffb3c8]'; style = { background: '#ffe1e8' }; }
-
-              if (statusFilter !== 'all') {
-                const ok = statusFilter === 'unpaid' ? st.kind === 'unpaid' : st.kind === 'wait';
-                if (!ok && st.kind !== 'closed') style = { ...style, opacity: 0.35 };
-              }
+              else               if (st.kind === 'unpaid' || st.kind === 'wait') { cellCls = 'border border-[#ffb3c8]'; style = { background: '#ffe1e8' }; }
 
               return (
                 <div key={i} onClick={() => setSelDate(date)}
-                  className={'min-h-[84px] rounded-lg border p-2 text-left transition cursor-pointer flex flex-col ' + (isSel ? 'ring-2 ring-brand ' : '') + cellCls}
+                  className={'min-h-[84px] rounded-lg border p-2 text-left transition cursor-pointer flex flex-col ' + cellCls}
                   style={style}>
                   <div className="flex items-center justify-between">
                     <span className={'text-sm ' + (st.kind === 'closed' ? 'text-[#888]' : 'text-fg')}>{day}</span>
@@ -234,8 +220,8 @@ export default function Schedule() {
           </div>
         </div>
 
-        {/* 右侧固定深色面板 #333 */}
-        <div className="lg:sticky lg:top-4 self-start rounded-lg shadow-[0_2px_12px_rgba(0,0,0,0.06)] p-4" style={{ background: '#333333' }}>
+        {/* 右侧固定深色面板 #333（PC fixed 悬浮，窄屏降级为普通块） */}
+        <div className="w-full rounded-lg shadow-[0_2px_12px_rgba(0,0,0,0.06)] p-4 lg:w-[280px] lg:flex-none lg:fixed lg:top-4 lg:bottom-4 lg:right-[max(1rem,calc((100vw-72rem)/2+1.5rem))] lg:overflow-auto" style={{ background: '#333333' }}>
           <div className="text-xs mb-2" style={{ color: '#b9bdc4' }}>{selDate ? `${selParts[0]}年${selParts[1]}月` : '未选择日期'}</div>
           <div className="w-16 h-16 rounded-full flex items-center justify-center mb-2" style={{ background: '#ffce3a' }}>
             <span className="text-2xl font-bold" style={{ color: '#333333' }}>{selParts[2] || '--'}</span>
@@ -308,6 +294,7 @@ export default function Schedule() {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }
@@ -334,9 +321,8 @@ function StatusLegend() {
       onMouseLeave={() => { if (!pinned) setOpen(false); }}
       onClick={(e) => { if (isTouch()) { e.preventDefault(); setPinned((v) => !v); } }}>
       <div className="flex items-center gap-3 text-xs cursor-pointer select-none" style={{ color: '#6b7280' }}>
-        <span className="flex items-center gap-1"><span className="w-3 h-3 rounded" style={{ background: '#fff2cc', border: '1px solid #e6c200' }} />未付定</span>
-        <span className="flex items-center gap-1"><span className="w-3 h-3 rounded" style={{ background: '#d5e8d4', border: '1px solid #9ccc9c' }} />等待拍</span>
-        <span className="flex items-center gap-1"><span className="w-3 h-3 rounded" style={{ background: 'repeating-linear-gradient(45deg,#eee,#eee 4px,#cfcfcf 4px,#cfcfcf 8px)' }} />已关闭</span>
+        <span className="flex items-center gap-1"><span className="w-3 h-3 rounded" style={{ background: '#fff2cc', border: '1px solid #e6c200' }} />未付定金</span>
+        <span className="flex items-center gap-1"><span className="w-3 h-3 rounded" style={{ background: '#d5e8d4', border: '1px solid #9ccc9c' }} />等待拍摄</span>
         {/* 触发箭头 */}
         <span className="inline-flex items-center gap-0.5 ml-1 px-1.5 py-0.5 rounded hover:bg-panel2">
           订单状态说明
