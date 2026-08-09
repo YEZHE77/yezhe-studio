@@ -428,6 +428,7 @@ function OrderDialog({ orderDlg, personnel, onClose, onSaved }) {
   const [phones, setPhones] = useState(['']);
   const [chooseSession, setChooseSession] = useState(false);
   const [dateTbd, setDateTbd] = useState(false);
+  const [shootDate, setShootDate] = useState(orderDlg.date || ''); // 可自由编辑的拍摄日期（不写死）
   const [slots, setSlots] = useState([]);
   const [pkgId, setPkgId] = useState('');
   const [pkgPrice, setPkgPrice] = useState('');
@@ -492,7 +493,7 @@ function OrderDialog({ orderDlg, personnel, onClose, onSaved }) {
 
   const save = async () => {
     setLocalErr('');
-    if (!dateTbd && !orderDlg.date) return setLocalErr('请选择拍摄日期');
+    if (!dateTbd && !shootDate) return setLocalErr('请选择拍摄日期');
     if (!customerName.trim()) return setLocalErr('请填写顾客姓名');
     if (!pkgId) return setLocalErr('请选择套系名称');
     if (!pkgPrice || parseFloat(pkgPrice) <= 0) return setLocalErr('请填写套系价格');
@@ -502,7 +503,7 @@ function OrderDialog({ orderDlg, personnel, onClose, onSaved }) {
       order_name: orderName.trim(),
       customer_name: customerName.trim(),
       phones: phones.map((p) => p.trim()).filter(Boolean),
-      shoot_date: dateTbd ? '' : orderDlg.date,
+      shoot_date: dateTbd ? '' : shootDate,
       date_tbd: dateTbd ? 1 : 0,
       time_slots: slots,
       package_id: pkgId ? Number(pkgId) : null,
@@ -520,12 +521,12 @@ function OrderDialog({ orderDlg, personnel, onClose, onSaved }) {
       const r = await http.post('/api/orders', payload);
       const orderNo = (r.data && r.data.order_no) || '';
       // 同步落一条日历档期（仅当指定了具体拍摄日期；与订单号关联，日历按订单着色）
-      if (!dateTbd && orderDlg.date) {
+      if (!dateTbd && shootDate) {
         const periods = slots.length ? slots : ['full'];
         const exec = executors[0] || {};
         try {
           await http.post('/api/schedules', {
-            date: orderDlg.date,
+            date: shootDate,
             periods,
             date_tbd: 0,
             status: 'booked',
@@ -576,15 +577,15 @@ function OrderDialog({ orderDlg, personnel, onClose, onSaved }) {
         style={{
           top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
           width: 620, maxHeight: '90vh', overflowY: 'auto',
-          borderRadius: 8, boxShadow: '0 4px 16px rgba(0,0,0,0.15)',
+          borderRadius: 8, boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
           padding: '28px 32px', zIndex: 1000
         }}
       >
         {/* ===== 头部：居中标题 + 右上角关闭 ===== */}
-        <div className="relative" style={{ marginBottom: 20 }}>
+        <div className="relative" style={{ marginBottom: 24 }}>
           <div className="text-center" style={{ fontSize: 18, fontWeight: 500, color: '#222222' }}>新增订单</div>
           <button onClick={onClose} aria-label="关闭"
-            className="absolute top-1/2 -translate-y-1/2 hover:text-[#333333] transition-colors"
+            className="absolute top-0 hover:text-[#333333] transition-colors"
             style={{ right: 0, fontSize: 20, lineHeight: 1, color: '#888888' }}>×</button>
         </div>
 
@@ -594,20 +595,21 @@ function OrderDialog({ orderDlg, personnel, onClose, onSaved }) {
           <div className="flex items-center" style={{ gap: 12 }}>
             {/* 头像占位 44×44 */}
             <div className="shrink-0 rounded-full flex items-center justify-center"
-              style={{ width: 44, height: 44, background: '#F2F3F5', color: '#BBBBBB' }}>
+              style={{ width: 44, height: 44, background: '#E8E8E8', color: '#BBBBBB' }}>
               <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="12" cy="8" r="3.4" /><path d="M4.5 20a7.5 7.5 0 0 1 15 0" />
               </svg>
             </div>
-            <input value={orderName} onChange={(e) => setOrderName(e.target.value)} placeholder="请输入订单名称" style={FIELD} />
+            <input value={orderName} onChange={(e) => setOrderName(e.target.value)} placeholder="请输入订单名称" className="placeholder-[#AAAAAA]" style={FIELD} />
           </div>
           <div className="flex items-center" style={{ gap: 12, marginTop: 12 }}>
             <input value={customerName} onChange={(e) => setCustomerName(e.target.value)} placeholder="顾客姓名"
+              className="placeholder-[#AAAAAA]"
               style={{ ...FIELD, flex: 1, width: 'auto' }} />
             <div className="flex items-center" style={{ gap: 8, flex: 1 }}>
               {phones.map((p, i) => (
                 <div key={i} className="relative" style={{ flex: 1 }}>
-                  <input value={p} onChange={(e) => setPhoneAt(i, e.target.value)} placeholder="添加电话" style={FIELD} />
+                  <input value={p} onChange={(e) => setPhoneAt(i, e.target.value)} placeholder="添加电话" className="placeholder-[#AAAAAA]" style={FIELD} />
                   {phones.length > 1 && (
                     <button onClick={() => removePhoneAt(i)} className="absolute top-1/2 -translate-y-1/2 hover:text-[#666666]"
                       style={{ right: 8, fontSize: 12, color: '#BBBBBB' }}>×</button>
@@ -626,12 +628,10 @@ function OrderDialog({ orderDlg, personnel, onClose, onSaved }) {
         <div style={BLOCK}>
           <div style={BLOCK_TITLE}>日期 & 场次</div>
           <div className="flex items-center" style={{ gap: 12 }}>
-            <div className="flex items-center" style={{ ...FIELD, flex: 1, width: 'auto', color: dateTbd ? '#999999' : '#333333' }}>
-              {dateTbd ? '日期待定' : (orderDlg.date || '未选择日期')}
-            </div>
+            <DatePicker value={shootDate} onChange={setShootDate} disabled={dateTbd} />
             <label className="flex items-center cursor-pointer shrink-0" style={{ gap: 6, fontSize: 13, color: '#666666' }}>
               <input type="checkbox" checked={chooseSession} onChange={(e) => onChooseSession(e.target.checked)} />
-              选择场次（可多选）
+              选择场次
             </label>
           </div>
 
@@ -665,26 +665,21 @@ function OrderDialog({ orderDlg, personnel, onClose, onSaved }) {
           )}
 
           {/* 套系（必填，双栏 + 下拉） */}
-          <div style={{ marginTop: 16 }}>
-            <div className="flex items-center" style={{ gap: 12 }}>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 13, color: '#666666', marginBottom: 6 }}><Star />套系名称</div>
-                <select value={pkgId} onChange={(e) => onPickPackage(e.target.value)}
-                  style={{ ...FIELD, color: pkgId ? '#333333' : '#BBBBBB' }}>
-                  <option value="">请选择套系名称</option>
-                  {pkgList.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-                </select>
-              </div>
+          {/* 套系（必填，双栏：左=名称+价格，右=定金） */}
+          <div className="flex items-start" style={{ marginTop: 16, gap: 12 }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 13, color: '#666666', marginBottom: 6 }}><Star />套系名称</div>
+              <select value={pkgId} onChange={(e) => onPickPackage(e.target.value)}
+                style={{ ...FIELD, color: pkgId ? '#333333' : '#AAAAAA' }}>
+                <option value="">请选择套系名称</option>
+                {pkgList.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+              </select>
+              <div style={{ fontSize: 13, color: '#666666', marginBottom: 6, marginTop: 12 }}><Star />套系价格</div>
+              <input value={pkgPrice} onChange={(e) => setPkgPrice(e.target.value)} placeholder="套系价格" className="placeholder-[#AAAAAA]" style={FIELD} />
             </div>
-            <div className="flex items-center" style={{ gap: 12, marginTop: 12 }}>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 13, color: '#666666', marginBottom: 6 }}><Star />套系价格</div>
-                <input value={pkgPrice} onChange={(e) => setPkgPrice(e.target.value)} placeholder="请输入套系价格" style={FIELD} />
-              </div>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 13, color: '#666666', marginBottom: 6 }}><Star />套系定金</div>
-                <input value={deposit} onChange={(e) => setDeposit(e.target.value)} placeholder="请输入套系定金" style={FIELD} />
-              </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 13, color: '#666666', marginBottom: 6 }}><Star />套系定金</div>
+              <input value={deposit} onChange={(e) => setDeposit(e.target.value)} placeholder="套系定金" className="placeholder-[#AAAAAA]" style={FIELD} />
             </div>
           </div>
         </div>
@@ -695,13 +690,13 @@ function OrderDialog({ orderDlg, personnel, onClose, onSaved }) {
           <div className="relative" ref={payPopRef}>
             <button onClick={() => setPayPop((v) => !v)}
               className="flex items-center justify-between"
-              style={{ ...FIELD, color: payStatus ? '#333333' : '#BBBBBB' }}>
+              style={{ ...FIELD, color: payStatus ? '#333333' : '#AAAAAA' }}>
               <span>{payLabel}</span>
               <Caret />
             </button>
             {payPop && (
               <div className="absolute left-0 right-0 bg-white overflow-hidden"
-                style={{ top: 42, borderRadius: 4, boxShadow: '0 2px 12px rgba(0,0,0,0.12)', zIndex: 30 }}>
+                style={{ top: 42, borderRadius: 4, boxShadow: '0 3px 8px rgba(0,0,0,0.12)', zIndex: 30 }}>
                 {PAY_OPTIONS.map((o) => {
                   const on = payStatus === o.v;
                   return (
@@ -718,14 +713,14 @@ function OrderDialog({ orderDlg, personnel, onClose, onSaved }) {
 
           <div className="flex items-center justify-between" style={{ marginTop: 16, marginBottom: extras.length ? 12 : 0 }}>
             <div style={{ fontSize: 14, fontWeight: 500, color: '#333333' }}>其他消费</div>
-            <button onClick={addExtra} className="hover:opacity-80" style={{ fontSize: 13, color: ADD_BTN }}>【添加】</button>
+            <button onClick={addExtra} className="hover:opacity-80" style={{ fontSize: 14, color: ADD_BTN }}>【添加】</button>
           </div>
           {extras.map((e, i) => (
             <div key={i} className="flex items-center" style={{ gap: 12, marginBottom: 8 }}>
               <input value={e.name} onChange={(ev) => setExtraAt(i, 'name', ev.target.value)} placeholder="消费名称"
-                style={{ ...FIELD, flex: 1, width: 'auto' }} />
+                className="placeholder-[#AAAAAA]" style={{ ...FIELD, flex: 1, width: 'auto' }} />
               <input value={e.amount} onChange={(ev) => setExtraAt(i, 'amount', ev.target.value)} placeholder="金额"
-                style={{ ...FIELD, width: 120 }} />
+                className="placeholder-[#AAAAAA]" style={{ ...FIELD, width: 120 }} />
               <button onClick={() => removeExtraAt(i)} className="shrink-0 hover:text-[#666666]" style={{ fontSize: 14, color: '#BBBBBB' }}>×</button>
             </div>
           ))}
@@ -736,13 +731,13 @@ function OrderDialog({ orderDlg, personnel, onClose, onSaved }) {
           <div className="flex items-center justify-between" style={{ marginBottom: 12 }}>
             <div style={{ fontSize: 14, fontWeight: 500, color: '#333333' }}>拍摄地点</div>
             {!showRemark && (
-              <button onClick={() => setShowRemark(true)} className="hover:opacity-80" style={{ fontSize: 13, color: ADD_BTN }}>【添加备注】</button>
+              <button onClick={() => setShowRemark(true)} className="hover:opacity-80" style={{ fontSize: 14, color: ADD_BTN }}>【添加备注】</button>
             )}
           </div>
-          <input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="如 三亚 / 工作室" style={FIELD} />
+          <input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="输入拍摄地点" className="placeholder-[#AAAAAA]" style={FIELD} />
           {(showRemark || remark) && (
             <input value={remark} onChange={(e) => setRemark(e.target.value)} placeholder="备注：如 婚礼跟拍 / 特殊要求"
-              style={{ ...FIELD, marginTop: 12 }} />
+              className="placeholder-[#AAAAAA]" style={{ ...FIELD, marginTop: 12 }} />
           )}
         </div>
 
@@ -752,13 +747,13 @@ function OrderDialog({ orderDlg, personnel, onClose, onSaved }) {
           <div className="relative" ref={chPopRef}>
             <button onClick={() => setChPop((v) => !v)}
               className="flex items-center justify-between"
-              style={{ ...FIELD, color: channelName ? '#333333' : '#BBBBBB' }}>
+              style={{ ...FIELD, color: channelName ? '#333333' : '#AAAAAA' }}>
               <span>{channelName || '请选择渠道来源'}</span>
               <Caret />
             </button>
             {chPop && (
               <div className="absolute left-0 right-0 bg-white overflow-hidden"
-                style={{ top: 42, borderRadius: 4, boxShadow: '0 2px 12px rgba(0,0,0,0.12)', zIndex: 30, maxHeight: 240, overflowY: 'auto' }}>
+                style={{ top: 42, borderRadius: 4, boxShadow: '0 3px 8px rgba(0,0,0,0.12)', zIndex: 30, maxHeight: 240, overflowY: 'auto' }}>
                 {chList.map((c) => {
                   const on = String(channelId) === String(c.id);
                   return (
@@ -775,7 +770,7 @@ function OrderDialog({ orderDlg, personnel, onClose, onSaved }) {
                   onClick={() => { setChPop(false); window.location.hash = '#/channels'; }}
                   className="w-full text-left hover:bg-[#F0F7FF] transition-colors"
                   style={{ height: 36, padding: '0 12px', fontSize: 13, color: ADD_BTN, borderTop: `1px solid ${DLG_BLOCK_BORDER}` }}>
-                  渠道管理 ›
+                  渠道管理
                 </button>
               </div>
             )}
@@ -833,6 +828,57 @@ function OrderDialog({ orderDlg, personnel, onClose, onSaved }) {
             style={{ width: 140, height: 42, background: ADD_BTN, borderRadius: 4, fontSize: 15, fontWeight: 500 }}>保存</button>
         </div>
       </div>
+    </div>
+  );
+}
+
+/* ============ 可编辑日期选择器（弹窗内日历浮层，支持自由修改任意日期） ============ */
+function DatePicker({ value, onChange, disabled }) {
+  const init = value ? new Date(value + 'T00:00:00') : new Date();
+  const [view, setView] = useState({ y: init.getFullYear(), m: init.getMonth() + 1 });
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', onDown);
+    return () => document.removeEventListener('mousedown', onDown);
+  }, [open]);
+  const cells = buildMonth(view.y, view.m - 1);
+  const shift = (d) => { const t = view.y * 12 + (view.m - 1) + d; setView({ y: Math.floor(t / 12), m: (t % 12) + 1 }); };
+  const pick = (day) => { onChange(`${view.y}-${pad(view.m)}-${pad(day)}`); setOpen(false); };
+  return (
+    <div className="relative" ref={ref} style={{ flex: 1, minWidth: 0 }}>
+      <button type="button" disabled={disabled} onClick={() => setOpen((v) => !v)}
+        className="flex items-center justify-between"
+        style={{ height: 38, width: '100%', background: '#FFFFFF', border: `1px solid ${DLG_FIELD_BORDER}`, borderRadius: 4, padding: '0 12px', fontSize: 14, color: disabled ? '#999999' : (value ? '#333333' : '#AAAAAA'), cursor: disabled ? 'not-allowed' : 'pointer', outline: 'none' }}>
+        <span>{value ? value : '未选择日期'}</span>
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="3" y="4" width="18" height="17" rx="2" /><path d="M3 9h18M8 2v4M16 2v4" />
+        </svg>
+      </button>
+      {open && (
+        <div className="absolute left-0 bg-white" style={{ top: 44, width: 264, borderRadius: 6, border: `1px solid ${DLG_BLOCK_BORDER}`, boxShadow: '0 4px 16px rgba(0,0,0,0.12)', padding: 12, zIndex: 40 }}>
+          <div className="flex items-center justify-between" style={{ marginBottom: 8 }}>
+            <button type="button" onClick={() => shift(-1)} className="flex items-center justify-center rounded hover:bg-[#F4F7FB]" style={{ width: 28, height: 28, color: '#666666', border: '1px solid #E5E7EB' }}>‹</button>
+            <span style={{ fontSize: 13, color: '#333333' }}>{view.y}年{view.m}月</span>
+            <button type="button" onClick={() => shift(1)} className="flex items-center justify-center rounded hover:bg-[#F4F7FB]" style={{ width: 28, height: 28, color: '#666666', border: '1px solid #E5E7EB' }}>›</button>
+          </div>
+          <div className="grid grid-cols-7" style={{ gap: 2 }}>
+            {WEEK.map((w) => <div key={w} className="text-center" style={{ fontSize: 11, color: '#999999', height: 24, lineHeight: '24px' }}>{w}</div>)}
+            {cells.map((day, i) => {
+              if (day == null) return <div key={i} style={{ height: 30 }} />;
+              const ds = `${view.y}-${pad(view.m)}-${pad(day)}`;
+              const on = ds === value;
+              return (
+                <button key={i} type="button" onClick={() => pick(day)}
+                  className="flex items-center justify-center rounded transition-colors hover:bg-[#F0F7FF]"
+                  style={{ height: 30, fontSize: 13, color: on ? '#FFFFFF' : '#333333', background: on ? ADD_BTN : 'transparent' }}>{day}</button>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
