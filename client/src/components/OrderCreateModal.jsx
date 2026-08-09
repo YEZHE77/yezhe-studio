@@ -1,17 +1,22 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
 import http, { img } from '../api.js';
 
-// ===== 新增订单弹窗（按后台订单中心截图 spec 1:1 复刻）=====
-// 交互硬规则：点击蒙层不关闭，仅右上角 X 可关闭；必填项标 *，校验失败弹提示并停留在弹窗。
+// ===== 新增订单弹窗（按【新增订单弹窗】spec 1:1 复刻）=====
+// 交互硬规则：点击蒙层 / 右上角 × 均可关闭；必填项标 *，校验失败弹提示并停留在弹窗。
 // 数据硬规则：套系 / 渠道 / 执行人全部读后端接口，绝不写死前端。
 
-const MINT = '#3DBE9B';        // 场次按钮未选中：薄荷绿底白字
-const BEIGE = '#faf7f2';       // 日期待定整行：浅米黄底
-const BLUE = '#2f7cf6';        // 加号按钮 / 保存 / 选中高亮等品牌蓝
+// —— spec 严格色号 ——
+const BLUE = '#2890F0';        // 链接 / 加号 / 保存按钮 蓝
+const MINT = '#88D8B0';         // 可用时间按钮：薄荷绿底白字
+const FULL_BG = '#BBBBBB';      // 已满时间按钮底
+const FULL_TEXT = '#888888';    // 已满时间按钮字
+const TBD_BG = '#FFF9E6';       // 日期待定整行浅黄
+const REQ_RED = '#FF4444';      // 必填标记红
+const INPUT_BORDER = '#DDDDDD'; // 输入框边框
+const TEXT_BODY = '#333333';    // 正文
+const TEXT_MUTED = '#999999';   // 次要占位
 
 const HOURS = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0') + ':00');
-const DURATIONS = ['半天', '全天'];
 
 const PAY_OPTIONS = [
   { value: 'unpaid', label: '未付款' },
@@ -46,14 +51,15 @@ function emptyForm() {
   };
 }
 
+// 输入框基础类：白底 / 6px 圆角 / #DDDDDD 边框（色号走 inline style）
 const inputCls =
-  'w-full px-3 py-2 rounded-lg border border-line bg-ink text-sm text-fg outline-none focus:border-brand disabled:opacity-50 disabled:cursor-not-allowed';
+  'w-full px-3 py-2 rounded-md border bg-white text-sm outline-none transition focus:border-[#2890F0] disabled:opacity-50 disabled:cursor-not-allowed';
 
 function Label({ children, required }) {
   return (
-    <label className="block text-xs text-muted mb-1">
+    <label className="block text-sm mb-1.5" style={{ color: TEXT_BODY }}>
       {children}
-      {required && <span className="text-danger ml-0.5">*</span>}
+      {required && <span className="ml-0.5" style={{ color: REQ_RED }}>*</span>}
     </label>
   );
 }
@@ -81,7 +87,7 @@ function ChannelIcon({ name, size = 16 }) {
   else if (n.includes('小红书')) { color = '#ff2442'; inner = <><rect x="5" y="3" width="14" height="18" rx="3" /><path d="M9 8h6M9 12h6M9 16h4" /></>; }
   else if (n.includes('美团')) { color = '#ffc300'; inner = <><path d="M5 11h14M5 11a7 7 0 0 0 14 0" /><circle cx="12" cy="16" r="1.5" /></>; }
   else if (n.includes('小程序') || n.includes('微信')) { color = '#07C160'; inner = <><circle cx="9" cy="9" r="2" /><circle cx="15" cy="9" r="2" /><path d="M7 16h10" /></>; }
-  else if (n.includes('推荐')) { color = '#2f7cf6'; inner = <><circle cx="9" cy="8" r="3" /><path d="M3 20a6 6 0 0 1 12 0" /><path d="M18 8h3M19.5 6.5v3" /></>; }
+  else if (n.includes('推荐')) { color = BLUE; inner = <><circle cx="9" cy="8" r="3" /><path d="M3 20a6 6 0 0 1 12 0" /><path d="M18 8h3M19.5 6.5v3" /></>; }
   else if (n.includes('自然') || n.includes('进店')) { color = '#8a6d3b'; inner = <><path d="M6 21V10l6-4 6 4v11" /><path d="M6 21h12M10 21v-5h4v5" /></>; }
   else { color = '#9aa0a6'; inner = <><circle cx="6" cy="12" r="1.5" /><circle cx="12" cy="12" r="1.5" /><circle cx="18" cy="12" r="1.5" /></>; }
   return (
@@ -91,8 +97,8 @@ function ChannelIcon({ name, size = 16 }) {
   );
 }
 
-/* ------------------------------ 通用下拉（自定义，1:1 复刻截图弹窗样式） ------------------------------ */
-function Dropdown({ value, placeholder, options, onSelect, renderValue, renderOption, footer, icon, disabled }) {
+/* ------------------------------ 通用下拉（自定义，1:1 复刻 spec 弹窗样式） ------------------------------ */
+function Dropdown({ value, placeholder, options, onSelect, renderValue, renderOption, icon, disabled }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
   useEffect(() => {
@@ -109,17 +115,18 @@ function Dropdown({ value, placeholder, options, onSelect, renderValue, renderOp
         type="button"
         disabled={disabled}
         onClick={() => setOpen((o) => !o)}
-        className={'w-full px-3 py-2 rounded-lg border border-line bg-ink text-sm text-left flex items-center gap-2 outline-none focus:border-brand disabled:opacity-50 ' + (selected ? 'text-fg' : 'text-faint')}
+        className={'w-full px-3 py-2 rounded-md border bg-white text-sm text-left flex items-center gap-2 outline-none focus:border-[#2890F0] disabled:opacity-50 ' + (selected ? '' : 'placeholder')}
+        style={{ borderColor: INPUT_BORDER, color: selected ? TEXT_BODY : TEXT_MUTED }}
       >
-        {icon && <span className="shrink-0 text-brand">{icon}</span>}
+        {icon && <span className="shrink-0" style={{ color: BLUE }}>{icon}</span>}
         <span className="flex-1 truncate">{selected ? renderValue(selected) : placeholder}</span>
-        <IconChevron className="w-4 h-4 text-faint shrink-0" />
+        <IconChevron className="w-4 h-4 shrink-0" style={{ color: TEXT_MUTED }} />
       </button>
       {open && (
-        <div className="absolute left-0 right-0 mt-1 bg-white border border-line rounded-lg shadow-lg z-30 overflow-hidden">
+        <div className="absolute left-0 right-0 mt-1 bg-white border rounded-md shadow-lg z-30 overflow-hidden" style={{ borderColor: INPUT_BORDER }}>
           <div className="max-h-56 overflow-auto">
             {options.length === 0 ? (
-              <div className="px-3 py-3 text-xs text-faint">暂无选项</div>
+              <div className="px-3 py-3 text-xs" style={{ color: TEXT_MUTED }}>暂无选项</div>
             ) : (
               options.map((o) => (
                 <button
@@ -128,16 +135,16 @@ function Dropdown({ value, placeholder, options, onSelect, renderValue, renderOp
                   onClick={() => { onSelect(o); setOpen(false); }}
                   className={
                     'w-full text-left px-3 py-2 text-sm flex items-center gap-2 ' +
-                    (String(o.value) === String(value) ? 'bg-blue-50 text-brand font-medium' : 'text-fg hover:bg-panel2')
+                    (String(o.value) === String(value) ? '' : 'hover:bg-[#f5f7fa]')
                   }
+                  style={String(o.value) === String(value) ? { background: 'rgba(40,144,240,0.1)', color: BLUE, fontWeight: 500 } : { color: TEXT_BODY }}
                 >
                   {renderOption ? renderOption(o) : o.label}
-                  {String(o.value) === String(value) && <IconCheck className="w-4 h-4 text-brand ml-auto" />}
+                  {String(o.value) === String(value) && <IconCheck className="w-4 h-4 ml-auto" style={{ color: BLUE }} />}
                 </button>
               ))
             )}
           </div>
-          {footer}
         </div>
       )}
     </div>
@@ -145,7 +152,6 @@ function Dropdown({ value, placeholder, options, onSelect, renderValue, renderOp
 }
 
 export default function OrderCreateModal({ visible, packages, initialPackageId, onClose, onAfterCreate }) {
-  const navigate = useNavigate();
   const [form, setForm] = useState(emptyForm());
   const [err, setErr] = useState('');
   const [saving, setSaving] = useState(false);
@@ -300,247 +306,278 @@ export default function OrderCreateModal({ visible, packages, initialPackageId, 
     return { value: String(p.id), label: spec ? `${p.name} | ${spec}` : p.name };
   });
 
+  function slotBtn(h) {
+    const on = form.time_slots.includes(h);
+    const full = false; // 暂无后端占用数据，全部视为可用
+    return (
+      <button key={h} type="button" disabled={slotDisabled || full} onClick={() => toggleSlot(h)}
+        className={'px-3 py-1.5 rounded-[24px] text-xs border transition flex items-center gap-1 ' + (full ? 'cursor-not-allowed' : '')}
+        style={{ background: full ? FULL_BG : MINT, color: full ? FULL_TEXT : '#FFFFFF', borderColor: 'transparent' }}>
+        {on && !full && <IconCheck className="w-3 h-3" />}
+        {h}
+      </button>
+    );
+  }
+
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-start justify-center z-[60] p-4 overflow-auto">
-      <form onSubmit={submit} className="w-full max-w-2xl my-6 bg-white border border-line rounded-xl shadow-xl overflow-hidden">
-        {/* 标题栏：仅 X 关闭 */}
-        <div className="relative flex items-center justify-center px-5 py-4 border-b border-line sticky top-0 bg-white z-10">
-          <div className="text-base font-semibold text-fg">新增订单</div>
+    <div
+      className="fixed inset-0 z-[60] flex items-start justify-center p-4 overflow-auto"
+      style={{ background: 'rgba(0,0,0,0.45)' }}
+      onClick={onClose}
+    >
+      <form
+        onSubmit={submit}
+        onClick={(e) => e.stopPropagation()}
+        className="w-full my-4 sm:my-6 bg-white shadow-xl overflow-hidden flex flex-col"
+        style={{ maxWidth: 920, borderRadius: 12, maxHeight: 'calc(100vh - 2rem)' }}
+      >
+        {/* 标题栏：居中标题 + 右上角 × 关闭 */}
+        <div className="relative flex items-center justify-center px-5 py-4 border-b shrink-0" style={{ borderColor: '#EEEEEE' }}>
+          <div className="text-base font-semibold" style={{ color: TEXT_BODY }}>新增订单</div>
           <button type="button" onClick={onClose} aria-label="关闭"
-            className="absolute right-4 top-1/2 -translate-y-1/2 w-8 h-8 rounded-lg flex items-center justify-center text-muted hover:bg-panel2 hover:text-fg">
+            className="absolute right-4 top-1/2 -translate-y-1/2 w-8 h-8 rounded-md flex items-center justify-center hover:bg-[#f5f7fa]"
+            style={{ color: TEXT_MUTED }}>
             <IconClose className="w-4 h-4" />
           </button>
         </div>
 
-        {/* ① 顶部客户信息容器（同一白色框体内） */}
-        <div className="flex gap-3 p-5 border-b border-line">
-          <div className="shrink-0 w-12 h-12 rounded-full bg-panel2 text-faint flex items-center justify-center">
-            <IconPerson className="w-6 h-6" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <input
-              value={form.order_name}
-              onChange={(e) => set({ order_name: e.target.value })}
-              placeholder="请输入订单名称"
-              className={inputCls}
-            />
-            {form.customers.map((c, i) => (
-              <div key={i} className="flex items-center gap-2 mt-2">
-                <input
-                  value={c.name}
-                  onChange={(e) => setCustomer(i, 'name', e.target.value)}
-                  placeholder="顾客姓名"
-                  className={inputCls}
-                />
-                <input
-                  value={c.phone}
-                  onChange={(e) => setCustomer(i, 'phone', e.target.value)}
-                  placeholder="添加电话"
-                  inputMode="tel"
-                  className={inputCls}
-                />
-                {form.customers.length > 1 && (
-                  <button type="button" onClick={() => delCustomer(i)} title="删除该联系人"
-                    className="shrink-0 w-9 h-9 rounded-lg border border-line text-muted hover:text-danger hover:border-danger/40 flex items-center justify-center">
-                    <IconClose className="w-4 h-4" />
-                  </button>
-                )}
-              </div>
-            ))}
-          </div>
-          <button type="button" onClick={addCustomer} title="新增联系人"
-            className="shrink-0 self-start w-10 h-10 rounded-full bg-brand text-white flex items-center justify-center hover:bg-brand2">
-            <IconPlus className="w-5 h-5" />
-          </button>
-        </div>
+        {/* 可滚动内容区（移动端内部滚动） */}
+        <div className="flex-1 overflow-y-auto">
 
-        {/* ② 日期 / 场次 */}
-        <div className="p-5 border-b border-line">
-          <div className="flex flex-wrap items-center gap-3">
-            {/* 日期：日历图标 + 文本 + 清除 × */}
-            <div className={'relative flex-1 min-w-[200px] ' + (dateDisabled ? 'opacity-50 pointer-events-none' : '')}>
-              <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-line bg-ink text-sm text-fg">
-                <IconCalendar className="w-4 h-4 text-muted shrink-0" />
-                <span className="flex-1">{form.shoot_date || '请选择日期'}</span>
-                {form.shoot_date && !dateDisabled && (
-                  <button type="button" onClick={() => set({ shoot_date: '' })} aria-label="清除日期"
-                    className="text-faint hover:text-danger">
-                    <IconClose className="w-4 h-4" />
-                  </button>
-                )}
-              </div>
-              <input type="date" value={form.shoot_date} disabled={dateDisabled}
-                onChange={(e) => set({ shoot_date: e.target.value })}
-                className="absolute inset-0 opacity-0 cursor-pointer disabled:cursor-not-allowed" />
+          {/* ① 顾客信息 */}
+          <div className="flex gap-3 p-5 border-b" style={{ borderColor: '#EEEEEE' }}>
+            <div className="shrink-0 w-12 h-12 rounded-full flex items-center justify-center" style={{ background: '#F2F2F2', color: TEXT_MUTED }}>
+              <IconPerson className="w-6 h-6" />
             </div>
-            {/* 右上角：选择场次 */}
-            <label className={'flex items-center gap-2 text-sm select-none ' + (dateDisabled ? 'text-faint cursor-not-allowed' : 'text-muted cursor-pointer')}>
-              <input type="checkbox" disabled={dateDisabled} checked={form.pick_slots}
-                onChange={(e) => set({ pick_slots: e.target.checked, time_slots: e.target.checked ? form.time_slots : [] })}
-                className="accent-brand w-4 h-4" />
-              选择场次
-            </label>
-          </div>
-
-          {/* 日期待定：整行浅米黄底 */}
-          <div className="mt-3 rounded-lg px-3 py-2 flex items-center gap-2" style={{ background: BEIGE }}>
-            <label className="flex items-center gap-2 text-sm text-muted cursor-pointer select-none">
-              <input type="checkbox" checked={form.date_tbd} onChange={(e) => set({ date_tbd: e.target.checked })} className="accent-brand w-4 h-4" />
-              日期待定
-            </label>
-          </div>
-
-          {form.pick_slots && (
-            <div className={'mt-3 ' + (slotDisabled ? 'opacity-50 pointer-events-none' : '')}>
-              <div className="text-xs text-faint mb-2">按小时选择场次，可多选（婚礼可选多个时间段）</div>
-              <div className="space-y-2">
-                <div className="flex flex-wrap gap-2">
-                  {HOURS.slice(0, 7).map(slotBtn)}
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {HOURS.slice(7, 15).map(slotBtn)}
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {HOURS.slice(15).concat(DURATIONS).map(slotBtn)}
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* ③ 套系信息 */}
-        <div className="p-5 border-b border-line">
-          <Label required>套系</Label>
-          <Dropdown
-            value={form.package_id}
-            placeholder="请选择套系"
-            options={pkgOptions}
-            icon={<IconBox className="w-4 h-4" />}
-            onSelect={onPickPackage}
-            renderValue={(o) => o.label}
-          />
-          {pkgList.length === 0 && <div className="text-xs text-faint mt-1">暂无套系，请先到「套系管理」新增。</div>}
-          <div className="grid grid-cols-2 gap-3 mt-3">
-            <div>
-              <Label required>¥ 套系价格</Label>
-              <input type="number" min="0" value={form.package_price}
-                onChange={(e) => set({ package_price: e.target.value })} placeholder="0" className={inputCls} />
-            </div>
-            <div>
-              <Label required>¥ 套系定金</Label>
-              <input type="number" min="0" value={form.package_deposit}
-                onChange={(e) => set({ package_deposit: e.target.value })} placeholder="0" className={inputCls} />
-            </div>
-          </div>
-        </div>
-
-        {/* ④ 收款状态 & 其他消费 */}
-        <div className="p-5 border-b border-line">
-          <div className="flex items-center gap-2 mb-2">
-            <IconCoin className="w-4 h-4 text-muted" />
-            <Label required>收款状态</Label>
-          </div>
-          <Dropdown
-            value={form.payment_status}
-            placeholder="请选择收款状态"
-            options={PAY_OPTIONS}
-            onSelect={(o) => set({ payment_status: o.value })}
-            renderValue={(o) => o.label}
-          />
-
-          <div className="flex items-center gap-2 mt-4 mb-2">
-            <IconCoin className="w-4 h-4 text-muted" />
-            <span className="text-sm text-muted">其他消费</span>
-            <button type="button" onClick={addExtra} className="ml-auto flex items-center gap-1 text-xs text-brand hover:underline">
-              <IconPlus className="w-3.5 h-3.5" /> 添加消费
-            </button>
-          </div>
-          {form.extra_items.length === 0 ? (
-            <div className="text-xs text-faint bg-panel2 rounded-lg px-3 py-2">暂无其他消费，点击「添加消费」录入加片、相册等费用。</div>
-          ) : (
-            <div className="space-y-2">
-              {form.extra_items.map((it, i) => (
-                <div key={i} className="flex items-center gap-2">
-                  <input value={it.name} onChange={(e) => setExtra(i, 'name', e.target.value)} placeholder="消费名称（如：加精修 10 张）" className={inputCls} />
-                  <input type="number" min="0" value={it.amount} onChange={(e) => setExtra(i, 'amount', e.target.value)} placeholder="金额" className={inputCls + ' sm:w-32'} />
-                  <button type="button" onClick={() => delExtra(i)} title="删除该条消费"
-                    className="shrink-0 w-9 h-9 rounded-lg border border-line text-muted hover:text-danger hover:border-danger/40 flex items-center justify-center">
-                    <IconClose className="w-4 h-4" />
-                  </button>
+            <div className="flex-1 min-w-0">
+              {/* 第一行：订单名称 */}
+              <input
+                value={form.order_name}
+                onChange={(e) => set({ order_name: e.target.value })}
+                placeholder="请输入订单名称"
+                className={inputCls + ' placeholder:text-[#999999]'}
+                style={{ borderColor: INPUT_BORDER, color: TEXT_BODY }}
+              />
+              {/* 第二行起：添加电话（左） + 顾客姓名（右） */}
+              {form.customers.map((c, i) => (
+                <div key={i} className="flex items-center gap-2 mt-2">
+                  <input
+                    value={c.phone}
+                    onChange={(e) => setCustomer(i, 'phone', e.target.value)}
+                    placeholder="添加电话"
+                    inputMode="tel"
+                    className={inputCls + ' placeholder:text-[#999999]'}
+                    style={{ borderColor: INPUT_BORDER, color: TEXT_BODY }}
+                  />
+                  <input
+                    value={c.name}
+                    onChange={(e) => setCustomer(i, 'name', e.target.value)}
+                    placeholder="顾客姓名"
+                    className={inputCls + ' placeholder:text-[#999999]'}
+                    style={{ borderColor: INPUT_BORDER, color: TEXT_BODY }}
+                  />
+                  {form.customers.length > 1 && (
+                    <button type="button" onClick={() => delCustomer(i)} title="删除该联系人"
+                      className="shrink-0 w-9 h-9 rounded-md border flex items-center justify-center hover:opacity-80"
+                      style={{ borderColor: INPUT_BORDER, color: TEXT_MUTED }}>
+                      <IconClose className="w-4 h-4" />
+                    </button>
+                  )}
                 </div>
               ))}
             </div>
-          )}
-        </div>
-
-        {/* ⑤ 拍摄地点 & 添加备注 */}
-        <div className="p-5 border-b border-line">
-          <div className="flex items-center gap-2">
-            <IconLocation className="w-4 h-4 text-muted shrink-0" />
-            <input value={form.address} onChange={(e) => set({ address: e.target.value })} placeholder="输入拍摄地点" className={inputCls} />
-          </div>
-          {form.remark ? (
-            <textarea rows={3} value={form.remark} onChange={(e) => set({ remark: e.target.value })}
-              placeholder="补充说明（服装、化妆、集合时间等）" className={inputCls + ' resize-y mt-3 w-full'} />
-          ) : (
-            <button type="button" onClick={() => set({ remark: ' ' })} className="flex items-center gap-1 text-sm text-brand hover:underline mt-3">
-              <IconPen className="w-4 h-4" /> 添加备注
-            </button>
-          )}
-        </div>
-
-        {/* ⑥ 渠道来源 */}
-        <div className="p-5 border-b border-line">
-          <div className="flex items-center gap-2 mb-2">
-            <IconPen className="w-4 h-4 text-muted" />
-            <span className="text-sm text-muted">渠道来源</span>
-          </div>
-          <Dropdown
-            value={form.channel_id}
-            placeholder="请选择"
-            options={channels.map((c) => ({ value: String(c.id), label: c.name }))}
-            onSelect={(o) => set({ channel_id: o.value, channel: o.label })}
-            renderValue={(o) => o.label}
-            renderOption={(o) => (<><ChannelIcon name={o.label} /><span>{o.label}</span></>)}
-            icon={<ChannelIcon name={channels.find(c => String(c.id) === String(form.channel_id))?.name || ''} />}
-            footer={
-              <button type="button" onClick={() => { onClose(); navigate('/channels'); }}
-                className="w-full px-3 py-2.5 text-sm text-brand border-t border-line bg-panel2 hover:bg-brand/10 flex items-center justify-center gap-1.5">
-                <IconPlus className="w-4 h-4" /> 渠道管理
-              </button>
-            }
-          />
-        </div>
-
-        {/* ⑦ 执行人 */}
-        <div className="p-5 border-b border-line">
-          <div className="flex items-center gap-2 mb-3">
-            <IconTeam className="w-4 h-4 text-muted" />
-            <span className="text-sm text-muted">执行人：</span>
-          </div>
-          <div className="flex flex-wrap items-center gap-3">
-            {form.executor_ids.map((id) => {
-              const p = people.find((x) => x.id === id);
-              if (!p) return null;
-              return (
-                <span key={id} title={p.name}
-                  className="w-10 h-10 rounded-full overflow-hidden flex items-center justify-center text-sm font-medium bg-brand/15 text-brand border border-line">
-                  {p.avatar ? <img src={img(p.avatar)} alt={p.name} className="w-full h-full object-cover" /> : (p.name || '?').slice(0, 1)}
-                </span>
-              );
-            })}
-            <button type="button" onClick={() => setExecOpen(true)}
-              className="w-10 h-10 rounded-full bg-brand text-white flex items-center justify-center hover:bg-brand2">
+            <button type="button" onClick={addCustomer} title="新增联系人"
+              className="shrink-0 self-start w-10 h-10 rounded-full text-white flex items-center justify-center hover:opacity-90"
+              style={{ background: BLUE }}>
               <IconPlus className="w-5 h-5" />
             </button>
           </div>
+
+          {/* ② 日期 / 场次 */}
+          <div className="p-5 border-b" style={{ borderColor: '#EEEEEE' }}>
+            <div className="flex flex-wrap items-center gap-3">
+              {/* 日期：日历图标 + 文本 + 清除 × */}
+              <div className={'relative flex-1 min-w-[200px] ' + (dateDisabled ? 'opacity-50 pointer-events-none' : '')}>
+                <div className="flex items-center gap-2 px-3 py-2 rounded-md border bg-white text-sm" style={{ borderColor: INPUT_BORDER, color: TEXT_BODY }}>
+                  <IconCalendar className="w-4 h-4 shrink-0" style={{ color: TEXT_MUTED }} />
+                  <span className="flex-1">{form.shoot_date || '请选择日期'}</span>
+                  {form.shoot_date && !dateDisabled && (
+                    <button type="button" onClick={() => set({ shoot_date: '' })} aria-label="清除日期"
+                      className="hover:opacity-80" style={{ color: TEXT_MUTED }}>
+                      <IconClose className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+                <input type="date" value={form.shoot_date} disabled={dateDisabled}
+                  onChange={(e) => set({ shoot_date: e.target.value })}
+                  className="absolute inset-0 opacity-0 cursor-pointer disabled:cursor-not-allowed" />
+              </div>
+              {/* 右上角：选择场次 */}
+              <label className={'flex items-center gap-2 text-sm select-none ' + (dateDisabled ? 'cursor-not-allowed' : 'cursor-pointer')}
+                style={{ color: TEXT_BODY }}>
+                <input type="checkbox" disabled={dateDisabled} checked={form.pick_slots}
+                  onChange={(e) => set({ pick_slots: e.target.checked, time_slots: e.target.checked ? form.time_slots : [] })}
+                  className="w-4 h-4" style={{ accentColor: BLUE }} />
+                选择场次
+              </label>
+            </div>
+
+            {/* 日期待定：整行浅黄底 */}
+            <div className="mt-3 rounded-md px-3 py-2 flex items-center gap-2" style={{ background: TBD_BG }}>
+              <label className="flex items-center gap-2 text-sm cursor-pointer select-none" style={{ color: TEXT_BODY }}>
+                <input type="checkbox" checked={form.date_tbd} onChange={(e) => set({ date_tbd: e.target.checked })} className="w-4 h-4" style={{ accentColor: BLUE }} />
+                日期待定
+              </label>
+            </div>
+
+            {form.pick_slots && (
+              <div className={'mt-3 ' + (slotDisabled ? 'opacity-50 pointer-events-none' : '')}>
+                <div className="text-xs mb-2" style={{ color: TEXT_MUTED }}>按小时选择场次，可多选（婚礼可选多个时间段）</div>
+                <div className="flex flex-wrap gap-2">
+                  {HOURS.map(slotBtn)}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* ③ 套系信息 */}
+          <div className="p-5 border-b" style={{ borderColor: '#EEEEEE' }}>
+            <Label required>套系</Label>
+            <Dropdown
+              value={form.package_id}
+              placeholder="请选择套系名称"
+              options={pkgOptions}
+              icon={<IconBox className="w-4 h-4" />}
+              onSelect={onPickPackage}
+              renderValue={(o) => o.label}
+            />
+            {pkgList.length === 0 && <div className="text-xs mt-1" style={{ color: TEXT_MUTED }}>暂无套系，请先到「套系管理」新增。</div>}
+            <div className="grid grid-cols-2 gap-3 mt-3">
+              <div>
+                <Label required>套系价格</Label>
+                <input type="number" min="0" value={form.package_price}
+                  onChange={(e) => set({ package_price: e.target.value })} placeholder="0" className={inputCls + ' placeholder:text-[#999999]'}
+                  style={{ borderColor: INPUT_BORDER, color: TEXT_BODY }} />
+              </div>
+              <div>
+                <Label required>套系定金</Label>
+                <input type="number" min="0" value={form.package_deposit}
+                  onChange={(e) => set({ package_deposit: e.target.value })} placeholder="0" className={inputCls + ' placeholder:text-[#999999]'}
+                  style={{ borderColor: INPUT_BORDER, color: TEXT_BODY }} />
+              </div>
+            </div>
+          </div>
+
+          {/* ④ 收款状态 & 其他消费 */}
+          <div className="p-5 border-b" style={{ borderColor: '#EEEEEE' }}>
+            <div className="flex items-center gap-2 mb-2.5">
+              <IconCoin className="w-4 h-4 shrink-0" style={{ color: TEXT_MUTED }} />
+              <Label required>收款状态</Label>
+            </div>
+            <Dropdown
+              value={form.payment_status}
+              placeholder="请选择"
+              options={PAY_OPTIONS}
+              onSelect={(o) => set({ payment_status: o.value })}
+              renderValue={(o) => o.label}
+            />
+
+            <div className="flex items-center gap-2 mt-4 mb-2.5">
+              <IconCoin className="w-4 h-4 shrink-0" style={{ color: TEXT_MUTED }} />
+              <span className="text-sm" style={{ color: TEXT_BODY }}>其他消费</span>
+              <button type="button" onClick={addExtra} className="ml-auto flex items-center gap-1 text-xs hover:underline" style={{ color: BLUE }}>
+                <IconPlus className="w-3.5 h-3.5" /> 添加
+              </button>
+            </div>
+            {form.extra_items.length === 0 ? (
+              <div className="text-xs rounded-md px-3 py-2" style={{ background: '#F7F7F7', color: TEXT_MUTED }}>暂无其他消费，点击「添加」录入加片、相册等费用。</div>
+            ) : (
+              <div className="space-y-2">
+                {form.extra_items.map((it, i) => (
+                  <div key={i} className="flex items-center gap-2">
+                    <input value={it.name} onChange={(e) => setExtra(i, 'name', e.target.value)} placeholder="消费名称（如：加精修 10 张）" className={inputCls + ' placeholder:text-[#999999]'}
+                      style={{ borderColor: INPUT_BORDER, color: TEXT_BODY }} />
+                    <input type="number" min="0" value={it.amount} onChange={(e) => setExtra(i, 'amount', e.target.value)} placeholder="金额" className={inputCls + ' placeholder:text-[#999999] sm:w-32'}
+                      style={{ borderColor: INPUT_BORDER, color: TEXT_BODY }} />
+                    <button type="button" onClick={() => delExtra(i)} title="删除该条消费"
+                      className="shrink-0 w-9 h-9 rounded-md border flex items-center justify-center hover:opacity-80"
+                      style={{ borderColor: INPUT_BORDER, color: TEXT_MUTED }}>
+                      <IconClose className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* ⑤ 拍摄地点 & 添加备注 */}
+          <div className="p-5 border-b" style={{ borderColor: '#EEEEEE' }}>
+            <div className="flex items-center gap-2">
+              <IconLocation className="w-4 h-4 shrink-0" style={{ color: TEXT_MUTED }} />
+              <input value={form.address} onChange={(e) => set({ address: e.target.value })} placeholder="输入拍摄地点"
+                className={inputCls + ' placeholder:text-[#999999]'} style={{ borderColor: INPUT_BORDER, color: TEXT_BODY }} />
+            </div>
+            {form.remark ? (
+              <textarea rows={3} value={form.remark} onChange={(e) => set({ remark: e.target.value })}
+                placeholder="补充说明（服装、化妆、集合时间等）" className={inputCls + ' resize-y mt-3 w-full placeholder:text-[#999999]'} style={{ borderColor: INPUT_BORDER, color: TEXT_BODY }} />
+            ) : (
+              <button type="button" onClick={() => set({ remark: ' ' })} className="flex items-center gap-1 text-sm mt-3 hover:underline" style={{ color: BLUE }}>
+                <IconPen className="w-4 h-4" /> 添加备注
+              </button>
+            )}
+          </div>
+
+          {/* ⑥ 渠道来源 */}
+          <div className="p-5 border-b" style={{ borderColor: '#EEEEEE' }}>
+            <div className="flex items-center gap-2 mb-2.5">
+              <IconPen className="w-4 h-4 shrink-0" style={{ color: TEXT_MUTED }} />
+              <span className="text-sm" style={{ color: TEXT_BODY }}>渠道来源</span>
+            </div>
+            <Dropdown
+              value={form.channel_id}
+              placeholder="请选择"
+              options={channels.map((c) => ({ value: String(c.id), label: c.name }))}
+              onSelect={(o) => set({ channel_id: o.value, channel: o.label })}
+              renderValue={(o) => o.label}
+              renderOption={(o) => (<><ChannelIcon name={o.label} /><span>{o.label}</span></>)}
+              icon={<ChannelIcon name={channels.find(c => String(c.id) === String(form.channel_id))?.name || ''} />}
+            />
+          </div>
+
+          {/* ⑦ 执行人 */}
+          <div className="p-5 border-b" style={{ borderColor: '#EEEEEE' }}>
+            <div className="flex items-center gap-2 mb-3">
+              <IconTeam className="w-4 h-4 shrink-0" style={{ color: TEXT_MUTED }} />
+              <span className="text-sm" style={{ color: TEXT_BODY }}>执行人：</span>
+            </div>
+            <div className="flex flex-wrap items-center gap-3">
+              {form.executor_ids.map((id) => {
+                const p = people.find((x) => x.id === id);
+                if (!p) return null;
+                return (
+                  <span key={id} title={p.name}
+                    className="w-10 h-10 rounded-full overflow-hidden flex items-center justify-center text-sm font-medium border"
+                    style={{ background: 'rgba(40,144,240,0.12)', color: BLUE, borderColor: '#DDDDDD' }}>
+                    {p.avatar ? <img src={img(p.avatar)} alt={p.name} className="w-full h-full object-cover" /> : (p.name || '?').slice(0, 1)}
+                  </span>
+                );
+              })}
+              <button type="button" onClick={() => setExecOpen(true)}
+                className="w-10 h-10 rounded-full text-white flex items-center justify-center hover:opacity-90"
+                style={{ background: BLUE }}>
+                <IconPlus className="w-5 h-5" />
+              </button>
+            </div>
+          </div>
+
         </div>
 
         {/* ⑧ 底部居中保存 */}
-        <div className="px-5 py-4 flex justify-center">
-          {err && <div className="mb-3 w-full px-3 py-2 rounded-lg bg-red-50 text-red-600 text-sm text-center">{err}</div>}
+        <div className="px-5 py-4 flex flex-col items-center shrink-0 border-t" style={{ borderColor: '#EEEEEE' }}>
+          {err && <div className="mb-3 w-full px-3 py-2 rounded-md text-center text-sm" style={{ background: '#FDECEC', color: '#E4393C' }}>{err}</div>}
           <button type="submit" disabled={saving}
-            className="min-w-[160px] py-2.5 rounded-lg bg-brand hover:bg-brand2 text-white text-sm font-medium disabled:opacity-50">
+            className="min-w-[160px] py-2.5 rounded-md text-white text-sm font-medium disabled:opacity-50 hover:opacity-90"
+            style={{ background: BLUE }}>
             {saving ? '保存中…' : '保存'}
           </button>
         </div>
@@ -548,29 +585,31 @@ export default function OrderCreateModal({ visible, packages, initialPackageId, 
 
       {/* 执行人多选弹窗 */}
       {execOpen && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[70] p-4" onClick={() => setExecOpen(false)}>
-          <div onClick={(e) => e.stopPropagation()} className="w-full max-w-sm bg-white rounded-xl shadow-xl overflow-hidden">
-            <div className="flex items-center justify-between px-5 py-4 border-b border-line">
-              <div className="text-base font-semibold text-fg">选择执行人</div>
+        <div className="fixed inset-0 flex items-center justify-center z-[70] p-4" style={{ background: 'rgba(0,0,0,0.45)' }} onClick={() => setExecOpen(false)}>
+          <div onClick={(e) => e.stopPropagation()} className="w-full max-w-sm bg-white shadow-xl overflow-hidden flex flex-col" style={{ borderRadius: 12 }}>
+            <div className="relative flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: '#EEEEEE' }}>
+              <div className="text-base font-semibold" style={{ color: TEXT_BODY }}>选择执行人</div>
               <button type="button" onClick={() => setExecOpen(false)} aria-label="关闭"
-                className="w-8 h-8 rounded-lg flex items-center justify-center text-muted hover:bg-panel2 hover:text-fg">
+                className="w-8 h-8 rounded-md flex items-center justify-center hover:bg-[#f5f7fa]" style={{ color: TEXT_MUTED }}>
                 <IconClose className="w-4 h-4" />
               </button>
             </div>
             <div className="max-h-72 overflow-auto p-3">
               {people.length === 0 ? (
-                <div className="text-xs text-faint px-2 py-6 text-center">暂无可选人员，请先在系统中添加账号。</div>
+                <div className="text-xs px-2 py-6 text-center" style={{ color: TEXT_MUTED }}>暂无可选人员，请先在系统中添加账号。</div>
               ) : (
                 people.map((p) => {
                   const on = form.executor_ids.includes(p.id);
                   return (
                     <button type="button" key={p.id} onClick={() => toggleExec(p.id)}
-                      className={'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left ' + (on ? 'bg-brand/10' : 'hover:bg-panel2')}>
-                      <span className="w-9 h-9 rounded-full overflow-hidden flex items-center justify-center text-sm font-medium bg-brand/15 text-brand border border-line">
+                      className={'w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-left ' + (on ? '' : 'hover:bg-[#f5f7fa]')}
+                      style={on ? { background: 'rgba(40,144,240,0.1)' } : {}}
+                    >
+                      <span className="w-9 h-9 rounded-full overflow-hidden flex items-center justify-center text-sm font-medium border" style={{ background: 'rgba(40,144,240,0.12)', color: BLUE, borderColor: '#DDDDDD' }}>
                         {p.avatar ? <img src={img(p.avatar)} alt={p.name} className="w-full h-full object-cover" /> : (p.name || '?').slice(0, 1)}
                       </span>
-                      <span className="flex-1 text-sm text-fg">{p.name}</span>
-                      <span className={'w-5 h-5 rounded border flex items-center justify-center ' + (on ? 'bg-brand border-brand text-white' : 'border-line text-transparent')}>
+                      <span className="flex-1 text-sm" style={{ color: TEXT_BODY }}>{p.name}</span>
+                      <span className={'w-5 h-5 rounded border flex items-center justify-center ' + (on ? '' : 'text-transparent')} style={on ? { background: BLUE, borderColor: BLUE } : { borderColor: '#DDDDDD' }}>
                         <IconCheck className="w-3.5 h-3.5" />
                       </span>
                     </button>
@@ -578,27 +617,12 @@ export default function OrderCreateModal({ visible, packages, initialPackageId, 
                 })
               )}
             </div>
-            <div className="px-5 py-3 border-t border-line flex justify-end">
-              <button type="button" onClick={() => setExecOpen(false)} className="px-5 py-2 rounded-lg bg-brand text-white text-sm font-medium">确定</button>
+            <div className="px-5 py-3 border-t flex justify-end" style={{ borderColor: '#EEEEEE' }}>
+              <button type="button" onClick={() => setExecOpen(false)} className="px-5 py-2 rounded-md text-white text-sm font-medium hover:opacity-90" style={{ background: BLUE }}>确定</button>
             </div>
           </div>
         </div>
       )}
     </div>
   );
-
-  function slotBtn(h) {
-    const on = form.time_slots.includes(h);
-    return (
-      <button key={h} type="button" disabled={slotDisabled} onClick={() => toggleSlot(h)}
-        className={
-          'px-3 py-1.5 rounded-lg text-xs border transition flex items-center gap-1 ' +
-          (on ? 'text-white border-transparent' : ' text-white border-transparent')
-        }
-        style={{ background: on ? '#1f2329' : MINT }}>
-        {on && <IconCheck className="w-3 h-3" />}
-        {h}
-      </button>
-    );
-  }
 }
