@@ -115,6 +115,7 @@ export default function Schedule() {
 
   const dayRows = selDate ? (map[selDate] || []) : [];
   const dayPends = selDate ? (pendMap[selDate] || []) : [];
+  const selParts = selDate ? selDate.split('-') : [];
 
   return (
     <div className="max-w-6xl mx-auto pb-10">
@@ -187,8 +188,7 @@ export default function Schedule() {
               let cellCls = 'bg-panel2 border-line';
               let style = {};
               if (st.kind === 'closed') { cellCls = 'border-line'; style = { background: 'repeating-linear-gradient(45deg,#eee,#eee 6px,#e3e3e3 6px,#e3e3e3 12px)', color: '#888' }; }
-              else if (st.kind === 'unpaid') { cellCls = 'border border-[#e6c200]'; style = { background: '#fff2cc' }; }
-              else if (st.kind === 'wait') { cellCls = 'border border-[#9ccc9c]'; style = { background: '#d5e8d4' }; }
+              else if (st.kind === 'unpaid' || st.kind === 'wait') { cellCls = 'border border-[#ffb3c8]'; style = { background: '#ffe1e8' }; }
 
               if (statusFilter !== 'all') {
                 const ok = statusFilter === 'unpaid' ? st.kind === 'unpaid' : st.kind === 'wait';
@@ -207,7 +207,7 @@ export default function Schedule() {
                   {st.kind === 'closed' && <div className="mt-1 text-[11px] text-[#888]">档期已关闭</div>}
                   {st.kind !== 'closed' && st.orderRows[0] && (
                     <div className="mt-1">
-                      <div className="text-xs truncate" style={{ color: '#1f2329' }}>{st.orderRows[0].order_customer || st.orderRows[0].order_no}</div>
+                      <div className="text-xs truncate" style={{ color: '#7a1f3d' }}>{st.orderRows[0].order_customer || st.orderRows[0].order_no}</div>
                       <div className="text-[10px] text-muted truncate">{st.orderRows[0].order_no || (st.orderRows[0].periods && st.orderRows[0].periods.join('/'))}</div>
                     </div>
                   )}
@@ -219,10 +219,15 @@ export default function Schedule() {
                   )}
                   {pends.length > 0 && <div className="mt-1 text-[10px] text-amber-500 truncate">待确认 ×{pends.length}</div>}
                   {rows.length > 1 && <div className="text-[10px] text-muted mt-0.5">+{rows.length - 1} 档期</div>}
-                  {/* 格子左下角蓝色【+添加】按钮 */}
-                  <button onClick={(e) => { e.stopPropagation(); openNew(day); }}
-                    className="mt-auto self-start inline-flex items-center gap-0.5 px-2 py-1 rounded text-white text-[11px] hover:opacity-90"
-                    style={{ background: '#2f7cf6' }}>+ 添加</button>
+                  {/* 底部：左下角 +添加 / 右下角 订单数量 */}
+                  <div className="mt-auto flex items-end justify-between gap-1 pt-1">
+                    <button onClick={(e) => { e.stopPropagation(); openNew(day); }}
+                      className="inline-flex items-center gap-0.5 px-2 py-1 rounded text-white text-[11px] hover:opacity-90"
+                      style={{ background: '#2f7cf6' }}>+ 添加</button>
+                    {st.orderRows.length > 0 && (
+                      <span className="shrink-0 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-medium" style={{ background: '#ff7aa2', color: '#ffffff' }}>{st.orderRows.length}</span>
+                    )}
+                  </div>
                 </div>
               );
             })}
@@ -231,8 +236,12 @@ export default function Schedule() {
 
         {/* 右侧固定深色面板 #333 */}
         <div className="lg:sticky lg:top-4 self-start rounded-lg shadow-[0_2px_12px_rgba(0,0,0,0.06)] p-4" style={{ background: '#333333' }}>
-          <div className="text-2xl font-bold mb-1" style={{ color: '#ffce3a' }}>{selDate ? selDate : '未选择日期'}</div>
+          <div className="text-xs mb-2" style={{ color: '#b9bdc4' }}>{selDate ? `${selParts[0]}年${selParts[1]}月` : '未选择日期'}</div>
+          <div className="w-16 h-16 rounded-full flex items-center justify-center mb-2" style={{ background: '#ffce3a' }}>
+            <span className="text-2xl font-bold" style={{ color: '#333333' }}>{selParts[2] || '--'}</span>
+          </div>
           <div className="text-xs mb-3" style={{ color: '#b9bdc4' }}>{selDate ? (lunarMap[selDate] || '') : '点击日历选择日期'}</div>
+          <div className="border-t mb-3" style={{ borderColor: 'rgba(255,255,255,0.12)' }} />
 
           <div className="max-h-[52vh] overflow-auto mb-3">
             {!selDate && <div className="text-xs py-6 text-center" style={{ color: '#b9bdc4' }}>点击左侧日历日期，查看当日档期安排。</div>}
@@ -310,8 +319,9 @@ function StatusLegend() {
   const wrapRef = useRef(null);
   const close = () => { setOpen(false); setPinned(false); };
 
+  const isTouch = () => typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(hover: none)').matches;
   useEffect(() => {
-    const onDown = (e) => { if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false); };
+    const onDown = (e) => { if (wrapRef.current && !wrapRef.current.contains(e.target)) close(); };
     document.addEventListener('mousedown', onDown);
     return () => document.removeEventListener('mousedown', onDown);
   }, []);
@@ -321,19 +331,17 @@ function StatusLegend() {
   return (
     <div className="relative" ref={wrapRef}
       onMouseEnter={() => setOpen(true)}
-      onMouseLeave={() => { if (!pinned) setOpen(false); }}>
-      <div className="flex items-center gap-3 text-xs" style={{ color: '#6b7280' }}>
+      onMouseLeave={() => { if (!pinned) setOpen(false); }}
+      onClick={(e) => { if (isTouch()) { e.preventDefault(); setPinned((v) => !v); } }}>
+      <div className="flex items-center gap-3 text-xs cursor-pointer select-none" style={{ color: '#6b7280' }}>
         <span className="flex items-center gap-1"><span className="w-3 h-3 rounded" style={{ background: '#fff2cc', border: '1px solid #e6c200' }} />未付定</span>
         <span className="flex items-center gap-1"><span className="w-3 h-3 rounded" style={{ background: '#d5e8d4', border: '1px solid #9ccc9c' }} />等待拍</span>
         <span className="flex items-center gap-1"><span className="w-3 h-3 rounded" style={{ background: 'repeating-linear-gradient(45deg,#eee,#eee 4px,#cfcfcf 4px,#cfcfcf 8px)' }} />已关闭</span>
         {/* 触发箭头 */}
-        <button
-          onClick={(e) => { e.stopPropagation(); setPinned((v) => !v); }}
-          className="inline-flex items-center gap-0.5 ml-1 px-1.5 py-0.5 rounded hover:bg-panel2"
-          style={{ color: '#6b7280' }}>
+        <span className="inline-flex items-center gap-0.5 ml-1 px-1.5 py-0.5 rounded hover:bg-panel2">
           订单状态说明
           <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="m6 9 6 6 6-6" /></svg>
-        </button>
+        </span>
       </div>
 
       {show && (
