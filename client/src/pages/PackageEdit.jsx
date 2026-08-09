@@ -338,7 +338,7 @@ export default function PackageEdit() {
     <div className="-mx-6 -my-6 min-h-screen flex flex-col" style={{ background: PAGE_BG }}>
       {/* 白色卡片容器：Tab 栏 + 全部 Tab 内容；底边距 0 留出底部按钮栏 */}
       <form onSubmit={submit} className="m-6 mb-0 max-w-[840px] mx-auto w-full bg-white"
-        style={{ borderRadius: 8, boxShadow: '0 1px 2px rgba(0,0,0,0.06)', padding: '40px 48px' }}>
+        style={{ zoom: 0.8, borderRadius: 8, boxShadow: '0 1px 2px rgba(0,0,0,0.06)', padding: '40px 48px' }}>
 
         {/* Tab 栏：选中=方框高亮（黑边白底黑字），未选=灰字灰边透明底；无下划线 */}
         <div className="flex gap-1 overflow-x-auto" style={{ marginBottom: 28 }}>
@@ -737,7 +737,7 @@ export default function PackageEdit() {
 
       {/* 底部固定按钮：取消 / 保存 并排居中 */}
       <div className="sticky bottom-0 z-20 flex items-center justify-center gap-3 px-6 py-3 border-t max-w-[840px] mx-auto w-full"
-        style={{ background: PAGE_BG, borderColor: '#e5e5e5' }}>
+        style={{ zoom: 0.8, background: PAGE_BG, borderColor: '#e5e5e5' }}>
         <button type="button" onClick={() => nav('/packages')}
           className="h-[34px] px-4 rounded text-sm hover:opacity-90" style={{ background: '#FFFFFF', border: '1px solid #D1D5DB', color: '#333333' }}>取消</button>
         <button type="button" onClick={submit} disabled={saving}
