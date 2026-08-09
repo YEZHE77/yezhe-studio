@@ -451,7 +451,31 @@ function OrderDialog({ orderDlg, personnel, onClose, onSaved }) {
       executors
     };
     try {
-      await http.post('/api/orders', payload);
+      const r = await http.post('/api/orders', payload);
+      const orderNo = (r.data && r.data.order_no) || '';
+      // 同步落一条日历档期（仅当指定了具体拍摄日期；与订单号关联，日历按订单着色）
+      if (!dateTbd && orderDlg.date) {
+        const periods = slots.length ? slots : ['full'];
+        const exec = executors[0] || {};
+        try {
+          await http.post('/api/schedules', {
+            date: orderDlg.date,
+            periods,
+            date_tbd: 0,
+            status: 'booked',
+            order_no: orderNo,
+            photographer: exec.name || '',
+            executor_id: exec.id || null,
+            executor_name: exec.name || '',
+            note: remark.trim()
+          });
+        } catch (se) {
+          // 档期建档失败不影响订单本身（订单已在订单中心生成）
+          console.warn('档期建档失败', se);
+          setLocalErr('订单已创建，但日历档期写入失败：' + ((se.response && se.response.data && se.response.data.error) || '未知错误'));
+          return;
+        }
+      }
       onSaved();
     } catch (e) { setLocalErr((e.response && e.response.data && e.response.data.error) || '保存失败'); }
   };
@@ -502,7 +526,7 @@ function OrderDialog({ orderDlg, personnel, onClose, onSaved }) {
                   const on = slots.includes(h);
                   return (
                     <button key={h} onClick={() => toggleSlot(h)}
-                      className={'px-2.5 py-1 rounded-lg text-xs border transition ' + (on ? 'bg-brand text-white border-brand' : 'bg-[#d5e8d4] text-[#2e7d32] border-[#bcdcbe]')}>
+                      className={'px-2.5 py-1 rounded-lg text-xs border transition ' + (on ? 'bg-[#2e7d32] text-white border-[#2e7d32]' : 'bg-[#d5e8d4] text-[#2e7d32] border-[#bcdcbe]')}>
                       {h}
                     </button>
                   );
@@ -512,7 +536,7 @@ function OrderDialog({ orderDlg, personnel, onClose, onSaved }) {
                   const on = slots.includes(k);
                   return (
                     <button key={k} onClick={() => toggleSlot(k)}
-                      className={'px-2.5 py-1 rounded-lg text-xs border transition ' + (on ? 'bg-brand text-white border-brand' : 'bg-[#d5e8d4] text-[#2e7d32] border-[#bcdcbe]')}>
+                      className={'px-2.5 py-1 rounded-lg text-xs border transition ' + (on ? 'bg-[#2e7d32] text-white border-[#2e7d32]' : 'bg-[#d5e8d4] text-[#2e7d32] border-[#bcdcbe]')}>
                       {slotLabel(k)}
                     </button>
                   );
@@ -702,7 +726,7 @@ function ScheduleDialog({ dlg, personnel, onClose, onSaved }) {
               const on = periods.includes(h);
               return (
                 <button key={h} onClick={() => togglePeriod(h)}
-                  className={'px-2.5 py-1 rounded-lg text-xs border transition ' + (on ? 'bg-brand text-white border-brand' : 'bg-[#d5e8d4] text-[#2e7d32] border-[#bcdcbe]')}>
+                  className={'px-2.5 py-1 rounded-lg text-xs border transition ' + (on ? 'bg-[#2e7d32] text-white border-[#2e7d32]' : 'bg-[#d5e8d4] text-[#2e7d32] border-[#bcdcbe]')}>
                   {h}
                 </button>
               );
