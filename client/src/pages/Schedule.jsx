@@ -143,22 +143,24 @@ export default function Schedule() {
       <div className="max-w-6xl mx-auto px-6 pt-6 pb-10">
       {/* 面包屑由全局 <Breadcrumb /> 渲染 */}
 
-      {/* 顶部控制栏（PC）：图例（最左）｜ 翻页控件（居中）｜ 筛选账号 + 高级选项（靠右）；白色控件容器背景 #FFFFFF */}
-      <div className="flex items-center gap-3 mb-4 px-4 py-2 bg-white border border-line">
+      {/* 外层大卡片容器：顶部控件栏 + 日历网格 + 右侧面板 同包裹（背景 #FFFFFF / 边框 #E5E5E5） */}
+      <div className="bg-white border border-[#E5E5E5] rounded-lg p-4">
+      {/* 顶部控制栏（PC）：图例（最左）｜ 翻页控件（居中）｜ 筛选账号 + 高级选项（靠右） */}
+      <div className="flex items-center gap-3 mb-4">
         {/* ① 状态图例（最左侧） */}
         <StatusLegend />
 
         {/* ③ 翻页控件组（页面中间，紧凑居中） */}
         <div className="flex-1 flex justify-center">
           <div className="flex items-center gap-1">
-            <button onClick={() => shiftMonth(-1)} className="w-8 h-8 rounded border border-line bg-white hover:bg-panel2" style={{ color: '#888888' }}>‹</button>
+            <button onClick={() => shiftMonth(-1)} className="w-8 h-8 rounded border border-[#E5E5E5] bg-white hover:bg-panel2" style={{ color: '#888888' }}>‹</button>
             <select value={y} onChange={(e) => setYM(Number(e.target.value), m)} className="px-2 py-1.5 rounded border border-[#DDDDDD] bg-white text-sm outline-none" style={{ color: '#333333' }}>
               {Array.from({ length: 21 }, (_, i) => y - 10 + i).map((yy) => <option key={yy} value={yy}>{yy}年</option>)}
             </select>
             <select value={m} onChange={(e) => setYM(y, Number(e.target.value))} className="px-2 py-1.5 rounded border border-[#DDDDDD] bg-white text-sm outline-none" style={{ color: '#333333' }}>
               {Array.from({ length: 12 }, (_, i) => i + 1).map((mm) => <option key={mm} value={mm}>{mm}月</option>)}
             </select>
-            <button onClick={() => shiftMonth(1)} className="w-8 h-8 rounded border border-line bg-white hover:bg-panel2" style={{ color: '#888888' }}>›</button>
+            <button onClick={() => shiftMonth(1)} className="w-8 h-8 rounded border border-[#E5E5E5] bg-white hover:bg-panel2" style={{ color: '#888888' }}>›</button>
           </div>
         </div>
 
@@ -171,7 +173,7 @@ export default function Schedule() {
               筛选账号 <span style={{ color: '#999999' }}>▾</span>
             </button>
             {accOpen && (
-              <div className="absolute right-0 mt-1 w-44 bg-white border border-line rounded-none z-30 overflow-hidden" style={{ boxShadow: '0 2px 12px rgba(0,0,0,0.12)' }}>
+              <div className="absolute right-0 mt-1 w-44 bg-white border border-[#E5E5E5] rounded-none z-30 overflow-hidden" style={{ boxShadow: '0 2px 12px rgba(0,0,0,0.12)' }}>
                 <button onClick={() => { setState((s) => ({ ...s, executor: '' })); setAccOpen(false); }} className="w-full text-left px-3 py-2.5 text-sm hover:bg-panel2" style={{ color: state.executor === '' ? BLUE : '#1f2329' }}>全部账号</button>
                 {personnel.map((p) => (
                   <button key={p.id} onClick={() => { setState((s) => ({ ...s, executor: String(p.id) })); setAccOpen(false); }} className="w-full text-left px-3 py-2.5 text-sm hover:bg-panel2" style={{ color: state.executor === String(p.id) ? BLUE : '#1f2329' }}>{p.name}</button>
@@ -187,7 +189,7 @@ export default function Schedule() {
               高级选项 <span>▾</span>
             </button>
             {advOpen && (
-              <div className="absolute right-0 mt-1 w-44 bg-white border border-line rounded-none z-30 overflow-hidden" style={{ boxShadow: '0 2px 12px rgba(0,0,0,0.12)' }}>
+              <div className="absolute right-0 mt-1 w-44 bg-white border border-[#E5E5E5] rounded-none z-30 overflow-hidden" style={{ boxShadow: '0 2px 12px rgba(0,0,0,0.12)' }}>
                 <button onClick={() => { setAdvOpen(false); setBooking({ open: true, openDays: [0,1,2,3,4,5,6] }); }} className="w-full text-left px-3 py-2.5 text-sm hover:bg-panel2" style={{ color: '#1f2329' }}>档期及预约设置</button>
                 <button onClick={async () => { setAdvOpen(false); try { const r = await http.post('/api/schedules/share'); setShare(r.data); } catch (e) { setErr((e.response && e.response.data && e.response.data.error) || '生成分享失败'); } }} className="w-full text-left px-3 py-2.5 text-sm hover:bg-panel2 flex items-center gap-1" style={{ color: '#1f2329' }}>分享档期 <span className="ml-1 text-[10px] text-white rounded-none px-1" style={{ background: BLUE }}>NEW</span></button>
                 <button onClick={doExport} className="w-full text-left px-3 py-2.5 text-sm hover:bg-panel2" style={{ color: '#1f2329' }}>导出 Excel</button>
@@ -198,18 +200,18 @@ export default function Schedule() {
       </div>
 
       <div className="flex flex-col lg:flex-row lg:items-start gap-4">
-        {/* 日历主体：直接渲染在白色主内容容器内（直角网格，无卡片包裹） */}
+        {/* 日历主体：在大卡片容器内（直角网格，无独立卡片包裹） */}
         <div className="lg:flex-1 min-w-0">
-          <div className="bg-white border border-line overflow-x-auto">
+          <div className="overflow-x-auto">
             <div className="min-w-[680px]">
               {/* 星期表头 */}
               <div className="grid grid-cols-7">
-                {WEEK.map((w) => <div key={w} className="text-center text-xs py-2 border-r border-b border-line" style={{ color: '#888888', background: '#fafafa' }}>{w}</div>)}
+                {WEEK.map((w) => <div key={w} className="text-center text-xs py-2 border-r border-b border-[#E5E5E5]" style={{ color: '#888888', background: '#fafafa' }}>{w}</div>)}
               </div>
               {/* 日期格（直角网格单元） */}
               <div className="grid grid-cols-7">
                 {cells.map((day, i) => {
-                  if (day == null) return <div key={i} className="border-r border-b border-line min-h-[88px]" />;
+                  if (day == null) return <div key={i} className="border-r border-b border-[#E5E5E5] min-h-[88px]" />;
                   const date = `${y}-${pad(m)}-${pad(day)}`;
                   const rows = map[date] || [];
                   const pends = pendMap[date] || [];
@@ -217,7 +219,7 @@ export default function Schedule() {
                   const lunar = lunarMap[date] || '';
                   const selected = selDate === date;
                   const isClosed = st.kind === 'closed';
-                  let cellCls = 'border-r border-b border-line';
+                  let cellCls = 'border-r border-b border-[#E5E5E5]';
                   let style = {};
                   if (isClosed) {
                     style = { background: 'repeating-linear-gradient(45deg,' + CLOSED_BG + ',' + CLOSED_BG + ' 6px,#e8e8e8 6px,#e8e8e8 12px)', color: '#999999' };
@@ -269,7 +271,7 @@ export default function Schedule() {
         </div>
 
         {/* 右侧固定悬浮深色侧边面板（非卡片，直角；flex 列布局使 +添加档期 固定在底部） */}
-        <div className="w-full lg:w-[280px] lg:flex-none lg:sticky lg:top-4 lg:self-start lg:max-h-[calc(100vh-2rem)] flex flex-col border border-[#222]" style={{ background: PANEL_BG }}>
+        <div className="w-full lg:w-[280px] lg:flex-none lg:sticky lg:top-4 lg:self-start lg:max-h-[calc(100vh-2rem)] flex flex-col border border-[#E5E5E5]" style={{ background: PANEL_BG }}>
           <div className="p-4">
             <div className="text-sm mb-2 text-center" style={{ color: '#ffffff' }}>{y}年{m}月</div>
             <div className="flex justify-center mb-3">
@@ -321,6 +323,7 @@ export default function Schedule() {
           </div>
         </div>
       </div>
+      </div>
 
       {err && <div className="fixed bottom-4 left-1/2 -translate-x-1/2 bg-red-500 text-white text-sm px-4 py-2 rounded shadow-lg z-50">{err}</div>}
 
@@ -343,7 +346,7 @@ export default function Schedule() {
             </div>
             <img src={share.qr_url} className="w-40 h-40 rounded bg-white mx-auto" alt="qr" />
             <div className="text-[11px] text-muted break-all mt-3">{share.share_url}</div>
-            <button onClick={() => navigator.clipboard && navigator.clipboard.writeText(share.share_url)} className="w-full mt-3 px-3 py-2 rounded border border-line text-sm hover:bg-panel2" style={{ color: '#1f2329' }}>复制链接</button>
+            <button onClick={() => navigator.clipboard && navigator.clipboard.writeText(share.share_url)} className="w-full mt-3 px-3 py-2 rounded border border-[#E5E5E5] text-sm hover:bg-panel2" style={{ color: '#1f2329' }}>复制链接</button>
           </div>
         </div>
       )}
@@ -372,8 +375,8 @@ function StatusLegend() {
       </button>
 
       {open && (
-        <div className="absolute left-0 mt-1 w-44 bg-white border border-line rounded-none z-40" style={{ boxShadow: '0 2px 12px rgba(0,0,0,0.12)' }}>
-          <div className="px-3 py-2 text-sm font-medium border-b border-line" style={{ color: '#333333' }}>订单状态说明</div>
+        <div className="absolute left-0 mt-1 w-44 bg-white border border-[#E5E5E5] rounded-none z-40" style={{ boxShadow: '0 2px 12px rgba(0,0,0,0.12)' }}>
+          <div className="px-3 py-2 text-sm font-medium border-b border-[#E5E5E5]" style={{ color: '#333333' }}>订单状态说明</div>
           <div className="py-1">
             {STATUS_LEGEND.map((s) => (
               <div key={s.label} className="flex items-center gap-2 px-3 py-1.5 text-sm" style={{ color: '#333333' }}>
@@ -531,25 +534,25 @@ function OrderDialog({ orderDlg, personnel, onClose, onSaved }) {
           <section>
             <div className="text-sm font-medium mb-2" style={{ color: '#1f2329' }}>顾客信息</div>
             <input value={orderName} onChange={(e) => setOrderName(e.target.value)} placeholder="请输入订单名称"
-              className="w-full mb-2 px-3 py-2 rounded bg-panel2 border border-line text-sm outline-none" style={{ color: '#1f2329' }} />
+              className="w-full mb-2 px-3 py-2 rounded bg-panel2 border border-[#E5E5E5] text-sm outline-none" style={{ color: '#1f2329' }} />
             <div className="flex items-center gap-2 mb-2">
               <input value={customerName} onChange={(e) => setCustomerName(e.target.value)} placeholder="顾客姓名"
-                className="flex-1 px-3 py-2 rounded bg-panel2 border border-line text-sm outline-none" style={{ color: '#1f2329' }} />
+                className="flex-1 px-3 py-2 rounded bg-panel2 border border-[#E5E5E5] text-sm outline-none" style={{ color: '#1f2329' }} />
               {phones.map((p, i) => (
                 <div key={i} className="flex items-center gap-1">
                   <input value={p} onChange={(e) => setPhoneAt(i, e.target.value)} placeholder="添加电话"
-                    className="w-32 px-3 py-2 rounded bg-panel2 border border-line text-sm outline-none" style={{ color: '#1f2329' }} />
+                    className="w-32 px-3 py-2 rounded bg-panel2 border border-[#E5E5E5] text-sm outline-none" style={{ color: '#1f2329' }} />
                   {phones.length > 1 && <button onClick={() => removePhoneAt(i)} className="text-muted hover:text-fg text-xs px-1">✕</button>}
                 </div>
               ))}
-              <button onClick={addPhone} className="w-8 h-8 rounded border border-line bg-panel2 text-sm hover:bg-black/5" style={{ color: '#1f2329' }}>+</button>
+              <button onClick={addPhone} className="w-8 h-8 rounded border border-[#E5E5E5] bg-panel2 text-sm hover:bg-black/5" style={{ color: '#1f2329' }}>+</button>
             </div>
           </section>
 
           {/* 2. 日期 & 场次 */}
           <section>
             <div className="text-sm font-medium mb-2" style={{ color: '#1f2329' }}>日期 & 场次</div>
-            <div className="text-xs mb-2 px-3 py-2 rounded bg-panel2 border border-line" style={{ color: '#1f2329' }}>
+            <div className="text-xs mb-2 px-3 py-2 rounded bg-panel2 border border-[#E5E5E5]" style={{ color: '#1f2329' }}>
               {dateTbd ? '日期待定' : (orderDlg.date || '未选择日期')}
             </div>
             <label className="flex items-center gap-2 text-sm cursor-pointer mb-2" style={{ color: '#1f2329' }}>
@@ -591,14 +594,14 @@ function OrderDialog({ orderDlg, personnel, onClose, onSaved }) {
             <div className="text-sm font-medium mb-2" style={{ color: '#1f2329' }}>套系相关</div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
               <select value={pkgId} onChange={(e) => onPickPackage(e.target.value)}
-                className="px-3 py-2 rounded bg-panel2 border border-line text-sm outline-none" style={{ color: pkgId ? '#1f2329' : '#9ca3af' }}>
+                className="px-3 py-2 rounded bg-panel2 border border-[#E5E5E5] text-sm outline-none" style={{ color: pkgId ? '#1f2329' : '#9ca3af' }}>
                 <option value="">* 请选择套系名称</option>
                 {pkgList.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
               </select>
               <input value={pkgPrice} onChange={(e) => setPkgPrice(e.target.value)} placeholder="* 套系价格"
-                className="px-3 py-2 rounded bg-panel2 border border-line text-sm outline-none" style={{ color: '#1f2329' }} />
+                className="px-3 py-2 rounded bg-panel2 border border-[#E5E5E5] text-sm outline-none" style={{ color: '#1f2329' }} />
               <input value={deposit} onChange={(e) => setDeposit(e.target.value)} placeholder="* 套系定金"
-                className="px-3 py-2 rounded bg-panel2 border border-line text-sm outline-none" style={{ color: '#1f2329' }} />
+                className="px-3 py-2 rounded bg-panel2 border border-[#E5E5E5] text-sm outline-none" style={{ color: '#1f2329' }} />
             </div>
           </section>
 
@@ -606,7 +609,7 @@ function OrderDialog({ orderDlg, personnel, onClose, onSaved }) {
           <section>
             <div className="text-sm font-medium mb-2" style={{ color: '#1f2329' }}>收款状态 <span style={{ color: '#e4393c' }}>*</span></div>
             <select value={payStatus} onChange={(e) => setPayStatus(e.target.value)}
-              className="w-full px-3 py-2 rounded bg-panel2 border border-line text-sm outline-none" style={{ color: '#1f2329' }}>
+              className="w-full px-3 py-2 rounded bg-panel2 border border-[#E5E5E5] text-sm outline-none" style={{ color: '#1f2329' }}>
               <option value="unpaid">未付款</option>
               <option value="deposit">已付定金</option>
               <option value="paid">已付全款</option>
@@ -622,9 +625,9 @@ function OrderDialog({ orderDlg, personnel, onClose, onSaved }) {
             {extras.map((e, i) => (
               <div key={i} className="flex items-center gap-2 mb-2">
                 <input value={e.name} onChange={(ev) => setExtraAt(i, 'name', ev.target.value)} placeholder="消费名称"
-                  className="flex-1 px-3 py-2 rounded bg-panel2 border border-line text-sm outline-none" style={{ color: '#1f2329' }} />
+                  className="flex-1 px-3 py-2 rounded bg-panel2 border border-[#E5E5E5] text-sm outline-none" style={{ color: '#1f2329' }} />
                 <input value={e.amount} onChange={(ev) => setExtraAt(i, 'amount', ev.target.value)} placeholder="金额"
-                  className="w-28 px-3 py-2 rounded bg-panel2 border border-line text-sm outline-none" style={{ color: '#1f2329' }} />
+                  className="w-28 px-3 py-2 rounded bg-panel2 border border-[#E5E5E5] text-sm outline-none" style={{ color: '#1f2329' }} />
                 <button onClick={() => removeExtraAt(i)} className="text-muted hover:text-fg text-xs px-1">✕</button>
               </div>
             ))}
@@ -634,21 +637,21 @@ function OrderDialog({ orderDlg, personnel, onClose, onSaved }) {
           <section>
             <div className="text-sm font-medium mb-2" style={{ color: '#1f2329' }}>拍摄地点</div>
             <input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="如 三亚 / 工作室"
-              className="w-full px-3 py-2 rounded bg-panel2 border border-line text-sm outline-none" style={{ color: '#1f2329' }} />
+              className="w-full px-3 py-2 rounded bg-panel2 border border-[#E5E5E5] text-sm outline-none" style={{ color: '#1f2329' }} />
           </section>
 
           {/* 7. 备注 */}
           <section>
             <div className="text-sm font-medium mb-2" style={{ color: '#1f2329' }}>备注</div>
             <input value={remark} onChange={(e) => setRemark(e.target.value)} placeholder="如 婚礼跟拍 / 特殊要求"
-              className="w-full px-3 py-2 rounded bg-panel2 border border-line text-sm outline-none" style={{ color: '#1f2329' }} />
+              className="w-full px-3 py-2 rounded bg-panel2 border border-[#E5E5E5] text-sm outline-none" style={{ color: '#1f2329' }} />
           </section>
 
           {/* 8. 渠道来源 */}
           <section>
             <div className="text-sm font-medium mb-2" style={{ color: '#1f2329' }}>渠道来源</div>
             <select value={channelId} onChange={(e) => { const o = chList.find((x) => String(x.id) === e.target.value); onPickChannel(e.target.value, o ? o.name : ''); }}
-              className="w-full px-3 py-2 rounded bg-panel2 border border-line text-sm outline-none" style={{ color: channelId ? '#1f2329' : '#9ca3af' }}>
+              className="w-full px-3 py-2 rounded bg-panel2 border border-[#E5E5E5] text-sm outline-none" style={{ color: channelId ? '#1f2329' : '#9ca3af' }}>
               <option value="">请选择渠道来源</option>
               {chList.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
@@ -662,7 +665,7 @@ function OrderDialog({ orderDlg, personnel, onClose, onSaved }) {
           <section>
             <div className="text-sm font-medium mb-2" style={{ color: '#1f2329' }}>执行人</div>
             <div className="relative" ref={execPopRef}>
-              <div className="flex flex-wrap items-center gap-2 min-h-[40px] px-3 py-2 rounded bg-panel2 border border-line">
+              <div className="flex flex-wrap items-center gap-2 min-h-[40px] px-3 py-2 rounded bg-panel2 border border-[#E5E5E5]">
                 {executors.length === 0 && <span className="text-xs text-muted">未指派</span>}
                 {executors.map((ex) => (
                   <span key={ex.id ?? ex.name} className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs" style={{ background: '#eaf2fe', color: '#1d6fe0' }}>
@@ -673,10 +676,10 @@ function OrderDialog({ orderDlg, personnel, onClose, onSaved }) {
                     <button onClick={() => removeExec(ex.id)} className="hover:opacity-70">✕</button>
                   </span>
                 ))}
-                <button onClick={() => setExecPop((v) => !v)} className="w-6 h-6 rounded-full border border-line text-sm hover:bg-black/5 flex items-center justify-center" style={{ color: '#1f2329' }}>+</button>
+                <button onClick={() => setExecPop((v) => !v)} className="w-6 h-6 rounded-full border border-[#E5E5E5] text-sm hover:bg-black/5 flex items-center justify-center" style={{ color: '#1f2329' }}>+</button>
               </div>
               {execPop && (
-                <div className="absolute left-0 mt-1 w-56 bg-white border border-line rounded-lg shadow-lg z-30 max-h-52 overflow-auto">
+                <div className="absolute left-0 mt-1 w-56 bg-white border border-[#E5E5E5] rounded-lg shadow-lg z-30 max-h-52 overflow-auto">
                   {personnel.length === 0 && <div className="px-3 py-2 text-xs text-muted">暂无人员</div>}
                   {personnel.map((p) => {
                     const on = executors.find((x) => String(x.id) === String(p.id));
@@ -750,7 +753,7 @@ function ScheduleDialog({ dlg, personnel, onClose, onSaved }) {
 
         <label className="text-xs text-muted">拍摄日期</label>
         <input type="date" value={date} disabled={dateTbd} onChange={(e) => setDate(e.target.value)}
-          className="w-full mb-3 px-2 py-2 rounded bg-panel2 border border-line text-sm outline-none disabled:opacity-50" style={{ color: '#1f2329' }} />
+          className="w-full mb-3 px-2 py-2 rounded bg-panel2 border border-[#E5E5E5] text-sm outline-none disabled:opacity-50" style={{ color: '#1f2329' }} />
 
         <label className="flex items-center gap-2 text-sm cursor-pointer mb-2" style={{ color: '#1f2329' }}>
           <input type="checkbox" checked={chooseSession} onChange={(e) => onChooseSession(e.target.checked)} />
@@ -778,19 +781,19 @@ function ScheduleDialog({ dlg, personnel, onClose, onSaved }) {
 
         <label className="text-xs text-muted">绑定执行人</label>
         <select value={executorId} onChange={(e) => { setExecutorId(e.target.value); const p = personnel.find((x) => String(x.id) === e.target.value); setExecutorName(p ? p.name : ''); }}
-          className="w-full mb-3 px-2 py-2 rounded bg-panel2 border border-line text-sm outline-none" style={{ color: '#1f2329' }}>
+          className="w-full mb-3 px-2 py-2 rounded bg-panel2 border border-[#E5E5E5] text-sm outline-none" style={{ color: '#1f2329' }}>
           <option value="">未指派</option>
           {personnel.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
         </select>
 
         <label className="text-xs text-muted">备注</label>
         <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="如 婚礼跟拍 / 备注"
-          className="w-full mb-3 px-2 py-2 rounded bg-panel2 border border-line text-sm outline-none" style={{ color: '#1f2329' }} />
+          className="w-full mb-3 px-2 py-2 rounded bg-panel2 border border-[#E5E5E5] text-sm outline-none" style={{ color: '#1f2329' }} />
 
         {localErr && <div className="text-xs text-red-500 mb-2">{localErr}</div>}
 
         <div className="flex gap-2 justify-end mt-2">
-          <button onClick={onClose} className="px-4 py-2 rounded border border-line text-muted text-sm hover:bg-panel2">取消</button>
+          <button onClick={onClose} className="px-4 py-2 rounded border border-[#E5E5E5] text-muted text-sm hover:bg-panel2">取消</button>
           <button onClick={save} className="px-4 py-2 rounded text-white text-sm hover:opacity-90" style={{ background: '#2890F0' }}>确认</button>
         </div>
       </div>
@@ -827,12 +830,12 @@ function BookingDialog({ onClose }) {
             <div className="grid grid-cols-4 gap-2 mb-4">
               {OPEN_DAYS_LABEL.map((lab, d) => (
                 <button key={d} onClick={() => toggleDay(d)}
-                  className={'px-2 py-1.5 rounded text-xs border ' + (cfg.openDays.includes(d) ? 'bg-brand text-white border-brand' : 'bg-panel2 text-muted border-line')}>{lab}</button>
+                  className={'px-2 py-1.5 rounded text-xs border ' + (cfg.openDays.includes(d) ? 'bg-brand text-white border-brand' : 'bg-panel2 text-muted border-[#E5E5E5]')}>{lab}</button>
               ))}
             </div>
             {saved && <div className="text-xs text-emerald-500 mb-2">已保存</div>}
             <div className="flex gap-2 justify-end">
-              <button onClick={onClose} className="px-4 py-2 rounded border border-line text-muted text-sm hover:bg-panel2">取消</button>
+              <button onClick={onClose} className="px-4 py-2 rounded border border-[#E5E5E5] text-muted text-sm hover:bg-panel2">取消</button>
               <button onClick={save} className="px-4 py-2 rounded text-white text-sm hover:opacity-90" style={{ background: '#2890F0' }}>保存</button>
             </div>
           </>
