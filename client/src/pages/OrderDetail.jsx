@@ -31,40 +31,19 @@ function calcExtraFee(extraCount, unitPrice) {
   return { count: n, unitPrice, discount, fee: Math.round(n * unitPrice * discount) };
 }
 
-// 订单详情 11 步流程进度条（顺序固定，状态/时间戳完全由后端接口驱动，不写死）
-const ORDER_STEPS = [
-  { key: 'created', label: '订单生成' },
-  { key: 'contract', label: '生成合同' },
-  { key: 'confirm', label: '沟通确认' },
-  { key: 'shoot', label: '拍摄执行' },
-  { key: 'shot_end', label: '拍摄结束' },
-  { key: 'select', label: '选片精修' },
-  { key: 'preview', label: '预告片输出' },
-  { key: 'retouch', label: '全部精修完成' },
-  { key: 'raw_pack', label: '原片打包' },
-  { key: 'deliver', label: '统一交付' },
-  { key: 'done', label: '订单完结' }
+// 订单详情 4 步进度条：支付订单 → 完成拍摄 → 上传底片 → 完成
+const FOUR_STEPS = [
+  { key: 'paid', label: '支付订单' },
+  { key: 'shot', label: '完成拍摄' },
+  { key: 'raw', label: '上传底片' },
+  { key: 'done', label: '完成' }
 ];
-const STATUS_STEP = { deposit: 2, shot: 4, selecting: 5, retouching: 7, delivered: 9, completed: 10 };
-function computeStep(detail) {
-  if (!detail) return 0;
-  if (detail.status === 'cancelled') return -1;
-  return STATUS_STEP[detail.status] ?? 2;
-}
-// 每一步对应后端 logs 中的关键字（用于回显接口返回的真实完成时间，禁止写死）
-const STEP_LOG_KW = [
-  ['下单', '创建订单', '生成订单', '创建'],               // 订单生成
-  ['合同'],                                              // 生成合同
-  ['沟通', '确认'],                                      // 沟通确认
-  ['拍摄执行', '开始拍摄', '执行拍摄'],                    // 拍摄执行
-  ['拍摄结束', '拍摄完成'],                                // 拍摄结束
-  ['选片', '进入选片'],                                    // 选片精修
-  ['预告片', '预告'],                                     // 预告片输出
-  ['全部精修', '精修完成'],                                 // 全部精修完成
-  ['原片打包', '原片上传', '打包'],                         // 原片打包
-  ['统一交付', '交付'],                                    // 统一交付
-  ['订单完结', '订单完成', '完结']                          // 订单完结
-];
+const STEP_KEYWORDS = {
+  paid: ['支付', '收款', '定金', '全款', '订单'],
+  shot: ['拍摄', '完成拍摄'],
+  raw: ['原片', '上传底片', '上传原片'],
+  done: ['完成', '交付', '完结']
+};
 function fmtStepTime(t) {
   if (!t) return null;
   const d = new Date(t);
@@ -72,26 +51,30 @@ function fmtStepTime(t) {
   const p = (n) => String(n).padStart(2, '0');
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
 }
-function findStepTime(logs, i) {
-  const kws = STEP_LOG_KW[i] || [];
+function findStepTime(logs, kws) {
   for (const kw of kws) {
     const hit = (logs || []).find((l) => (l.text || '').includes(kw));
     if (hit && hit.t) return fmtStepTime(hit.t);
   }
   return null;
 }
-// 由后端 订单 status / logs / 原片 派生 11 步状态（done / current / pending）
-function buildSteps(detail, photos, logs) {
-  if (!detail || detail.status === 'cancelled')
-    return ORDER_STEPS.map((s) => ({ ...s, state: 'pending', time: null }));
-  const cur = computeStep(detail);
-  return ORDER_STEPS.map((s, i) => {
-    let state = i < cur ? 'done' : i === cur ? 'current' : 'pending';
+// 由订单 payment_status / status / 原片 派生 4 步状态（done / current / pending）
+function buildFourSteps(detail, photos, logs) {
+  if (!detail) return FOUR_STEPS.map((s) => ({ ...s, state: 'pending', time: null }));
+  const paymentStatus = detail.payment_status || 'unpaid';
+  const rawUploaded = photos && photos.raw && photos.raw.length > 0;
+  let currentIdx = -1;
+  if (detail.status === 'completed' || detail.status === 'delivered') currentIdx = 3;
+  else if (rawUploaded) currentIdx = 2;
+  else if (['shot', 'selecting', 'retouching'].includes(detail.status)) currentIdx = 1;
+  else if (paymentStatus !== 'unpaid') currentIdx = 0;
+  return FOUR_STEPS.map((s, i) => {
+    let state = i < currentIdx ? 'done' : i === currentIdx ? 'current' : 'pending';
+    let time = null;
     if (state === 'done') {
-      if (s.key === 'contract' && !((logs || []).some((l) => (l.text || '').includes('合同')))) state = 'pending';
-      if (s.key === 'raw_pack' && (!photos || photos.raw.length === 0)) state = 'pending';
+      time = findStepTime(logs, STEP_KEYWORDS[s.key]);
+      if (!time && s.key === 'paid') time = fmtStepTime(detail.created_at);
     }
-    const time = state === 'done' ? findStepTime(logs, i) : null;
     return { ...s, state, time };
   });
 }
@@ -101,6 +84,8 @@ const MINT = '#48c8b0';   // 主题薄荷绿 / 已完成节点 / 顶线 / 查看
 const BLUE = '#2b88e6';   // 主蓝色 / 当前节点 / 完成拍摄 / Tab 选中
 const DIV = '#e5e7eb';    // 分割线
 const CARD_SHADOW = '0 1px 4px rgba(0,0,0,0.06)';
+const STEP_ACTIVE = '#4096ff';   // 进度条激活/已完成圆圈（spec 全局色号）
+const SUMMARY_BG = '#fbfbf3';    // 套系快照摘要卡片底色（spec 全局色号）
 
 function asArr(v) {
   if (Array.isArray(v)) return v;
@@ -146,6 +131,9 @@ export default function OrderDetail() {
   const [pkgSwitching, setPkgSwitching] = useState(false);
   // 加片设置弹窗（验收⑦：按订单快照核算）
   const [addonBox, setAddonBox] = useState(null);
+  // 套系服务详情弹窗
+  const [pkgDetailModal, setPkgDetailModal] = useState(false);
+  const [pkgDetailTab, setPkgDetailTab] = useState('service');
 
   const loadSel = useCallback((oid) => {
     http.get('/api/admin/photo-select/' + oid).then((r) => setSel(r.data)).catch(() => setSel(null));
@@ -324,6 +312,26 @@ export default function OrderDetail() {
     await http.post('/api/orders/' + detail.id + '/refund', { amount: parseFloat(amt), note: '手动退款' });
     reload();
   }
+  // 复制订单：以当前订单的套系/客户信息新建一条副本（日期置为待定，避免档期冲突），跳转到新订单
+  async function copyOrder() {
+    if (!detail) return;
+    try {
+      const r = await http.post('/api/orders', {
+        package_id: detail.package_id,
+        groom_name: detail.groom_name || '',
+        bride_name: detail.bride_name || '',
+        customer_phone: detail.customer_phone || (Array.isArray(detail.phones) ? detail.phones[0] : ''),
+        address: detail.address || '',
+        remark: detail.remark || '',
+        channel: detail.channel || '',
+        payment_status: 'unpaid',
+        deposit: 0,
+        date_tbd: 1,
+        order_name: (detail.order_name || '复制订单') + '（副本）'
+      });
+      nav('/orders/' + r.data.id);
+    } catch (e) { alert((e.response && e.response.data && e.response.data.error) || '复制失败'); }
+  }
   async function savePay() {
     setErr('');
     try {
@@ -392,6 +400,21 @@ export default function OrderDetail() {
     document.body.appendChild(a); a.click(); a.remove();
   }
 
+  // 更多设置下拉菜单（更换套系 / 复制订单 / 作废关闭订单 / 收款 / 退款 / 删除恢复）
+  const renderMoreMenu = () => (
+    <div style={{ position: 'absolute', zIndex: 60, marginTop: 4, background: '#fff', border: '1px solid ' + DIV, borderRadius: 4, boxShadow: '0 6px 20px rgba(0,0,0,0.10)', padding: '4px 0', fontSize: 14, width: 140 }}>
+      <button type="button" onClick={() => { setMoreMenu(false); openPkgSwitch(); }} style={moreItemStyle}>更换套系</button>
+      <button type="button" onClick={() => { setMoreMenu(false); copyOrder(); }} style={moreItemStyle}>复制订单</button>
+      <button type="button" onClick={() => { setMoreMenu(false); cancel(); }} style={moreItemStyle}>作废/关闭订单</button>
+      <div style={{ height: 1, background: DIV, margin: '4px 0' }} />
+      <button type="button" onClick={() => { setMoreMenu(false); setPay({ type: 'deposit', amount: '', method: 'offline', note: '' }); }} style={moreItemStyle}>+ 收款</button>
+      <button type="button" onClick={() => { setMoreMenu(false); refund(); }} style={moreItemStyle}>退款</button>
+      {!detail.is_deleted
+        ? <button type="button" onClick={() => { setMoreMenu(false); removeOrder(); }} style={{ ...moreItemStyle, color: '#ef4444' }}>删除</button>
+        : <button type="button" onClick={() => { setMoreMenu(false); restoreOrder(); }} style={{ ...moreItemStyle, color: '#10b981' }}>恢复</button>}
+    </div>
+  );
+
   const pkgInfo = useMemo(() => {
     if (!detail) return null;
     const snap = detail.package_snapshot || {};
@@ -451,7 +474,7 @@ export default function OrderDetail() {
     ...(sel && sel.photos ? sel.photos.map((p) => ({ url: p.photo_url, kind: '选片' })) : [])
   ];
 
-  const steps = buildSteps(detail, photos, detail.logs);
+  const steps = buildFourSteps(detail, photos, detail.logs);
   const statusText =
     (detail.payment_status === 'unpaid' ? '未付定金' : (PAY_STATUS_LABEL[payKey] || '')) +
     (detail.status ? '，' + (STATUS_LABEL[detail.status] || '') : '');
@@ -459,12 +482,25 @@ export default function OrderDetail() {
   const custInitial = (custName && custName !== '—') ? custName.slice(0, 1) : '客';
   const offlinePay = detail.pay_method === 'offline' || detail.channel === 'offline' || detail.source === 'offline';
 
+  // 订单套系快照（验收①⑦：摘要卡与弹窗一律读快照，不读套系主表）
+  const snap = detail.package_snapshot || {};
+  const snapDetails = (snap && typeof snap.details === 'object' && !Array.isArray(snap.details)) ? snap.details : {};
+  const sumRawCount = snapDetails.raw_count || snapDetails.shoot_count || snap.raw_count || '';
+  const sumAlbum = snapDetails.album || snap.album || '—';
+  const sumExtraFee = snapDetails.extra_photo_fee || '—';
+  const sumService = snapDetails.service_detail || snap.description || '—';
+  const sumRefund = snapDetails.refund_policy || '—';
+  const sumSelection = snapDetails.selection_tips || '未开启';
+  const sumDuration = snap.duration ? String(snap.duration) : '—';
+  const sumRawPolicy = snap.raw_policy ? String(snap.raw_policy) : '—';
+  const sumRetouch = snap.retouch_count ? String(snap.retouch_count) + ' 张' : '—';
+
   const CheckIcon = () => (
     <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="m5 13 4 4 10-10" /></svg>
   );
 
   return (
-    <div style={{ background: '#f5f7fa' }}>
+    <div style={{ background: '#f7f9fc' }}>
       {/* ============ Module 3：订单头部操作栏 ============ */}
       <section style={{ background: '#ffffff', borderTop: '3px solid ' + MINT, borderBottom: '1px solid ' + DIV, borderRadius: 6, overflow: 'hidden' }}>
         <div style={{ padding: '16px 24px' }}>
@@ -483,7 +519,7 @@ export default function OrderDetail() {
           {/* 主体：左 垂直按钮组 + 右 4 步进度条 */}
           <div className="flex items-start" style={{ gap: 32 }}>
             {/* 左侧垂直按钮组 */}
-            <div className="flex flex-col shrink-0" style={{ width: 140, gap: 12 }}>
+            <div className="flex flex-col shrink-0" style={{ width: 140, gap: 12, position: 'relative' }}>
               <button type="button" onClick={finishShoot} disabled={detail.status === 'cancelled'}
                 style={{ width: 140, height: 40, borderRadius: 4, background: BLUE, color: '#fff', fontSize: 14, border: 'none', opacity: detail.status === 'cancelled' ? 0.4 : 1, cursor: 'pointer' }}>完成拍摄</button>
               <button type="button" onClick={openMiniQr} disabled={miniQrLoading}
@@ -491,17 +527,8 @@ export default function OrderDetail() {
               <button type="button" onClick={cancel}
                 style={{ background: 'none', border: 'none', color: '#666666', fontSize: 14, textAlign: 'left', cursor: 'pointer', padding: 0 }}>关闭订单</button>
               <button type="button" onClick={() => setMoreMenu((m) => !m)}
-                style={{ background: 'none', border: 'none', color: '#666666', fontSize: 14, textAlign: 'left', cursor: 'pointer', padding: 0, position: 'relative' }}>更多设置</button>
-              {moreMenu && (
-                <div style={{ position: 'absolute', zIndex: 50, marginTop: 4, background: '#fff', border: '1px solid ' + DIV, borderRadius: 4, boxShadow: '0 6px 20px rgba(0,0,0,0.10)', padding: '4px 0', fontSize: 14, width: 140 }}>
-                  <button type="button" onClick={() => { setMoreMenu(false); openEdit(); }} style={moreItemStyle}>编辑订单</button>
-                  <button type="button" onClick={() => { setMoreMenu(false); setPay({ type: 'deposit', amount: '', method: 'offline', note: '' }); }} style={moreItemStyle}>+ 收款</button>
-                  <button type="button" onClick={() => { setMoreMenu(false); refund(); }} style={moreItemStyle}>退款</button>
-                  {!detail.is_deleted
-                    ? <button type="button" onClick={() => { setMoreMenu(false); removeOrder(); }} style={{ ...moreItemStyle, color: '#ef4444' }}>删除</button>
-                    : <button type="button" onClick={() => { setMoreMenu(false); restoreOrder(); }} style={{ ...moreItemStyle, color: '#10b981' }}>恢复</button>}
-                </div>
-              )}
+                style={{ background: 'none', border: 'none', color: '#666666', fontSize: 14, textAlign: 'left', cursor: 'pointer', padding: 0 }}>更多设置</button>
+              {moreMenu && renderMoreMenu()}
             </div>
 
             {/* 右侧 11 步横向流程进度条（由后端 status/logs/原片 驱动，支持横向滚动） */}
@@ -513,7 +540,7 @@ export default function OrderDetail() {
                       <div className="flex flex-col items-center" style={{ width: 116, flexShrink: 0 }}>
                         <div style={{
                           width: 28, height: 28, borderRadius: '50%',
-                          background: (st.state === 'done' || st.state === 'current') ? BLUE : '#ffffff',
+                          background: (st.state === 'done' || st.state === 'current') ? STEP_ACTIVE : '#ffffff',
                           border: (st.state === 'done' || st.state === 'current') ? 'none' : '2px solid #cccccc',
                           display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff'
                         }}>
@@ -523,7 +550,7 @@ export default function OrderDetail() {
                         {st.time ? <span style={{ fontSize: 12, marginTop: 4, textAlign: 'center', color: '#666666' }}>{st.time}</span> : null}
                       </div>
                       {i < steps.length - 1 && (
-                        <div style={{ flex: 1, height: 2, minWidth: 40, marginTop: 13, background: st.state === 'done' ? BLUE : '#e2e2e2' }} />
+                        <div style={{ flex: 1, height: 2, minWidth: 40, marginTop: 13, background: st.state === 'done' ? STEP_ACTIVE : '#e2e2e2' }} />
                       )}
                     </React.Fragment>
                   ))}
@@ -561,12 +588,11 @@ export default function OrderDetail() {
               style={{ height: 36, borderRadius: 4, background: MINT, color: '#fff', fontSize: 14, border: 'none', padding: '0 14px', cursor: 'pointer' }}>调查问卷</button>
             <button type="button" onClick={openEdit}
               style={secBtnStyle}>编辑订单</button>
-            <button type="button" onClick={openPkgSwitch}
-              style={secBtnStyle}>更换套系</button>
             <button type="button" onClick={openAddonBox}
               style={secBtnStyle}>加片设置</button>
             <button type="button" onClick={() => setMoreMenu((m) => !m)}
-              style={secBtnStyle}>更多设置</button>
+              style={{ ...secBtnStyle, position: 'relative' }}>更多设置</button>
+            {moreMenu && renderMoreMenu()}
           </div>
         </div>
 
@@ -587,31 +613,37 @@ export default function OrderDetail() {
               remain > 0 ? { t: '未结算', bg: '#fef3c7', fg: '#92400e' } : null
             ].filter(Boolean)} />
           <InfoRow label="参与者" value={execs.length ? execs.map((p) => p.name).join('、') : '—'} />
-          <InfoRow label="备注" value={detail.remark || '无'} />
         </div>
 
-        {/* 底部摘要栏 */}
-        <div style={{ marginTop: 20, background: '#f9fafb', borderRadius: 4, padding: '16px 20px' }}>
-          <div className="flex items-stretch" style={{ flexWrap: 'wrap' }}>
-            {[
-              { t: '总价', v: '¥' + total.toLocaleString() },
-              { t: '拍摄时长', v: pkgInfo?.duration ? String(pkgInfo.duration) : '—' },
-              { t: '服务详情', v: pkgInfo?.description ? String(pkgInfo.description).slice(0, 16) : '—' },
-              { t: '拍摄张数', v: pkgInfo?.raw_count ? String(pkgInfo.raw_count) + ' 张' : '—' },
-              { t: '底片全送', v: pkgInfo?.raw_policy ? String(pkgInfo.raw_policy) : '—' },
-              { t: '精修张数', v: pkgInfo?.retouch_count ? String(pkgInfo.retouch_count) + ' 张' : '—' },
-              { t: '加片费', v: '¥' + extraSum.toLocaleString() }
-            ].map((f, i, arr) => (
-              <div key={f.t} style={{ flex: '1 1 0', minWidth: 110, padding: '0 12px', borderLeft: i === 0 ? 'none' : '1px solid ' + DIV }}>
-                <div style={{ fontSize: 13, color: '#777777' }}>{f.t}</div>
-                <div style={{ fontSize: 14, color: '#222222', marginTop: 4 }}>{f.v}</div>
-              </div>
-            ))}
-          </div>
-          {detail.remark ? (
-            <div style={{ marginTop: 12, fontSize: 14, color: '#666666' }}>备注：{detail.remark}</div>
-          ) : null}
+      </section>
+
+      {/* ============ Module 5：套系快照摘要卡片（#fbfbf3，全部读取订单快照） ============ */}
+      <section style={{ margin: '20px 24px 0', background: SUMMARY_BG, borderRadius: 8, boxShadow: CARD_SHADOW, padding: 20 }}>
+        <div className="flex items-stretch" style={{ flexWrap: 'wrap' }}>
+          {[
+            { t: '总价', v: '¥' + total.toLocaleString() },
+            { t: '服务详情', v: (sumService && sumService !== '—') ? (String(sumService).length > 20 ? String(sumService).slice(0, 20) + '…' : String(sumService)) : '—' },
+            { t: '底片全送', v: sumRawPolicy },
+            { t: '加片费', v: '¥' + extraSum.toLocaleString() },
+            { t: '拍摄时长', v: sumDuration },
+            { t: '拍摄张数', v: sumRawCount ? String(sumRawCount) + ' 张' : '—' },
+            { t: '精修张数', v: sumRetouch }
+          ].map((f, i) => (
+            <div key={f.t} style={{ flex: '1 1 0', minWidth: 110, padding: '0 12px', borderLeft: i === 0 ? 'none' : '1px solid ' + DIV }}>
+              <div style={{ fontSize: 13, color: '#777777' }}>{f.t}</div>
+              <div style={{ fontSize: 14, color: '#222222', marginTop: 4 }}>{f.v}</div>
+            </div>
+          ))}
         </div>
+        <div className="flex justify-end" style={{ marginTop: 12 }}>
+          <button type="button" onClick={() => { setPkgDetailTab('service'); setPkgDetailModal(true); }}
+            style={{ background: 'none', border: 'none', color: BLUE, fontSize: 14, cursor: 'pointer', padding: 0 }}>更多内容 &gt;</button>
+        </div>
+      </section>
+
+      {/* ============ Module 7：备注信息 ============ */}
+      <section style={{ margin: '20px 24px 0', background: '#ffffff', borderRadius: 8, boxShadow: CARD_SHADOW, padding: '16px 20px', fontSize: 14, color: '#666666' }}>
+        备注信息：{detail.remark ? detail.remark : '暂无'}
       </section>
 
       {/* ============ Module 5：底片上传 Tab 卡片 ============ */}
@@ -789,7 +821,7 @@ export default function OrderDetail() {
 
       {/* 收款弹窗 */}
       {pay && (
-        <div className="fixed inset-0 flex items-center justify-center z-[70] p-4" style={{ background: 'rgba(0,0,0,0.4)' }} onClick={() => setPay(null)}>
+        <div className="fixed inset-0 flex items-center justify-center z-[70] p-4" style={{ background: 'rgba(0,0,0,0.45)' }} onClick={() => setPay(null)}>
           <div onClick={(e) => e.stopPropagation()} style={{ width: '100%', maxWidth: 420, background: '#fff', border: '1px solid ' + DIV, borderRadius: 8, padding: 24 }}>
             <div style={{ color: '#222222', fontWeight: 500, marginBottom: 16 }}>登记收款 · {detail.order_no}</div>
             <select value={pay.type} onChange={(e) => setPay({ ...pay, type: e.target.value })} style={modalInputStyle}>
@@ -813,7 +845,7 @@ export default function OrderDetail() {
 
       {/* 编辑订单弹窗 */}
       {edit && (
-        <div className="fixed inset-0 flex items-center justify-center z-[70] p-4" style={{ background: 'rgba(0,0,0,0.4)' }} onClick={() => setEdit(false)}>
+        <div className="fixed inset-0 flex items-center justify-center z-[70] p-4" style={{ background: 'rgba(0,0,0,0.45)' }} onClick={() => setEdit(false)}>
           <form onClick={(e) => e.stopPropagation()} onSubmit={saveEdit} style={{ width: '100%', maxWidth: 448, background: '#fff', border: '1px solid ' + DIV, borderRadius: 8, padding: 24 }}>
             <div style={{ color: '#222222', fontWeight: 500, marginBottom: 16 }}>编辑订单 · {detail.order_no}</div>
             <input value={editForm.order_name} onChange={(e) => setEditForm({ ...editForm, order_name: e.target.value })} placeholder="订单名称"
@@ -968,9 +1000,60 @@ export default function OrderDetail() {
         );
       })()}
 
+      {/* 套系服务详情弹窗（点击「更多内容」唤起；全部读取订单快照，仅查看不可编辑） */}
+      {pkgDetailModal && (
+        <div className="fixed inset-0 flex items-center justify-center z-[95] p-4" style={{ background: 'rgba(0,0,0,0.45)' }} onClick={() => setPkgDetailModal(false)}>
+          <div onClick={(e) => e.stopPropagation()} style={{ width: '100%', maxWidth: 680, background: '#ffffff', borderRadius: 8, maxHeight: '90vh', overflow: 'auto', boxShadow: '0 12px 40px rgba(0,0,0,0.18)' }}>
+            {/* 头部 */}
+            <div className="flex items-center justify-between" style={{ padding: '20px 24px', borderBottom: '1px solid ' + DIV }}>
+              <div style={{ fontSize: 16, fontWeight: 600, color: '#222222' }}>套系服务详情</div>
+              <button type="button" onClick={() => setPkgDetailModal(false)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#999999', fontSize: 22, lineHeight: 1 }} aria-label="关闭">×</button>
+            </div>
+            {/* 顶部 6 字段 2 列网格 */}
+            <div className="grid grid-cols-2" style={{ gap: '12px 24px', padding: '20px 24px' }}>
+              <div style={{ fontSize: 14 }}><span style={{ color: '#777777' }}>订单总价：</span><b style={{ color: '#222222' }}>¥{total.toLocaleString()}</b></div>
+              <div style={{ fontSize: 14 }}><span style={{ color: '#777777' }}>加片费：</span><b style={{ color: '#222222' }}>{sumExtraFee}</b></div>
+              <div style={{ fontSize: 14 }}><span style={{ color: '#777777' }}>拍摄时长：</span><b style={{ color: '#222222' }}>{sumDuration}</b></div>
+              <div style={{ fontSize: 14 }}><span style={{ color: '#777777' }}>拍摄张数：</span><b style={{ color: '#222222' }}>{sumRawCount ? String(sumRawCount) + ' 张' : '—'}</b></div>
+              <div style={{ fontSize: 14 }}><span style={{ color: '#777777' }}>精修张数：</span><b style={{ color: '#222222' }}>{sumRetouch}</b></div>
+              <div style={{ fontSize: 14 }}><span style={{ color: '#777777' }}>适配相册：</span><b style={{ color: '#222222' }}>{sumAlbum}</b></div>
+            </div>
+            {/* Tab 切换组 */}
+            <div className="flex" style={{ borderBottom: '1px solid ' + DIV, padding: '0 24px' }}>
+              {[{ k: 'service', t: '服务详情' }, { k: 'refund', t: '退订政策' }, { k: 'selection', t: '选片提示' }].map((tb) => {
+                const a = pkgDetailTab === tb.k;
+                return (
+                  <button key={tb.k} type="button" onClick={() => setPkgDetailTab(tb.k)}
+                    style={{ padding: '10px 16px', background: 'none', border: 'none', cursor: 'pointer', fontSize: 14, color: a ? BLUE : '#666666', borderBottom: a ? ('2px solid ' + BLUE) : '2px solid transparent', fontWeight: a ? 500 : 400 }}>
+                    {tb.t}
+                  </button>
+                );
+              })}
+            </div>
+            {/* Tab 内容：虚线框渲染订单快照富文本 */}
+            <div style={{ padding: 24 }}>
+              <div style={{ border: '1px dashed #dcdcdc', borderRadius: 6, padding: 20, fontSize: 14, color: '#333333', whiteSpace: 'pre-wrap', lineHeight: 1.8, minHeight: 120 }}>
+                {pkgDetailTab === 'service' && (
+                  <>
+                    <div className="flex items-start" style={{ gap: 8, color: '#d48806', marginBottom: 10 }}>
+                      <span style={{ fontSize: 16, lineHeight: 1.4 }}>⚠</span>
+                      <span>以下服务内容以最终双方签署的合同与拍摄确认为准，详情请见套系快照。</span>
+                    </div>
+                    <div>{sumService && sumService !== '—' ? sumService : '暂无服务详情'}</div>
+                  </>
+                )}
+                {pkgDetailTab === 'refund' && (sumRefund && sumRefund !== '—' ? sumRefund : '暂无退订政策')}
+                {pkgDetailTab === 'selection' && (sumSelection && sumSelection !== '—' ? sumSelection : '未开启')}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* 客户影集分享弹窗 */}
       {shareModal && (
-        <div className="fixed inset-0 flex items-center justify-center z-[80] p-4" style={{ background: 'rgba(0,0,0,0.4)' }} onClick={() => setShareModal(false)}>
+        <div className="fixed inset-0 flex items-center justify-center z-[80] p-4" style={{ background: 'rgba(0,0,0,0.45)' }} onClick={() => setShareModal(false)}>
           <div onClick={(e) => e.stopPropagation()} style={{ width: '100%', maxWidth: 420, background: '#fff', border: '1px solid ' + DIV, borderRadius: 8, padding: 24, textAlign: 'center' }}>
             <div style={{ color: '#222222', fontWeight: 500, marginBottom: 4 }}>客户影集分享</div>
             <div style={{ fontSize: 12, color: '#666666', marginBottom: 16 }}>扫码或复制链接，客户即可在手机上查看成品影集（仅展示样片/成片，不含原片）</div>
