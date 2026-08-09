@@ -12,6 +12,7 @@ const SSTATUS = { free: '空闲', booked: '已约', locked: '锁场', closed: '�
 // 第8版色号清单
 const PAGE_BG = '#F5F5F5';
 const CLOSED_BG = '#F8F8F8';
+const BOOKED_BG = '#FFC8CB';
 const PANEL_BG = '#333333';
 const DATE_CIRCLE = '#FFC125';
 const BLUE = '#2890F0';
@@ -35,11 +36,14 @@ const pad = (n) => String(n).padStart(2, '0');
 // 档期开关判定（业务规则）：
 // 默认全部日期开放可预约；仅当该日存在预约记录/已安排订单（或手动关闭 status==='closed'）时自动关闭（标为档期已关闭）。
 // 手动关闭优先级最高：无论有无订单，status==='closed' 即视为关闭。
+// 三元状态：手动关闭=closed(斜纹)；有预约/待确认=booked(粉色预订卡片)；其余=free(开放白底)
 function dayState(rows, pends) {
   const hasManualClosed = rows.some((r) => r.status === 'closed');
   const orderRows = rows.filter((r) => r.order_no && (r.order_customer || r.order_status || r.order_pay_status));
   const hasBooked = orderRows.length > 0 || (pends && pends.length > 0);
-  const kind = (hasManualClosed || hasBooked) ? 'closed' : 'free';
+  let kind = 'free';
+  if (hasManualClosed) kind = 'closed';
+  else if (hasBooked) kind = 'booked';
   return { hasManualClosed, orderRows, hasBooked, kind };
 }
 
@@ -131,19 +135,16 @@ export default function Schedule() {
   const dayRows = selDate ? (map[selDate] || []) : [];
   const dayPends = selDate ? (pendMap[selDate] || []) : [];
   const selParts = selDate ? selDate.split('-') : [];
-  const selClosed = selDate ? (() => {
-    const rs = map[selDate] || [];
-    const ps = pendMap[selDate] || [];
-    return rs.some((r) => r.status === 'closed') || rs.some((r) => r.order_no) || ps.length > 0;
-  })() : false;
+  // 仅“手动关闭(无预约的关闭档期)”禁用面板 +添加档期；有预约的粉色预订卡片仍可在格子内 +添加
+  const selClosed = selDate ? (map[selDate] || []).some((r) => r.status === 'closed' && !(r.order_no)) : false;
 
   return (
     <div className="-mx-6 -my-6 min-h-screen" style={{ background: PAGE_BG }}>
       <div className="max-w-6xl mx-auto px-6 pt-6 pb-10">
       {/* 面包屑由全局 <Breadcrumb /> 渲染 */}
 
-      {/* 顶部控制栏（PC）：图例（最左）｜ 翻页控件（居中）｜ 筛选账号 + 高级选项（靠右） */}
-      <div className="flex items-center gap-3 mb-4">
+      {/* 顶部控制栏（PC）：图例（最左）｜ 翻页控件（居中）｜ 筛选账号 + 高级选项（靠右）；白色控件容器背景 #FFFFFF */}
+      <div className="flex items-center gap-3 mb-4 px-4 py-2 bg-white border border-line">
         {/* ① 状态图例（最左侧） */}
         <StatusLegend />
 
@@ -220,26 +221,43 @@ export default function Schedule() {
                   let style = {};
                   if (isClosed) {
                     style = { background: 'repeating-linear-gradient(45deg,' + CLOSED_BG + ',' + CLOSED_BG + ' 6px,#e8e8e8 6px,#e8e8e8 12px)', color: '#999999' };
+                  } else if (st.kind === 'booked') {
+                    style = { background: BOOKED_BG, borderColor: '#f3a6ad' };
                   }
+                  const orderRow = st.orderRows[0];
+                  const statusColor = orderRow ? (orderRow.order_pay_status === 'unpaid' ? LEGEND_UNPAID : LEGEND_WAIT) : null;
                   return (
                     <div key={i} onClick={() => setSelDate(date)}
                       className={'min-h-[88px] p-2 cursor-pointer transition flex flex-col hover:ring-1 hover:ring-inset hover:ring-[#2890F0] ' + cellCls + (selected ? ' ring-2 ring-inset ring-[#2890F0]' : '')}
                       style={style}>
-                      {/* 公历日期 + 待确认点 */}
+                      {/* 公历日期 + 状态色块 + 待确认点 */}
                       <div className="flex items-start justify-between gap-1">
-                        <span className={'text-sm ' + (isClosed ? 'text-[#999999]' : 'text-[#333333]')}>{day}</span>
+                        <div className="flex items-center gap-1.5">
+                          {statusColor && <span className="w-2.5 h-2.5 mt-0.5 inline-block" style={{ background: statusColor }} />}
+                          <span className={'text-sm ' + (isClosed ? 'text-[#999999]' : 'text-[#333333]')}>{day}</span>
+                        </div>
                         {pends.length > 0 && <span className="w-2 h-2 mt-1 inline-block" style={{ background: '#f0a020' }} />}
                       </div>
                       {/* 农历 */}
                       {lunar && <div className={'text-[10px] leading-tight ' + (isClosed ? 'text-[#999999]' : 'text-[#888888]')}>{lunar}</div>}
                       {/* 关闭态：底部灰色文字，无 +添加 按钮 */}
                       {isClosed && <div className="mt-auto text-[11px] text-[#999999]">档期已关闭</div>}
-                      {/* 开放态：左下角 +添加 按钮（关闭格不渲染） */}
+                      {/* 预约信息（粉色预订卡片） */}
+                      {!isClosed && st.orderRows[0] && (
+                        <div className="mt-1"><div className="text-xs truncate" style={{ color: '#7a1f3d' }}>{st.orderRows[0].order_customer || st.orderRows[0].order_no}</div></div>
+                      )}
+                      {!isClosed && !st.orderRows[0] && rows[0] && (
+                        <div className="mt-1"><div className="text-xs truncate" style={{ color: '#333333' }}>{rows[0].photographer || SSTATUS[rows[0].status] || '档期'}</div></div>
+                      )}
+                      {/* 底部：左下角 +添加 / 右下角 订单数量「X单」（关闭格不渲染） */}
                       {!isClosed && (
-                        <div className="mt-auto flex items-end pt-1">
+                        <div className="mt-auto flex items-end justify-between gap-1 pt-1">
                           <button onClick={(e) => { e.stopPropagation(); openNew(day); }}
                             className="inline-flex items-center gap-0.5 px-2 py-1 text-white text-[11px] hover:opacity-90"
                             style={{ background: BLUE }}>+ 添加</button>
+                          {st.orderRows.length > 0 && (
+                            <span className="shrink-0 text-[11px] font-medium" style={{ color: '#333333' }}>{st.orderRows.length}单</span>
+                          )}
                         </div>
                       )}
                     </div>
@@ -346,7 +364,7 @@ function StatusLegend() {
   return (
     <div className="relative inline-block" ref={wrapRef}>
       <button type="button" onClick={() => setOpen((v) => !v)}
-        className="flex items-center gap-3 text-xs cursor-pointer select-none rounded px-3 py-1.5 border border-line bg-white"
+        className="flex items-center gap-3 text-xs cursor-pointer select-none rounded px-3 py-1.5"
         style={{ color: '#333333' }}>
         <span className="flex items-center gap-1"><span className="w-3 h-3" style={{ background: LEGEND_UNPAID }} />未付定金</span>
         <span className="flex items-center gap-1"><span className="w-3 h-3" style={{ background: LEGEND_WAIT }} />等待拍摄</span>
