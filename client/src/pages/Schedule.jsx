@@ -12,7 +12,6 @@ const SSTATUS = { free: '空闲', booked: '已约', locked: '锁场', closed: '�
 // 第8版色号清单
 const PAGE_BG = '#F5F5F5';
 const CLOSED_BG = '#F8F8F8';
-const BOOKED_BG = '#FFC8CB';
 const PANEL_BG = '#333333';
 const DATE_CIRCLE = '#FFC125';
 const BLUE = '#2890F0';
@@ -33,23 +32,15 @@ const STATUS_LEGEND = [
 ];
 
 const pad = (n) => String(n).padStart(2, '0');
-// 日期聚合着色：closed > unpaid(黄) > wait(绿) > free
-function dayState(rows) {
-  const hasClosed = rows.some((r) => r.status === 'closed');
+// 档期开关判定（业务规则）：
+// 默认全部日期开放可预约；仅当该日存在预约记录/已安排订单（或手动关闭 status==='closed'）时自动关闭（标为档期已关闭）。
+// 手动关闭优先级最高：无论有无订单，status==='closed' 即视为关闭。
+function dayState(rows, pends) {
+  const hasManualClosed = rows.some((r) => r.status === 'closed');
   const orderRows = rows.filter((r) => r.order_no && (r.order_customer || r.order_status || r.order_pay_status));
-  const hasUnpaid = orderRows.some((r) => r.order_pay_status === 'unpaid');
-  const hasWait = orderRows.length > 0;
-  let kind = 'free';
-  if (hasClosed) kind = 'closed';
-  else if (hasUnpaid) kind = 'unpaid';
-  else if (hasWait) kind = 'wait';
-  return { hasClosed, hasUnpaid, hasWait, orderRows, kind };
-}
-
-// 单元格左上角状态色块：按订单收款状态映射到图例色（仅主状态有数据，其余用于图例说明）
-function cellStatusColor(orderRow) {
-  if (!orderRow) return null;
-  return orderRow.order_pay_status === 'unpaid' ? LEGEND_UNPAID : LEGEND_WAIT;
+  const hasBooked = orderRows.length > 0 || (pends && pends.length > 0);
+  const kind = (hasManualClosed || hasBooked) ? 'closed' : 'free';
+  return { hasManualClosed, orderRows, hasBooked, kind };
 }
 
 
@@ -140,63 +131,68 @@ export default function Schedule() {
   const dayRows = selDate ? (map[selDate] || []) : [];
   const dayPends = selDate ? (pendMap[selDate] || []) : [];
   const selParts = selDate ? selDate.split('-') : [];
-  const selClosed = selDate ? (map[selDate] || []).some((r) => r.status === 'closed') : false;
+  const selClosed = selDate ? (() => {
+    const rs = map[selDate] || [];
+    const ps = pendMap[selDate] || [];
+    return rs.some((r) => r.status === 'closed') || rs.some((r) => r.order_no) || ps.length > 0;
+  })() : false;
 
   return (
     <div className="-mx-6 -my-6 min-h-screen" style={{ background: PAGE_BG }}>
       <div className="max-w-6xl mx-auto px-6 pt-6 pb-10">
       {/* 面包屑由全局 <Breadcrumb /> 渲染 */}
 
-      {/* 左上角：图例（未付定金/等待拍摄）+ 下拉箭头 → 订单状态说明浮层 */}
-      <div className="mb-3">
+      {/* 顶部控制栏（PC）：图例（最左）｜ 翻页控件（居中）｜ 筛选账号 + 高级选项（靠右） */}
+      <div className="flex items-center gap-3 mb-4">
+        {/* ① 状态图例（最左侧） */}
         <StatusLegend />
-      </div>
 
-      {/* 顶部控制栏：左箭头 / 年 / 月 / 右箭头 / 筛选账号 / 高级选项 */}
-      <div className="flex flex-wrap items-center gap-3 mb-4">
-        {/* 年月翻页控件 */}
-        <div className="flex items-center gap-1">
-          <button onClick={() => shiftMonth(-1)} className="w-8 h-8 rounded border border-line bg-white hover:bg-panel2" style={{ color: '#333333' }}>‹</button>
-          <select value={y} onChange={(e) => setYM(Number(e.target.value), m)} className="px-2 py-1.5 rounded border border-line bg-white text-sm outline-none" style={{ color: '#333333' }}>
-            {Array.from({ length: 21 }, (_, i) => y - 10 + i).map((yy) => <option key={yy} value={yy}>{yy}年</option>)}
-          </select>
-          <select value={m} onChange={(e) => setYM(y, Number(e.target.value))} className="px-2 py-1.5 rounded border border-line bg-white text-sm outline-none" style={{ color: '#333333' }}>
-            {Array.from({ length: 12 }, (_, i) => i + 1).map((mm) => <option key={mm} value={mm}>{mm}月</option>)}
-          </select>
-          <button onClick={() => shiftMonth(1)} className="w-8 h-8 rounded border border-line bg-white hover:bg-panel2" style={{ color: '#333333' }}>›</button>
+        {/* ③ 翻页控件组（页面中间，紧凑居中） */}
+        <div className="flex-1 flex justify-center">
+          <div className="flex items-center gap-1">
+            <button onClick={() => shiftMonth(-1)} className="w-8 h-8 rounded border border-line bg-white hover:bg-panel2" style={{ color: '#888888' }}>‹</button>
+            <select value={y} onChange={(e) => setYM(Number(e.target.value), m)} className="px-2 py-1.5 rounded border border-[#DDDDDD] bg-white text-sm outline-none" style={{ color: '#333333' }}>
+              {Array.from({ length: 21 }, (_, i) => y - 10 + i).map((yy) => <option key={yy} value={yy}>{yy}年</option>)}
+            </select>
+            <select value={m} onChange={(e) => setYM(y, Number(e.target.value))} className="px-2 py-1.5 rounded border border-[#DDDDDD] bg-white text-sm outline-none" style={{ color: '#333333' }}>
+              {Array.from({ length: 12 }, (_, i) => i + 1).map((mm) => <option key={mm} value={mm}>{mm}月</option>)}
+            </select>
+            <button onClick={() => shiftMonth(1)} className="w-8 h-8 rounded border border-line bg-white hover:bg-panel2" style={{ color: '#888888' }}>›</button>
+          </div>
         </div>
 
-        <div className="flex-1" />
+        {/* ④ 右上角控件组（筛选账号 + 高级选项，紧贴） */}
+        <div className="flex items-center">
+          {/* 筛选账号（按钮唤起弹窗） */}
+          <div className="relative" ref={accRef}>
+            <button onClick={() => setAccOpen((v) => !v)} className="flex items-center gap-1.5 px-3 py-1.5 rounded border border-[#DDDDDD] bg-white text-sm outline-none hover:bg-panel2" style={{ color: '#333333' }}>
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 6h18M3 12h12M3 18h6" /></svg>
+              筛选账号 <span style={{ color: '#999999' }}>▾</span>
+            </button>
+            {accOpen && (
+              <div className="absolute right-0 mt-1 w-44 bg-white border border-line rounded-none z-30 overflow-hidden" style={{ boxShadow: '0 2px 12px rgba(0,0,0,0.12)' }}>
+                <button onClick={() => { setState((s) => ({ ...s, executor: '' })); setAccOpen(false); }} className="w-full text-left px-3 py-2.5 text-sm hover:bg-panel2" style={{ color: state.executor === '' ? BLUE : '#1f2329' }}>全部账号</button>
+                {personnel.map((p) => (
+                  <button key={p.id} onClick={() => { setState((s) => ({ ...s, executor: String(p.id) })); setAccOpen(false); }} className="w-full text-left px-3 py-2.5 text-sm hover:bg-panel2" style={{ color: state.executor === String(p.id) ? BLUE : '#1f2329' }}>{p.name}</button>
+                ))}
+              </div>
+            )}
+          </div>
 
-        {/* 筛选账号（按钮唤起弹窗） */}
-        <div className="relative" ref={accRef}>
-          <button onClick={() => setAccOpen((v) => !v)} className="flex items-center gap-1.5 px-3 py-1.5 rounded border border-line bg-white text-sm outline-none hover:bg-panel2" style={{ color: '#333333' }}>
-            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 6h18M3 12h12M3 18h6" /></svg>
-            筛选账号 <span style={{ color: '#999999' }}>▾</span>
-          </button>
-          {accOpen && (
-            <div className="absolute right-0 mt-1 w-44 bg-white border border-line rounded-none z-30 overflow-hidden" style={{ boxShadow: '0 2px 12px rgba(0,0,0,0.12)' }}>
-              <button onClick={() => { setState((s) => ({ ...s, executor: '' })); setAccOpen(false); }} className="w-full text-left px-3 py-2.5 text-sm hover:bg-panel2" style={{ color: state.executor === '' ? BLUE : '#1f2329' }}>全部账号</button>
-              {personnel.map((p) => (
-                <button key={p.id} onClick={() => { setState((s) => ({ ...s, executor: String(p.id) })); setAccOpen(false); }} className="w-full text-left px-3 py-2.5 text-sm hover:bg-panel2" style={{ color: state.executor === String(p.id) ? BLUE : '#1f2329' }}>{p.name}</button>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* 高级选项（黑色按钮） */}
-        <div className="relative" ref={advRef}>
-          <button onClick={() => setAdvOpen((v) => !v)} className="flex items-center gap-1.5 px-3 py-1.5 rounded text-white text-sm hover:opacity-90" style={{ background: ADV_BG }}>
-            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" /></svg>
-            高级选项 <span>▾</span>
-          </button>
-          {advOpen && (
-            <div className="absolute right-0 mt-1 w-44 bg-white border border-line rounded-none z-30 overflow-hidden" style={{ boxShadow: '0 2px 12px rgba(0,0,0,0.12)' }}>
-              <button onClick={() => { setAdvOpen(false); setBooking({ open: true, openDays: [0,1,2,3,4,5,6] }); }} className="w-full text-left px-3 py-2.5 text-sm hover:bg-panel2" style={{ color: '#1f2329' }}>档期及预约设置</button>
-              <button onClick={async () => { setAdvOpen(false); try { const r = await http.post('/api/schedules/share'); setShare(r.data); } catch (e) { setErr((e.response && e.response.data && e.response.data.error) || '生成分享失败'); } }} className="w-full text-left px-3 py-2.5 text-sm hover:bg-panel2 flex items-center gap-1" style={{ color: '#1f2329' }}>分享档期 <span className="ml-1 text-[10px] text-white rounded-none px-1" style={{ background: BLUE }}>NEW</span></button>
-              <button onClick={doExport} className="w-full text-left px-3 py-2.5 text-sm hover:bg-panel2" style={{ color: '#1f2329' }}>导出 Excel</button>
-            </div>
-          )}
+          {/* 高级选项（黑色按钮） */}
+          <div className="relative" ref={advRef}>
+            <button onClick={() => setAdvOpen((v) => !v)} className="flex items-center gap-1.5 px-3 py-1.5 rounded text-white text-sm hover:opacity-90" style={{ background: ADV_BG }}>
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" /></svg>
+              高级选项 <span>▾</span>
+            </button>
+            {advOpen && (
+              <div className="absolute right-0 mt-1 w-44 bg-white border border-line rounded-none z-30 overflow-hidden" style={{ boxShadow: '0 2px 12px rgba(0,0,0,0.12)' }}>
+                <button onClick={() => { setAdvOpen(false); setBooking({ open: true, openDays: [0,1,2,3,4,5,6] }); }} className="w-full text-left px-3 py-2.5 text-sm hover:bg-panel2" style={{ color: '#1f2329' }}>档期及预约设置</button>
+                <button onClick={async () => { setAdvOpen(false); try { const r = await http.post('/api/schedules/share'); setShare(r.data); } catch (e) { setErr((e.response && e.response.data && e.response.data.error) || '生成分享失败'); } }} className="w-full text-left px-3 py-2.5 text-sm hover:bg-panel2 flex items-center gap-1" style={{ color: '#1f2329' }}>分享档期 <span className="ml-1 text-[10px] text-white rounded-none px-1" style={{ background: BLUE }}>NEW</span></button>
+                <button onClick={doExport} className="w-full text-left px-3 py-2.5 text-sm hover:bg-panel2" style={{ color: '#1f2329' }}>导出 Excel</button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -216,54 +212,34 @@ export default function Schedule() {
                   const date = `${y}-${pad(m)}-${pad(day)}`;
                   const rows = map[date] || [];
                   const pends = pendMap[date] || [];
-                  const st = dayState(rows);
+                  const st = dayState(rows, pends);
                   const lunar = lunarMap[date] || '';
                   const selected = selDate === date;
+                  const isClosed = st.kind === 'closed';
                   let cellCls = 'border-r border-b border-line';
                   let style = {};
-                  if (st.kind === 'closed') {
+                  if (isClosed) {
                     style = { background: 'repeating-linear-gradient(45deg,' + CLOSED_BG + ',' + CLOSED_BG + ' 6px,#e8e8e8 6px,#e8e8e8 12px)', color: '#999999' };
-                  } else if (st.kind === 'unpaid' || st.kind === 'wait') {
-                    style = { background: BOOKED_BG, borderColor: '#f3a6ad' };
                   }
-                  const orderRow = st.orderRows[0];
-                  const statusColor = cellStatusColor(orderRow);
                   return (
                     <div key={i} onClick={() => setSelDate(date)}
                       className={'min-h-[88px] p-2 cursor-pointer transition flex flex-col hover:ring-1 hover:ring-inset hover:ring-[#2890F0] ' + cellCls + (selected ? ' ring-2 ring-inset ring-[#2890F0]' : '')}
                       style={style}>
-                      {/* 左上角状态小色块 + 公历日期 */}
+                      {/* 公历日期 + 待确认点 */}
                       <div className="flex items-start justify-between gap-1">
-                        <div className="flex items-center gap-1.5">
-                          {statusColor && <span className="w-2.5 h-2.5 mt-0.5 inline-block" style={{ background: statusColor }} />}
-                          <span className={'text-sm ' + (st.kind === 'closed' ? 'text-[#999999]' : 'text-[#333333]')}>{day}</span>
-                        </div>
+                        <span className={'text-sm ' + (isClosed ? 'text-[#999999]' : 'text-[#333333]')}>{day}</span>
                         {pends.length > 0 && <span className="w-2 h-2 mt-1 inline-block" style={{ background: '#f0a020' }} />}
                       </div>
                       {/* 农历 */}
-                      {lunar && <div className={'text-[10px] leading-tight ' + (st.kind === 'closed' ? 'text-[#999999]' : 'text-[#888888]')}>{lunar}</div>}
-                      {/* 关闭态提示（底部） */}
-                      {st.kind === 'closed' && <div className="mt-auto text-[11px] text-[#999999]">档期已关闭</div>}
-                      {/* 预约/档期信息 */}
-                      {st.kind !== 'closed' && st.orderRows[0] && (
-                        <div className="mt-1"><div className="text-xs truncate" style={{ color: '#7a1f3d' }}>{st.orderRows[0].order_customer || st.orderRows[0].order_no}</div></div>
-                      )}
-                      {st.kind !== 'closed' && !st.orderRows[0] && rows[0] && (
-                        <div className="mt-1"><div className="text-xs truncate" style={{ color: '#333333' }}>{rows[0].photographer || SSTATUS[rows[0].status] || '档期'}</div></div>
-                      )}
-                      {pends.length > 0 && <div className="mt-1 text-[10px] truncate" style={{ color: '#b9742a' }}>待确认 ×{pends.length}</div>}
-                      {rows.length > 1 && <div className="text-[10px] mt-0.5" style={{ color: '#888888' }}>+{rows.length - 1} 档期</div>}
-                      {/* 底部：左下角 +添加（关闭格不显示）/ 右下角 订单数量「X单」 */}
-                      {(st.kind !== 'closed' || st.orderRows.length > 0) && (
-                        <div className="mt-auto flex items-end justify-between gap-1 pt-1">
-                          {st.kind !== 'closed' && (
-                            <button onClick={(e) => { e.stopPropagation(); openNew(day); }}
-                              className="inline-flex items-center gap-0.5 px-2 py-1 text-white text-[11px] hover:opacity-90"
-                              style={{ background: BLUE }}>+ 添加</button>
-                          )}
-                          {st.orderRows.length > 0 && (
-                            <span className="shrink-0 text-[11px] font-medium" style={{ color: '#333333' }}>{st.orderRows.length}单</span>
-                          )}
+                      {lunar && <div className={'text-[10px] leading-tight ' + (isClosed ? 'text-[#999999]' : 'text-[#888888]')}>{lunar}</div>}
+                      {/* 关闭态：底部灰色文字，无 +添加 按钮 */}
+                      {isClosed && <div className="mt-auto text-[11px] text-[#999999]">档期已关闭</div>}
+                      {/* 开放态：左下角 +添加 按钮（关闭格不渲染） */}
+                      {!isClosed && (
+                        <div className="mt-auto flex items-end pt-1">
+                          <button onClick={(e) => { e.stopPropagation(); openNew(day); }}
+                            className="inline-flex items-center gap-0.5 px-2 py-1 text-white text-[11px] hover:opacity-90"
+                            style={{ background: BLUE }}>+ 添加</button>
                         </div>
                       )}
                     </div>
@@ -374,7 +350,7 @@ function StatusLegend() {
         style={{ color: '#333333' }}>
         <span className="flex items-center gap-1"><span className="w-3 h-3" style={{ background: LEGEND_UNPAID }} />未付定金</span>
         <span className="flex items-center gap-1"><span className="w-3 h-3" style={{ background: LEGEND_WAIT }} />等待拍摄</span>
-        <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="m6 9 6 6 6-6" /></svg>
+        <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="#2890F0" strokeWidth="2.5"><path d="m6 9 6 6 6-6" /></svg>
       </button>
 
       {open && (
