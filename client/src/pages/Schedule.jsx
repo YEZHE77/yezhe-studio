@@ -195,16 +195,16 @@ export default function Schedule() {
 
       {/* ===================== 日历主体 + 右侧面板（同处一个白色大卡片内） ===================== */}
       <div className="flex items-stretch" style={{ gap: 24 }}>
-        {/* 左侧日历网格（flex:1，不另起白色卡片，直接在大卡片内） */}
-        <div className="flex-1 min-w-0" style={{ minHeight: 700 }}>
+        {/* 左侧日历网格（flex:1，不另起白色卡片，直接在大卡片内；flex 列布局让网格填充容器高度） */}
+        <div className="flex-1 min-w-0 flex flex-col" style={{ minHeight: 700 }}>
           {/* 星期表头 */}
           <div className="grid grid-cols-7">
             {WEEK.map((w) => (
               <div key={w} className="text-center" style={{ fontSize: 13, color: '#666666', height: 36, lineHeight: '36px', borderBottom: '1px solid #E5E7EB' }}>{w}</div>
             ))}
           </div>
-          {/* 日期格（7 列网格，单元格 1px 分割线 #E8E8E8） */}
-          <div className="grid grid-cols-7" style={{ gap: 1, background: CELL_BORDER }}>
+          {/* 日期格（7 列网格，单元格 1px 分割线 #E8E8E8；flex-1 + minmax 让单元格行拉伸填满容器，消除下方空白） */}
+          <div className="grid grid-cols-7 flex-1" style={{ gap: 1, background: CELL_BORDER, gridAutoRows: 'minmax(110px, 1fr)' }}>
             {cells.map((day, i) => {
               if (day == null) return <div key={i} style={{ minHeight: 110, background: '#ffffff' }} />;
               const date = `${y}-${pad(m)}-${pad(day)}`;
