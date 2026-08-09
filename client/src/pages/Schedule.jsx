@@ -4,23 +4,17 @@ import http, { conflictOf } from '../api.js';
 import { useViewState } from '../tabMemory.js';
 
 const WEEK = ['日', '一', '二', '三', '四', '五', '六'];
+const WEEK_FULL = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
 const HOURS = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0') + ':00');
 const HALF = 'half';
 const FULL = 'full';
 const OPEN_DAYS_LABEL = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
 const SSTATUS = { free: '空闲', booked: '已约', locked: '锁场', closed: '已关闭', shoot: '等待拍摄', pending: '待确认' };
 
-// 档期页色号（对齐 1:1 复刻 spec）
-const PAGE_BG = '#F7F8FA';
-const PANEL_BG = '#3A3A3A';         // 右侧面板深色
-const DATE_CIRCLE = '#FFBC00';      // 右侧面板日期黄块（白字）
-const BLUE = '#2196F3';             // 弹窗/链接蓝
-const ADD_BLUE = '#1677ff';         // 单元格内「+添加」按钮蓝
+// 弹窗/次级控件沿用色号（主内容区色板见下方 G_* 常量）
+const BLUE = '#2196F3';             // 编辑档期/预约设置等旧弹窗的链接蓝
 const ADV_BG = '#222222';           // 高级选项按钮（白字白图标）
-const ADD_BTN = '#2998EB';          // 添加档期按钮蓝
-const BOOKED_BG = '#FFD6D6';        // 有订单占用日期粉红底色（保留业务可见性）
-const SEL_BG = '#FFA8A8';            // 选中日期单元格背景（粉红）
-const CELL_BORDER = '#E8E8E8';       // 日期单元格边框
+const ADD_BTN = '#2998EB';          // 日历选择器选中日蓝
 
 // 新增订单弹窗色号（1:1 复刻 spec）
 const DLG_BLOCK_BORDER = '#E5E7EB';  // 区块边框
@@ -48,17 +42,56 @@ const MODAL_SLOT_DIS_TX = '#BFBFBF'; // 时间段(禁用)灰字
 const MODAL_ACTIVE = '#BFEFFF';      // 输入框激活边框（收款/渠道）
 const MODAL_DIV = '#EEEEEE';         // 分割线
 
-// 订单状态说明色块（右侧面板 badge 使用）
-const LEGEND_UNPAID = '#FFF2CC';    // 未付定金
-const LEGEND_WAIT = '#D5E8B7';      // 等待拍摄
+/* ===================== 档期页主内容区（需求 G）色板 =====================
+   浅灰底 #F7F7F7 ／ 边框 #E5E5E5 ／ 深灰侧栏 #3F3F3F ／ 日期黄块 #FFB900
+   主蓝 #2DB7F5 ／ 选中浅蓝 #EAF6FD ／ 已预约粉 #F9A8B2 ／ 今日红 #FF7777
+   注：左侧全局导航不在本页范围内，禁止改动。                                */
+const G_PAGE_BG = '#F7F7F7';
+const G_BORDER = '#E5E5E5';
+const G_PANEL = '#3F3F3F';
+const G_YELLOW = '#FFB900';
+const G_BLUE = '#2DB7F5';
+const G_SEL = '#EAF6FD';
+const G_BOOKED = '#F9A8B2';
+const G_TODAY = '#FF7777';
 
-// 顶部图例（默认 2 项，严格按 spec 色号，静态行内展示）
-const LEGEND_ITEMS = [
-  { label: '未付定金', color: '#FFF2B3' },
-  { label: '等待拍摄', color: '#B7E8BC' }
+// 8 色订单状态（顶部图例 + hover 说明气泡 + 单元格状态点，色号与订单中心阶段机一一对应）
+const G_STATUS = [
+  { key: 'unpaid', label: '未付定金', color: '#FFF2B3', desc: '订单已建立、定金未到账，需尽快催缴' },
+  { key: 'deposit', label: '等待拍摄', color: '#B7E8BC', desc: '定金已收，档期已锁定，等待拍摄当天' },
+  { key: 'shot', label: '已拍摄', color: '#BFE3FF', desc: '拍摄已完成，等待客户进入选片环节' },
+  { key: 'selecting', label: '选片中', color: '#D8CBF7', desc: '客户正在在线选片，注意选片超时提醒' },
+  { key: 'retouching', label: '精修中', color: '#FFD8A8', desc: '选片已确认，修图师正在精修出片' },
+  { key: 'delivered', label: '已交付', color: '#BEEDE6', desc: '成片已交付客户，等待尾款结清/确认' },
+  { key: 'completed', label: '已完成', color: '#D9D9D9', desc: '全流程结束、尾款已结清，订单归档' },
+  { key: 'cancelled', label: '已作废', color: '#FFC2C8', desc: '订单已作废或退单，档期同步释放' }
 ];
+const G_STATUS_MAP = G_STATUS.reduce((o, s) => { o[s.key] = s; return o; }, {});
+
+// 档期行 → 8 色状态 key（首阶段 deposit 且未付定金时展示为「未付定金」，与订单中心一致）
+function statusKeyOf(r) {
+  if (!r || !r.order_no) return null;
+  if (r.order_status === 'deposit' && r.order_pay_status === 'unpaid') return 'unpaid';
+  return G_STATUS_MAP[r.order_status] ? r.order_status : 'deposit';
+}
+
+const VIEWS = [{ k: 'month', t: '月' }, { k: 'week', t: '周' }, { k: 'day', t: '日' }];
 
 const pad = (n) => String(n).padStart(2, '0');
+
+const ymd = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+
+// 指定日期所在自然周（周日起）的 7 个日期字符串
+function weekOf(dateStr) {
+  const [yy, mm, dd] = String(dateStr).split('-').map(Number);
+  const base = new Date(yy, mm - 1, dd);
+  base.setDate(base.getDate() - base.getDay());
+  return Array.from({ length: 7 }, (_, i) => {
+    const x = new Date(base);
+    x.setDate(base.getDate() + i);
+    return ymd(x);
+  });
+}
 
 // 档期开关判定（业务规则，三元 → 三态渲染）：
 //  - 有预约订单(order_no 存在) → 自动标记 booked（粉红 #FFD6D6，仍显示 +添加）
@@ -93,14 +126,27 @@ export default function Schedule() {
   const [orderDlg, setOrderDlg] = useState(null); // 新增订单弹窗（原「添加档期」入口）
   const [booking, setBooking] = useState(null); // 档期及预约设置弹窗
   const [share, setShare] = useState(null); // 分享档期弹窗 { share_url, qr_url }
+  // 需求 G：视图切换（月/周/日）+ 三项筛选（摄影师 / 套系 / 订单状态）
+  const [view, setView] = useState('month');
+  const [pkgList, setPkgList] = useState([]);
+  const [fPhotog, setFPhotog] = useState('');
+  const [fPkg, setFPkg] = useState('');
+  const [fStatus, setFStatus] = useState('');
   const advRef = useRef(null);
   const accRef = useRef(null);
 
   const [y, m] = state.month.split('-').map(Number);
   const monthStr = state.month;
+  const todayStr = ymd(init);
+  // 视图对应的数据区间键（月视图按月加载，周/日视图按 from~to 加载，跨月自然周也能取全）
+  const weekDates = weekOf(selDate || todayStr);
+  const rangeKey = view === 'month' ? state.month : (view === 'week' ? weekDates[0] : selDate);
 
   const load = () => {
-    const params = new URLSearchParams({ month: state.month });
+    const params = new URLSearchParams();
+    if (view === 'week') { params.set('from', weekDates[0]); params.set('to', weekDates[6]); }
+    else if (view === 'day') { params.set('from', selDate); params.set('to', selDate); }
+    else params.set('month', state.month);
     if (state.executor) params.set('executor', state.executor);
     http.get('/api/schedules?' + params.toString()).then((r) => {
       const nm = {};
@@ -113,13 +159,19 @@ export default function Schedule() {
       setPendMap(pm);
     }).catch(() => {});
   };
-  useEffect(load, [state.month, state.executor]);
+  useEffect(load, [state.month, state.executor, view, rangeKey]);
   useEffect(() => {
     http.get('/api/admin/personnel').then((r) => setPersonnel(r.data || [])).catch(() => {});
+    http.get('/api/packages').then((r) => setPkgList(Array.isArray(r.data) ? r.data : (r.data && r.data.list) || [])).catch(() => {});
   }, []);
   useEffect(() => {
-    http.get('/api/schedules/lunar?month=' + encodeURIComponent(state.month)).then((r) => setLunarMap(r.data || {})).catch(() => {});
-  }, [state.month]);
+    // 周视图可能跨月，农历按涉及到的所有月份合并加载
+    const months = new Set([state.month]);
+    if (view === 'week') { months.add(weekDates[0].slice(0, 7)); months.add(weekDates[6].slice(0, 7)); }
+    if (view === 'day' && selDate) months.add(selDate.slice(0, 7));
+    Promise.all([...months].map((mo) => http.get('/api/schedules/lunar?month=' + encodeURIComponent(mo)).then((r) => r.data || {}).catch(() => ({}))))
+      .then((list) => setLunarMap(Object.assign({}, ...list)));
+  }, [state.month, view, rangeKey]);
   useEffect(() => {
     const onDown = (e) => { if (advRef.current && !advRef.current.contains(e.target)) setAdvOpen(false); };
     document.addEventListener('mousedown', onDown);
@@ -133,6 +185,17 @@ export default function Schedule() {
 
   const cells = buildMonth(y, m - 1);
 
+  // 三项筛选（摄影师 / 套系 / 订单状态）在前端对已加载档期做过滤，空值=全部
+  const matchFilter = (r) => {
+    if (fPhotog && String(r.executor_id || '') !== String(fPhotog) && (r.executor_name || r.photographer || '') !== fPhotog) return false;
+    if (fPkg && String(r.order_package_id || '') !== String(fPkg)) return false;
+    if (fStatus && statusKeyOf(r) !== fStatus) return false;
+    return true;
+  };
+  const rowsOf = (date) => (map[date] || []).filter(matchFilter);
+  const filtering = !!(fPhotog || fPkg || fStatus);
+  const pendsOf = (date) => (filtering ? [] : (pendMap[date] || []));
+
   const shiftMonth = (delta) => {
     const total = y * 12 + (m - 1) + delta;
     const ny = Math.floor(total / 12);
@@ -141,8 +204,12 @@ export default function Schedule() {
   };
   const setYM = (ny, nm) => setState((s) => ({ ...s, month: `${ny}-${pad(nm)}` }));
 
+  // day 可传日号（月视图）或完整日期串（周/日视图），空则取当前选中日
   const openNew = (day) => {
-    const date = day ? `${y}-${pad(m)}-${pad(day)}` : (selDate || `${y}-${pad(m)}-${pad(init.getDate())}`);
+    let date;
+    if (typeof day === 'string' && day.includes('-')) date = day;
+    else if (day) date = `${y}-${pad(m)}-${pad(day)}`;
+    else date = selDate || todayStr;
     setErr(''); setOrderDlg({ date });
   };
   const openEdit = (row) => {
@@ -161,45 +228,41 @@ export default function Schedule() {
     setAdvOpen(false);
   };
 
-  const dayRows = selDate ? (map[selDate] || []) : [];
-  const dayPends = selDate ? (pendMap[selDate] || []) : [];
+  const dayRows = selDate ? rowsOf(selDate) : [];
+  const dayPends = selDate ? pendsOf(selDate) : [];
   const selParts = selDate ? selDate.split('-') : [];
   // 仅“手动关闭(无预约的关闭档期)”禁用面板 +添加档期；有订单的粉色占用格仍可在面板 +添加
   const selClosed = selDate ? (map[selDate] || []).some((r) => r.status === 'closed' && !(r.order_no)) : false;
 
   return (
-    <div className="w-full" style={{ background: PAGE_BG }}>
-      {/* 唯一外层白色总卡片：头部筛选栏 + flex 主体（左日历网格 + 右深色面板） */}
-      <div className="w-full bg-white rounded-lg" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.08)', padding: 24 }}>
-        {/* ===================== 顶部筛选操作栏（三区 space-between，垂直居中） ===================== */}
-        <div className="flex items-center justify-between" style={{ marginBottom: 20 }}>
-          {/* 左：状态图例标签组 */}
+    <div className="w-full" style={{ background: G_PAGE_BG }}>
+      {/* 唯一外层白色日历大卡：头部（图例 / 年月+视图 / 筛选） + 主体（日历 + 右侧深灰栏） */}
+      <div className="w-full bg-white" style={{ border: `1px solid ${G_BORDER}`, borderRadius: 6, padding: 20 }}>
+        {/* ===================== 头部第一行：8 色状态图例（hover 出说明气泡） + 视图/账号/高级选项 ===================== */}
+        <div className="flex items-center justify-between flex-wrap" style={{ gap: 12, marginBottom: 14 }}>
+          {/* 左：状态图例标签组（8 色，hover 弹出说明气泡） */}
           <StatusLegend />
 
-          {/* 中：年月选择器（左右箭头 + 年/月下拉） */}
-          <div className="flex items-center" style={{ gap: 6 }}>
-            <button onClick={() => shiftMonth(-1)} className="flex items-center justify-center rounded bg-white shrink-0" style={{ width: 32, height: 32, border: '1px solid #D9D9D9', color: '#888888' }}>‹</button>
-            <select value={y} onChange={(e) => setYM(Number(e.target.value), m)} className="rounded bg-white outline-none shrink-0" style={{ height: 32, border: '1px solid #D9D9D9', padding: '0 8px', color: '#333333', fontSize: 14 }}>
-              {Array.from({ length: 21 }, (_, i) => y - 10 + i).map((yy) => <option key={yy} value={yy}>{yy}年</option>)}
-            </select>
-            <select value={m} onChange={(e) => setYM(y, Number(e.target.value))} className="rounded bg-white outline-none shrink-0" style={{ height: 32, border: '1px solid #D9D9D9', padding: '0 8px', color: '#333333', fontSize: 14 }}>
-              {Array.from({ length: 12 }, (_, i) => i + 1).map((mm) => <option key={mm} value={mm}>{mm}月</option>)}
-            </select>
-            <button onClick={() => shiftMonth(1)} className="flex items-center justify-center rounded bg-white shrink-0" style={{ width: 32, height: 32, border: '1px solid #D9D9D9', color: '#888888' }}>›</button>
-          </div>
-
-          {/* 右：筛选账号 + 高级选项 */}
+          {/* 右：月/周/日视图切换 + 筛选账号 + 高级选项 */}
           <div className="flex items-center" style={{ gap: 12 }}>
+            {/* 视图切换段控 */}
+            <div className="flex items-center overflow-hidden shrink-0" style={{ border: `1px solid ${G_BORDER}`, borderRadius: 4, height: 32 }}>
+              {VIEWS.map((v) => (
+                <button key={v.k} onClick={() => setView(v.k)}
+                  style={{ width: 44, height: '100%', fontSize: 13, background: view === v.k ? G_BLUE : '#FFFFFF', color: view === v.k ? '#FFFFFF' : '#666666', borderLeft: v.k === 'month' ? 'none' : `1px solid ${G_BORDER}` }}>{v.t}</button>
+              ))}
+            </div>
+
             <div className="relative" ref={accRef}>
-              <button onClick={() => setAccOpen((v) => !v)} className="flex items-center gap-1.5 rounded bg-white text-sm outline-none shrink-0" style={{ height: 32, border: '1px solid #D9D9D9', padding: '0 12px', color: '#333333' }}>
+              <button onClick={() => setAccOpen((v) => !v)} className="flex items-center gap-1.5 bg-white text-sm outline-none shrink-0" style={{ height: 32, border: `1px solid ${G_BORDER}`, borderRadius: 4, padding: '0 12px', color: '#333333' }}>
                 <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 6h18M3 12h12M3 18h6" /></svg>
                 筛选账号 <span style={{ color: '#999999' }}>▾</span>
               </button>
               {accOpen && (
-                <div className="absolute left-0 mt-1 w-44 bg-white rounded z-30 overflow-hidden" style={{ boxShadow: '0 2px 12px rgba(0,0,0,0.12)' }}>
-                  <button onClick={() => { setState((s) => ({ ...s, executor: '' })); setAccOpen(false); }} className="w-full text-left px-4 text-sm hover:bg-[#F3F4F6]" style={{ height: 34, color: state.executor === '' ? BLUE : '#333333' }}>全部账号</button>
+                <div className="absolute right-0 mt-1 w-44 bg-white rounded z-30 overflow-hidden" style={{ boxShadow: '0 2px 12px rgba(0,0,0,0.12)' }}>
+                  <button onClick={() => { setState((s) => ({ ...s, executor: '' })); setAccOpen(false); }} className="w-full text-left px-4 text-sm hover:bg-[#F3F4F6]" style={{ height: 34, color: state.executor === '' ? G_BLUE : '#333333' }}>全部账号</button>
                   {personnel.map((p) => (
-                    <button key={p.id} onClick={() => { setState((s) => ({ ...s, executor: String(p.id) })); setAccOpen(false); }} className="w-full text-left px-4 text-sm hover:bg-[#F3F4F6]" style={{ height: 34, color: state.executor === String(p.id) ? BLUE : '#333333' }}>{p.name}</button>
+                    <button key={p.id} onClick={() => { setState((s) => ({ ...s, executor: String(p.id) })); setAccOpen(false); }} className="w-full text-left px-4 text-sm hover:bg-[#F3F4F6]" style={{ height: 34, color: state.executor === String(p.id) ? G_BLUE : '#333333' }}>{p.name}</button>
                   ))}
                 </div>
               )}
@@ -214,128 +277,274 @@ export default function Schedule() {
                 <div className="absolute right-0 mt-1 w-44 bg-white rounded z-30 overflow-hidden" style={{ boxShadow: '0 2px 14px rgba(0,0,0,0.14)', minWidth: 180 }}>
                   <button onClick={() => { setAdvOpen(false); setBooking({ open: true, openDays: [0, 1, 2, 3, 4, 5, 6] }); }} className="w-full text-left px-4 text-sm hover:bg-[#F3F4F6] flex items-center gap-2" style={{ height: 34, color: '#333333' }}>档期及预约设置</button>
                   <button onClick={async () => { setAdvOpen(false); try { const r = await http.post('/api/schedules/share'); setShare(r.data); } catch (e) { setErr((e.response && e.response.data && e.response.data.error) || '生成分享失败'); } }} className="w-full text-left px-4 text-sm hover:bg-[#F3F4F6] flex items-center gap-2" style={{ height: 34, color: '#333333' }}>分享档期 <span className="ml-1 text-[10px] text-white px-1" style={{ background: BLUE }}>NEW</span></button>
-                  <button onClick={doExport} className="w-full text-left px-4 text-sm hover:bg-[#F3F4F6]" style={{ height: 34, color: '#333333' }}>导出 Excel</button>
+                  <button onClick={doExport} className="w-full text-left px-4 text-sm hover:bg-[#F3F4F6]" style={{ height: 34, color: '#333333' }}>导出 excel</button>
                 </div>
               )}
             </div>
+          </div>
+        </div>
+
+        {/* ===================== 头部第二行：年月切换 + 摄影师/套系/订单状态 三项筛选 ===================== */}
+        <div className="flex items-center justify-between flex-wrap" style={{ gap: 12, marginBottom: 14, paddingBottom: 14, borderBottom: `1px solid ${G_BORDER}` }}>
+          <div className="flex items-center" style={{ gap: 6 }}>
+            <button onClick={() => shiftMonth(-1)} className="flex items-center justify-center bg-white shrink-0" style={{ width: 32, height: 32, border: `1px solid ${G_BORDER}`, borderRadius: 4, color: '#888888' }}>‹</button>
+            <select value={y} onChange={(e) => setYM(Number(e.target.value), m)} className="bg-white outline-none shrink-0" style={{ height: 32, border: `1px solid ${G_BORDER}`, borderRadius: 4, padding: '0 8px', color: '#333333', fontSize: 14 }}>
+              {Array.from({ length: 21 }, (_, i) => y - 10 + i).map((yy) => <option key={yy} value={yy}>{yy}年</option>)}
+            </select>
+            <select value={m} onChange={(e) => setYM(y, Number(e.target.value))} className="bg-white outline-none shrink-0" style={{ height: 32, border: `1px solid ${G_BORDER}`, borderRadius: 4, padding: '0 8px', color: '#333333', fontSize: 14 }}>
+              {Array.from({ length: 12 }, (_, i) => i + 1).map((mm) => <option key={mm} value={mm}>{mm}月</option>)}
+            </select>
+            <button onClick={() => shiftMonth(1)} className="flex items-center justify-center bg-white shrink-0" style={{ width: 32, height: 32, border: `1px solid ${G_BORDER}`, borderRadius: 4, color: '#888888' }}>›</button>
+            <button onClick={() => { setState((s) => ({ ...s, month: `${init.getFullYear()}-${pad(init.getMonth() + 1)}` })); setSelDate(todayStr); }}
+              className="bg-white shrink-0" style={{ height: 32, border: `1px solid ${G_BORDER}`, borderRadius: 4, padding: '0 12px', color: '#666666', fontSize: 13, marginLeft: 4 }}>今天</button>
+          </div>
+
+          {/* 三项筛选：摄影师 / 套系 / 订单状态（空值=全部，前端过滤已加载档期） */}
+          <div className="flex items-center flex-wrap" style={{ gap: 10 }}>
+            <select value={fPhotog} onChange={(e) => setFPhotog(e.target.value)} className="bg-white outline-none shrink-0" style={{ height: 32, minWidth: 120, border: `1px solid ${G_BORDER}`, borderRadius: 4, padding: '0 8px', color: fPhotog ? '#333333' : '#999999', fontSize: 13 }}>
+              <option value="">全部摄影师</option>
+              {personnel.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+            </select>
+            <select value={fPkg} onChange={(e) => setFPkg(e.target.value)} className="bg-white outline-none shrink-0" style={{ height: 32, minWidth: 130, border: `1px solid ${G_BORDER}`, borderRadius: 4, padding: '0 8px', color: fPkg ? '#333333' : '#999999', fontSize: 13 }}>
+              <option value="">全部套系</option>
+              {pkgList.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+            </select>
+            <select value={fStatus} onChange={(e) => setFStatus(e.target.value)} className="bg-white outline-none shrink-0" style={{ height: 32, minWidth: 130, border: `1px solid ${G_BORDER}`, borderRadius: 4, padding: '0 8px', color: fStatus ? '#333333' : '#999999', fontSize: 13 }}>
+              <option value="">全部订单状态</option>
+              {G_STATUS.map((s) => <option key={s.key} value={s.key}>{s.label}</option>)}
+            </select>
+            {(fPhotog || fPkg || fStatus) && (
+              <button onClick={() => { setFPhotog(''); setFPkg(''); setFStatus(''); }} style={{ height: 32, padding: '0 10px', fontSize: 13, color: G_BLUE }}>清除筛选</button>
+            )}
           </div>
         </div>
 
       {/* ===================== 日历主体 + 右侧面板（同处一个白色大卡片内） ===================== */}
       <div className="flex items-stretch" style={{ gap: 0 }}>
-        {/* 左侧日历网格（flex:1，不另起白色卡片，直接在大卡片内；flex 列布局让网格填充容器高度） */}
+        {/* 左侧日历区（月/周/日三视图切换，flex:1 填满剩余宽度） */}
         <div className="flex-1 min-w-0 flex flex-col" style={{ minHeight: 700 }}>
-          {/* 星期表头 */}
-          <div className="grid grid-cols-7">
-            {WEEK.map((w) => (
-              <div key={w} className="text-center" style={{ fontSize: 13, color: '#666666', height: 36, lineHeight: '36px', borderBottom: '1px solid #E5E7EB' }}>{w}</div>
-            ))}
-          </div>
-          {/* 日期格（7 列网格，单元格 1px 分割线 #E8E8E8；flex-1 + minmax 让单元格行拉伸填满容器，消除下方空白） */}
-          <div className="grid grid-cols-7 flex-1" style={{ gap: 1, background: CELL_BORDER, gridAutoRows: 'minmax(110px, 1fr)' }}>
-            {cells.map((day, i) => {
-              if (day == null) return <div key={i} style={{ minHeight: 110, background: '#ffffff' }} />;
-              const date = `${y}-${pad(m)}-${pad(day)}`;
-              const rows = map[date] || [];
-              const pends = pendMap[date] || [];
-              const st = dayState(rows, pends);
-              const lunar = lunarMap[date] || '';
-              const selected = selDate === date;
-              const isClosed = st.kind === 'closed';
-              const isBooked = st.kind === 'booked';
+          {view === 'month' && (
+            <>
+              {/* 星期表头 */}
+              <div className="grid grid-cols-7">
+                {WEEK.map((w) => (
+                  <div key={w} className="text-center" style={{ fontSize: 13, color: '#666666', height: 36, lineHeight: '36px', borderBottom: `1px solid ${G_BORDER}` }}>{w}</div>
+                ))}
+              </div>
+              {/* 日期格（7 列网格，1px 分割线 #E5E5E5；flex-1 + minmax 让行拉伸填满容器） */}
+              <div className="grid grid-cols-7 flex-1" style={{ gap: 1, background: G_BORDER, gridAutoRows: 'minmax(112px, 1fr)' }}>
+                {cells.map((day, i) => {
+                  if (day == null) return <div key={i} style={{ minHeight: 112, background: '#FAFAFA' }} />;
+                  const date = `${y}-${pad(m)}-${pad(day)}`;
+                  const rows = rowsOf(date);
+                  const pends = pendsOf(date);
+                  const st = dayState(rows, pends);
+                  const lunar = lunarMap[date] || '';
+                  const selected = selDate === date;
+                  const isToday = date === todayStr;
+                  const isClosed = st.kind === 'closed';
 
-              // 单元格底色：选中 #FFA8A8 > 关闭斜纹 #F7F7F7 > 有订单粉红 #FFD6D6 > 空闲白
-              let cellBg = '#ffffff';
-              let dateColor = '#333333';
-              let lunarColor = '#888888';
-              let closedColor = '#999999';
-              if (selected) {
-                cellBg = SEL_BG; dateColor = '#ffffff'; lunarColor = '#fefefe'; closedColor = '#ffffff';
-              } else if (isClosed) {
-                cellBg = 'repeating-linear-gradient(-45deg, rgba(120,120,120,0.4) 0px, rgba(120,120,120,0.4) 1px, transparent 1px, transparent 8px), #F7F7F7';
-              } else if (isBooked) {
-                cellBg = BOOKED_BG;
-              }
-              const hoverCls = !selected && !isBooked ? 'hover:bg-[#F9FAFB]' : '';
-              const orderRow = st.orderRows[0];
-              const statusColor = orderRow ? (orderRow.order_pay_status === 'unpaid' ? LEGEND_UNPAID : LEGEND_WAIT) : null;
+                  // 单元格底色：关闭斜纹 > 选中浅蓝 #EAF6FD > 空闲白（已预约用粉色标签表达，不铺满整格）
+                  let cellBg = '#FFFFFF';
+                  if (isClosed) cellBg = 'repeating-linear-gradient(-45deg, rgba(150,150,150,0.28) 0px, rgba(150,150,150,0.28) 1px, transparent 1px, transparent 8px), #F7F7F7';
+                  else if (selected) cellBg = G_SEL;
 
-              return (
-                <div
-                  key={i}
-                  onClick={() => setSelDate(date)}
-                  className={'relative cursor-pointer transition flex flex-col ' + hoverCls}
-                  style={{ minHeight: 110, background: cellBg, padding: 8 }}
-                >
-                  {/* 公历日期 + 状态色块 + 待确认点 */}
-                  <div className="flex items-start justify-between gap-1">
-                    <div className="flex items-center gap-1.5">
-                      {statusColor && <span className="inline-block mt-0.5" style={{ width: 10, height: 10, background: statusColor }} />}
-                      <span style={{ fontSize: 14, color: dateColor }}>{day}</span>
-                    </div>
-                    {pends.length > 0 && <span className="w-2 h-2 mt-1 inline-block" style={{ background: '#f0a020' }} />}
-                  </div>
-                  {/* 农历 */}
-                  {lunar && <div style={{ fontSize: 12, color: lunarColor }}>{lunar}</div>}
+                  return (
+                    <div key={i} onClick={() => setSelDate(date)}
+                      className={'relative cursor-pointer transition flex flex-col ' + (!selected && !isClosed ? 'hover:bg-[#FAFCFE]' : '')}
+                      style={{ minHeight: 112, background: cellBg, padding: 8, boxShadow: selected ? `inset 0 0 0 1px ${G_BLUE}` : 'none' }}>
+                      {/* 公历日期（今日红圆底白字 #FF7777）+ 农历 + 待确认点 */}
+                      <div className="flex items-start justify-between gap-1">
+                        <div className="flex items-center" style={{ gap: 6 }}>
+                          <span className="inline-flex items-center justify-center"
+                            style={isToday
+                              ? { width: 22, height: 22, borderRadius: '50%', background: G_TODAY, color: '#FFFFFF', fontSize: 13 }
+                              : { fontSize: 14, color: '#333333' }}>{day}</span>
+                          {lunar && <span style={{ fontSize: 11, color: '#999999' }}>{lunar}</span>}
+                        </div>
+                        {pends.length > 0 && <span className="inline-block mt-1" style={{ width: 6, height: 6, borderRadius: '50%', background: '#F0A020' }} />}
+                      </div>
 
-                  {/* 底部：关闭格→档期已关闭（居中）；其余→左下 +添加，右下 1单 */}
-                  {isClosed ? (
-                    <div className="mt-auto flex items-end justify-center pt-1">
-                      <span style={{ fontSize: 12, opacity: 0.8, color: closedColor }}>档期已关闭</span>
+                      {/* 中部：已预约条（最多 2 条，粉底 #F9A8B2 + 8 色状态点），超出折叠计数 */}
+                      {!isClosed && (
+                        <div className="mt-1.5 flex flex-col" style={{ gap: 3 }}>
+                          {st.orderRows.slice(0, 2).map((r) => {
+                            const sk = statusKeyOf(r);
+                            return (
+                              <div key={r.id} onClick={(e) => { e.stopPropagation(); if (r.order_id) nav('/orders/' + r.order_id); }}
+                                className="flex items-center truncate hover:opacity-85"
+                                style={{ background: G_BOOKED, borderRadius: 2, height: 20, padding: '0 5px', gap: 4 }}>
+                                {sk && <span className="inline-block shrink-0" style={{ width: 6, height: 6, borderRadius: '50%', background: G_STATUS_MAP[sk].color }} />}
+                                <span className="truncate" style={{ fontSize: 11, color: '#5A2730' }}>{r.order_customer || r.executor_name || r.photographer || '已预约'}</span>
+                              </div>
+                            );
+                          })}
+                          {st.orderRows.length > 2 && <div style={{ fontSize: 11, color: '#888888' }}>+{st.orderRows.length - 2} 更多</div>}
+                        </div>
+                      )}
+
+                      {/* 底部：关闭格→档期已关闭（居中）；其余→左下 +添加，右下 N单 */}
+                      {isClosed ? (
+                        <div className="mt-auto flex items-end justify-center pt-1">
+                          <span style={{ fontSize: 12, color: '#999999' }}>档期已关闭</span>
+                        </div>
+                      ) : (
+                        <div className="mt-auto flex items-end justify-between gap-1 pt-1">
+                          <button onClick={(e) => { e.stopPropagation(); openNew(date); }} className="hover:opacity-80" style={{ color: G_BLUE, fontSize: 12 }}>+ 添加</button>
+                          {st.orderRows.length > 0 && <span className="shrink-0" style={{ fontSize: 11, color: '#888888' }}>{st.orderRows.length}单</span>}
+                        </div>
+                      )}
                     </div>
-                  ) : (
-                    <div className="mt-auto flex items-end justify-between gap-1 pt-1">
-                      <button onClick={(e) => { e.stopPropagation(); openNew(day); }} className="hover:opacity-80" style={{ color: ADD_BLUE, fontSize: 12 }}>+ 添加</button>
-                      {st.orderRows.length > 0 && <span className="shrink-0" style={{ fontSize: 11, color: '#444444' }}>{st.orderRows.length}单</span>}
+                  );
+                })}
+              </div>
+            </>
+          )}
+
+          {view === 'week' && (
+            <>
+              {/* 周视图表头：星期 + 日期（今日红圆） */}
+              <div className="grid grid-cols-7">
+                {weekDates.map((d, i) => {
+                  const dd = Number(d.slice(8, 10));
+                  const isToday = d === todayStr;
+                  return (
+                    <div key={d} className="text-center" style={{ height: 46, borderBottom: `1px solid ${G_BORDER}`, paddingTop: 4 }}>
+                      <div style={{ fontSize: 12, color: '#999999' }}>{WEEK[i]}</div>
+                      <span className="inline-flex items-center justify-center"
+                        style={isToday ? { width: 20, height: 20, borderRadius: '50%', background: G_TODAY, color: '#FFFFFF', fontSize: 12 } : { fontSize: 13, color: '#333333' }}>{dd}</span>
                     </div>
-                  )}
+                  );
+                })}
+              </div>
+              {/* 周视图 7 列：每列纵向铺满，列出当日全部档期 */}
+              <div className="grid grid-cols-7 flex-1" style={{ gap: 1, background: G_BORDER, gridAutoRows: 'minmax(560px, 1fr)' }}>
+                {weekDates.map((d) => {
+                  const rows = rowsOf(d);
+                  const st = dayState(rows, pendsOf(d));
+                  const selected = selDate === d;
+                  const isClosed = st.kind === 'closed';
+                  return (
+                    <div key={d} onClick={() => setSelDate(d)} className="cursor-pointer flex flex-col"
+                      style={{ background: isClosed ? '#F7F7F7' : (selected ? G_SEL : '#FFFFFF'), padding: 8, boxShadow: selected ? `inset 0 0 0 1px ${G_BLUE}` : 'none' }}>
+                      <div style={{ fontSize: 11, color: '#999999', marginBottom: 6 }}>{lunarMap[d] || ''}</div>
+                      {isClosed ? (
+                        <div style={{ fontSize: 12, color: '#999999' }}>档期已关闭</div>
+                      ) : rows.length === 0 ? (
+                        <div style={{ fontSize: 12, color: '#BBBBBB' }}>暂无档期</div>
+                      ) : rows.map((r) => {
+                        const sk = statusKeyOf(r);
+                        return (
+                          <div key={r.id} onClick={(e) => { e.stopPropagation(); if (r.order_id) nav('/orders/' + r.order_id); }}
+                            className="mb-1.5 hover:opacity-85" style={{ background: r.order_no ? G_BOOKED : '#F0F0F0', borderRadius: 3, padding: '5px 6px' }}>
+                            <div className="flex items-center" style={{ gap: 4 }}>
+                              {sk && <span className="inline-block shrink-0" style={{ width: 6, height: 6, borderRadius: '50%', background: G_STATUS_MAP[sk].color }} />}
+                              <span className="truncate" style={{ fontSize: 12, color: '#5A2730' }}>{r.order_customer || '已预约'}</span>
+                            </div>
+                            <div className="truncate" style={{ fontSize: 11, color: '#7A4A52', marginTop: 2 }}>{(r.periods && r.periods.length ? r.periods.join('、') : '全天')}{r.order_package ? ' · ' + r.order_package : ''}</div>
+                          </div>
+                        );
+                      })}
+                      {!isClosed && <button onClick={(e) => { e.stopPropagation(); openNew(d); }} className="mt-auto text-left hover:opacity-80" style={{ color: G_BLUE, fontSize: 12 }}>+ 添加</button>}
+                    </div>
+                  );
+                })}
+              </div>
+            </>
+          )}
+
+          {view === 'day' && (
+            <div className="flex-1 flex flex-col" style={{ border: `1px solid ${G_BORDER}`, borderRadius: 4 }}>
+              <div className="flex items-center justify-between" style={{ height: 46, padding: '0 14px', borderBottom: `1px solid ${G_BORDER}` }}>
+                <div className="flex items-center" style={{ gap: 10 }}>
+                  <span style={{ fontSize: 15, color: '#333333' }}>{selDate}</span>
+                  <span style={{ fontSize: 12, color: '#999999' }}>{lunarMap[selDate] || ''}</span>
+                  {selDate === todayStr && <span style={{ fontSize: 11, color: '#FFFFFF', background: G_TODAY, borderRadius: 9, padding: '2px 8px' }}>今天</span>}
                 </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* 右侧深色信息面板（在大卡片 flex 内；按钮在剩余空间内纵向居中，不贴底） */}
-        <div className="calendar-side-info shrink-0 flex flex-col" style={{ width: 200, minHeight: 620, marginLeft: 20, background: PANEL_BG, color: '#FFFFFF', borderRadius: 8, padding: '16px 12px' }}>
-          {/* 顶部内容：年月 + 黄色日期块 + 农历 + 档期列表（保持靠上、左对齐） */}
-          <div className="side-info-top" style={{ display: 'flex', flexDirection: 'column' }}>
-            <div className="text-center" style={{ fontSize: 12, color: '#bbbbbb', marginBottom: 14 }}>{y}年{m}月</div>
-            <div className="flex justify-center">
-              <div className="flex items-center justify-center" style={{ background: DATE_CIRCLE, width: 84, height: 84, borderRadius: 6, margin: '0 auto 14px' }}>
-                <span style={{ fontSize: 48, fontWeight: 700, color: '#ffffff' }}>{selParts[2] || '--'}</span>
+                <div className="flex items-center" style={{ gap: 6 }}>
+                  <button onClick={() => { const d = new Date(selDate); d.setDate(d.getDate() - 1); setSelDate(ymd(d)); setState((s) => ({ ...s, month: ymd(d).slice(0, 7) })); }}
+                    style={{ width: 28, height: 28, border: `1px solid ${G_BORDER}`, borderRadius: 4, color: '#888888' }}>‹</button>
+                  <button onClick={() => { const d = new Date(selDate); d.setDate(d.getDate() + 1); setSelDate(ymd(d)); setState((s) => ({ ...s, month: ymd(d).slice(0, 7) })); }}
+                    style={{ width: 28, height: 28, border: `1px solid ${G_BORDER}`, borderRadius: 4, color: '#888888' }}>›</button>
+                </div>
+              </div>
+              {/* 24 小时时间轴：按档期 periods 落位（无时段的记为全天，置顶展示） */}
+              <div className="flex-1 overflow-auto" style={{ maxHeight: 620 }}>
+                {dayRows.filter((r) => !(r.periods && r.periods.length)).map((r) => (
+                  <div key={'all-' + r.id} className="flex items-center justify-between" style={{ padding: '10px 14px', borderBottom: `1px solid ${G_BORDER}`, background: r.order_no ? G_BOOKED : '#F7F7F7' }}>
+                    <span style={{ fontSize: 13, color: '#5A2730' }}>全天 · {r.order_customer || r.executor_name || '已预约'}{r.order_package ? ' · ' + r.order_package : ''}</span>
+                    {r.order_id ? <button onClick={() => nav('/orders/' + r.order_id)} style={{ fontSize: 12, color: '#FFFFFF', background: G_BLUE, borderRadius: 3, padding: '3px 10px' }}>查看订单</button> : null}
+                  </div>
+                ))}
+                {HOURS.map((h) => {
+                  const hits = dayRows.filter((r) => (r.periods || []).includes(h));
+                  return (
+                    <div key={h} className="flex" style={{ minHeight: 40, borderBottom: `1px solid ${G_BORDER}` }}>
+                      <div className="shrink-0 text-right" style={{ width: 66, padding: '10px 10px 0 0', fontSize: 12, color: '#999999' }}>{h}</div>
+                      <div className="flex-1" style={{ borderLeft: `1px solid ${G_BORDER}`, padding: 6 }}>
+                        {hits.map((r) => (
+                          <div key={r.id + h} onClick={() => r.order_id && nav('/orders/' + r.order_id)}
+                            className="cursor-pointer hover:opacity-85" style={{ background: G_BOOKED, borderRadius: 3, padding: '5px 8px', marginBottom: 4 }}>
+                            <span style={{ fontSize: 12, color: '#5A2730' }}>{r.order_customer || '已预约'}{r.order_package ? ' · ' + r.order_package : ''}{r.executor_name ? ' · ' + r.executor_name : ''}</span>
+                          </div>
+                        ))}
+                        {hits.length === 0 && (
+                          <button onClick={() => openNew(selDate)} className="opacity-0 hover:opacity-100 transition" style={{ fontSize: 12, color: G_BLUE }}>+ 添加</button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
-            <div className="text-center" style={{ fontSize: 14, color: '#cccccc', marginBottom: 20 }}>{selDate ? (lunarMap[selDate] || '') : ''}</div>
+          )}
+        </div>
+
+        {/* 右侧深灰信息面板 #3F3F3F：年月 + 黄块日期 #FFB900 + 农历 + 当日档期 + 添加按钮 */}
+        <div className="calendar-side-info shrink-0 flex flex-col" style={{ width: 220, minHeight: 620, marginLeft: 16, background: G_PANEL, color: '#FFFFFF', borderRadius: 6, padding: '18px 14px' }}>
+          {/* 顶部内容：年月 + 黄色日期块 + 农历 + 档期列表（保持靠上、左对齐） */}
+          <div className="side-info-top" style={{ display: 'flex', flexDirection: 'column' }}>
+            <div className="text-center" style={{ fontSize: 12, color: '#BBBBBB', marginBottom: 14 }}>{selDate ? `${Number(selParts[0])}年${Number(selParts[1])}月` : `${y}年${m}月`}</div>
+            <div className="flex justify-center">
+              <div className="flex items-center justify-center" style={{ background: G_YELLOW, width: 96, height: 96, borderRadius: 6, margin: '0 auto 14px' }}>
+                <span style={{ fontSize: 58, fontWeight: 700, lineHeight: 1, color: '#FFFFFF' }}>{selParts[2] ? Number(selParts[2]) : '--'}</span>
+              </div>
+            </div>
+            <div className="text-center" style={{ fontSize: 13, color: '#CCCCCC', marginBottom: 6 }}>{selDate ? (lunarMap[selDate] || '') : ''}</div>
+            <div className="text-center" style={{ fontSize: 12, color: '#999999' }}>{selDate ? WEEK_FULL[new Date(selDate).getDay()] : ''}{selDate === todayStr ? ' · 今天' : ''}</div>
 
             <div style={{ borderTop: '1px solid #555555', margin: '16px 0' }} />
 
             <div className="flex-1">
               {dayRows.length === 0 && dayPends.length === 0 && (
-                <div className="text-center" style={{ fontSize: 14, color: '#eeeeee' }}>无档期安排</div>
+                <div className="text-center" style={{ fontSize: 13, color: '#AAAAAA' }}>无档期安排</div>
               )}
 
-              {dayRows.map((s) => (
-                <div key={s.id} className="flex items-start justify-between p-3 mb-2" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }}>
+              {dayRows.map((s) => {
+                const sk = statusKeyOf(s);
+                return (
+                <div key={s.id} className="flex items-start justify-between p-3 mb-2" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4 }}>
                   <div className="min-w-0">
                     <div className="text-sm" style={{ color: '#ffffff' }}>{s.periods && s.periods.length ? s.periods.join('、') : (SSTATUS[s.status] || s.period || '全天')}</div>
                     <div className="text-[11px] mt-0.5" style={{ color: '#b9bdc4' }}>
                       {s.order_customer ? `客户：${s.order_customer}` : (s.executor_name || s.photographer || '未指派')}
                       {s.order_no ? ' · ' + s.order_no : ''}
                     </div>
-                    {s.order_pay_status === 'unpaid' && <span className="inline-block mt-1 text-[10px] px-1.5 py-0.5" style={{ background: LEGEND_UNPAID, color: '#8a6d00' }}>未付定</span>}
-                    {s.order_status === 'deposit' && <span className="inline-block mt-1 text-[10px] px-1.5 py-0.5" style={{ background: LEGEND_WAIT, color: '#2e7d32' }}>等待拍</span>}
+                    {s.order_package && <div className="text-[11px]" style={{ color: '#9CA3AF' }}>套系：{s.order_package}</div>}
+                    {sk && <span className="inline-block mt-1 text-[10px] px-1.5 py-0.5" style={{ background: G_STATUS_MAP[sk].color, color: '#4A4A4A', borderRadius: 2 }}>{G_STATUS_MAP[sk].label}</span>}
                     {s.date_tbd ? <span className="inline-block mt-1 text-[10px] px-1.5 py-0.5 ml-1" style={{ background: 'rgba(255,255,255,0.12)', color: '#e5c07b' }}>日期待定</span> : null}
                   </div>
-                  <div className="shrink-0 ml-2 flex items-center gap-1">
+                  <div className="shrink-0 ml-2 flex flex-col items-end gap-1">
                     {/* 验收⑨：日历上点击已约档期可跳转对应订单详情 */}
                     {s.order_id ? (
                       <button onClick={() => nav('/orders/' + s.order_id)} className="px-2 py-1 text-xs hover:opacity-80"
-                        style={{ color: '#ffffff', background: 'rgba(40,144,240,0.9)', border: '1px solid rgba(255,255,255,0.15)' }}>查看订单</button>
+                        style={{ color: '#ffffff', background: G_BLUE, borderRadius: 3 }}>查看订单</button>
                     ) : null}
-                    <button onClick={() => openEdit(s)} className="px-2 py-1 text-xs hover:opacity-80" style={{ color: '#ffffff', border: '1px solid rgba(255,255,255,0.25)' }}>编辑</button>
+                    <button onClick={() => openEdit(s)} className="px-2 py-1 text-xs hover:opacity-80" style={{ color: '#ffffff', border: '1px solid rgba(255,255,255,0.25)', borderRadius: 3 }}>编辑</button>
                   </div>
                 </div>
-              ))}
+                );
+              })}
 
               {dayPends.map((a) => (
                 <div key={a.id} className="border p-3 mb-2" style={{ background: 'rgba(251,191,36,0.12)', borderColor: 'rgba(251,191,36,0.4)' }}>
@@ -347,7 +556,7 @@ export default function Schedule() {
                   {a.remark && <div className="text-[11px]" style={{ color: '#b9bdc4' }}>备注：{a.remark}</div>}
                   <div className="flex gap-2 mt-2 justify-end">
                     <button onClick={async () => { if (!confirm(`拒绝「${a.name}」的预约？`)) return; try { await http.post('/api/admin/appointments/' + a.id + '/reject', { reason: '该日期已排满' }); load(); } catch (e) { alert((e.response && e.response.data && e.response.data.error) || '拒绝失败'); } }} className="px-2 py-1 text-xs" style={{ color: '#f87171', border: '1px solid rgba(248,113,113,0.4)' }}>拒绝</button>
-                    <button onClick={async () => { if (!a.hope_date) return alert('该预约缺少期望日期'); if (!confirm(`接受「${a.name}」的预约并生成订单、锁定档期？`)) return; try { await http.post('/api/admin/appointments/' + a.id + '/confirm', { date: a.hope_date, period: a.period || 'full', photographer: a.photographer || '' }); alert('已接受：订单已生成并锁定档期'); load(); } catch (e) { alert((e.response && e.response.data && e.response.data.error) || '接受失败'); } }} className="px-2 py-1 text-white text-xs" style={{ background: BLUE }}>接受并锁档期</button>
+                    <button onClick={async () => { if (!a.hope_date) return alert('该预约缺少期望日期'); if (!confirm(`接受「${a.name}」的预约并生成订单、锁定档期？`)) return; try { await http.post('/api/admin/appointments/' + a.id + '/confirm', { date: a.hope_date, period: a.period || 'full', photographer: a.photographer || '' }); alert('已接受：订单已生成并锁定档期'); load(); } catch (e) { alert((e.response && e.response.data && e.response.data.error) || '接受失败'); } }} className="px-2 py-1 text-white text-xs" style={{ background: G_BLUE }}>接受并锁档期</button>
                   </div>
                 </div>
               ))}
@@ -358,9 +567,9 @@ export default function Schedule() {
 
           {/* 按钮容器：上下 auto → 在面板剩余空间内纵向居中（不再贴底） */}
           <div className="side-info-button-wrapper" style={{ marginTop: 'auto', marginBottom: 'auto', display: 'flex', justifyContent: 'center', width: '100%' }}>
-            <button onClick={selClosed ? undefined : () => openNew(selDate ? Number(selDate.slice(8, 10)) : null)} disabled={selClosed}
+            <button onClick={selClosed ? undefined : () => openNew(selDate)} disabled={selClosed}
               className="btn-add-schedule w-full text-white hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
-              style={{ maxWidth: 160, height: 36, background: ADD_BTN, borderRadius: 4, fontSize: 13 }}>+ 添加档期</button>
+              style={{ maxWidth: 170, height: 38, background: G_BLUE, borderRadius: 4, fontSize: 14 }}>+ 添加档期</button>
           </div>
         </div>
       </div>
@@ -425,16 +634,33 @@ function FloatingTools() {
   );
 }
 
-/* ============ 状态图例（行内静态 2 项，无外壳/无弹窗，严格按 spec 色号） ============ */
+/* ============ 状态图例（8 色行内标签；hover 任一项弹出「订单状态说明」气泡） ============ */
 function StatusLegend() {
+  const [hover, setHover] = useState(false);
   return (
-    <div className="flex items-center shrink-0" style={{ gap: 24 }}>
-      {LEGEND_ITEMS.map((s) => (
-        <div key={s.label} className="flex items-center" style={{ gap: 8, fontSize: 13, fontWeight: 400, color: '#666666' }}>
-          <span className="inline-block shrink-0" style={{ width: 12, height: 12, borderRadius: 2, background: s.color }} />
-          <span>{s.label}</span>
+    <div className="relative" onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}>
+      <div className="flex items-center flex-wrap" style={{ gap: '8px 18px' }}>
+        {G_STATUS.map((s) => (
+          <div key={s.key} className="flex items-center cursor-default" style={{ gap: 6, fontSize: 13, color: '#666666' }}>
+            <span className="inline-block shrink-0" style={{ width: 12, height: 12, borderRadius: 2, background: s.color }} />
+            <span>{s.label}</span>
+          </div>
+        ))}
+      </div>
+      {hover && (
+        <div className="absolute bg-white" style={{ top: 'calc(100% + 8px)', left: 0, width: 320, border: `1px solid ${G_BORDER}`, borderRadius: 4, boxShadow: '0 4px 16px rgba(0,0,0,0.12)', padding: '12px 14px', zIndex: 40 }}>
+          <div style={{ fontSize: 13, color: '#333333', marginBottom: 8 }}>订单状态说明</div>
+          {G_STATUS.map((s) => (
+            <div key={s.key} className="flex items-start" style={{ gap: 8, marginBottom: 6 }}>
+              <span className="inline-block shrink-0" style={{ width: 10, height: 10, borderRadius: 2, background: s.color, marginTop: 3 }} />
+              <div className="min-w-0">
+                <span style={{ fontSize: 12, color: '#333333' }}>{s.label}</span>
+                <span style={{ fontSize: 12, color: '#999999' }}> —— {s.desc}</span>
+              </div>
+            </div>
+          ))}
         </div>
-      ))}
+      )}
     </div>
   );
 }
