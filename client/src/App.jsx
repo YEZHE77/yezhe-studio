@@ -1,4 +1,4 @@
-import React, { Suspense } from 'react';
+import React, { Suspense, useState, useEffect } from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from './auth.jsx';
 import Sidebar from './layout/Sidebar.jsx';
@@ -46,11 +46,13 @@ function PageLoader() {
 // 已登录后的主框架（侧边栏 + 顶栏 + 业务路由）
 function AppShell() {
   const location = useLocation();
+  const [navOpen, setNavOpen] = useState(false);
+  useEffect(() => { setNavOpen(false); }, [location.pathname]);
   return (
-    <div className="flex h-screen">
-      <Sidebar />
+    <div className="flex h-screen overflow-hidden">
+      <Sidebar open={navOpen} onClose={() => setNavOpen(false)} />
       <div className="flex-1 flex flex-col min-w-0">
-        <Topbar />
+        <Topbar onMenu={() => setNavOpen(true)} />
         <main className="flex-1 overflow-auto p-6 bg-ink">
           <Breadcrumb />
           <ErrorBoundary resetKeys={[location.pathname]}>
