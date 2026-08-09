@@ -20,7 +20,7 @@ const CRUMB_CONFIG = [
   { pattern: '/packages/:id/edit', crumbs: [{ label: '套系', to: '/packages' }, { label: '套系编辑', to: null }], ret: { label: '返回', to: '/packages' } },
   { pattern: '/schedule', crumbs: [{ label: '档期', to: '/schedule' }] },
   { pattern: '/orders', crumbs: [{ label: '订单中心', to: '/orders' }] },
-  { pattern: '/orders/:id', crumbs: [{ label: '预约管理', to: '/appointments' }, { label: '订单详情', to: null }] },
+  { pattern: '/orders/:id', crumbs: [{ label: '订单中心', to: '/orders' }, { label: '订单详情', to: null }] },
   { pattern: '/appointments', crumbs: [{ label: '预约管理', to: '/appointments' }] },
   { pattern: '/reviews', crumbs: [{ label: '评价审核', to: '/reviews' }] },
   { pattern: '/settings', crumbs: [{ label: '资料设置', to: '/settings' }] },
