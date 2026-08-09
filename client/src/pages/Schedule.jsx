@@ -19,7 +19,6 @@ const BLUE = '#2890F0';
 const ADV_BG = '#222222';
 const LEGEND_UNPAID = '#FFE880';
 const LEGEND_WAIT = '#90DD90';
-const COUNT_BG = '#e4393c';
 
 // 订单状态说明（全部 8 状态色块，严格按 spec 色号）
 const STATUS_LEGEND = [
@@ -62,7 +61,7 @@ export default function Schedule() {
   const [pendMap, setPendMap] = useState({});
   const [personnel, setPersonnel] = useState([]);
   const [lunarMap, setLunarMap] = useState({});
-  const [selDate, setSelDate] = useState('');
+  const [selDate, setSelDate] = useState(`${init.getFullYear()}-${pad(init.getMonth() + 1)}-${pad(init.getDate())}`);
   const [err, setErr] = useState('');
   const [advOpen, setAdvOpen] = useState(false);
   const [accOpen, setAccOpen] = useState(false); // 筛选账号弹窗
@@ -141,6 +140,7 @@ export default function Schedule() {
   const dayRows = selDate ? (map[selDate] || []) : [];
   const dayPends = selDate ? (pendMap[selDate] || []) : [];
   const selParts = selDate ? selDate.split('-') : [];
+  const selClosed = selDate ? (map[selDate] || []).some((r) => r.status === 'closed') : false;
 
   return (
     <div className="-mx-6 -my-6 min-h-screen" style={{ background: PAGE_BG }}>
@@ -242,8 +242,8 @@ export default function Schedule() {
                       </div>
                       {/* 农历 */}
                       {lunar && <div className={'text-[10px] leading-tight ' + (st.kind === 'closed' ? 'text-[#999999]' : 'text-[#888888]')}>{lunar}</div>}
-                      {/* 关闭态提示 */}
-                      {st.kind === 'closed' && <div className="mt-1 text-[11px] text-[#999999]">档期已关闭</div>}
+                      {/* 关闭态提示（底部） */}
+                      {st.kind === 'closed' && <div className="mt-auto text-[11px] text-[#999999]">档期已关闭</div>}
                       {/* 预约/档期信息 */}
                       {st.kind !== 'closed' && st.orderRows[0] && (
                         <div className="mt-1"><div className="text-xs truncate" style={{ color: '#7a1f3d' }}>{st.orderRows[0].order_customer || st.orderRows[0].order_no}</div></div>
@@ -253,15 +253,19 @@ export default function Schedule() {
                       )}
                       {pends.length > 0 && <div className="mt-1 text-[10px] truncate" style={{ color: '#b9742a' }}>待确认 ×{pends.length}</div>}
                       {rows.length > 1 && <div className="text-[10px] mt-0.5" style={{ color: '#888888' }}>+{rows.length - 1} 档期</div>}
-                      {/* 底部：左下角 +添加 / 右下角 订单数量 */}
-                      <div className="mt-auto flex items-end justify-between gap-1 pt-1">
-                        <button onClick={(e) => { e.stopPropagation(); openNew(day); }}
-                          className="inline-flex items-center gap-0.5 px-2 py-1 text-white text-[11px] hover:opacity-90"
-                          style={{ background: BLUE }}>+ 添加</button>
-                        {st.orderRows.length > 0 && (
-                          <span className="shrink-0 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-medium text-white" style={{ background: COUNT_BG }}>{st.orderRows.length}</span>
-                        )}
-                      </div>
+                      {/* 底部：左下角 +添加（关闭格不显示）/ 右下角 订单数量「X单」 */}
+                      {(st.kind !== 'closed' || st.orderRows.length > 0) && (
+                        <div className="mt-auto flex items-end justify-between gap-1 pt-1">
+                          {st.kind !== 'closed' && (
+                            <button onClick={(e) => { e.stopPropagation(); openNew(day); }}
+                              className="inline-flex items-center gap-0.5 px-2 py-1 text-white text-[11px] hover:opacity-90"
+                              style={{ background: BLUE }}>+ 添加</button>
+                          )}
+                          {st.orderRows.length > 0 && (
+                            <span className="shrink-0 text-[11px] font-medium" style={{ color: '#333333' }}>{st.orderRows.length}单</span>
+                          )}
+                        </div>
+                      )}
                     </div>
                   );
                 })}
@@ -270,20 +274,21 @@ export default function Schedule() {
           </div>
         </div>
 
-        {/* 右侧固定悬浮深色侧边面板（非卡片，直角） */}
-        <div className="w-full p-4 lg:w-[280px] lg:flex-none lg:sticky lg:top-4 lg:self-start lg:max-h-[calc(100vh-2rem)] lg:overflow-auto border border-[#222]" style={{ background: PANEL_BG }}>
-          <div className="text-sm mb-2 text-center" style={{ color: '#ffffff' }}>{y}年{m}月</div>
-          <div className="flex justify-center mb-3">
-            <div className="w-16 h-16 flex items-center justify-center" style={{ background: DATE_CIRCLE }}>
-              <span className="text-2xl font-bold" style={{ color: '#ffffff' }}>{selParts[2] || '--'}</span>
+        {/* 右侧固定悬浮深色侧边面板（非卡片，直角；flex 列布局使 +添加档期 固定在底部） */}
+        <div className="w-full lg:w-[280px] lg:flex-none lg:sticky lg:top-4 lg:self-start lg:max-h-[calc(100vh-2rem)] flex flex-col border border-[#222]" style={{ background: PANEL_BG }}>
+          <div className="p-4">
+            <div className="text-sm mb-2 text-center" style={{ color: '#ffffff' }}>{y}年{m}月</div>
+            <div className="flex justify-center mb-3">
+              <div className="w-16 h-16 flex items-center justify-center" style={{ background: DATE_CIRCLE }}>
+                <span className="text-2xl font-bold" style={{ color: '#ffffff' }}>{selParts[2] || '--'}</span>
+              </div>
             </div>
+            <div className="text-xs mb-3 text-center" style={{ color: '#ffffff' }}>{selDate ? (lunarMap[selDate] || '') : ''}</div>
+            <div className="border-t" style={{ borderColor: 'rgba(255,255,255,0.25)' }} />
           </div>
-          <div className="text-xs mb-3 text-center" style={{ color: '#ffffff' }}>{selDate ? (lunarMap[selDate] || '') : '点击日历选择日期'}</div>
-          <div className="border-t mb-3" style={{ borderColor: 'rgba(255,255,255,0.12)' }} />
 
-          <div className="max-h-[52vh] overflow-auto mb-3">
-            {!selDate && <div className="text-xs py-6 text-center" style={{ color: '#ffffff' }}>点击左侧日历日期，查看当日档期安排。</div>}
-            {selDate && dayRows.length === 0 && dayPends.length === 0 && <div className="text-xs py-6 text-center" style={{ color: '#ffffff' }}>无档期安排</div>}
+          <div className="px-4 flex-1 overflow-auto mb-3">
+            {dayRows.length === 0 && dayPends.length === 0 && <div className="text-xs py-6 text-center" style={{ color: '#ffffff' }}>无档期安排</div>}
 
             {dayRows.map((s) => (
               <div key={s.id} className="flex items-start justify-between p-3 mb-2" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }}>
@@ -317,7 +322,9 @@ export default function Schedule() {
             ))}
           </div>
 
-          <button onClick={() => openNew(selDate ? Number(selDate.slice(8, 10)) : null)} className="w-full px-3 py-2 text-white text-sm hover:opacity-90" style={{ background: BLUE }}>+ 添加档期</button>
+          <div className="p-4">
+            <button onClick={selClosed ? undefined : () => openNew(selDate ? Number(selDate.slice(8, 10)) : null)} disabled={selClosed} className="w-full px-3 py-2 text-white text-sm hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed" style={{ background: BLUE }}>+ 添加档期</button>
+          </div>
         </div>
       </div>
 
