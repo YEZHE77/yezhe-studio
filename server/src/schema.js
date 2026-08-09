@@ -368,7 +368,8 @@ export async function initSchema() {
     ['raw_policy', 'TEXT'],
     ['duration', 'TEXT'],
     ['questionnaire', 'TEXT'],
-    ['specs', 'TEXT'] // 多规格配置（同一套系多个版本，独立价格/服务）
+    ['specs', 'TEXT'], // 多规格配置（同一套系多个版本，独立价格/服务）
+    ['details', 'TEXT'] // 4-Tab 套系编辑页（2026-08-09）聚合存储：详情图/视频/价格隐藏/退订政策/问卷可见性/服务模板/加片/标签/协议等
   ];
   for (const [col, def] of PACKAGES_NEW_COLUMNS) await ensureColumn('packages', col, def);
   await ensureColumn('schedules', 'lunar_date', 'TEXT');

@@ -5,7 +5,7 @@ import { authRequired, requireRole } from '../auth.js';
 import { parseRow } from '../schema.js';
 
 const router = Router();
-const JSON_COLS = ['addons', 'marketing', 'questionnaire', 'specs'];
+const JSON_COLS = ['addons', 'marketing', 'questionnaire', 'specs', 'details'];
 
 // 列表（状态筛选 + 分类筛选 + 搜索）
 router.get('/', authRequired, async (req, res) => {
@@ -99,17 +99,22 @@ router.get('/:id/orders', authRequired, async (req, res) => {
 router.post('/', authRequired, requireRole(['admin', 'photographer']), async (req, res) => {
   try {
     const b = req.body;
+    const details = (b.details && typeof b.details === 'object') ? b.details : {};
+    // 与既有 questionnaire 文本列保持兼容：4-Tab 页面把问卷模板放在 details.questionnaire
+    const questionnaire = Array.isArray(details.questionnaire)
+      ? JSON.stringify(details.questionnaire)
+      : (b.questionnaire || '');
     const id = await insert(
-      `INSERT INTO packages (name, price, category_id, cover_url, description, addons, marketing, status, sort, deposit, retouch_count, raw_policy, duration, questionnaire, specs)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+      `INSERT INTO packages (name, price, category_id, cover_url, description, addons, marketing, status, sort, deposit, retouch_count, raw_policy, duration, questionnaire, specs, details)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
       [
         b.name || '未命名套系', parseFloat(b.price) || 0, b.category_id || null,
         b.cover_url || '', b.description || '',
         JSON.stringify(b.addons || []), JSON.stringify(b.marketing || {}),
         b.status || 'on', parseInt(b.sort) || 0,
         parseFloat(b.deposit) || 0, parseInt(b.retouch_count) || 0,
-        b.raw_policy || '', b.duration || '', b.questionnaire || '',
-        JSON.stringify(sanitizeSpecs(b.specs))
+        b.raw_policy || '', b.duration || '', questionnaire,
+        JSON.stringify(sanitizeSpecs(b.specs)), JSON.stringify(details)
       ]
     );
     res.json({ id });
@@ -125,8 +130,13 @@ router.put('/:id', authRequired, requireRole(['admin', 'photographer']), async (
     // 数值字段：前端未传或传空字符串时，回退到当前值，避免 NaN 进数据库
     const toFloat = (v, fallback) => (v === '' || v === null || v === undefined || Number.isNaN(parseFloat(v))) ? fallback : parseFloat(v);
     const toInt = (v, fallback) => (v === '' || v === null || v === undefined || Number.isNaN(parseInt(v, 10))) ? fallback : parseInt(v, 10);
+    const curDetails = parseRow(cur, JSON_COLS).details || {};
+    const details = (b.details && typeof b.details === 'object') ? b.details : curDetails;
+    const questionnaire = Array.isArray(details.questionnaire)
+      ? JSON.stringify(details.questionnaire)
+      : (b.questionnaire ?? cur.questionnaire);
     await run(
-      `UPDATE packages SET name=?, price=?, category_id=?, cover_url=?, description=?, addons=?, marketing=?, status=?, sort=?, deposit=?, retouch_count=?, raw_policy=?, duration=?, questionnaire=?, specs=?
+      `UPDATE packages SET name=?, price=?, category_id=?, cover_url=?, description=?, addons=?, marketing=?, status=?, sort=?, deposit=?, retouch_count=?, raw_policy=?, duration=?, questionnaire=?, specs=?, details=?
        WHERE id=?`,
       [
         b.name ?? cur.name, toFloat(b.price, cur.price), b.category_id ?? cur.category_id,
@@ -135,8 +145,9 @@ router.put('/:id', authRequired, requireRole(['admin', 'photographer']), async (
         JSON.stringify(b.marketing ?? (cur.marketing ? JSON.parse(cur.marketing) : {})),
         b.status ?? cur.status, toInt(b.sort, cur.sort),
         toFloat(b.deposit, cur.deposit), toInt(b.retouch_count, cur.retouch_count),
-        b.raw_policy ?? cur.raw_policy, b.duration ?? cur.duration, b.questionnaire ?? cur.questionnaire,
+        b.raw_policy ?? cur.raw_policy, b.duration ?? cur.duration, questionnaire,
         JSON.stringify(sanitizeSpecs(b.specs ?? (cur.specs ? JSON.parse(cur.specs) : []))),
+        JSON.stringify(details),
         req.params.id
       ]
     );
@@ -168,14 +179,15 @@ router.post('/:id/duplicate', authRequired, requireRole(['admin', 'photographer'
     if (!cur) return res.status(404).json({ error: '套系不存在' });
     const c = parseRow(cur, JSON_COLS);
     const id = await insert(
-      `INSERT INTO packages (name, price, category_id, cover_url, description, addons, marketing, status, sort, deposit, retouch_count, raw_policy, duration, questionnaire, specs)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+      `INSERT INTO packages (name, price, category_id, cover_url, description, addons, marketing, status, sort, deposit, retouch_count, raw_policy, duration, questionnaire, specs, details)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
       [
         c.name + ' 副本', c.price, c.category_id, c.cover_url, c.description,
         JSON.stringify(c.addons || []), JSON.stringify(c.marketing || {}),
         'off', (parseInt(c.sort) || 0) + 1,
         c.deposit || 0, c.retouch_count || 0, c.raw_policy || '', c.duration || '',
-        JSON.stringify(c.questionnaire || ''), JSON.stringify(c.specs || [])
+        JSON.stringify(c.questionnaire || ''), JSON.stringify(c.specs || []),
+        JSON.stringify(c.details || {})
       ]
     );
     res.json({ id });

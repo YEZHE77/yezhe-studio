@@ -288,7 +288,7 @@ export default function Packages() {
 
       {/* 深色顶部操作栏 */}
       <div className="flex items-center gap-3 px-4 py-2.5 rounded-lg flex-wrap" style={{ background: '#333333' }}>
-        <button onClick={openNew}
+        <button onClick={() => nav('/packages/new')}
           className="px-4 py-2 rounded text-sm whitespace-nowrap"
           style={{ background: '#2f7cf6', color: '#fff' }}>+ 新建套系</button>
         <span className="text-xs" style={{ color: '#cfcfcf' }}>您目前没有上线的促销/拼团活动…</span>
@@ -378,7 +378,7 @@ export default function Packages() {
                   {/* 右侧图标按钮组：分享｜编辑｜下架｜删除 */}
                   <div className="flex items-center gap-0.5 ml-auto shrink-0 self-center">
                     <IconBtn title="分享" onClick={() => openShareQr(p)}><IconShare /></IconBtn>
-                    <IconBtn title="编辑" onClick={() => openEdit(p)}><IconEdit /></IconBtn>
+                    <IconBtn title="编辑" onClick={() => nav('/packages/' + p.id + '/edit')}><IconEdit /></IconBtn>
                     <IconBtn title={off ? '上架' : '下架'} onClick={() => toggleStatus(p)}>
                       {off ? <IconEye /> : <IconEyeOff />}
                     </IconBtn>

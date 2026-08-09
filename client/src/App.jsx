@@ -14,6 +14,7 @@ const Works = React.lazy(() => import('./pages/Works.jsx'));
 const Categories = React.lazy(() => import('./pages/Categories.jsx'));
 const WorkDetail = React.lazy(() => import('./pages/WorkDetail.jsx'));
 const Packages = React.lazy(() => import('./pages/Packages.jsx'));
+const PackageEdit = React.lazy(() => import('./pages/PackageEdit.jsx'));
 const Schedule = React.lazy(() => import('./pages/Schedule.jsx'));
 const Orders = React.lazy(() => import('./pages/Orders.jsx'));
 const OrderDetail = React.lazy(() => import('./pages/OrderDetail.jsx'));
@@ -58,6 +59,8 @@ function AppShell() {
                 <Route path="/categories" element={<Categories />} />
                 <Route path="/works/:id" element={<WorkDetail />} />
                 <Route path="/packages" element={<Packages />} />
+                <Route path="/packages/new" element={<PackageEdit />} />
+                <Route path="/packages/:id/edit" element={<PackageEdit />} />
                 <Route path="/schedule" element={<Schedule />} />
                 <Route path="/orders" element={<Orders />} />
                 <Route path="/orders/:id" element={<OrderDetail />} />
