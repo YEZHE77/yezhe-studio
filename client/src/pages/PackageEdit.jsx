@@ -11,12 +11,16 @@ import http, { img, uploadImage, uploadBatch } from '../api.js';
    —— 不写死任何分类 / 货币 / 标签来源，全部来自后端；新字段聚合在 details JSON，旧列（price/deposit/...）仍兼容。
    ========================================================================== */
 
-const BRAND = '#2f7cf6';
-const TEAL = '#7ecdbb';
-const PAGE_BG = '#F7F7F7';
+const BRAND = '#2185D0';
+const SAVE = '#2196F3';
+const PAGE_BG = '#F8F8F8';
 const YELLOW = '#FFFDE8';
-const YELLOW_BORDER = '#f0e6a8';
-const RED = '#e4393c';
+const YELLOW_BORDER = '#CCCCCC';
+const DASH = '#CCCCCC';
+const RED = '#E53935';
+const NOTE = '#777777';
+const CANCEL_BG = '#E2E2E2';
+const TEAL = '#81C784';
 
 const PRESET_TAGS = ['婚纱类', '亲子类', '写真类', '旅拍类', '情侣类', '婚礼类', '创意类', '其他', '新生儿', '婚礼策划', '美妆'];
 const SVC_PARAMS = ['单规格服务', '多规格服务'];
@@ -88,7 +92,7 @@ function Switch({ checked, onChange, disabled }) {
   return (
     <button type="button" disabled={disabled} onClick={() => onChange(!checked)}
       className="relative inline-flex h-5 w-9 items-center rounded-full transition-colors shrink-0"
-      style={{ background: checked ? BRAND : '#d6d9de', opacity: disabled ? 0.5 : 1 }}>
+      style={{ background: checked ? SAVE : '#AAAAAA', opacity: disabled ? 0.5 : 1 }}>
       <span className="inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform"
         style={{ transform: checked ? 'translateX(18px)' : 'translateX(2px)' }} />
     </button>
@@ -131,7 +135,7 @@ function Field({ label, required, hint, children }) {
       <div className="w-36 shrink-0 pt-2 text-right" style={{ color: '#1f2329' }}>
         <span className="text-sm">{label}</span>
         {required && <span style={{ color: RED }}> *</span>}
-        {hint && <div className="text-xs mt-0.5" style={{ color: '#9ca3af' }}>{hint}</div>}
+        {hint && <div className="text-xs mt-0.5" style={{ color: NOTE }}>{hint}</div>}
       </div>
       <div className="flex-1 min-w-0">{children}</div>
     </div>
@@ -305,28 +309,27 @@ export default function PackageEdit() {
   const d = form.details;
 
   return (
-    <div className="-mx-6 -my-6 min-h-screen flex flex-col bg-[#F7F7F7]" style={{ background: PAGE_BG }}>
-      {/* Tab 栏（顶部，选中黑字白底 / 未选灰字灰底） */}
-      <div className="px-6 pt-4 flex gap-1">
-        {TABS.map((t, i) => (
-          <button key={t} type="button" onClick={() => setTab(i)}
-            className="px-5 py-2.5 text-sm rounded-t-md transition-colors"
-            style={{
-              background: tab === i ? '#ffffff' : '#ececec',
-              color: tab === i ? '#1f2329' : '#888888',
-              fontWeight: tab === i ? 700 : 400,
-              border: tab === i ? '1px solid #e5e7eb' : '1px solid transparent',
-              borderBottom: tab === i ? '1px solid #ffffff' : '1px solid transparent'
-            }}>
-            {t}
-          </button>
-        ))}
-      </div>
+    <div className="-mx-6 -my-6 min-h-screen flex flex-col" style={{ background: PAGE_BG }}>
+      {/* 白色卡片容器：Tab 栏 + 全部 Tab 内容 */}
+      <form onSubmit={submit} className="flex-1 flex flex-col m-6 mb-0 bg-white rounded-lg overflow-hidden"
+        style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+        {/* Tab 栏：选中=白底黑字，未选=#F2F2F2底 #666字 */}
+        <div className="flex gap-1 px-4 pt-4">
+          {TABS.map((t, i) => (
+            <button key={t} type="button" onClick={() => setTab(i)}
+              className="px-5 py-2.5 text-sm rounded-t-md transition-colors"
+              style={{
+                background: tab === i ? '#ffffff' : '#F2F2F2',
+                color: tab === i ? '#1f2329' : '#666666',
+                fontWeight: tab === i ? 700 : 400
+              }}>
+              {t}
+            </button>
+          ))}
+        </div>
 
-      {/* Tab 内容：独立白色表单面板 */}
-      <div className="flex-1 px-6 pb-6">
-        <form onSubmit={submit} className="bg-white rounded-lg p-6 md:p-8"
-          style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+        {/* 卡片内容区 */}
+        <div className="flex-1 px-6 py-6 md:px-8 md:py-8">
           {errors.length > 0 && (
             <div className="mb-5 px-3 py-2 rounded-lg text-sm" style={{ background: '#fff1f0', color: RED, border: '1px solid #ffccc7' }}>
               请完善必填项：{errors.join('、')}
@@ -340,14 +343,14 @@ export default function PackageEdit() {
               <Field label="套系封面" required>
                 <div className="flex items-center gap-4">
                   <label className="relative w-32 h-32 rounded-lg border-2 border-dashed flex items-center justify-center cursor-pointer overflow-hidden shrink-0"
-                    style={{ borderColor: '#d0d3d9', background: '#fff' }}>
+                    style={{ borderColor: DASH, background: '#fff' }}>
                     {form.cover_url
                       ? <img src={img(form.cover_url)} alt="" className="w-full h-full object-cover" />
                       : <span className="w-12 h-12 rounded-full flex items-center justify-center" style={{ background: '#f0f2f5', color: '#9aa0a8' }}><IconPlus width={22} height={22} /></span>}
                     <input type="file" accept="image/*" onChange={onCover} className="hidden" />
                   </label>
                   <div className="flex flex-col gap-2">
-                    <span className="text-xs" style={{ color: '#9ca3af' }}>{uploading === 'cover' ? '上传中…' : '点击虚线框上传封面'}</span>
+                    <span className="text-xs" style={{ color: NOTE }}>{uploading === 'cover' ? '上传中…' : '点击虚线框上传封面'}</span>
                     {form.cover_url && (
                       <button type="button" onClick={() => setF({ cover_url: '' })}
                         className="text-xs px-3 py-1.5 rounded-lg border border-line text-muted hover:border-brand w-fit">移除</button>
@@ -395,14 +398,14 @@ export default function PackageEdit() {
                   ))}
                   {form.details.detail_images.length < 80 && (
                     <label className="w-24 h-24 rounded-lg border-2 border-dashed flex flex-col items-center justify-center gap-1 cursor-pointer hover:border-brand"
-                      style={{ borderColor: '#d0d3d9', color: '#9ca3af' }}>
+                      style={{ borderColor: DASH, color: NOTE }}>
                       <span className="w-9 h-9 rounded-full flex items-center justify-center" style={{ background: '#f0f2f5', color: '#9aa0a8' }}><IconPlus /></span>
                       <span className="text-[11px]">{uploading === 'images' ? '上传中' : '上传样片'}</span>
                       <input type="file" accept="image/*" multiple onChange={onDetailImages} className="hidden" />
                     </label>
                   )}
                 </div>
-                <div className="mt-1 text-xs" style={{ color: '#9ca3af' }}>{form.details.detail_images.length}/80张</div>
+                <div className="mt-1 text-xs" style={{ color: NOTE }}>{form.details.detail_images.length}/80张</div>
               </Field>
 
               {/* 套系视频 */}
@@ -517,7 +520,7 @@ export default function PackageEdit() {
                   <Switch checked={d.questionnaire_verify_phone} onChange={(v) => setD({ questionnaire_verify_phone: v })} />
                   <span className="text-sm" style={{ color: '#6b7280' }}>验证手机号</span>
                 </div>
-                <div className="mt-1 text-xs" style={{ color: '#9ca3af' }}>*开启后，需验证手机号方可进入填写问卷。</div>
+                <div className="mt-1 text-xs" style={{ color: NOTE }}>*开启后，需验证手机号方可进入填写问卷。</div>
               </div>
             </div>
           )}
@@ -526,9 +529,9 @@ export default function PackageEdit() {
           {tab === 2 && (
             <div className="max-w-2xl">
               {/* 绿色顶部分隔 + 标题 */}
-              <div className="flex items-center gap-2 mb-4">
-                <span className="inline-block w-1 h-4 rounded" style={{ background: TEAL }} />
-                <span className="font-medium" style={{ color: '#1f2329' }}>标准服务模板</span>
+              <div className="mb-4">
+                <div className="border-t-2 mb-3" style={{ borderColor: TEAL }} />
+                <div className="font-medium" style={{ color: '#1f2329' }}>标准服务模板</div>
               </div>
 
               {/* 浅黄色虚线模块 */}
@@ -649,7 +652,7 @@ export default function PackageEdit() {
                     <option>指定客户</option>
                   </select>
                 </div>
-                <div className="mt-1 text-xs" style={{ color: '#9ca3af' }}>*套系将公开展示在小程序和网站中，对所有客户可见</div>
+                <div className="mt-1 text-xs" style={{ color: NOTE }}>*套系将公开展示在小程序和网站中，对所有客户可见</div>
               </Field>
 
               {/* 咨询提醒 */}
@@ -658,7 +661,7 @@ export default function PackageEdit() {
                   <Switch checked={d.consult_reminder} onChange={(v) => setD({ consult_reminder: v })} />
                   <span className="text-sm" style={{ color: '#6b7280' }}>显示</span>
                 </div>
-                <div className="mt-1 text-xs" style={{ color: '#9ca3af' }}>*开启后，「咨询提醒」将在小程序和网站套系详情页中展示</div>
+                <div className="mt-1 text-xs" style={{ color: NOTE }}>*开启后，「咨询提醒」将在小程序和网站套系详情页中展示</div>
               </Field>
 
               {/* 温馨提示 */}
@@ -704,16 +707,16 @@ export default function PackageEdit() {
                 className="text-sm font-medium" style={{ color: BRAND }}>下一步 &gt;</button>
             </div>
           )}
-        </form>
-      </div>
+        </div>
+      </form>
 
       {/* 底部固定按钮：取消（左） / 保存（右，蓝） */}
       <div className="sticky bottom-0 z-20 flex items-center justify-between px-6 py-3 border-t"
         style={{ background: PAGE_BG, borderColor: '#e5e5e5' }}>
         <button type="button" onClick={() => nav('/packages')}
-          className="px-5 py-2 rounded-lg text-sm border border-line text-fg hover:border-brand bg-white">取消</button>
+          className="px-5 py-2 rounded-lg text-sm hover:opacity-90" style={{ background: CANCEL_BG, color: '#333333' }}>取消</button>
         <button type="button" onClick={submit} disabled={saving}
-          className="px-6 py-2 rounded-lg text-sm text-white disabled:opacity-60" style={{ background: BRAND }}>
+          className="px-6 py-2 rounded-lg text-sm text-white disabled:opacity-60" style={{ background: SAVE }}>
           {saving ? '保存中…' : '保存'}
         </button>
       </div>
