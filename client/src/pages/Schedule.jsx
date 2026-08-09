@@ -688,7 +688,7 @@ function OrderDialog({ orderDlg, personnel, onClose, onSaved }) {
   const [pkgId, setPkgId] = useState('');
   const [pkgPrice, setPkgPrice] = useState('');
   const [deposit, setDeposit] = useState('');
-  const [payStatus, setPayStatus] = useState('deposit');
+  const [payStatus, setPayStatus] = useState('');
   const [extras, setExtras] = useState([]); // { name, amount }
   const [location, setLocation] = useState('');
   const [remark, setRemark] = useState('');
@@ -754,6 +754,7 @@ function OrderDialog({ orderDlg, personnel, onClose, onSaved }) {
     if (!pkgId) return setLocalErr('请选择套系名称');
     if (!pkgPrice || parseFloat(pkgPrice) <= 0) return setLocalErr('请填写套系价格');
     if (!deposit || parseFloat(deposit) <= 0) return setLocalErr('请填写套系定金');
+    if (!payStatus) return setLocalErr('请选择收款状态');
     if (payStatus === 'deposit' && parseFloat(deposit) <= 0) return setLocalErr('收款状态为「已付定金」时，定金必须大于 0');
     if (chooseSession && slots.length === 0) return setLocalErr('请选择场次时间段');
     const payload = {
@@ -794,7 +795,7 @@ function OrderDialog({ orderDlg, personnel, onClose, onSaved }) {
   const slotLabel = (s) => s === HALF ? '半天' : s === FULL ? '全天' : s;
 
   // 关闭逻辑（规范 十五）：遮罩不关闭；X 点击时若已填内容则二次确认
-  const isDirty = () => !!(orderName.trim() || customerName.trim() || phones.some((p) => p.trim()) || shootDate || pkgId || pkgPrice || deposit || payStatus !== 'deposit' || remark.trim() || location.trim() || channelId || executors.length || extras.length || slots.length || dateTbd);
+  const isDirty = () => !!(orderName.trim() || customerName.trim() || phones.some((p) => p.trim()) || shootDate || pkgId || pkgPrice || deposit || payStatus !== '' || remark.trim() || location.trim() || channelId || executors.length || extras.length || slots.length || dateTbd);
   const requestClose = () => {
     if (isDirty()) {
       if (!window.confirm('确定放弃当前填写的内容吗？')) return;
@@ -842,9 +843,8 @@ function OrderDialog({ orderDlg, personnel, onClose, onSaved }) {
             style={{ right: 0, fontSize: 24, lineHeight: 1, color: '#999999' }}>×</button>
         </div>
 
-        {/* ===== 区块 1：顾客信息 ===== */}
         {/* ===== 区块 1：顾客信息卡片 ===== */}
-        <div style={{ border: `1px solid ${MODAL_BORDER}`, borderRadius: 3, padding: '18px 20px', marginBottom: 16 }}>
+        <div style={{ border: `1px solid ${MODAL_BORDER}`, borderRadius: 3, padding: '18px 20px', marginBottom: 16, minHeight: 90 }}>
           <div className="flex items-center" style={{ gap: 12 }}>
             {/* 默认头像 48×48 */}
             <div className="shrink-0 rounded-full flex items-center justify-center"
@@ -914,21 +914,27 @@ function OrderDialog({ orderDlg, personnel, onClose, onSaved }) {
               日期待定
             </label>
           </div>
+        </div>
 
-          {/* 套系（必填） */}
-          <div style={{ marginTop: 16 }}>
-            <div style={{ fontSize: 13, color: '#666666', marginBottom: 6 }}><Star />套系名称</div>
-            <PackagePicker pkgList={pkgList} value={pkgId} onPick={onPickPackage} />
-            <div style={{ fontSize: 13, color: '#666666', marginBottom: 6, marginTop: 12 }}><Star />套系价格</div>
-            <input value={pkgPrice} onChange={(e) => setPkgPrice(e.target.value)} placeholder="套系价格" className="placeholder-[#B5B5B5]" style={{ ...FIELD, borderColor: MODAL_BORDER }} />
-            <div style={{ fontSize: 13, color: '#666666', marginBottom: 6, marginTop: 12 }}><Star />套系定金</div>
-            <input value={deposit} onChange={(e) => setDeposit(e.target.value)} placeholder="套系定金" className="placeholder-[#B5B5B5]" style={{ ...FIELD, borderColor: MODAL_BORDER }} />
-            {pkgList.find((p) => String(p.id) === String(pkgId)) && (
-              <div style={{ marginTop: 10, fontSize: 12, color: '#999999' }}>
-                已同步默认配置：拍摄时长 {pkgList.find((p) => String(p.id) === String(pkgId)).duration || '—'} · 精修片 {pkgList.find((p) => String(p.id) === String(pkgId)).retouch_count || '—'}
-              </div>
-            )}
+        {/* ===== 套系选择（独立区块） ===== */}
+        <div style={{ border: `1px solid ${MODAL_BORDER}`, borderRadius: 3, padding: '18px 20px', marginBottom: 16 }}>
+          <div style={{ fontSize: 13, color: '#666666', marginBottom: 6 }}><Star />套系名称</div>
+          <PackagePicker pkgList={pkgList} value={pkgId} onPick={onPickPackage} />
+          <div className="grid grid-cols-2" style={{ gap: 16, marginTop: 12 }}>
+            <div>
+              <div style={{ fontSize: 13, color: '#666666', marginBottom: 6 }}><Star />套系价格</div>
+              <input value={pkgPrice} onChange={(e) => setPkgPrice(e.target.value)} placeholder="套系价格" className="placeholder-[#B5B5B5]" style={{ ...FIELD, borderColor: MODAL_BORDER }} />
+            </div>
+            <div>
+              <div style={{ fontSize: 13, color: '#666666', marginBottom: 6 }}><Star />套系定金</div>
+              <input value={deposit} onChange={(e) => setDeposit(e.target.value)} placeholder="套系定金" className="placeholder-[#B5B5B5]" style={{ ...FIELD, borderColor: MODAL_BORDER }} />
+            </div>
           </div>
+          {pkgList.find((p) => String(p.id) === String(pkgId)) && (
+            <div style={{ marginTop: 10, fontSize: 12, color: '#999999' }}>
+              已同步默认配置：拍摄时长 {pkgList.find((p) => String(p.id) === String(pkgId)).duration || '—'} · 精修片 {pkgList.find((p) => String(p.id) === String(pkgId)).retouch_count || '—'}
+            </div>
+          )}
         </div>
 
         {/* ===== 区块 3：收款状态 + 其他消费 ===== */}
