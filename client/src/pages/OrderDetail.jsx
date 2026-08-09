@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import http, { img } from '../api.js';
+import http, { img, uploadBatch } from '../api.js';
 import bgm from '../bgm.js';
 import Slideshow from '../components/Slideshow.jsx';
 
@@ -16,6 +16,27 @@ const STAGE_COLOR = {
 const TYPE_LABEL = { deposit: '定金', balance: '尾款', extra: '加片/增值', refund: '退款' };
 const PAY_STATUS_LABEL = { unpaid: '未付定金', deposit: '已付定金', paid: '已付全款' };
 const PAY_STATUS_COLOR = { unpaid: 'text-red-400', deposit: 'text-amber-400', paid: 'text-emerald-400' };
+
+// 订单详情 11 步流程进度条（由 status + 关键标记派生，不新建接口）
+const ORDER_STEPS = [
+  { key: 'created', label: '订单生成' },
+  { key: 'contract', label: '生成合同' },
+  { key: 'confirm', label: '沟通确认' },
+  { key: 'shoot', label: '拍摄执行' },
+  { key: 'shot_end', label: '拍摄结束' },
+  { key: 'select', label: '选片精修' },
+  { key: 'preview', label: '预告片输出' },
+  { key: 'retouch', label: '全部精修完成' },
+  { key: 'raw_pack', label: '原片打包' },
+  { key: 'deliver', label: '统一交付' },
+  { key: 'done', label: '订单完结' }
+];
+const STATUS_STEP = { deposit: 2, shot: 4, selecting: 5, retouching: 7, delivered: 9, completed: 10 };
+function computeStep(detail) {
+  if (!detail) return 0;
+  if (detail.status === 'cancelled') return -1;
+  return STATUS_STEP[detail.status] ?? 2;
+}
 
 function asArr(v) {
   if (Array.isArray(v)) return v;
@@ -44,6 +65,17 @@ export default function OrderDetail() {
   const [slidePhotos, setSlidePhotos] = useState([]);
   const [notFound, setNotFound] = useState(false);
 
+  // 新增：图片管理（原片 / 精修片 真实上传）+ 选片复用 photo_select
+  const [photos, setPhotos] = useState({ raw: [], retouched: [] });
+  const [imgTab, setImgTab] = useState('raw');
+  const [uploading, setUploading] = useState({ raw: false, retouched: false });
+  // 底部 Tab
+  const [bottomTab, setBottomTab] = useState('status');
+  // 分享订单小程序二维码（复用 /api/orders/:id/mini-qr）
+  const [miniQr, setMiniQr] = useState(null);
+  const [miniQrLoading, setMiniQrLoading] = useState(false);
+  const [moreMenu, setMoreMenu] = useState(false);
+
   const loadSel = useCallback((oid) => {
     http.get('/api/admin/photo-select/' + oid).then((r) => setSel(r.data)).catch(() => setSel(null));
   }, []);
@@ -63,6 +95,13 @@ export default function OrderDetail() {
     return () => ctrl.abort();
   }, []);
   useEffect(() => () => { bgm.pause(); }, []);
+
+  // 订单图片（原片/精修片）随订单初始化一次（同 id 不覆盖本地编辑）
+  useEffect(() => {
+    if (detail && detail.order_photos) {
+      setPhotos({ raw: asArr(detail.order_photos.raw), retouched: asArr(detail.order_photos.retouched) });
+    }
+  }, [detail && detail.id]);
 
   function openSlideSel() {
     if (!sel || !sel.photos.length) return;
@@ -128,6 +167,13 @@ export default function OrderDetail() {
     await http.put('/api/orders/' + detail.id, { status: STAGE_SEQ[idx + 1] });
     reload();
   }
+  // 完成拍摄：直接置为「已拍摄」
+  async function finishShoot() {
+    if (!detail) return;
+    if (detail.status !== 'deposit' && !confirm('当前阶段非「已付定金」，确认直接标记为已拍摄？')) return;
+    try { await http.put('/api/orders/' + detail.id, { status: 'shot' }); reload(); }
+    catch (e2) { alert((e2.response && e2.response.data && e2.response.data.error) || '操作失败'); }
+  }
   async function cancel() {
     const reason = prompt('作废原因（选填）');
     if (reason === null) return;
@@ -167,6 +213,45 @@ export default function OrderDetail() {
     if (!share) return;
     navigator.clipboard?.writeText(share.share_url);
     alert('分享链接已复制：\n' + share.share_url);
+  }
+  // 分享订单：生成微信小程序风格二维码（复用后端 /mini-qr）
+  async function openMiniQr() {
+    if (!detail) return;
+    setMiniQrLoading(true); setMiniQr(null);
+    try {
+      const r = await http.post('/api/orders/' + detail.id + '/mini-qr');
+      setMiniQr(r.data.qr_url || '');
+    } catch (e) { alert((e.response && e.response.data && e.response.data.error) || '生成失败'); }
+    finally { setMiniQrLoading(false); }
+  }
+  function closeMiniQr() { setMiniQr(null); }
+
+  // —— 图片管理：原片 / 精修片 真实上传（复用现有分片上传，不新建接口） ——
+  async function addPhotos(kind, fileList) {
+    if (!fileList || !fileList.length) return;
+    setUploading((u) => ({ ...u, [kind]: true }));
+    try {
+      const category = kind === 'raw' ? 'raw-negative' : 'retouched';
+      const res = await uploadBatch(Array.from(fileList), { category, isPublic: false, concurrency: 3 });
+      const urls = (res.urls || []).filter(Boolean);
+      if (!urls.length) { if ((res.failed || []).some(Boolean)) alert('上传失败：' + (res.failed || []).filter(Boolean).join('；')); return; }
+      const next = { ...photos, [kind]: [...photos[kind], ...urls] };
+      setPhotos(next);
+      await http.put('/api/orders/' + detail.id, { order_photos: JSON.stringify(next) });
+    } catch (e) { alert((e && e.message) || '上传失败'); }
+    finally { setUploading((u) => ({ ...u, [kind]: false })); }
+  }
+  async function removePhoto(kind, url) {
+    const next = { ...photos, [kind]: photos[kind].filter((u) => u !== url) };
+    setPhotos(next);
+    try { await http.put('/api/orders/' + detail.id, { order_photos: JSON.stringify(next) }); }
+    catch (e) { alert('保存失败'); }
+  }
+  function downloadFile(url) {
+    if (!url) return;
+    const a = document.createElement('a');
+    a.href = url; a.target = '_blank'; a.rel = 'noopener'; a.download = '';
+    document.body.appendChild(a); a.click(); a.remove();
   }
 
   const pkgInfo = useMemo(() => {
@@ -215,323 +300,337 @@ export default function OrderDetail() {
   const extraSum = extras.reduce((s, x) => s + (Number(x.amount) || 0), 0);
   const tbd = Number(detail.date_tbd) === 1;
   const payKey = detail.payment_status || 'deposit';
+  const curStep = computeStep(detail);
+  const logText = (detail.logs || []).map((l) => l.text || '').join(' ');
+  const isStepDone = (i) => {
+    if (curStep < 0) return false;
+    if (i > curStep) return false;
+    if (i === 1 && !logText.includes('合同')) return false; // 生成合同需日志
+    if (i === 8 && photos.raw.length === 0) return false;   // 原片打包需有原片
+    return true;
+  };
+
+  // 下载记录：原片 + 精修片 + 选片
+  const downloadItems = [
+    ...photos.raw.map((u) => ({ url: u, kind: '原片' })),
+    ...photos.retouched.map((u) => ({ url: u, kind: '精修片' })),
+    ...(sel && sel.photos ? sel.photos.map((p) => ({ url: p.photo_url, kind: '选片' })) : [])
+  ];
 
   return (
-    <div className="max-w-5xl mx-auto">
+    <div className="max-w-6xl mx-auto">
       {/* 面包屑 + 返回 */}
       <div className="text-xs text-muted mb-1">
         <button onClick={() => nav('/orders')} className="hover:text-brand">工作台 &gt; 订单中心</button>
         <span className="mx-1">&gt;</span>
         <span className="text-fg">订单详情</span>
       </div>
-      <div className="flex items-center justify-between mb-4">
-        <h1 className="text-2xl font-semibold text-fg">{detail.order_name || detail.order_no}</h1>
-        <button onClick={() => nav('/orders')} className="px-3 py-1.5 rounded border border-line bg-white text-muted text-sm hover:text-fg">← 返回列表</button>
-      </div>
 
-      <div className="bg-panel border border-line rounded-xl2 p-5 mb-4">
-        <div className="flex items-start justify-between gap-4 flex-wrap">
+      {/* 顶部浅绿色顶边横线 */}
+      <div className="rounded-xl2 overflow-hidden border border-line bg-panel">
+        <div style={{ height: 4, background: '#7ecdbb' }} />
+
+        {/* 订单编号 + 状态 */}
+        <div className="flex items-center justify-between gap-4 flex-wrap px-5 pt-4">
           <div>
-            <div className="text-xs text-faint mb-1">订单编号：{detail.order_no}</div>
-            <div className="text-sm text-muted">
-              {(detail.groom_name || detail.bride_name) ? (
-                <>
-                  {detail.groom_name && <span className="mr-3">新郎：{detail.groom_name}</span>}
-                  {detail.bride_name && <span>新娘：{detail.bride_name}</span>}
-                </>
-              ) : detail.customer_name}
-            </div>
-            {detail.openid && <div className="text-[11px] text-sky-400 mt-1">C端客户 · {detail.openid}</div>}
+            <h1 className="text-2xl font-semibold text-fg">{detail.order_name || detail.order_no}</h1>
+            <div className="text-xs text-faint mt-1">订单编号：{detail.order_no}</div>
           </div>
           <span className="px-3 py-1 rounded-full text-xs bg-panel2 border border-line text-muted">
             {detail.status === 'deposit' && detail.payment_status === 'unpaid' ? '未付定金' : (STATUS_LABEL[detail.status] || '历史订单')}
           </span>
         </div>
 
-        {/* 阶段时间线 */}
-        <div className="flex items-center gap-1 mt-5 overflow-x-auto">
-          {STAGE_SEQ.map((s, i) => {
-            const cur = STAGE_SEQ.indexOf(detail.status);
-            const active = i <= cur;
-            return (
-              <React.Fragment key={s}>
-                <div className={'flex flex-col items-center ' + (active ? '' : 'opacity-40')}>
-                  <div className={'w-3 h-3 rounded-full ' + (active ? STAGE_COLOR[s] : 'bg-line')} />
-                  <span className="text-[10px] text-muted mt-1 whitespace-nowrap">
-                    {s === 'deposit' && detail.payment_status === 'unpaid' ? '未付定金' : STATUS_LABEL[s]}
-                  </span>
-                </div>
-                {i < STAGE_SEQ.length - 1 && <div className={'flex-1 h-0.5 ' + (i < cur ? STAGE_COLOR[s] : 'bg-line')} />}
-              </React.Fragment>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* 金额 */}
-      <div className="grid grid-cols-3 gap-3 mb-4">
-        <div className="bg-panel border border-line rounded-xl2 p-4"><div className="text-xs text-muted">应收</div><div className="text-fg text-lg font-semibold">¥{total.toLocaleString()}</div></div>
-        <div className="bg-panel border border-line rounded-xl2 p-4"><div className="text-xs text-muted">已收</div><div className="text-emerald-400 text-lg font-semibold">¥{paid.toLocaleString()}</div></div>
-        <div className="bg-panel border border-line rounded-xl2 p-4"><div className="text-xs text-muted">待收 / 退款</div><div className="text-fg text-lg font-semibold">{refundAmt > 0 ? '退¥' + refundAmt.toLocaleString() : '¥' + remain.toLocaleString()}</div></div>
-      </div>
-
-      {/* 操作 */}
-      <div className="flex flex-wrap gap-2 mb-4">
-        <button onClick={advance} disabled={detail.status === 'completed' || detail.status === 'cancelled'}
-          className="px-3 py-1.5 rounded bg-brand text-white text-xs disabled:opacity-40">推进阶段</button>
-        <button onClick={() => setPay({ type: 'deposit', amount: '', method: 'offline', note: '' })}
-          className="px-3 py-1.5 rounded bg-white border border-line text-fg text-xs hover:border-brand">+ 收款</button>
-        <button onClick={refund} className="px-3 py-1.5 rounded bg-white border border-line text-amber-400 text-xs">退款</button>
-        <button onClick={cancel} className="px-3 py-1.5 rounded bg-white border border-line text-red-400 text-xs">作废</button>
-        <button onClick={openEdit} className="px-3 py-1.5 rounded bg-white border border-line text-fg text-xs hover:border-brand">编辑</button>
-        <button onClick={openShare} disabled={shareBusy}
-          className="px-3 py-1.5 rounded bg-white border border-line text-sky-400 text-xs disabled:opacity-40">分享客户影集</button>
-        {!detail.is_deleted ? (
-          <button onClick={removeOrder} className="px-3 py-1.5 rounded bg-white border border-line text-red-400 text-xs">删除</button>
-        ) : (
-          <>
-            <button onClick={restoreOrder} className="px-3 py-1.5 rounded bg-white border border-line text-emerald-400 text-xs">恢复</button>
-            <button onClick={purgeOrder} className="px-3 py-1.5 rounded bg-white border border-line text-red-400 text-xs">彻底删除</button>
-          </>
-        )}
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* 订单资料 */}
-        <div className="bg-panel border border-line rounded-xl2 p-4 text-sm space-y-2.5">
-          <div className="text-fg font-medium">订单资料</div>
-          {detail.order_name && (
-            <div className="flex gap-2"><span className="text-muted shrink-0 w-16">订单名称</span><span className="text-fg flex-1 break-all">{detail.order_name}</span></div>
-          )}
-          <div className="flex gap-2">
-            <span className="text-muted shrink-0 w-16">联系电话</span>
-            <span className="flex-1 flex flex-wrap gap-1.5">
-              {phoneList.length === 0 ? <span className="text-muted">—</span> : phoneList.map((p, i) => (
-                <a key={i} href={'tel:' + p} className="px-1.5 py-0.5 rounded bg-panel2 border border-line text-fg text-xs hover:text-brand">{p}</a>
-              ))}
-            </span>
+        {/* 11 步流程进度条 */}
+        <div className="px-5 py-5">
+          <div className="flex items-center gap-1 overflow-x-auto">
+            {ORDER_STEPS.map((s, i) => {
+              const done = isStepDone(i);
+              const current = i === curStep && curStep >= 0;
+              return (
+                <React.Fragment key={s.key}>
+                  <div className={'flex flex-col items-center ' + (done ? '' : 'opacity-50')}>
+                    <div className={'w-3.5 h-3.5 rounded-full flex items-center justify-center ' + (done ? 'bg-brand' : 'bg-line') + (current ? ' ring-2 ring-brand/40' : '')}>
+                      {done && i === curStep && <span className="w-1.5 h-1.5 rounded-full bg-white" />}
+                    </div>
+                    <span className={'text-[10px] mt-1 whitespace-nowrap ' + (current ? 'text-brand font-medium' : 'text-muted')}>{s.label}</span>
+                  </div>
+                  {i < ORDER_STEPS.length - 1 && <div className={'flex-1 h-0.5 min-w-[12px] ' + (i < curStep ? 'bg-brand' : 'bg-line')} />}
+                </React.Fragment>
+              );
+            })}
           </div>
-          <div className="flex gap-2">
-            <span className="text-muted shrink-0 w-16">档期时间</span>
-            <span className="flex-1">
-              {tbd ? (
-                <span className="px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-400 text-xs border border-amber-500/20">日期待定（不占用日历档期）</span>
-              ) : (
+        </div>
+
+        {/* 主体：左侧垂直按钮组 + 右侧内容 */}
+        <div className="flex gap-4 px-5 pb-5 items-start">
+          {/* 左侧垂直按钮组 */}
+          <div className="flex flex-col items-stretch gap-2 w-32 shrink-0">
+            <button onClick={finishShoot} disabled={detail.status === 'cancelled'}
+              className="px-3 py-2 rounded-lg bg-brand text-white text-sm disabled:opacity-40">完成拍摄</button>
+            <div className="relative">
+              <button onClick={openMiniQr} disabled={miniQrLoading}
+                className="w-full px-3 py-2 rounded-lg bg-white border border-line text-fg text-sm hover:border-brand disabled:opacity-40">分享订单</button>
+              {miniQr !== null && (
                 <>
-                  <span className="text-fg">{detail.shoot_date || '—'}</span>
-                  {slots.length > 0 && (
-                    <span className="flex flex-wrap gap-1 mt-1">
-                      {slots.map((h, i) => (<span key={i} className="px-1.5 py-0.5 rounded bg-panel2 border border-line text-fg text-[11px]">{h}</span>))}
-                    </span>
-                  )}
+                  <div className="fixed inset-0 z-40 bg-black/30" onClick={closeMiniQr} />
+                  <div onClick={(e) => e.stopPropagation()}
+                    className="absolute bottom-full right-0 mb-2 z-50 w-60 bg-white rounded-xl p-4 shadow-2xl">
+                    <div className="text-fg font-medium mb-2">订单二维码</div>
+                    {miniQr ? (
+                      <img src={miniQr} alt="订单二维码" className="w-44 h-44 mx-auto rounded-lg" />
+                    ) : (
+                      <div className="text-muted text-sm py-8 text-center">生成中…</div>
+                    )}
+                    <div className="text-[11px] text-muted text-center mt-2">微信扫码查看订单（右键 / 长按可保存）</div>
+                  </div>
                 </>
               )}
-            </span>
-          </div>
-          <div className="flex gap-2">
-            <span className="text-muted shrink-0 w-16">收款状态</span>
-            <span className={'flex-1 ' + (PAY_STATUS_COLOR[payKey] || 'text-fg')}>{PAY_STATUS_LABEL[payKey] || payKey}</span>
-          </div>
-          {extras.length > 0 && (
-            <div className="flex gap-2">
-              <span className="text-muted shrink-0 w-16">其他消费</span>
-              <span className="flex-1 space-y-1">
-                {extras.map((x, i) => (
-                  <span key={i} className="flex items-center justify-between text-xs">
-                    <span className="text-fg">{x.name}</span>
-                    <span className="text-emerald-400">+¥{Number(x.amount || 0).toLocaleString()}</span>
-                  </span>
-                ))}
-                <span className="flex items-center justify-between text-xs border-t border-line pt-1">
-                  <span className="text-muted">小计</span><span className="text-fg">¥{extraSum.toLocaleString()}</span>
-                </span>
-              </span>
             </div>
-          )}
-          {detail.channel && (
-            <div className="flex gap-2">
-              <span className="text-muted shrink-0 w-16">渠道来源</span>
-              <span className="flex-1"><span className="px-1.5 py-0.5 rounded bg-sky-500/15 text-sky-400 text-xs border border-sky-500/20">{detail.channel}</span></span>
+            <button onClick={cancel} className="px-3 py-2 rounded-lg bg-white border border-line text-red-400 text-sm">关闭订单</button>
+            <div className="relative">
+              <button onClick={() => setMoreMenu((m) => !m)}
+                className="w-full px-3 py-2 rounded-lg bg-white border border-line text-fg text-sm hover:border-brand">更多设置</button>
+              {moreMenu && (
+                <div className="absolute top-full right-0 mt-1 z-50 w-36 bg-white border border-line rounded-lg shadow-xl py-1 text-sm">
+                  <button onClick={() => { setMoreMenu(false); openEdit(); }} className="block w-full text-left px-3 py-2 hover:bg-panel2">编辑订单</button>
+                  <button onClick={() => { setMoreMenu(false); setPay({ type: 'deposit', amount: '', method: 'offline', note: '' }); }} className="block w-full text-left px-3 py-2 hover:bg-panel2">+ 收款</button>
+                  <button onClick={() => { setMoreMenu(false); refund(); }} className="block w-full text-left px-3 py-2 hover:bg-panel2">退款</button>
+                  {!detail.is_deleted
+                    ? <button onClick={() => { setMoreMenu(false); removeOrder(); }} className="block w-full text-left px-3 py-2 hover:bg-panel2 text-red-400">删除</button>
+                    : <button onClick={() => { setMoreMenu(false); restoreOrder(); }} className="block w-full text-left px-3 py-2 hover:bg-panel2 text-emerald-400">恢复</button>}
+                </div>
+              )}
             </div>
-          )}
-          {(execs.length > 0 || detail.executor) && (
-            <div className="flex gap-2">
-              <span className="text-muted shrink-0 w-16">参与者</span>
-              <span className="flex-1 flex flex-wrap gap-2">
-                {execs.length > 0 ? execs.map((p, i) => (
-                  <span key={i} className="flex items-center gap-1.5 px-1.5 py-0.5 rounded-full bg-panel2 border border-line">
-                    {p.avatar ? <img src={img(p.avatar)} alt="" className="w-5 h-5 rounded-full object-cover" />
-                      : <span className="w-5 h-5 rounded-full bg-brand/20 text-brand text-[10px] flex items-center justify-center">{String(p.name || '?').slice(0, 1)}</span>}
-                    <span className="text-fg text-xs">{p.name}</span>
-                  </span>
-                )) : <span className="text-fg text-xs">{detail.executor}</span>}
-              </span>
-            </div>
-          )}
-          {detail.address && (
-            <div className="flex gap-2"><span className="text-muted shrink-0 w-16">拍摄地点</span><span className="text-fg flex-1 break-all">{detail.address}</span></div>
-          )}
-          <div className="flex gap-2">
-            <span className="text-muted shrink-0 w-16">备注</span>
-            <span className="text-fg flex-1 whitespace-pre-line break-all">{detail.remark || '无'}</span>
           </div>
-        </div>
 
-        {/* 套系信息 */}
-        {pkgInfo && pkgInfo.name && pkgInfo.name !== '—' && (
-          <div className="bg-panel border border-line rounded-xl2 p-4 text-sm">
-            <div className="text-fg font-medium mb-2">套系信息</div>
-            <div className="flex gap-3 mb-3">
-              {pkgInfo.cover_url && <img src={img(pkgInfo.cover_url)} alt="cover" className="w-20 h-20 rounded-lg object-cover border border-line flex-shrink-0" />}
-              <div className="flex-1 min-w-0">
-                <div className="text-base text-fg font-semibold mb-1">{pkgInfo.name}</div>
-                {pkgInfo.spec && pkgInfo.spec.name && <div className="text-xs text-emerald-400 mb-1.5">已选规格：{pkgInfo.spec.name}</div>}
-                <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs">
-                  {pkgInfo.price !== undefined && pkgInfo.price !== '' && (
-                    <div><span className="text-muted">套系总价</span> <span className="text-fg ml-1">¥{Number(pkgInfo.price || 0).toLocaleString()}</span></div>
-                  )}
-                  {pkgInfo.deposit !== undefined && pkgInfo.deposit !== '' && (
-                    <div><span className="text-muted">定金</span> <span className="text-fg ml-1">¥{Number(pkgInfo.deposit || 0).toLocaleString()}</span></div>
-                  )}
-                </div>
-              </div>
+          {/* 右侧内容列 */}
+          <div className="flex-1 min-w-0 space-y-4">
+            {/* 金额 */}
+            <div className="grid grid-cols-3 gap-3">
+              <div className="bg-panel2 border border-line rounded-xl2 p-4"><div className="text-xs text-muted">应收</div><div className="text-fg text-lg font-semibold">¥{total.toLocaleString()}</div></div>
+              <div className="bg-panel2 border border-line rounded-xl2 p-4"><div className="text-xs text-muted">已收</div><div className="text-emerald-400 text-lg font-semibold">¥{paid.toLocaleString()}</div></div>
+              <div className="bg-panel2 border border-line rounded-xl2 p-4"><div className="text-xs text-muted">待收 / 退款</div><div className="text-fg text-lg font-semibold">{refundAmt > 0 ? '退¥' + refundAmt.toLocaleString() : '¥' + remain.toLocaleString()}</div></div>
             </div>
-            {pkgInfo.marketing && Object.keys(pkgInfo.marketing).length > 0 && (
-              <div className="flex flex-wrap gap-1.5 mb-3">
-                {pkgInfo.marketing.tag && <span className="px-2 py-0.5 rounded bg-amber-500/15 text-amber-400 text-xs border border-amber-500/20">{pkgInfo.marketing.tag}</span>}
-                {pkgInfo.marketing.hot && <span className="px-2 py-0.5 rounded bg-red-500/15 text-red-400 text-xs border border-red-500/20">热门</span>}
-                {pkgInfo.marketing.recommend && <span className="px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-400 text-xs border border-emerald-500/20">推荐</span>}
-              </div>
-            )}
-            <div className="grid grid-cols-2 gap-2 text-xs mb-2">
-              {pkgInfo.duration !== undefined && pkgInfo.duration !== '' && (
-                <div><span className="text-muted">拍摄时长</span> <span className="text-fg ml-1">{pkgInfo.duration}</span></div>
-              )}
-              {pkgInfo.retouch_count !== undefined && pkgInfo.retouch_count !== '' && (
-                <div><span className="text-muted">精修张数</span> <span className="text-fg ml-1">{pkgInfo.retouch_count}</span></div>
-              )}
-              {pkgInfo.raw_policy !== undefined && pkgInfo.raw_policy !== '' && (
-                <div className="col-span-2"><span className="text-muted">底片政策</span> <span className="text-fg ml-1">{pkgInfo.raw_policy}</span></div>
-              )}
-            </div>
-            {pkgInfo.description && <div className="text-xs text-muted whitespace-pre-line leading-relaxed mt-2">{pkgInfo.description}</div>}
-            {pkgInfo.specs.length > 0 && (
-              <div className="mt-3">
-                <div className="text-xs text-muted mb-1.5">可选规格</div>
-                <div className="space-y-1.5">
-                  {pkgInfo.specs.map((s, i) => {
-                    const active = pkgInfo.spec && pkgInfo.spec.name === s.name;
-                    return (
-                      <div key={i} className={'flex items-center justify-between px-2 py-1.5 rounded text-xs border ' + (active ? 'border-emerald-500/40 bg-emerald-500/10' : 'border-line bg-panel2')}>
-                        <span className={active ? 'text-emerald-400' : 'text-fg'}>{s.name}{active ? '（已选）' : ''}</span>
-                        <span className="text-muted">¥{Number(s.price || 0).toLocaleString()}</span>
-                      </div>
-                    );
-                  })}
+
+            {/* 客户与订单基础信息卡片 */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <div className="bg-panel border border-line rounded-xl2 p-4 text-sm space-y-2.5">
+                <div className="text-fg font-medium">客户与订单信息</div>
+                {(detail.groom_name || detail.bride_name) ? (
+                  <div className="flex gap-2"><span className="text-muted shrink-0 w-16">客户</span>
+                    <span className="text-fg flex-1">{[detail.groom_name, detail.bride_name].filter(Boolean).join(' & ')}</span></div>
+                ) : detail.customer_name && (
+                  <div className="flex gap-2"><span className="text-muted shrink-0 w-16">客户</span><span className="text-fg flex-1">{detail.customer_name}</span></div>
+                )}
+                <div className="flex gap-2">
+                  <span className="text-muted shrink-0 w-16">联系电话</span>
+                  <span className="flex-1 flex flex-wrap gap-1.5">
+                    {phoneList.length === 0 ? <span className="text-muted">—</span> : phoneList.map((p, i) => (
+                      <a key={i} href={'tel:' + p} className="px-1.5 py-0.5 rounded bg-panel2 border border-line text-fg text-xs hover:text-brand">{p}</a>
+                    ))}
+                  </span>
                 </div>
-              </div>
-            )}
-            {pkgInfo.addons.length > 0 && (
-              <div className="mt-3">
-                <div className="text-xs text-muted mb-1">增值服务</div>
-                <div className="flex flex-wrap gap-1">
-                  {pkgInfo.addons.map((a, i) => (
-                    <span key={i} className="px-2 py-0.5 rounded bg-panel2 text-fg text-xs border border-line">
-                      {a.name}{a.price ? ` +¥${Number(a.price).toLocaleString()}` : ''}
+                <div className="flex gap-2">
+                  <span className="text-muted shrink-0 w-16">档期时间</span>
+                  <span className="flex-1">
+                    {tbd ? <span className="px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-400 text-xs border border-amber-500/20">日期待定（不占用日历档期）</span>
+                      : <><span className="text-fg">{detail.shoot_date || '—'}</span>
+                        {slots.length > 0 && <span className="flex flex-wrap gap-1 mt-1">{slots.map((h, i) => (<span key={i} className="px-1.5 py-0.5 rounded bg-panel2 border border-line text-fg text-[11px]">{h}</span>))}</span>}</>}
+                  </span>
+                </div>
+                <div className="flex gap-2">
+                  <span className="text-muted shrink-0 w-16">收款状态</span>
+                  <span className={'flex-1 ' + (PAY_STATUS_COLOR[payKey] || 'text-fg')}>{PAY_STATUS_LABEL[payKey] || payKey}</span>
+                </div>
+                {execs.length > 0 && (
+                  <div className="flex gap-2">
+                    <span className="text-muted shrink-0 w-16">参与者</span>
+                    <span className="flex-1 flex flex-wrap gap-2">
+                      {execs.map((p, i) => (
+                        <span key={i} className="flex items-center gap-1.5 px-1.5 py-0.5 rounded-full bg-panel2 border border-line">
+                          {p.avatar ? <img src={img(p.avatar)} alt="" className="w-5 h-5 rounded-full object-cover" />
+                            : <span className="w-5 h-5 rounded-full bg-brand/20 text-brand text-[10px] flex items-center justify-center">{String(p.name || '?').slice(0, 1)}</span>}
+                          <span className="text-fg text-xs">{p.name}</span>
+                        </span>
+                      ))}
                     </span>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* 客户问卷 */}
-      {detail.package_snapshot && Array.isArray(detail.package_snapshot.questionnaire) && detail.package_snapshot.questionnaire.length > 0 && (() => {
-        let ans = {};
-        try { ans = detail.questionnaire_answers ? (typeof detail.questionnaire_answers === 'string' ? JSON.parse(detail.questionnaire_answers) : detail.questionnaire_answers) : {}; } catch { ans = {}; }
-        const qs = detail.package_snapshot.questionnaire;
-        return (
-          <div className="bg-panel border border-line rounded-xl2 p-4 mt-4">
-            <div className="text-fg font-medium mb-2">客户问卷</div>
-            <div className="space-y-2">
-              {qs.map((q, i) => (
-                <div key={i} className="text-sm">
-                  <div className="text-muted">{i + 1}. {q.q}{q.required ? ' *' : ''}</div>
-                  <div className="text-fg mt-0.5">
-                    {ans[i] !== undefined && ans[i] !== '' && !(Array.isArray(ans[i]) && ans[i].length === 0)
-                      ? (Array.isArray(ans[i]) ? ans[i].join('、') : ans[i])
-                      : <span className="text-muted">（未填写）</span>}
                   </div>
+                )}
+                {detail.address && <div className="flex gap-2"><span className="text-muted shrink-0 w-16">拍摄地点</span><span className="text-fg flex-1 break-all">{detail.address}</span></div>}
+                <div className="flex gap-2">
+                  <span className="text-muted shrink-0 w-16">备注</span>
+                  <span className="text-fg flex-1 whitespace-pre-line break-all">{detail.remark || '无'}</span>
                 </div>
-              ))}
-            </div>
-          </div>
-        );
-      })()}
+              </div>
 
-      {/* 选片结果 */}
-      <div className="bg-panel border border-line rounded-xl2 p-4 mt-4">
-        <div className="text-xs text-muted mb-2 flex items-center justify-between">
-          <span className="text-fg font-medium text-sm">选片结果</span>
-          <div className="flex items-center gap-2">
-            <button onClick={openSlideSel} disabled={!sel || !sel.photos.length}
-              className="px-2 py-1 rounded border border-line bg-white text-xs text-fg hover:text-brand hover:border-brand disabled:opacity-40">▶ 播放</button>
-            {sel && sel.selection && (
-              <span className={sel.selection.submitted ? 'text-emerald-400' : 'text-amber-400'}>{sel.selection.submitted ? '已提交' : '草稿'}</span>
-            )}
-          </div>
-        </div>
-        {!sel && <div className="text-muted text-sm py-2">加载中…</div>}
-        {sel && !sel.selection && <div className="text-muted text-sm py-2">该订单暂无客户选片</div>}
-        {sel && sel.selection && (
-          <>
-            <div className="grid grid-cols-4 md:grid-cols-6 gap-2 mb-3">
-              {sel.photos.map((p) => {
-                const on = sel.selection.marks.includes(p.photo_url);
-                return (
-                  <button key={p.id} onClick={() => toggleSel(p.photo_url)}
-                    className={'relative rounded-lg overflow-hidden border ' + (on ? 'border-brand' : 'border-line')}>
-                    <img src={img(p.photo_url)} className="w-full h-20 object-cover" />
-                    <span className={'absolute top-1 right-1 w-4 h-4 rounded-full text-[10px] flex items-center justify-center ' + (on ? 'bg-brand text-white' : 'bg-black/50 text-white')}>{on ? '✓' : ''}</span>
+              {/* 套系信息 */}
+              {pkgInfo && pkgInfo.name && pkgInfo.name !== '—' && (
+                <div className="bg-panel border border-line rounded-xl2 p-4 text-sm">
+                  <div className="text-fg font-medium mb-2">套系信息</div>
+                  <div className="flex gap-3 mb-3">
+                    {pkgInfo.cover_url && <img src={img(pkgInfo.cover_url)} alt="cover" className="w-20 h-20 rounded-lg object-cover border border-line flex-shrink-0" />}
+                    <div className="flex-1 min-w-0">
+                      <div className="text-base text-fg font-semibold mb-1">{pkgInfo.name}</div>
+                      {pkgInfo.spec && pkgInfo.spec.name && <div className="text-xs text-emerald-400 mb-1.5">已选规格：{pkgInfo.spec.name}</div>}
+                      <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs">
+                        {pkgInfo.price !== undefined && pkgInfo.price !== '' && (<div><span className="text-muted">套系总价</span> <span className="text-fg ml-1">¥{Number(pkgInfo.price || 0).toLocaleString()}</span></div>)}
+                        {pkgInfo.deposit !== undefined && pkgInfo.deposit !== '' && (<div><span className="text-muted">定金</span> <span className="text-fg ml-1">¥{Number(pkgInfo.deposit || 0).toLocaleString()}</span></div>)}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 text-xs mb-2">
+                    {pkgInfo.duration !== undefined && pkgInfo.duration !== '' && (<div><span className="text-muted">拍摄时长</span> <span className="text-fg ml-1">{pkgInfo.duration}</span></div>)}
+                    {pkgInfo.retouch_count !== undefined && pkgInfo.retouch_count !== '' && (<div><span className="text-muted">精修张数</span> <span className="text-fg ml-1">{pkgInfo.retouch_count}</span></div>)}
+                    {pkgInfo.raw_policy !== undefined && pkgInfo.raw_policy !== '' && (<div className="col-span-2"><span className="text-muted">底片政策</span> <span className="text-fg ml-1">{pkgInfo.raw_policy}</span></div>)}
+                  </div>
+                  {pkgInfo.description && <div className="text-xs text-muted whitespace-pre-line leading-relaxed mt-2">{pkgInfo.description}</div>}
+                </div>
+              )}
+            </div>
+
+            {/* 浅米绿色服务详情信息条 */}
+            <div className="rounded-xl2 px-4 py-3 flex flex-wrap items-center gap-x-6 gap-y-1 text-sm"
+              style={{ background: '#eaf5ef', border: '1px solid #cfe9dd' }}>
+              <span className="text-emerald-700 font-medium">服务详情</span>
+              <span className="text-emerald-900/80">套系：{pkgInfo && pkgInfo.name && pkgInfo.name !== '—' ? pkgInfo.name : '—'}</span>
+              {pkgInfo && pkgInfo.duration !== undefined && pkgInfo.duration !== '' && <span className="text-emerald-900/80">拍摄时长：{pkgInfo.duration}</span>}
+              {pkgInfo && pkgInfo.retouch_count !== undefined && pkgInfo.retouch_count !== '' && <span className="text-emerald-900/80">精修：{pkgInfo.retouch_count} 张</span>}
+              {pkgInfo && pkgInfo.raw_policy !== undefined && pkgInfo.raw_policy !== '' && <span className="text-emerald-900/80">底片：{pkgInfo.raw_policy}</span>}
+            </div>
+
+            {/* 图片管理 Tab */}
+            <div className="bg-panel border border-line rounded-xl2">
+              <div className="flex border-b border-line">
+                {[{ k: 'raw', t: '原片' }, { k: 'sel', t: '选片' }, { k: 'retouched', t: '精修片' }].map((tb) => (
+                  <button key={tb.k} onClick={() => setImgTab(tb.k)}
+                    className={'px-5 py-3 text-sm border-b-2 -mb-px ' + (imgTab === tb.k ? 'border-brand text-brand font-medium' : 'border-transparent text-muted hover:text-fg')}>
+                    {tb.t}{tb.k === 'raw' ? `（${photos.raw.length}）` : tb.k === 'retouched' ? `（${photos.retouched.length}）` : ''}
                   </button>
-                );
-              })}
-              {sel.photos.length === 0 && <div className="col-span-full text-muted text-sm py-2">该订单无可选样片（需在作品相册中上传 sample 区照片）</div>}
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-muted">已选 {sel.selection.marks.length} 张</span>
-              <button onClick={saveSel} disabled={selSaving} className="px-3 py-1.5 rounded bg-brand text-white text-xs disabled:opacity-40">保存修改</button>
-            </div>
-          </>
-        )}
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4">
-        {/* 收款流水 */}
-        <div className="bg-panel border border-line rounded-xl2 p-4">
-          <div className="text-fg font-medium text-sm mb-2">收款流水</div>
-          {(!detail.payments || detail.payments.length === 0) && <div className="text-muted text-sm py-2">暂无流水</div>}
-          {detail.payments && detail.payments.map((p) => (
-            <div key={p.id} className="flex items-center justify-between border-b border-line py-2 text-sm">
-              <div>
-                <span className="text-fg">{TYPE_LABEL[p.type]}</span>
-                <span className="text-muted ml-2">{p.method === 'online' ? '线上' : '线下'}</span>
+                ))}
               </div>
-              <div className={p.type === 'refund' ? 'text-red-400' : 'text-emerald-400'}>
-                {p.type === 'refund' ? '-' : '+'}¥{Number(p.amount).toLocaleString()}
+              <div className="p-4">
+                {imgTab === 'raw' && (
+                  <PhotoZone kind="raw" title="原片" photos={photos.raw} uploading={uploading.raw}
+                    onAdd={(files) => addPhotos('raw', files)} onRemove={(u) => removePhoto('raw', u)} />
+                )}
+                {imgTab === 'sel' && (
+                  <div>
+                    <div className="text-xs text-muted mb-2 flex items-center justify-between">
+                      <span>选片（来自客户相册选片结果，可在此勾选确认）</span>
+                      {sel && sel.selection && <span className={sel.selection.submitted ? 'text-emerald-400' : 'text-amber-400'}>{sel.selection.submitted ? '已提交' : '草稿'}</span>}
+                    </div>
+                    {!sel && <div className="text-muted text-sm py-2">加载中…</div>}
+                    {sel && !sel.selection && <div className="text-muted text-sm py-2">该订单暂无客户选片</div>}
+                    {sel && sel.selection && (
+                      <>
+                        <div className="grid grid-cols-4 md:grid-cols-6 gap-2 mb-3">
+                          {sel.photos.map((p) => {
+                            const on = sel.selection.marks.includes(p.photo_url);
+                            return (
+                              <button key={p.id} onClick={() => toggleSel(p.photo_url)}
+                                className={'relative rounded-lg overflow-hidden border ' + (on ? 'border-brand' : 'border-line')}>
+                                <img src={img(p.photo_url)} className="w-full h-20 object-cover" />
+                                <span className={'absolute top-1 right-1 w-4 h-4 rounded-full text-[10px] flex items-center justify-center ' + (on ? 'bg-brand text-white' : 'bg-black/50 text-white')}>{on ? '✓' : ''}</span>
+                              </button>
+                            );
+                          })}
+                          {sel.photos.length === 0 && <div className="col-span-full text-muted text-sm py-2">该订单无可选样片（需在作品相册中上传 sample 区照片）</div>}
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs text-muted">已选 {sel.selection.marks.length} 张</span>
+                          <button onClick={saveSel} disabled={selSaving} className="px-3 py-1.5 rounded bg-brand text-white text-xs disabled:opacity-40">保存修改</button>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
+                {imgTab === 'retouched' && (
+                  <PhotoZone kind="retouched" title="精修片" photos={photos.retouched} uploading={uploading.retouched}
+                    onAdd={(files) => addPhotos('retouched', files)} onRemove={(u) => removePhoto('retouched', u)} />
+                )}
               </div>
             </div>
-          ))}
-        </div>
 
-        {/* 操作日志 */}
-        <div className="bg-panel border border-line rounded-xl2 p-4">
-          <div className="text-fg font-medium text-sm mb-2">操作日志</div>
-          <div className="text-xs text-muted space-y-1">
-            {(detail.logs || []).length === 0 && <div className="py-2">暂无日志</div>}
-            {(detail.logs || []).map((l, i) => (<div key={i}>· {new Date(l.t).toLocaleString('zh-CN')} {l.text}</div>))}
+            {/* 底部 Tab：订单状态详情 / 交易记录 / 下载记录 */}
+            <div className="bg-panel border border-line rounded-xl2">
+              <div className="flex border-b border-line">
+                {[{ k: 'status', t: '订单状态详情' }, { k: 'trade', t: '交易记录' }, { k: 'download', t: '下载记录' }].map((tb) => (
+                  <button key={tb.k} onClick={() => setBottomTab(tb.k)}
+                    className={'px-5 py-3 text-sm border-b-2 -mb-px ' + (bottomTab === tb.k ? 'border-brand text-brand font-medium' : 'border-transparent text-muted hover:text-fg')}>
+                    {tb.t}
+                  </button>
+                ))}
+              </div>
+              <div className="p-4 text-sm space-y-3">
+                {bottomTab === 'status' && (
+                  <>
+                    {detail.package_snapshot && Array.isArray(detail.package_snapshot.questionnaire) && detail.package_snapshot.questionnaire.length > 0 && (() => {
+                      let ans = {};
+                      try { ans = detail.questionnaire_answers ? (typeof detail.questionnaire_answers === 'string' ? JSON.parse(detail.questionnaire_answers) : detail.questionnaire_answers) : {}; } catch { ans = {}; }
+                      const qs = detail.package_snapshot.questionnaire;
+                      return (
+                        <div>
+                          <div className="text-fg font-medium mb-2">客户问卷</div>
+                          <div className="space-y-2">
+                            {qs.map((q, i) => (
+                              <div key={i}>
+                                <div className="text-muted">{i + 1}. {q.q}{q.required ? ' *' : ''}</div>
+                                <div className="text-fg mt-0.5">
+                                  {ans[i] !== undefined && ans[i] !== '' && !(Array.isArray(ans[i]) && ans[i].length === 0)
+                                    ? (Array.isArray(ans[i]) ? ans[i].join('、') : ans[i]) : <span className="text-muted">（未填写）</span>}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })()}
+                    <div>
+                      <div className="text-fg font-medium mb-2">操作日志</div>
+                      <div className="text-xs text-muted space-y-1">
+                        {(detail.logs || []).length === 0 && <div className="py-2">暂无日志</div>}
+                        {(detail.logs || []).map((l, i) => (<div key={i}>· {new Date(l.t).toLocaleString('zh-CN')} {l.text}</div>))}
+                      </div>
+                    </div>
+                  </>
+                )}
+                {bottomTab === 'trade' && (
+                  <div>
+                    <div className="text-fg font-medium mb-2">收款流水</div>
+                    {(!detail.payments || detail.payments.length === 0) && <div className="text-muted py-2">暂无流水</div>}
+                    {detail.payments && detail.payments.map((p) => (
+                      <div key={p.id} className="flex items-center justify-between border-b border-line py-2">
+                        <div>
+                          <span className="text-fg">{TYPE_LABEL[p.type]}</span>
+                          <span className="text-muted ml-2">{p.method === 'online' ? '线上' : '线下'}</span>
+                        </div>
+                        <div className={p.type === 'refund' ? 'text-red-400' : 'text-emerald-400'}>
+                          {p.type === 'refund' ? '-' : '+'}¥{Number(p.amount).toLocaleString()}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {bottomTab === 'download' && (
+                  <div>
+                    <div className="text-fg font-medium mb-2">可下载素材（原片 / 精修片 / 选片）</div>
+                    {downloadItems.length === 0 && <div className="text-muted py-2">暂无素材（请在上方可片/原片/精修片 Tab 上传）</div>}
+                    <div className="space-y-1">
+                      {downloadItems.map((it, i) => (
+                        <div key={i} className="flex items-center justify-between border-b border-line py-2">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className="px-1.5 py-0.5 rounded bg-panel2 border border-line text-[11px] text-muted shrink-0">{it.kind}</span>
+                            <span className="text-fg text-xs truncate">{it.url}</span>
+                          </div>
+                          <button onClick={() => downloadFile(it.url)} className="px-2 py-1 rounded border border-line text-xs text-fg hover:border-brand shrink-0">下载</button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -599,7 +698,7 @@ export default function OrderDetail() {
         </div>
       )}
 
-      {/* 分享二维码弹窗 */}
+      {/* 客户影集分享弹窗 */}
       {shareModal && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[80] p-4" onClick={() => setShareModal(false)}>
           <div onClick={(e) => e.stopPropagation()} className="w-full max-w-sm bg-panel border border-line rounded-xl2 p-6 text-center">
@@ -622,6 +721,41 @@ export default function OrderDetail() {
       )}
 
       <Slideshow photos={slidePhotos} open={slideOpen} onClose={closeSlideSel} title={detail.order_name || '订单相册'} />
+    </div>
+  );
+}
+
+// 图片上传区域（原片 / 精修片 真实上传）
+function PhotoZone({ kind, title, photos, uploading, onAdd, onRemove }) {
+  const inputRef = React.useRef(null);
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-3">
+        <span className="text-sm text-fg font-medium">{title}（{photos.length}）</span>
+        <button onClick={() => inputRef.current?.click()}
+          className="px-3 py-1.5 rounded bg-brand text-white text-xs disabled:opacity-40">
+          {uploading ? '上传中…' : '+ 上传' + title}
+        </button>
+        <input ref={inputRef} type="file" accept="image/*" multiple className="hidden"
+          onChange={(e) => { onAdd(e.target.files); e.target.value = ''; }} />
+      </div>
+      {photos.length === 0 && !uploading && (
+        <div className="border border-dashed border-line rounded-xl py-10 text-center text-muted text-sm cursor-pointer"
+          onClick={() => inputRef.current?.click()}>
+          <div className="text-3xl mb-1">+</div>
+          点击或拖拽上传{title}（支持批量）
+        </div>
+      )}
+      <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
+        {photos.map((u, i) => (
+          <div key={i} className="relative group">
+            <img src={img(u)} className="w-full h-28 object-cover rounded-lg border border-line" />
+            <button onClick={() => onRemove(u)}
+              className="absolute top-1 right-1 w-6 h-6 rounded-full bg-black/60 text-white text-xs flex items-center justify-center opacity-0 group-hover:opacity-100">✕</button>
+          </div>
+        ))}
+        {uploading && <div className="w-full h-28 rounded-lg border border-dashed border-line flex items-center justify-center text-muted text-xs">上传中…</div>}
+      </div>
     </div>
   );
 }

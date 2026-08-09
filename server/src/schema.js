@@ -322,6 +322,8 @@ export async function initSchema() {
   await ensureColumn('users', 'avatar', 'TEXT');
   // 客户绑定列 + 成片下载开关
   await ensureColumn('orders', 'openid', 'TEXT');
+  // 订单图片管理：原片 / 精修片 URL 列表（JSON：{raw:[...], retouched:[...]}），选片复用 photo_select
+  await ensureColumn('orders', 'order_photos', 'TEXT');
   await ensureColumn('works', 'allow_download', 'INTEGER NOT NULL DEFAULT 0');
   // 相册级配置（客户相册密码 / 自定义文案 / 有效期）——挂在作品维度（作品相册即交付客户的客片相册）
   await ensureColumn('works', 'album_copy', 'TEXT');

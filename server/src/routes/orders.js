@@ -9,7 +9,7 @@ import { authRequired, requireRole } from '../auth.js';
 import { parseRow } from '../schema.js';
 
 const router = Router();
-const JSON_COLS = ['package_snapshot', 'addons_snapshot', 'logs', 'phones', 'time_slots', 'extra_items', 'executors'];
+const JSON_COLS = ['package_snapshot', 'addons_snapshot', 'logs', 'phones', 'time_slots', 'extra_items', 'executors', 'order_photos'];
 
 function nowISO() { return new Date().toISOString(); }
 
@@ -262,16 +262,22 @@ router.put('/:id', authRequired, requireRole(['admin', 'photographer', 'finance'
     const date_tbd = b.date_tbd === undefined ? cur.date_tbd : (b.date_tbd ? 1 : 0);
     const shoot_date = date_tbd ? '' : (b.shoot_date ?? cur.shoot_date);
     const payment_status = PAYMENT_STATUS.includes(b.payment_status) ? b.payment_status : (cur.payment_status || 'deposit');
+    // 订单图片管理（原片 / 精修片 URL 列表），前端传字符串或对象统一转 JSON 文本落库
+    const orderPhotosText = b.order_photos === undefined
+      ? (cur.order_photos ?? null)
+      : (typeof b.order_photos === 'string' ? b.order_photos : JSON.stringify(b.order_photos));
     await run(
       `UPDATE orders SET customer_name=?, customer_phone=?, shoot_date=?, executor=?, remark=?, status=?,
         groom_name=?, bride_name=?, address=?,
-        order_name=?, phones=?, time_slots=?, extra_items=?, executors=?, channel=?, channel_id=?, date_tbd=?, payment_status=?
+        order_name=?, phones=?, time_slots=?, extra_items=?, executors=?, channel=?, channel_id=?, date_tbd=?, payment_status=?,
+        order_photos=?
        WHERE id=?`,
       [customer_name, firstPhone,
        shoot_date, execText, b.remark ?? cur.remark, status,
        groom, bride, b.address ?? cur.address,
        b.order_name ?? cur.order_name, phonesText, slotsText, extrasText, execsText,
        b.channel ?? cur.channel, b.channel_id ?? cur.channel_id, date_tbd, payment_status,
+       orderPhotosText,
        cur.id]
     );
     if (b.status && b.status !== cur.status) {

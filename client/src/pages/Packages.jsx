@@ -6,8 +6,8 @@ import { useViewState } from '../tabMemory.js';
 /* ==========================================================================
    套系页面（后台管理 → 套系）
    —— 视觉规范（严格按设计稿取色，禁止改动）：
-        页面底色 #ffffff ／ 深色操作栏 #2c2c2c ／ 橙色提示条 #fff3e0
-        主按钮蓝色 #2f7cf6 ／ 黑色按钮 #2c2c2c ／ 定金标签浅棕 #f3ece3/#9a8a76
+        页面底色 #ffffff ／ 深色操作栏 #333333 ／ 浅黄通知栏 #fff8e1＋橙色警示 #ff9f43
+        主按钮蓝色 #2f7cf6 ／ 黑色按钮 #2c2c2c ／ 定金普通文字 #555（格式：价格：¥xxxx｜定金：¥xxxx）
         负底栏深色区域白字一律用内联 style={{color:'#fff'}}（全局 .text-white 被覆写）
    —— 全部数据（套系列表 / 分类选项 / 搜索 / 状态）均由后端接口返回，禁止硬编码。
    —— 保留原有全部后端交互逻辑（新建/编辑/删除/下架/分享/溯源/复制/排序/导出），仅重构 UI。
@@ -32,6 +32,63 @@ const IconClose = (p) => (
     strokeLinecap="round" strokeLinejoin="round" {...p}>
     <path d="M18 6 6 18M6 6l12 12" />
   </svg>
+);
+const IconShare = (p) => (
+  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2"
+    strokeLinecap="round" strokeLinejoin="round" {...p}>
+    <circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" />
+    <path d="m8.6 13.5 6.8 4M15.4 6.5 8.6 10.5" />
+  </svg>
+);
+const IconEdit = (p) => (
+  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2"
+    strokeLinecap="round" strokeLinejoin="round" {...p}>
+    <path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
+  </svg>
+);
+const IconEye = (p) => (
+  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2"
+    strokeLinecap="round" strokeLinejoin="round" {...p}>
+    <path d="M2 12s3 8 10 8 10-8 10-8-3-8-10-8-10 8-10 8Z" /><circle cx="12" cy="12" r="3" />
+  </svg>
+);
+const IconEyeOff = (p) => (
+  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2"
+    strokeLinecap="round" strokeLinejoin="round" {...p}>
+    <path d="M9.9 4.2A9.8 9.8 0 0 1 12 4c7 0 10 8 10 8a13 13 0 0 1-2 2.7M6.6 6.6A13 13 0 0 0 2 12s3 8 10 8a9.6 9.6 0 0 0 5.4-1.6" />
+    <path d="m2 2 20 20" />
+  </svg>
+);
+const IconTrash = (p) => (
+  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2"
+    strokeLinecap="round" strokeLinejoin="round" {...p}>
+    <path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" />
+  </svg>
+);
+const IconList = (p) => (
+  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2"
+    strokeLinecap="round" strokeLinejoin="round" {...p}>
+    <path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" />
+  </svg>
+);
+const IconDiamond = (p) => (
+  <svg viewBox="0 0 24 24" width="11" height="11" fill="currentColor" {...p}>
+    <path d="M12 2 22 12 12 22 2 12Z" />
+  </svg>
+);
+const IconFilter = (p) => (
+  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2"
+    strokeLinecap="round" strokeLinejoin="round" {...p}>
+    <path d="M3 4h18l-7 8v6l-4 2v-8L3 4Z" />
+  </svg>
+);
+// 列表项右侧图标按钮（无文字，纯图标，hover 高亮）
+const IconBtn = ({ title, danger, onClick, children }) => (
+  <button title={title} onClick={onClick}
+    className="p-2 rounded-lg hover:bg-panel2 transition-colors"
+    style={{ color: danger ? '#e4393c' : '#6b7280' }}>
+    {children}
+  </button>
 );
 
 function fmtPrice(v) {
@@ -65,7 +122,6 @@ export default function Packages() {
   // 顶部搜索框本地输入（点击【搜索】才提交过滤）
   const [qInput, setQInput] = useState(state.q || '');
   const [advOpen, setAdvOpen] = useState(false); // 高级设置面板
-  const [barCollapsed, setBarCollapsed] = useState(false); // 深色操作栏收起
 
   function emptyForm() {
     return { id: null, name: '', price: '', description: '', cover: null, cover_url: '', category_id: '',
@@ -203,15 +259,18 @@ export default function Packages() {
 
   return (
     <div className="-m-6 p-6 min-h-full" style={{ background: '#ffffff' }}>
-      {/* 顶部：标题（左） + 搜索区（右） */}
-      <div className="flex items-center justify-between gap-4 flex-wrap mb-4">
-        <h1 className="text-2xl font-semibold" style={{ color: '#1f2329' }}>套系</h1>
+      {/* 面包屑 + 标题（左） + 搜索区（右） */}
+      <div className="flex items-end justify-between gap-4 flex-wrap mb-4">
+        <div>
+          <div className="text-xs mb-1" style={{ color: '#9ca3af' }}>工作台 &gt; 套系</div>
+          <h1 className="text-2xl font-semibold" style={{ color: '#1f2329' }}>套系</h1>
+        </div>
         <div className="flex items-center gap-2">
           <input
             value={qInput}
             onChange={(e) => setQInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && doSearch()}
-            placeholder="搜索名称"
+            placeholder="套系名称"
             className="w-44 md:w-56 px-3 py-2 rounded border border-line bg-white text-fg text-sm outline-none focus:border-brand"
           />
           <button onClick={doSearch}
@@ -228,32 +287,23 @@ export default function Packages() {
       </div>
 
       {/* 深色顶部操作栏 */}
-      {!barCollapsed ? (
-        <div className="flex items-center gap-3 px-4 py-3 rounded-lg flex-wrap" style={{ background: '#2c2c2c' }}>
-          <button onClick={openNew}
-            className="px-4 py-2 rounded text-sm whitespace-nowrap"
-            style={{ background: '#2f7cf6', color: '#fff' }}>+ 新建套系</button>
-          <span className="text-xs" style={{ color: '#cfcfcf' }}>套系能让您的报价更规范更清晰，客户在小程序也能一目了然。</span>
-          <div className="flex-1" />
-          <select value={state.category} onChange={(e) => setState((s) => ({ ...s, category: e.target.value }))}
-            className="px-3 py-2 rounded text-sm outline-none border-0"
-            style={{ background: '#3a3a3a', color: '#fff' }}>
-            <option value="">分类：全部</option>
-            {categories.filter(Boolean).map((c) => <option key={c.id} value={c.id}>{c.name || '未命名'}</option>)}
-          </select>
-          <button onClick={() => setBarCollapsed(true)} title="收起"
-            className="p-2 rounded hover:bg-white/10" style={{ color: '#cfcfcf' }}><IconClose /></button>
-        </div>
-      ) : (
-        <div className="flex items-center gap-3 px-4 py-2.5 rounded-lg" style={{ background: '#2c2c2c' }}>
-          <button onClick={openNew}
-            className="px-4 py-2 rounded text-sm whitespace-nowrap"
-            style={{ background: '#2f7cf6', color: '#fff' }}>+ 新建套系</button>
-          <button onClick={() => setBarCollapsed(false)} title="展开"
-            className="px-3 py-2 rounded text-xs border border-white/20 hover:bg-white/10"
-            style={{ color: '#cfcfcf' }}>展开操作栏</button>
-        </div>
-      )}
+      <div className="flex items-center gap-3 px-4 py-2.5 rounded-lg flex-wrap" style={{ background: '#333333' }}>
+        <button onClick={openNew}
+          className="px-4 py-2 rounded text-sm whitespace-nowrap"
+          style={{ background: '#2f7cf6', color: '#fff' }}>+ 新建套系</button>
+        <span className="text-xs" style={{ color: '#cfcfcf' }}>您目前没有上线的促销/拼团活动…</span>
+        <div className="flex-1" />
+        <select value={state.category} onChange={(e) => setState((s) => ({ ...s, category: e.target.value }))}
+          className="px-3 py-2 rounded text-sm outline-none border-0"
+          style={{ background: '#3a3a3a', color: '#fff' }}>
+          <option value="">分类：全部</option>
+          {categories.filter(Boolean).map((c) => <option key={c.id} value={c.id}>{c.name || '未命名'}</option>)}
+        </select>
+        <button onClick={() => setAdvOpen((v) => !v)} title="更多筛选"
+          className="p-2 rounded hover:bg-white/10" style={{ color: '#cfcfcf' }}><IconList /></button>
+        <button onClick={() => setAdvOpen((v) => !v)} title="筛选"
+          className="p-2 rounded hover:bg-white/10" style={{ color: '#cfcfcf' }}><IconFilter /></button>
+      </div>
 
       {/* 高级设置面板 */}
       {advOpen && (
@@ -267,62 +317,77 @@ export default function Packages() {
         </div>
       )}
 
-      {/* 橙色空态提示条（无套系时显示） */}
-      {list.length === 0 && (
-        <div className="flex items-center gap-3 mt-4 px-4 py-3 rounded-lg text-sm flex-wrap"
-          style={{ background: '#fff3e0' }}>
-          <span className="inline-flex w-5 h-5 rounded-full items-center justify-center shrink-0"
-            style={{ background: '#ff8822', color: '#fff', fontSize: 13, fontWeight: 700 }}>!</span>
-          <span style={{ color: '#7a6a55' }}>您当前没有上传任何套系</span>
-          <div className="flex-1" />
-          <button onClick={openNew} className="text-sm font-medium" style={{ color: '#ff8822' }}>新建套系&gt;</button>
-        </div>
-      )}
+      {/* 浅黄色通知提示栏（促销 / 拼团活动提醒，常驻） */}
+      <div className="flex items-center gap-3 mt-4 px-4 py-3 rounded-lg text-sm flex-wrap"
+        style={{ background: '#fff8e1', color: '#8a6d3b' }}>
+        <span className="inline-flex w-5 h-5 rounded-full items-center justify-center shrink-0"
+          style={{ background: '#ff9f43', color: '#fff', fontSize: 13, fontWeight: 700 }}>!</span>
+        <span>您目前没有上线的促销/拼团活动…</span>
+        <div className="flex-1" />
+        <button onClick={() => setAdvOpen((v) => !v)} className="text-sm font-medium" style={{ color: '#ff9f43' }}>去设置&gt;</button>
+      </div>
 
-      {/* 套系列表（纵向卡片） */}
-      <div className="mt-4 space-y-4">
-        {list.map((p) => {
-          const off = p.status === 'off';
-          return (
-            <div key={p.id}
-              className="flex flex-col sm:flex-row sm:items-center gap-4 bg-white border border-line rounded-xl2 p-4 shadow-sm">
-              {/* 左侧封面 */}
-              <div className="w-24 h-24 rounded-lg bg-panel2 border border-line overflow-hidden shrink-0 flex items-center justify-center">
-                {p.cover_url
-                  ? <img src={img(p.cover_url)} alt="" className="w-full h-full object-cover" />
-                  : <span className="text-faint text-xs">无图</span>}
-              </div>
-
-              {/* 中部信息 */}
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <div className="text-fg font-medium text-base truncate">{p.name}</div>
-                  {off && (
-                    <span className="px-1.5 py-0.5 rounded text-[11px]" style={{ background: '#f5f5f5', color: '#888' }}>已下架</span>
-                  )}
-                  {Array.isArray(p.specs) && p.specs.length > 0 && (
-                    <span className="px-1.5 py-0.5 rounded text-[11px] bg-brand/10" style={{ color: '#2f7cf6' }}>{p.specs.length} 规格</span>
-                  )}
-                </div>
-                <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                  <span className="font-bold text-lg" style={{ color: '#1f2329' }}>¥{fmtPrice(p.price)}</span>
-                  <span className="px-2 py-0.5 rounded text-xs" style={{ background: '#f3ece3', color: '#9a8a76' }}>定金：¥{fmtDeposit(p.deposit)}</span>
-                </div>
-                <div className="text-xs text-muted mt-1 truncate">{catName(p.category_id)}{p.description ? ' · ' + p.description : ''}</div>
-              </div>
-
-              {/* 右侧操作按钮组：分享 / 编辑 / 下架 / 删除 */}
-              <div className="flex flex-row sm:flex-col items-stretch sm:items-end gap-2 sm:gap-1.5 text-sm">
-                <button onClick={() => openShareQr(p)} className="px-3 py-1.5 rounded text-left sm:text-right hover:text-brand" style={{ color: '#1f2329' }}>分享</button>
-                <button onClick={() => openEdit(p)} className="px-3 py-1.5 rounded text-left sm:text-right hover:text-brand" style={{ color: '#1f2329' }}>编辑</button>
-                <button onClick={() => toggleStatus(p)} className="px-3 py-1.5 rounded text-left sm:text-right hover:text-brand" style={{ color: '#1f2329' }}>{off ? '上架' : '下架'}</button>
-                <button onClick={() => del(p.id)} className="px-3 py-1.5 rounded text-left sm:text-right hover:text-red-400" style={{ color: '#1f2329' }}>删除</button>
-              </div>
-            </div>
-          );
-        })}
-        {list.length === 0 && (
+      {/* 套系列表（横向条目） */}
+      <div className="mt-4">
+        {list.length === 0 ? (
           <div className="text-center text-muted py-16">暂无套系，点击右上角「+ 新建套系」开始添加。</div>
+        ) : (
+          <div className="divide-y divide-line border border-line rounded-lg overflow-hidden bg-white">
+            {list.map((p) => {
+              const off = p.status === 'off';
+              return (
+                <div key={p.id}
+                  className="flex items-center gap-3 px-4 py-2.5 flex-wrap sm:flex-nowrap hover:bg-panel2/40">
+                  {/* 左侧封面缩略图（方形占位，无文字） */}
+                  <div className="w-16 h-16 rounded-lg bg-panel2 border border-line overflow-hidden shrink-0 flex items-center justify-center">
+                    {p.cover_url
+                      ? <img src={img(p.cover_url)} alt="" className="w-full h-full object-cover" />
+                      : null}
+                  </div>
+
+                  {/* 中部内容 */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-fg font-bold text-[15px] truncate">{p.name}</span>
+                      {off && (
+                        <span className="px-1.5 py-0.5 rounded text-[11px]" style={{ background: '#f5f5f5', color: '#888' }}>已下架</span>
+                      )}
+                      {Array.isArray(p.specs) && p.specs.length > 0 && (
+                        <span className="px-1.5 py-0.5 rounded text-[11px]" style={{ background: '#eaf5ef', color: '#3a9d7a' }}>{p.specs.length} 规格</span>
+                      )}
+                    </div>
+                    {/* 简短简介（截断，禁止完整长描述） */}
+                    {p.description ? (
+                      <div className="mt-0.5 text-xs truncate" style={{ color: '#9ca3af' }}>
+                        {p.description.length > 28 ? p.description.slice(0, 28) + '…' : p.description}
+                      </div>
+                    ) : null}
+                    <div className="flex items-center gap-2 mt-1 text-sm">
+                      <span className="text-muted">价格：</span>
+                      <span className="font-bold" style={{ color: '#e4393c' }}>¥{fmtPrice(p.price)}</span>
+                      <span className="text-muted">｜定金：</span>
+                      <span style={{ color: '#555' }}>¥{fmtDeposit(p.deposit)}</span>
+                    </div>
+                    {/* 底部：菱形图标 + 套系分类名称（灰色小字） */}
+                    <div className="flex items-center gap-1 mt-1">
+                      <IconDiamond style={{ color: '#9ca3af' }} />
+                      <span className="text-xs" style={{ color: '#9ca3af' }}>{catName(p.category_id)}</span>
+                    </div>
+                  </div>
+
+                  {/* 右侧图标按钮组：分享｜编辑｜下架｜删除 */}
+                  <div className="flex items-center gap-0.5 ml-auto shrink-0 self-center">
+                    <IconBtn title="分享" onClick={() => openShareQr(p)}><IconShare /></IconBtn>
+                    <IconBtn title="编辑" onClick={() => openEdit(p)}><IconEdit /></IconBtn>
+                    <IconBtn title={off ? '上架' : '下架'} onClick={() => toggleStatus(p)}>
+                      {off ? <IconEye /> : <IconEyeOff />}
+                    </IconBtn>
+                    <IconBtn title="删除" danger onClick={() => del(p.id)}><IconTrash /></IconBtn>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         )}
       </div>
 
