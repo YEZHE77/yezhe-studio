@@ -82,16 +82,16 @@ function Switch({ checked, onChange, disabled }) {
   );
 }
 
-// 字段外壳：label + 必填星号 + 提示
+// 字段外壳：标签居左 + 必填星号 + 提示；标签与控件垂直对齐
 function Field({ label, required, hint, children }) {
   return (
-    <div className="mb-4">
-      <div className="flex items-center gap-1 mb-1.5">
-        <span className="text-sm" style={{ color: '#1f2329' }}>{label}</span>
-        {required && <span style={{ color: '#e4393c' }}>*</span>}
-        {hint && <span className="text-xs" style={{ color: '#9ca3af' }}>{hint}</span>}
+    <div className="flex items-start gap-4 mb-7">
+      <div className="w-36 shrink-0 pt-2 text-right" style={{ color: '#1f2329' }}>
+        <span className="text-sm">{label}</span>
+        {required && <span style={{ color: '#e4393c' }}> *</span>}
+        {hint && <div className="text-xs mt-0.5" style={{ color: '#9ca3af' }}>{hint}</div>}
       </div>
-      {children}
+      <div className="flex-1 min-w-0">{children}</div>
     </div>
   );
 }
@@ -263,16 +263,15 @@ export default function PackageEdit() {
   if (loading) return <div className="p-10 text-muted">加载中…</div>;
 
   return (
-    <div className="-m-6 min-h-full flex flex-col" style={{ background: PAGE_BG }}>
-      {/* 面包屑由全局 <Breadcrumb /> 渲染 */}
+    <div className="py-1">
+      {/* 页面标题（卡片外部；全局面包屑已由 App 渲染于上方） */}
+      <h1 className="text-xl font-semibold mb-5" style={{ color: '#1f2329' }}>{isEdit ? '编辑套系' : '新建套系'}</h1>
 
-      {/* 标题 */}
-      <div className="px-6 pt-5 pb-3 flex items-center justify-between">
-        <h1 className="text-xl font-semibold" style={{ color: '#1f2329' }}>{isEdit ? '编辑套系' : '新建套系'}</h1>
-      </div>
-
-      {/* Tab 栏 */}
-      <div className="px-6 flex gap-2 border-b border-line">
+      {/* 白色卡片容器：纯白 + 8px 圆角 + 轻阴影 + 内边距 + 最大宽度居中 */}
+      <div className="rounded-lg bg-white mx-auto overflow-hidden"
+        style={{ maxWidth: 768, boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+        {/* Tab 栏（卡片内部最上方） */}
+        <div className="px-10 pt-12 flex gap-1 border-b border-line">
         {['套系名称', '价格及问卷', '服务及加片', '其他详情'].map((t, i) => (
           <button key={t} type="button" onClick={() => setTab(i)}
             className="px-4 py-2.5 text-sm border-b-2 -mb-px transition-colors"
@@ -282,8 +281,8 @@ export default function PackageEdit() {
         ))}
       </div>
 
-      {/* 内容区（滚动） */}
-      <form onSubmit={submit} className="flex-1 overflow-auto px-6 py-5" style={{ background: PAGE_BG }}>
+      {/* 内容区（卡片内部，左右 40px；Tab 与表单控件间距 32px） */}
+      <form onSubmit={submit} className="px-10 pt-8 pb-6">
         {errors.length > 0 && (
           <div className="mb-4 px-3 py-2 rounded-lg text-sm" style={{ background: '#fff1f0', color: '#e4393c', border: '1px solid #ffccc7' }}>
             请完善必填项：{errors.join('、')}
@@ -642,8 +641,8 @@ export default function PackageEdit() {
         )}
       </form>
 
-      {/* 底部固定栏 */}
-      <div className="sticky bottom-0 border-t border-line bg-white px-6 py-3 flex items-center justify-between">
+      {/* 底部操作按钮（卡片内部底部，右下角） */}
+      <div className="flex items-center justify-between px-10 pt-6 pb-12 border-t border-line">
         <div>
           {tab < 3 && (
             <button type="button" onClick={goNext}
@@ -659,6 +658,8 @@ export default function PackageEdit() {
           </button>
         </div>
       </div>
+
+      </div>{/* /白色卡片容器 */}
 
       {/* 管理分类弹窗 */}
       {catOpen && (
