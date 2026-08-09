@@ -6,7 +6,7 @@ import http, { img, uploadImage, uploadBatch } from '../api.js';
    套系编辑页面（后台管理 → 工作台 > 套系 > 套系编辑）
    —— 4 个 Tab：套系名称 / 价格及问卷 / 服务及加片 / 其他详情
    —— 全局共用：页面底 #F7F8FA；外层白卡 max-w 840px / 圆角 8px / 阴影 0 1px 2px；
-   —— 统一 Tab 方框选中样式；input/select max-w 420px；浅黄模块 #FCFBEB；底部下一步/取消/保存
+   —— 统一 Tab 方框选中样式；input/select max-w 420px；浅黄模块 #FDFCEB；底部下一步/取消/保存
    —— 真实上传：封面 / 详情图(0-80) / 视频；管理分类弹窗（新建/选择）
    —— 数据全部接口驱动：GET /api/packages/:id / POST /api/packages / PUT /api/packages/:id
    —— 不写死任何分类 / 货币 / 标签来源；新字段聚合在 details JSON，旧列仍兼容。
@@ -14,15 +14,15 @@ import http, { img, uploadImage, uploadBatch } from '../api.js';
    ========================================================================== */
 
 const LINK = '#2196F3';          // 蓝色文字链接（管理分类/编辑/点击上传视频/下一步）
-const SAVE_BTN = '#3488EB';      // 保存按钮蓝色 / 开关开启蓝色
+const SAVE_BTN = '#3488EB';      // 保存按钮蓝色
+const TOGGLE_ON = '#34C759';     // 开关开启绿色
 const PAGE_BG = '#F7F8FA';
-const YELLOW = '#FCFBEB';        // 浅黄色模块底色
-const YELLOW_BORDER = '#D9D7C3'; // 浅黄色模块虚线边框
+const YELLOW = '#FDFCEB';        // 浅黄色模块底色
+const YELLOW_BORDER = '#D1D5DB'; // 浅黄色模块虚线边框
 const TAB_BORDER = '#E5E7EB';    // Tab 未选中边框
 const TAB_ACTIVE_BORDER = '#333333';
 const RED = '#E53E3E';           // 必填红色星号 / 红色注释
 const NOTE = '#888888';          // 辅助说明灰色文字
-const TEAL = '#82C784';          // 绿色分隔线
 const INPUT_BORDER = '#D1D5DB';  // 输入框 / 下拉边框
 const PLACEHOLDER = '#9CA3AF';
 const LIGHT_BLUE = '#e6f3ff';    // 选中浅蓝底
@@ -92,12 +92,12 @@ const IconHelp = (p) => (
     style={{ background: '#f0f2f5', color: '#888888', border: '1px solid #e2e5ea' }}>?</span>
 );
 
-// 必填开关（开启 #3488EB）
+// 必填开关（开启绿色 #34C759，关闭灰色 #D1D5DB）
 function Switch({ checked, onChange, disabled }) {
   return (
     <button type="button" disabled={disabled} onClick={() => onChange(!checked)}
       className="relative inline-flex h-5 w-9 items-center rounded-full transition-colors shrink-0"
-      style={{ background: checked ? SAVE_BTN : '#AAAAAA', opacity: disabled ? 0.5 : 1 }}>
+      style={{ background: checked ? TOGGLE_ON : '#D1D5DB', opacity: disabled ? 0.5 : 1 }}>
       <span className="inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform"
         style={{ transform: checked ? 'translateX(18px)' : 'translateX(2px)' }} />
     </button>
@@ -165,9 +165,12 @@ function Field({ label, required, hint, children }) {
 
 const inputCls = "w-full max-w-[420px] h-9 px-3 rounded bg-white border border-[#D1D5DB] text-sm text-[#333333] placeholder:text-[#9CA3AF] outline-none focus:border-[#2196F3]";
 const selCls = "max-w-[420px] h-9 px-3 rounded bg-white border border-[#D1D5DB] text-sm text-[#333333] placeholder:text-[#9CA3AF] outline-none focus:border-[#2196F3]";
-const selSmCls = "max-w-[420px] h-8 px-3 rounded bg-white border border-[#D1D5DB] text-sm text-[#333333] placeholder:text-[#9CA3AF] outline-none focus:border-[#2196F3]";
+const selSmCls = "max-w-[420px] h-[34px] px-3 rounded bg-white border border-[#D1D5DB] text-sm text-[#333333] placeholder:text-[#9CA3AF] outline-none focus:border-[#2196F3]";
+const inputSm = "w-full max-w-[260px] h-[34px] px-3 rounded bg-white border border-[#D1D5DB] text-sm text-[#333333] placeholder:text-[#9CA3AF] outline-none focus:border-[#2196F3]";
+const selSm = "max-w-[260px] h-[34px] px-3 rounded bg-white border border-[#D1D5DB] text-sm text-[#333333] placeholder:text-[#9CA3AF] outline-none focus:border-[#2196F3]";
 const textareaCls = "w-full max-w-[420px] px-3 py-3 rounded bg-white border border-[#D1D5DB] text-sm text-[#333333] placeholder:text-[#9CA3AF] outline-none focus:border-[#2196F3]";
 const textareaFull = "w-full px-3 py-3 rounded bg-white border border-[#D1D5DB] text-[13px] text-[#333333] placeholder:text-[#9CA3AF] outline-none focus:border-[#2196F3]";
+const taBig = "w-full px-3 py-3 rounded bg-white border border-[#D1D5DB] text-[13px] text-[#333333] placeholder:text-[#9CA3AF] outline-none focus:border-[#2196F3]";
 
 export default function PackageEdit() {
   const nav = useNavigate();
@@ -531,9 +534,8 @@ export default function PackageEdit() {
                 </div>
               </Field>
 
-              {/* 客户问卷区域（浅黄虚线块 #FCFBEB / #D9D7C3） */}
-              <div className="mt-4 p-5 rounded border border-dashed" style={{ background: YELLOW, borderColor: YELLOW_BORDER }}>
-                <div className="text-sm font-medium mb-3" style={{ color: '#333333' }}>客户问卷</div>
+              {/* 客户问卷区域（浅黄虚线块 #FDFCEB / #D1D5DB） */}
+              <div className="mt-3 rounded border border-dashed" style={{ background: YELLOW, borderColor: YELLOW_BORDER, padding: '20px 24px' }}>
                 <div className="mb-3">
                   <RadioGroup value={d.questionnaire_visibility} onChange={(v) => setD({ questionnaire_visibility: v })}
                     options={[{ v: 'none', t: '不显示' }, { v: 'after_pay', t: '支付后显示' }, { v: 'after_book', t: '预约后显示' }]} />
@@ -542,7 +544,7 @@ export default function PackageEdit() {
                   <Switch checked={d.questionnaire_verify_phone} onChange={(v) => setD({ questionnaire_verify_phone: v })} />
                   <span className="text-sm" style={{ color: '#6b7280' }}>验证手机号</span>
                 </div>
-                <div className="mt-2 text-[12px]" style={{ color: '#666666' }}>*开启后，需验证手机号方可进入填写问卷。</div>
+                <div className="mt-2 text-[12px]" style={{ color: '#888888' }}>*开启后，需验证手机号方可进入填写问卷。</div>
               </div>
             </div>
           )}
@@ -550,28 +552,23 @@ export default function PackageEdit() {
           {/* ============ Tab3 服务及加片 ============ */}
           {tab === 2 && (
             <div>
-              {/* 绿色顶部分隔线 + 标题 */}
-              <div className="mb-4">
-                <div className="border-t mb-4" style={{ borderColor: TEAL }} />
-                <div className="font-medium" style={{ color: '#333333' }}>标准服务模板</div>
-              </div>
+              {/* 标准服务模板浅黄色虚线块（含标题 + 模板切换 + 全部服务字段 + 显示内容） */}
+              <div className="mb-6 rounded border border-dashed" style={{ background: YELLOW, borderColor: YELLOW_BORDER, padding: '24px 28px' }}>
+                <div className="text-[13px] mb-4" style={{ color: '#666666' }}>标准服务模板</div>
 
-              {/* 浅黄色虚线模块 */}
-              <div className="p-6 rounded border border-dashed" style={{ background: YELLOW, borderColor: YELLOW_BORDER }}>
-                {/* 摄影 / 摄像模版切换（选中黑底，未选灰边） */}
+                {/* 摄影 / 摄像模版切换（选中黑底 pill，未选灰边） */}
                 <div className="flex items-center gap-2 mb-5">
-                  <span className="text-sm" style={{ color: '#333333' }}>模板：</span>
                   <button type="button" onClick={() => setD({ shoot_template: 'photo' })}
-                    className="px-[18px] py-1.5 rounded-md text-sm border"
-                    style={{ background: d.shoot_template === 'photo' ? '#222222' : '#fff', color: d.shoot_template === 'photo' ? '#fff' : '#666666', borderColor: d.shoot_template === 'photo' ? '#222222' : TAB_BORDER }}>摄影模版</button>
+                    className="text-[13px] border"
+                    style={{ background: d.shoot_template === 'photo' ? '#222222' : '#fff', color: d.shoot_template === 'photo' ? '#fff' : '#333333', borderColor: d.shoot_template === 'photo' ? '#222222' : '#D1D5DB', padding: '6px 16px', borderRadius: 20 }}>摄影模版</button>
                   <button type="button" onClick={() => setD({ shoot_template: 'video' })}
-                    className="px-[18px] py-1.5 rounded-md text-sm border"
-                    style={{ background: d.shoot_template === 'video' ? '#222222' : '#fff', color: d.shoot_template === 'video' ? '#fff' : '#666666', borderColor: d.shoot_template === 'video' ? '#222222' : TAB_BORDER }}>摄像模版</button>
+                    className="text-[13px] border"
+                    style={{ background: d.shoot_template === 'video' ? '#222222' : '#fff', color: d.shoot_template === 'video' ? '#fff' : '#333333', borderColor: d.shoot_template === 'video' ? '#222222' : '#D1D5DB', padding: '6px 16px', borderRadius: 20 }}>摄像模版</button>
                 </div>
 
                 {/* 拍摄时长 */}
                 <Field label="拍摄时长" required>
-                  <select className={selCls} value={d.duration}
+                  <select className={selSm} value={d.duration}
                     onChange={(e) => setD({ duration: e.target.value })}>
                     {!DURATION_OPTS.includes(d.duration) && d.duration && <option value={d.duration}>{d.duration}</option>}
                     {DURATION_OPTS.map((o) => <option key={o} value={o}>{o}</option>)}
@@ -581,7 +578,7 @@ export default function PackageEdit() {
                 {/* 底片数量 + 底片全送 */}
                 <Field label="底片数量" required>
                   <div className="flex items-center gap-3 flex-wrap">
-                    <input type="number" className={inputCls} value={d.raw_count}
+                    <input type="number" className={inputSm} value={d.raw_count}
                       onChange={(e) => setD({ raw_count: e.target.value })} placeholder="如 300" />
                     <Checkbox checked={d.raw_all_included} onChange={(v) => setD({ raw_all_included: v })} label="底片全送" />
                   </div>
@@ -589,13 +586,13 @@ export default function PackageEdit() {
 
                 {/* 精修片 */}
                 <Field label="精修片" required>
-                  <input type="number" className={inputCls} value={d.retouch_count}
+                  <input type="number" className={inputSm} value={d.retouch_count}
                     onChange={(e) => setD({ retouch_count: e.target.value })} placeholder="如 50" />
                 </Field>
 
                 {/* 加片费 */}
                 <Field label="加片费">
-                  <input className={inputCls} value={d.extra_photo_fee}
+                  <input className={inputSm} value={d.extra_photo_fee}
                     onChange={(e) => setD({ extra_photo_fee: e.target.value })} placeholder="如 ¥50/张" />
                 </Field>
 
@@ -603,7 +600,7 @@ export default function PackageEdit() {
                 <Field label="加片优惠">
                   <div className="flex items-center gap-2">
                     {editDisc
-                      ? <input autoFocus className={inputCls} value={d.extra_photo_discount}
+                      ? <input autoFocus className={inputSm} value={d.extra_photo_discount}
                           onChange={(e) => setD({ extra_photo_discount: e.target.value })} onBlur={() => setEditDisc(false)} placeholder="如 满 10 张 9 折" />
                       : <span className="text-sm" style={{ color: '#333333' }}>{d.extra_photo_discount || '暂无优惠'}</span>}
                     <button type="button" onClick={() => setEditDisc((v) => !v)} className="text-[13px]" style={{ color: LINK }}>编辑</button>
@@ -628,36 +625,39 @@ export default function PackageEdit() {
                     options={[{ v: 'not', t: '不提供' }, { v: 'provide', t: '提供' }]} />
                 </Field>
 
-                {/* 服务地点：select + 文本输入 同一行 */}
+                {/* 服务地点：下拉 + 文本输入 同一行 gap 8px */}
                 <Field label="服务地点">
-                  <div className="flex items-center gap-2.5 flex-wrap">
-                    <select className={selCls} value="" onChange={(e) => e.target.value && setD({ service_location: e.target.value })}>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <select className={selSm} value="" onChange={(e) => e.target.value && setD({ service_location: e.target.value })}>
                       <option value="">选择</option>
                       {LOCATION_OPTS.map((o) => <option key={o} value={o}>{o}</option>)}
                     </select>
-                    <input className={inputCls} value={d.service_location}
+                    <input className={inputSm} value={d.service_location}
                       onChange={(e) => setD({ service_location: e.target.value })} placeholder="请输入服务地点 0/40" />
                   </div>
                 </Field>
+
+                {/* 显示以上套系内容（复选框同行） */}
+                <label className="inline-flex items-center gap-1.5 text-sm cursor-pointer select-none mt-2" style={{ color: '#6b7280' }}>
+                  <button type="button" onClick={() => setD({ show_service_content: !d.show_service_content })}
+                    className="w-4 h-4 rounded-sm border flex items-center justify-center shrink-0"
+                    style={{ borderColor: d.show_service_content ? LINK : '#c4c8cf', background: d.show_service_content ? LINK : '#fff' }}>
+                    {d.show_service_content && <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="m5 13 4 4 10-10" /></svg>}
+                  </button>
+                  显示以上套系内容
+                </label>
               </div>
-
-              {/* 分割虚线 */}
-              <div className="border-t border-dashed my-4" style={{ borderColor: '#CCCCCC' }} />
-
-              {/* 显示以上套系内容 */}
-              <Field label="显示以上套系内容">
-                <Checkbox checked={d.show_service_content} onChange={(v) => setD({ show_service_content: v })} />
-              </Field>
 
               {/* 自定义服务详情（大文本域占卡片可用宽度） */}
               <Field label="自定义服务详情">
-                <textarea className={textareaFull} rows={5} value={d.service_detail_text}
+                <textarea className={taBig} rows={5} value={d.service_detail_text}
+                  style={{ minHeight: 220, lineHeight: 1.6 }}
                   onChange={(e) => setD({ service_detail_text: e.target.value })} placeholder="例如：本套系包含专业摄影师全程跟拍、精修调色、相册设计等服务，拍摄前可沟通风格需求。" />
-                <div className="mt-3 flex gap-2">
+                <div className="flex flex-wrap mt-3">
                   <button type="button" onClick={() => setD({ service_detail_text: d.service_detail_text + (d.service_detail_text ? '\n' : '') + '【摄影类】' })}
-                    className="px-3 py-1 rounded text-xs" style={{ color: '#555555', borderColor: '#E5E7EB', background: '#E5E7EB', borderWidth: 0 }}>摄影类</button>
+                    className="text-[13px] rounded mr-2" style={{ color: '#444444', borderColor: '#E5E7EB', background: '#E5E7EB', padding: '4px 12px' }}>摄影类</button>
                   <button type="button" onClick={() => setD({ service_detail_text: d.service_detail_text + (d.service_detail_text ? '\n' : '') + '【摄像类】' })}
-                    className="px-3 py-1 rounded text-xs" style={{ color: '#555555', borderColor: '#E5E7EB', background: '#E5E7EB', borderWidth: 0 }}>摄像类</button>
+                    className="text-[13px] rounded mr-2" style={{ color: '#444444', borderColor: '#E5E7EB', background: '#E5E7EB', padding: '4px 12px' }}>摄像类</button>
                 </div>
               </Field>
             </div>
@@ -677,7 +677,7 @@ export default function PackageEdit() {
                     <option>指定客户</option>
                   </select>
                 </div>
-                <div className="mt-1.5 text-[12px]" style={{ color: '#666666' }}>*套系将公开展示在小程序和网站中，对所有客户可见</div>
+                <div className="mt-1 text-[12px]" style={{ color: '#888888' }}>*套系将公开展示在小程序和网站中，对所有客户可见</div>
               </Field>
 
               {/* 咨询提醒 */}
@@ -686,12 +686,13 @@ export default function PackageEdit() {
                   <Switch checked={d.consult_reminder} onChange={(v) => setD({ consult_reminder: v })} />
                   <span className="text-sm" style={{ color: '#6b7280' }}>显示</span>
                 </div>
-                <div className="mt-1.5 text-[12px]" style={{ color: '#666666' }}>*开启后，「咨询提醒」将在小程序和网站套系详情页中展示</div>
+                <div className="mt-1 text-[12px]" style={{ color: '#888888' }}>*开启后，「咨询提醒」将在小程序和网站套系详情页中展示</div>
               </Field>
 
               {/* 温馨提示（大文本域） */}
               <Field label="温馨提示">
-                <textarea className={textareaFull} rows={5} value={d.warm_tips}
+                <textarea className={taBig} rows={5} value={d.warm_tips}
+                  style={{ minHeight: 180, lineHeight: 1.6 }}
                   onChange={(e) => setD({ warm_tips: e.target.value })} placeholder="例如：拍摄前请保持充足睡眠，避免熬夜；可提前准备喜欢的照片风格参考……" />
               </Field>
 
@@ -702,8 +703,8 @@ export default function PackageEdit() {
                     const on = d.tags.includes(t);
                     return (
                       <button key={t} type="button" onClick={() => on ? removeTag(t) : addTag(t)}
-                        className="px-[10px] py-1 rounded text-xs transition-colors"
-                        style={{ background: on ? LINK : '#E5E7EB', color: on ? '#FFFFFF' : '#555555' }}>
+                        className="px-[12px] py-1 rounded text-xs transition-colors"
+                        style={{ background: on ? LINK : '#E5E7EB', color: on ? '#FFFFFF' : '#444444' }}>
                         {t}
                       </button>
                     );
