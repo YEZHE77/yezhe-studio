@@ -22,14 +22,14 @@ const BOOKED_BG = '#FFD6D6';        // 有订单占用日期粉红底色
 const LEGEND_UNPAID = '#FFF2CC';    // 未付定金
 const LEGEND_WAIT = '#D5E8B7';      // 等待拍摄
 const STATUS_LEGEND = [
-  { label: '未付定金', color: '#FFF2CC' },
-  { label: '等待拍摄', color: '#D5E8B7' },
-  { label: '待上传原片', color: '#B8E4E9' },
-  { label: '待选片', color: '#E1C7E9' },
-  { label: '待精修', color: '#9CD6D9' },
-  { label: '等待下载', color: '#72B9BD' },
-  { label: '待评价', color: '#FFD2A6' },
-  { label: '订单已完成', color: '#E5E7EB' }
+  { label: '未付定金', color: '#F8ED88' },
+  { label: '等待拍摄', color: '#A3E292' },
+  { label: '待上传原片', color: '#A2E8E8' },
+  { label: '待选片', color: '#E2C2F0' },
+  { label: '待精修', color: '#88D2D2' },
+  { label: '等待下载', color: '#33B8B8' },
+  { label: '待评价', color: '#FFC988' },
+  { label: '订单已完成', color: '#D8D8D8' }
 ];
 
 const pad = (n) => String(n).padStart(2, '0');
@@ -347,31 +347,40 @@ export default function Schedule() {
   );
 }
 
-/* ============ 状态图例下拉（8 状态全色号） ============ */
+/* ============ 状态图例（默认 2 项 + 浅蓝箭头，hover 弹 8 状态弹窗） ============ */
 function StatusLegend() {
-  const [open, setOpen] = useState(false);
-  const wrapRef = useRef(null);
-  useEffect(() => {
-    const onDown = (e) => { if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false); };
-    document.addEventListener('mousedown', onDown);
-    return () => document.removeEventListener('mousedown', onDown);
-  }, []);
+  const [hover, setHover] = useState(false);
   return (
-    <div className="relative inline-block" ref={wrapRef}>
-      <button type="button" onClick={() => setOpen((v) => !v)}
-        className="flex items-center gap-2 rounded bg-white outline-none text-sm"
-        style={{ height: 32, padding: '0 12px', border: '1px solid #D1D5DB', color: '#333333' }}>
-        状态图例
-        <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="#999999" strokeWidth="2.5"><path d="m6 9 6 6 6-6" /></svg>
-      </button>
-      {open && (
-        <div className="absolute left-0 mt-1 z-40 bg-white rounded" style={{ boxShadow: '0 2px 12px rgba(0,0,0,0.12)', borderRadius: 4, padding: '12px 16px', minWidth: 160 }}>
-          {STATUS_LEGEND.map((s) => (
-            <div key={s.label} className="flex items-center" style={{ gap: 8, fontSize: 12, color: '#444444', marginBottom: 8 }}>
-              <span className="inline-block shrink-0" style={{ width: 12, height: 12, background: s.color }} />
-              <span>{s.label}</span>
-            </div>
-          ))}
+    <div className="relative inline-block" style={{ zIndex: 50 }}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}>
+      {/* 默认展示：未付定金 + 等待拍摄 + 浅蓝下拉箭头 */}
+      <div className="flex items-center" style={{ gap: 24 }}>
+        {STATUS_LEGEND.slice(0, 2).map((s) => (
+          <div key={s.label} className="flex items-center" style={{ gap: 8, fontSize: 14, color: '#666666' }}>
+            <span className="inline-block shrink-0" style={{ width: 16, height: 16, borderRadius: 2, background: s.color }} />
+            <span>{s.label}</span>
+          </div>
+        ))}
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#40B8E8" strokeWidth="2.5"><path d="m6 9 6 6 6-6" /></svg>
+      </div>
+
+      {hover && (
+        <div className="absolute" style={{
+          left: 0, top: 'calc(100% + 8px)', width: 620, background: '#ffffff',
+          boxShadow: '0 4px 14px rgba(0,0,0,0.12)', borderRadius: 8, padding: '20px 24px', zIndex: 99
+        }}>
+          {/* 左上角小三角，指向上方图例 */}
+          <span className="absolute" style={{ left: 24, top: -6, width: 12, height: 12, background: '#ffffff', transform: 'rotate(45deg)', boxShadow: '-2px -2px 4px rgba(0,0,0,0.04)' }} />
+          <h4 style={{ fontSize: 18, fontWeight: 500, color: '#111', marginBottom: 16, paddingBottom: 12, borderBottom: '1px solid #e5e5e5' }}>订单状态说明</h4>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '20px 12px' }}>
+            {STATUS_LEGEND.map((s) => (
+              <div key={s.label} className="flex items-center" style={{ gap: 8, fontSize: 15, color: '#666666' }}>
+                <span className="inline-block shrink-0" style={{ width: 16, height: 16, borderRadius: 2, background: s.color }} />
+                <span>{s.label}</span>
+              </div>
+            ))}
+          </div>
         </div>
       )}
     </div>
