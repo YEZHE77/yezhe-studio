@@ -48,12 +48,14 @@ function AppShell() {
   const location = useLocation();
   const [navOpen, setNavOpen] = useState(false);
   useEffect(() => { setNavOpen(false); }, [location.pathname]);
+  // 档期页按 spec 为「侧边栏 + 主内容区」两栏结构，不显示顶部条
+  const hideTopbar = location.pathname === '/schedule';
   return (
     <div className="flex h-screen overflow-hidden">
       <Sidebar open={navOpen} onClose={() => setNavOpen(false)} />
       <div className="flex-1 flex flex-col min-w-0">
-        <Topbar onMenu={() => setNavOpen(true)} />
-        <main className="flex-1 overflow-auto p-6 bg-ink">
+        {!hideTopbar && <Topbar onMenu={() => setNavOpen(true)} />}
+        <main className="flex-1 overflow-auto p-6" style={{ background: '#F7F8FA' }}>
           <Breadcrumb />
           <ErrorBoundary resetKeys={[location.pathname]}>
             <Suspense fallback={<PageLoader />}>

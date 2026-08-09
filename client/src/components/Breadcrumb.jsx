@@ -7,7 +7,7 @@ import { useLocation, useNavigate, matchPath } from 'react-router-dom';
    —— 点击上级路径走真实路由跳转（navigate），禁止 history.back 回退。
    —— 固定首级「工作台」，无论入口如何都能准确到达。
    —— 每层：{ label, to }；to 为 null 表示当前页（不可点击、黑色）。
-   分隔符统一「 > 」，颜色 #999999；上级 #666666 hover #111111；当前页 #111111。
+   分隔符统一「 > 」，颜色 #BBBBBB；上级 #666666 hover #2998EB；当前页 #222222；字号 14px。
    ========================================================================== */
 
 // 路由 → 面包屑层级配置（首级「工作台」统一追加，不在此声明）
@@ -59,7 +59,7 @@ export default function Breadcrumb() {
 
   return (
     <nav aria-label="breadcrumb"
-      className="relative z-10 flex items-center flex-wrap gap-x-1.5 gap-y-1 text-[13px] leading-5 mb-4 select-none">
+      className="relative z-10 flex items-center flex-wrap gap-x-1.5 gap-y-1 text-[14px] leading-5 mb-4 select-none">
       {ret && (
         <a href={ret.to}
           onClick={(e) => { e.preventDefault(); navigate(ret.to); }}
@@ -77,14 +77,14 @@ export default function Breadcrumb() {
               <a
                 href={it.to}
                 onClick={(e) => { e.preventDefault(); navigate(it.to); }}
-                className="text-[#666666] hover:text-[#111111] cursor-pointer transition-colors"
+                className="text-[#666666] hover:text-[#2998EB] cursor-pointer transition-colors"
               >
                 {it.label}
               </a>
             ) : (
-              <span className={isLast ? 'text-[#111111]' : 'text-[#666666]'}>{it.label}</span>
+              <span className={isLast ? 'text-[#222222]' : 'text-[#666666]'}>{it.label}</span>
             )}
-            {!isLast && <span className="text-[#999999]"> &gt; </span>}
+            {!isLast && <span className="text-[#BBBBBB]"> &gt; </span>}
           </span>
         );
       })}

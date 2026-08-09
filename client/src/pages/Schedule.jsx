@@ -10,7 +10,7 @@ const OPEN_DAYS_LABEL = ['周日', '周一', '周二', '周三', '周四', '周�
 const SSTATUS = { free: '空闲', booked: '已约', locked: '锁场', closed: '已关闭', shoot: '等待拍摄', pending: '待确认' };
 
 // 档期页色号（对齐 1:1 复刻 spec）
-const PAGE_BG = '#F3F6F9';
+const PAGE_BG = '#F7F8FA';
 const PANEL_BG = '#333333';         // 右侧面板深色
 const DATE_CIRCLE = '#FFBC00';      // 右侧面板日期黄块（白字）
 const BLUE = '#2196F3';             // 弹窗/链接蓝
@@ -20,6 +20,17 @@ const ADD_BTN = '#2998EB';          // 添加档期按钮蓝
 const BOOKED_BG = '#FFD6D6';        // 有订单占用日期粉红底色（保留业务可见性）
 const SEL_BG = '#FFA8A8';            // 选中日期单元格背景（粉红）
 const CELL_BORDER = '#E8E8E8';       // 日期单元格边框
+
+// 新增订单弹窗色号（1:1 复刻 spec）
+const DLG_BLOCK_BORDER = '#E5E7EB';  // 区块边框
+const DLG_FIELD_BORDER = '#D8D8D8';  // 表单控件边框
+const SLOT_BG = '#91DDB0';           // 时间标签（可用）背景
+const SLOT_TX = '#206038';           // 时间标签（可用）文字
+const SLOT_FULL = '#C8C8C8';         // 时间标签（已满）
+const TBD_BG = '#FFFBE6';            // 日期待定提示底色
+const REQ_RED = '#F53F3F';           // 必填星号红
+const POP_HOVER = '#F0F7FF';         // 下拉浮层 hover
+const POP_SEL = '#E6F4FF';           // 下拉浮层选中
 
 // 订单状态说明色块（右侧面板 badge 使用）
 const LEGEND_UNPAID = '#FFF2CC';    // 未付定金
@@ -140,7 +151,7 @@ export default function Schedule() {
   const selClosed = selDate ? (map[selDate] || []).some((r) => r.status === 'closed' && !(r.order_no)) : false;
 
   return (
-    <div className="min-h-screen" style={{ background: PAGE_BG }}>
+    <div className="w-full" style={{ background: PAGE_BG }}>
       {/* 唯一外层白色总卡片：头部筛选栏 + flex 主体（左日历网格 + 右深色面板） */}
       <div className="w-full bg-white rounded-lg" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.08)', padding: 24 }}>
         {/* ===================== 顶部筛选操作栏（三区 space-between，垂直居中） ===================== */}
@@ -351,6 +362,36 @@ export default function Schedule() {
         </div>
       )}
     </div>
+
+    {/* ===================== 右下角悬浮客服按钮组（fixed，纯展示） ===================== */}
+    <FloatingTools />
+    </div>
+  );
+}
+
+/* ============ 右下角悬浮工具条（4 个 40×40 圆形白底按钮，bottom24 / right20 / z900） ============ */
+const FLOAT_TOOLS = [
+  { key: 'bind', label: '绑定', icon: <><path d="M10 13a5 5 0 0 0 7 0l2-2a5 5 0 0 0-7-7l-1 1" /><path d="M14 11a5 5 0 0 0-7 0l-2 2a5 5 0 0 0 7 7l1-1" /></> },
+  { key: 'mail', label: '邮箱', icon: <><rect x="3" y="5" width="18" height="14" rx="2" /><path d="m3 7 9 6 9-6" /></> },
+  { key: 'box', label: '咨询箱', icon: <><path d="M3 9h18v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /><path d="M3 9l2-4h14l2 4" /><path d="M10 13h4" /></> },
+  { key: 'service', label: '客服', icon: <><path d="M4 13a8 8 0 0 1 16 0" /><rect x="2.5" y="13" width="4" height="6" rx="1.5" /><rect x="17.5" y="13" width="4" height="6" rx="1.5" /><path d="M20 19a3 3 0 0 1-3 3h-2" /></> }
+];
+
+function FloatingTools() {
+  return (
+    <div className="fixed flex flex-col" style={{ right: 20, bottom: 24, zIndex: 900, gap: 8 }}>
+      {FLOAT_TOOLS.map((t) => (
+        <button
+          key={t.key}
+          type="button"
+          title={t.label}
+          aria-label={t.label}
+          className="flex items-center justify-center bg-white rounded-full transition-colors hover:text-[#2998EB]"
+          style={{ width: 40, height: 40, boxShadow: '0 2px 8px rgba(0,0,0,0.12)', color: '#666666' }}
+        >
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">{t.icon}</svg>
+        </button>
+      ))}
     </div>
   );
 }
@@ -375,6 +416,12 @@ function OrderDialog({ orderDlg, personnel, onClose, onSaved }) {
   const [chList, setChList] = useState([]);
   const [execPop, setExecPop] = useState(false);
   const execPopRef = useRef(null);
+  // 自定义下拉（收款状态 / 渠道来源）与「添加备注」展开态 —— 仅 UI 交互
+  const [payPop, setPayPop] = useState(false);
+  const [chPop, setChPop] = useState(false);
+  const [showRemark, setShowRemark] = useState(false);
+  const payPopRef = useRef(null);
+  const chPopRef = useRef(null);
 
   const [orderName, setOrderName] = useState('');
   const [customerName, setCustomerName] = useState('');
@@ -408,6 +455,8 @@ function OrderDialog({ orderDlg, personnel, onClose, onSaved }) {
   useEffect(() => {
     const onDown = (e) => {
       if (execPopRef.current && !execPopRef.current.contains(e.target)) setExecPop(false);
+      if (payPopRef.current && !payPopRef.current.contains(e.target)) setPayPop(false);
+      if (chPopRef.current && !chPopRef.current.contains(e.target)) setChPop(false);
     };
     document.addEventListener('mousedown', onDown);
     return () => document.removeEventListener('mousedown', onDown);
@@ -499,189 +548,289 @@ function OrderDialog({ orderDlg, personnel, onClose, onSaved }) {
 
   const slotLabel = (s) => s === HALF ? '半天' : s === FULL ? '全天' : s;
 
+  // —— 弹窗内统一样式令牌（严格按 1:1 复刻 spec）——
+  const BLOCK = { border: `1px solid ${DLG_BLOCK_BORDER}`, borderRadius: 6, padding: 16, marginBottom: 16 };
+  const BLOCK_TITLE = { fontSize: 14, fontWeight: 500, color: '#333333', marginBottom: 12 };
+  const FIELD = {
+    height: 38, width: '100%', background: '#FFFFFF',
+    border: `1px solid ${DLG_FIELD_BORDER}`, borderRadius: 4,
+    padding: '0 12px', fontSize: 14, color: '#333333', outline: 'none'
+  };
+  const payLabel = { unpaid: '未付款', deposit: '已付定金', paid: '已付全款' }[payStatus] || '请选择收款状态';
+  const PAY_OPTIONS = [
+    { v: 'unpaid', label: '未付款' },
+    { v: 'deposit', label: '已付定金' },
+    { v: 'paid', label: '已付全款' }
+  ];
+  const Caret = () => (
+    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#999999" strokeWidth="2"
+      strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><path d="m6 9 6 6 6-6" /></svg>
+  );
+  const Star = () => <span style={{ color: REQ_RED, marginRight: 2 }}>*</span>;
+
   return (
-    <div onClick={onClose} className="fixed inset-0 flex items-center justify-center z-50 p-4" style={{ background: 'rgba(0,0,0,0.45)' }}>
-      <div onClick={(e) => e.stopPropagation()} className="w-full max-w-xl bg-white rounded-lg p-6 max-h-[90vh] overflow-auto">
-        <div className="flex items-center justify-between mb-4">
-          <div className="font-medium" style={{ color: '#1f2329' }}>新增订单</div>
-          <button onClick={onClose} className="text-muted text-sm hover:text-fg">✕</button>
+    <div onClick={onClose} className="fixed inset-0" style={{ background: 'rgba(0,0,0,0.45)', zIndex: 999 }}>
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="fixed bg-white"
+        style={{
+          top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+          width: 620, maxHeight: '90vh', overflowY: 'auto',
+          borderRadius: 8, boxShadow: '0 4px 16px rgba(0,0,0,0.15)',
+          padding: '28px 32px', zIndex: 1000
+        }}
+      >
+        {/* ===== 头部：居中标题 + 右上角关闭 ===== */}
+        <div className="relative" style={{ marginBottom: 20 }}>
+          <div className="text-center" style={{ fontSize: 18, fontWeight: 500, color: '#222222' }}>新增订单</div>
+          <button onClick={onClose} aria-label="关闭"
+            className="absolute top-1/2 -translate-y-1/2 hover:text-[#333333] transition-colors"
+            style={{ right: 0, fontSize: 20, lineHeight: 1, color: '#888888' }}>×</button>
         </div>
 
-        <div className="space-y-4">
-          {/* 1. 顾客信息 */}
-          <section>
-            <div className="text-sm font-medium mb-2" style={{ color: '#1f2329' }}>顾客信息</div>
-            <input value={orderName} onChange={(e) => setOrderName(e.target.value)} placeholder="请输入订单名称"
-              className="w-full mb-2 px-3 py-2 rounded bg-panel2 border border-[#E5E5E5] text-sm outline-none" style={{ color: '#1f2329' }} />
-            <div className="flex items-center gap-2 mb-2">
-              <input value={customerName} onChange={(e) => setCustomerName(e.target.value)} placeholder="顾客姓名"
-                className="flex-1 px-3 py-2 rounded bg-panel2 border border-[#E5E5E5] text-sm outline-none" style={{ color: '#1f2329' }} />
+        {/* ===== 区块 1：顾客信息 ===== */}
+        <div style={BLOCK}>
+          <div style={BLOCK_TITLE}>顾客信息</div>
+          <div className="flex items-center" style={{ gap: 12 }}>
+            {/* 头像占位 44×44 */}
+            <div className="shrink-0 rounded-full flex items-center justify-center"
+              style={{ width: 44, height: 44, background: '#F2F3F5', color: '#BBBBBB' }}>
+              <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="8" r="3.4" /><path d="M4.5 20a7.5 7.5 0 0 1 15 0" />
+              </svg>
+            </div>
+            <input value={orderName} onChange={(e) => setOrderName(e.target.value)} placeholder="请输入订单名称" style={FIELD} />
+          </div>
+          <div className="flex items-center" style={{ gap: 12, marginTop: 12 }}>
+            <input value={customerName} onChange={(e) => setCustomerName(e.target.value)} placeholder="顾客姓名"
+              style={{ ...FIELD, flex: 1, width: 'auto' }} />
+            <div className="flex items-center" style={{ gap: 8, flex: 1 }}>
               {phones.map((p, i) => (
-                <div key={i} className="flex items-center gap-1">
-                  <input value={p} onChange={(e) => setPhoneAt(i, e.target.value)} placeholder="添加电话"
-                    className="w-32 px-3 py-2 rounded bg-panel2 border border-[#E5E5E5] text-sm outline-none" style={{ color: '#1f2329' }} />
-                  {phones.length > 1 && <button onClick={() => removePhoneAt(i)} className="text-muted hover:text-fg text-xs px-1">✕</button>}
+                <div key={i} className="relative" style={{ flex: 1 }}>
+                  <input value={p} onChange={(e) => setPhoneAt(i, e.target.value)} placeholder="添加电话" style={FIELD} />
+                  {phones.length > 1 && (
+                    <button onClick={() => removePhoneAt(i)} className="absolute top-1/2 -translate-y-1/2 hover:text-[#666666]"
+                      style={{ right: 8, fontSize: 12, color: '#BBBBBB' }}>×</button>
+                  )}
                 </div>
               ))}
-              <button onClick={addPhone} className="w-8 h-8 rounded border border-[#E5E5E5] bg-panel2 text-sm hover:bg-black/5" style={{ color: '#1f2329' }}>+</button>
             </div>
-          </section>
+            {/* 加号 28×28 */}
+            <button onClick={addPhone} aria-label="添加电话"
+              className="shrink-0 flex items-center justify-center hover:bg-[#F4F7FB] transition-colors"
+              style={{ width: 28, height: 28, border: `1px solid ${DLG_FIELD_BORDER}`, borderRadius: 4, color: '#666666', fontSize: 16, lineHeight: 1 }}>+</button>
+          </div>
+        </div>
 
-          {/* 2. 日期 & 场次 */}
-          <section>
-            <div className="text-sm font-medium mb-2" style={{ color: '#1f2329' }}>日期 & 场次</div>
-            <div className="text-xs mb-2 px-3 py-2 rounded bg-panel2 border border-[#E5E5E5]" style={{ color: '#1f2329' }}>
+        {/* ===== 区块 2：日期 & 场次 + 套系 ===== */}
+        <div style={BLOCK}>
+          <div style={BLOCK_TITLE}>日期 & 场次</div>
+          <div className="flex items-center" style={{ gap: 12 }}>
+            <div className="flex items-center" style={{ ...FIELD, flex: 1, width: 'auto', color: dateTbd ? '#999999' : '#333333' }}>
               {dateTbd ? '日期待定' : (orderDlg.date || '未选择日期')}
             </div>
-            <label className="flex items-center gap-2 text-sm cursor-pointer mb-2" style={{ color: '#1f2329' }}>
+            <label className="flex items-center cursor-pointer shrink-0" style={{ gap: 6, fontSize: 13, color: '#666666' }}>
               <input type="checkbox" checked={chooseSession} onChange={(e) => onChooseSession(e.target.checked)} />
               选择场次（可多选）
             </label>
-            {chooseSession && (
-              <div className="flex flex-wrap gap-2 mb-2">
-                {HOURS.map((h) => {
-                  const on = slots.includes(h);
+          </div>
+
+          {chooseSession && (
+            <div className="flex flex-wrap" style={{ gap: '8px 10px', marginTop: 12 }}>
+              {[...HOURS, HALF, FULL].map((k) => {
+                const on = slots.includes(k);
+                return (
+                  <button key={k} onClick={() => toggleSlot(k)}
+                    className="transition-opacity hover:opacity-90"
+                    style={{
+                      height: 36, borderRadius: 20, padding: '0 14px', fontSize: 13,
+                      background: on ? SLOT_TX : SLOT_BG,
+                      color: on ? '#FFFFFF' : SLOT_TX
+                    }}>
+                    {slotLabel(k)}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
+          <label className="flex items-center cursor-pointer" style={{ gap: 6, fontSize: 13, color: '#666666', marginTop: 12 }}>
+            <input type="checkbox" checked={dateTbd} onChange={(e) => onDateTbd(e.target.checked)} />
+            日期待定（不占具体日历日，仅作意向登记）
+          </label>
+          {dateTbd && (
+            <div style={{ marginTop: 12, background: TBD_BG, borderRadius: 4, padding: '8px 12px', fontSize: 12, color: '#B9742A' }}>
+              该订单标记为日期待定，日期与场次已置灰，仅记录意向。
+            </div>
+          )}
+
+          {/* 套系（必填，双栏 + 下拉） */}
+          <div style={{ marginTop: 16 }}>
+            <div className="flex items-center" style={{ gap: 12 }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 13, color: '#666666', marginBottom: 6 }}><Star />套系名称</div>
+                <select value={pkgId} onChange={(e) => onPickPackage(e.target.value)}
+                  style={{ ...FIELD, color: pkgId ? '#333333' : '#BBBBBB' }}>
+                  <option value="">请选择套系名称</option>
+                  {pkgList.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                </select>
+              </div>
+            </div>
+            <div className="flex items-center" style={{ gap: 12, marginTop: 12 }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 13, color: '#666666', marginBottom: 6 }}><Star />套系价格</div>
+                <input value={pkgPrice} onChange={(e) => setPkgPrice(e.target.value)} placeholder="请输入套系价格" style={FIELD} />
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 13, color: '#666666', marginBottom: 6 }}><Star />套系定金</div>
+                <input value={deposit} onChange={(e) => setDeposit(e.target.value)} placeholder="请输入套系定金" style={FIELD} />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* ===== 区块 3：收款状态 + 其他消费 ===== */}
+        <div style={BLOCK}>
+          <div style={BLOCK_TITLE}><Star />收款状态</div>
+          <div className="relative" ref={payPopRef}>
+            <button onClick={() => setPayPop((v) => !v)}
+              className="flex items-center justify-between"
+              style={{ ...FIELD, color: payStatus ? '#333333' : '#BBBBBB' }}>
+              <span>{payLabel}</span>
+              <Caret />
+            </button>
+            {payPop && (
+              <div className="absolute left-0 right-0 bg-white overflow-hidden"
+                style={{ top: 42, borderRadius: 4, boxShadow: '0 2px 12px rgba(0,0,0,0.12)', zIndex: 30 }}>
+                {PAY_OPTIONS.map((o) => {
+                  const on = payStatus === o.v;
                   return (
-                    <button key={h} onClick={() => toggleSlot(h)}
-                      className={'px-2.5 py-1 rounded-lg text-xs border transition ' + (on ? 'bg-[#2e7d32] text-white border-[#2e7d32]' : 'bg-[#d5e8d4] text-[#2e7d32] border-[#bcdcbe]')}>
-                      {h}
-                    </button>
-                  );
-                })}
-                {/* 半天 / 全天（样式与小时块一致，紧跟 23:00 之后） */}
-                {[HALF, FULL].map((k) => {
-                  const on = slots.includes(k);
-                  return (
-                    <button key={k} onClick={() => toggleSlot(k)}
-                      className={'px-2.5 py-1 rounded-lg text-xs border transition ' + (on ? 'bg-[#2e7d32] text-white border-[#2e7d32]' : 'bg-[#d5e8d4] text-[#2e7d32] border-[#bcdcbe]')}>
-                      {slotLabel(k)}
+                    <button key={o.v} onClick={() => { setPayStatus(o.v); setPayPop(false); }}
+                      className="w-full text-left hover:bg-[#F0F7FF] transition-colors"
+                      style={{ height: 36, padding: '0 12px', fontSize: 14, color: on ? '#2998EB' : '#333333', background: on ? POP_SEL : 'transparent' }}>
+                      {o.label}
                     </button>
                   );
                 })}
               </div>
             )}
-            <label className="flex items-center gap-2 text-sm cursor-pointer mb-2" style={{ color: '#1f2329' }}>
-              <input type="checkbox" checked={dateTbd} onChange={(e) => onDateTbd(e.target.checked)} />
-              日期待定（不占具体日历日，仅作意向登记）
-            </label>
-            {dateTbd && <div className="text-[11px] mb-2 rounded px-2 py-1.5" style={{ background: '#fff9e6', color: '#b9742a' }}>该订单标记为日期待定，日期与场次已置灰，仅记录意向。</div>}
-          </section>
+          </div>
 
-          {/* 3. 套系相关 */}
-          <section>
-            <div className="text-sm font-medium mb-2" style={{ color: '#1f2329' }}>套系相关</div>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-              <select value={pkgId} onChange={(e) => onPickPackage(e.target.value)}
-                className="px-3 py-2 rounded bg-panel2 border border-[#E5E5E5] text-sm outline-none" style={{ color: pkgId ? '#1f2329' : '#9ca3af' }}>
-                <option value="">* 请选择套系名称</option>
-                {pkgList.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-              </select>
-              <input value={pkgPrice} onChange={(e) => setPkgPrice(e.target.value)} placeholder="* 套系价格"
-                className="px-3 py-2 rounded bg-panel2 border border-[#E5E5E5] text-sm outline-none" style={{ color: '#1f2329' }} />
-              <input value={deposit} onChange={(e) => setDeposit(e.target.value)} placeholder="* 套系定金"
-                className="px-3 py-2 rounded bg-panel2 border border-[#E5E5E5] text-sm outline-none" style={{ color: '#1f2329' }} />
+          <div className="flex items-center justify-between" style={{ marginTop: 16, marginBottom: extras.length ? 12 : 0 }}>
+            <div style={{ fontSize: 14, fontWeight: 500, color: '#333333' }}>其他消费</div>
+            <button onClick={addExtra} className="hover:opacity-80" style={{ fontSize: 13, color: ADD_BTN }}>【添加】</button>
+          </div>
+          {extras.map((e, i) => (
+            <div key={i} className="flex items-center" style={{ gap: 12, marginBottom: 8 }}>
+              <input value={e.name} onChange={(ev) => setExtraAt(i, 'name', ev.target.value)} placeholder="消费名称"
+                style={{ ...FIELD, flex: 1, width: 'auto' }} />
+              <input value={e.amount} onChange={(ev) => setExtraAt(i, 'amount', ev.target.value)} placeholder="金额"
+                style={{ ...FIELD, width: 120 }} />
+              <button onClick={() => removeExtraAt(i)} className="shrink-0 hover:text-[#666666]" style={{ fontSize: 14, color: '#BBBBBB' }}>×</button>
             </div>
-          </section>
-
-          {/* 4. 收款状态 */}
-          <section>
-            <div className="text-sm font-medium mb-2" style={{ color: '#1f2329' }}>收款状态 <span style={{ color: '#e4393c' }}>*</span></div>
-            <select value={payStatus} onChange={(e) => setPayStatus(e.target.value)}
-              className="w-full px-3 py-2 rounded bg-panel2 border border-[#E5E5E5] text-sm outline-none" style={{ color: '#1f2329' }}>
-              <option value="unpaid">未付款</option>
-              <option value="deposit">已付定金</option>
-              <option value="paid">已付全款</option>
-            </select>
-          </section>
-
-          {/* 5. 其他消费 */}
-          <section>
-            <div className="flex items-center justify-between mb-2">
-              <div className="text-sm font-medium" style={{ color: '#1f2329' }}>其他消费</div>
-              <button onClick={addExtra} className="text-xs px-2 py-1 rounded" style={{ background: BLUE, color: '#ffffff' }}>+ 添加</button>
-            </div>
-            {extras.map((e, i) => (
-              <div key={i} className="flex items-center gap-2 mb-2">
-                <input value={e.name} onChange={(ev) => setExtraAt(i, 'name', ev.target.value)} placeholder="消费名称"
-                  className="flex-1 px-3 py-2 rounded bg-panel2 border border-[#E5E5E5] text-sm outline-none" style={{ color: '#1f2329' }} />
-                <input value={e.amount} onChange={(ev) => setExtraAt(i, 'amount', ev.target.value)} placeholder="金额"
-                  className="w-28 px-3 py-2 rounded bg-panel2 border border-[#E5E5E5] text-sm outline-none" style={{ color: '#1f2329' }} />
-                <button onClick={() => removeExtraAt(i)} className="text-muted hover:text-fg text-xs px-1">✕</button>
-              </div>
-            ))}
-          </section>
-
-          {/* 6. 拍摄地点 */}
-          <section>
-            <div className="text-sm font-medium mb-2" style={{ color: '#1f2329' }}>拍摄地点</div>
-            <input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="如 三亚 / 工作室"
-              className="w-full px-3 py-2 rounded bg-panel2 border border-[#E5E5E5] text-sm outline-none" style={{ color: '#1f2329' }} />
-          </section>
-
-          {/* 7. 备注 */}
-          <section>
-            <div className="text-sm font-medium mb-2" style={{ color: '#1f2329' }}>备注</div>
-            <input value={remark} onChange={(e) => setRemark(e.target.value)} placeholder="如 婚礼跟拍 / 特殊要求"
-              className="w-full px-3 py-2 rounded bg-panel2 border border-[#E5E5E5] text-sm outline-none" style={{ color: '#1f2329' }} />
-          </section>
-
-          {/* 8. 渠道来源 */}
-          <section>
-            <div className="text-sm font-medium mb-2" style={{ color: '#1f2329' }}>渠道来源</div>
-            <select value={channelId} onChange={(e) => { const o = chList.find((x) => String(x.id) === e.target.value); onPickChannel(e.target.value, o ? o.name : ''); }}
-              className="w-full px-3 py-2 rounded bg-panel2 border border-[#E5E5E5] text-sm outline-none" style={{ color: channelId ? '#1f2329' : '#9ca3af' }}>
-              <option value="">请选择渠道来源</option>
-              {chList.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
-            {/* 下拉最底部蓝色文字链接【渠道管理】 */}
-            <a href="#/channels"
-              onClick={(e) => { e.preventDefault(); window.location.hash = '#/channels'; }}
-              className="inline-block mt-1.5 text-xs hover:underline cursor-pointer" style={{ color: BLUE }}>渠道管理 ›</a>
-          </section>
-
-          {/* 9. 执行人 */}
-          <section>
-            <div className="text-sm font-medium mb-2" style={{ color: '#1f2329' }}>执行人</div>
-            <div className="relative" ref={execPopRef}>
-              <div className="flex flex-wrap items-center gap-2 min-h-[40px] px-3 py-2 rounded bg-panel2 border border-[#E5E5E5]">
-                {executors.length === 0 && <span className="text-xs text-muted">未指派</span>}
-                {executors.map((ex) => (
-                  <span key={ex.id ?? ex.name} className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs" style={{ background: '#eaf2fe', color: '#1d6fe0' }}>
-                    {ex.avatar
-                      ? <img src={ex.avatar} className="w-4 h-4 rounded-full" alt="" />
-                      : <span className="w-4 h-4 rounded-full inline-flex items-center justify-center text-[9px]" style={{ background: BLUE, color: '#fff' }}>{(ex.name || '?').slice(0, 1)}</span>}
-                    {ex.name}
-                    <button onClick={() => removeExec(ex.id)} className="hover:opacity-70">✕</button>
-                  </span>
-                ))}
-                <button onClick={() => setExecPop((v) => !v)} className="w-6 h-6 rounded-full border border-[#E5E5E5] text-sm hover:bg-black/5 flex items-center justify-center" style={{ color: '#1f2329' }}>+</button>
-              </div>
-              {execPop && (
-                <div className="absolute left-0 mt-1 w-56 bg-white border border-[#E5E5E5] rounded-lg shadow-lg z-30 max-h-52 overflow-auto">
-                  {personnel.length === 0 && <div className="px-3 py-2 text-xs text-muted">暂无人员</div>}
-                  {personnel.map((p) => {
-                    const on = executors.find((x) => String(x.id) === String(p.id));
-                    return (
-                      <button key={p.id} onClick={() => toggleExec(p)}
-                        className={'w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-panel2 ' + (on ? 'bg-panel2' : '')} style={{ color: '#1f2329' }}>
-                        {p.avatar
-                          ? <img src={p.avatar} className="w-5 h-5 rounded-full" alt="" />
-                          : <span className="w-5 h-5 rounded-full inline-flex items-center justify-center text-[10px]" style={{ background: BLUE, color: '#fff' }}>{(p.name || '?').slice(0, 1)}</span>}
-                        {p.name}
-                        {on && <span className="ml-auto" style={{ color: BLUE }}>✓</span>}
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          </section>
+          ))}
         </div>
 
-        {localErr && <div className="text-xs text-red-500 mt-3">{localErr}</div>}
+        {/* ===== 区块 4：拍摄地点 + 备注 ===== */}
+        <div style={BLOCK}>
+          <div className="flex items-center justify-between" style={{ marginBottom: 12 }}>
+            <div style={{ fontSize: 14, fontWeight: 500, color: '#333333' }}>拍摄地点</div>
+            {!showRemark && (
+              <button onClick={() => setShowRemark(true)} className="hover:opacity-80" style={{ fontSize: 13, color: ADD_BTN }}>【添加备注】</button>
+            )}
+          </div>
+          <input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="如 三亚 / 工作室" style={FIELD} />
+          {(showRemark || remark) && (
+            <input value={remark} onChange={(e) => setRemark(e.target.value)} placeholder="备注：如 婚礼跟拍 / 特殊要求"
+              style={{ ...FIELD, marginTop: 12 }} />
+          )}
+        </div>
 
-        <div className="flex justify-center mt-5">
-          <button onClick={save} className="px-10 py-2 rounded text-white text-sm hover:opacity-90" style={{ background: BLUE }}>保存</button>
+        {/* ===== 区块 5：渠道来源 ===== */}
+        <div style={BLOCK}>
+          <div style={BLOCK_TITLE}>渠道来源</div>
+          <div className="relative" ref={chPopRef}>
+            <button onClick={() => setChPop((v) => !v)}
+              className="flex items-center justify-between"
+              style={{ ...FIELD, color: channelName ? '#333333' : '#BBBBBB' }}>
+              <span>{channelName || '请选择渠道来源'}</span>
+              <Caret />
+            </button>
+            {chPop && (
+              <div className="absolute left-0 right-0 bg-white overflow-hidden"
+                style={{ top: 42, borderRadius: 4, boxShadow: '0 2px 12px rgba(0,0,0,0.12)', zIndex: 30, maxHeight: 240, overflowY: 'auto' }}>
+                {chList.map((c) => {
+                  const on = String(channelId) === String(c.id);
+                  return (
+                    <button key={c.id} onClick={() => onPickChannel(c.id, c.name)}
+                      className="w-full flex items-center text-left hover:bg-[#F0F7FF] transition-colors"
+                      style={{ height: 36, padding: '0 12px', gap: 8, fontSize: 14, color: on ? '#2998EB' : '#333333', background: on ? POP_SEL : 'transparent' }}>
+                      <span className="shrink-0 rounded-full inline-flex items-center justify-center"
+                        style={{ width: 20, height: 20, background: '#EAF2FE', color: '#2998EB', fontSize: 11 }}>{(c.name || '?').slice(0, 1)}</span>
+                      {c.name}
+                    </button>
+                  );
+                })}
+                <button
+                  onClick={() => { setChPop(false); window.location.hash = '#/channels'; }}
+                  className="w-full text-left hover:bg-[#F0F7FF] transition-colors"
+                  style={{ height: 36, padding: '0 12px', fontSize: 13, color: ADD_BTN, borderTop: `1px solid ${DLG_BLOCK_BORDER}` }}>
+                  渠道管理 ›
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* ===== 区块 6：执行人 ===== */}
+        <div style={{ ...BLOCK, marginBottom: 0 }}>
+          <div style={BLOCK_TITLE}>执行人</div>
+          <div className="relative" ref={execPopRef}>
+            <div className="flex flex-wrap items-center" style={{ gap: 10 }}>
+              {executors.map((ex) => (
+                <span key={ex.id ?? ex.name} className="inline-flex items-center"
+                  style={{ gap: 6, height: 32, padding: '0 10px 0 4px', borderRadius: 16, background: '#EAF2FE', color: '#1D6FE0', fontSize: 13 }}>
+                  {ex.avatar
+                    ? <img src={ex.avatar} className="rounded-full" style={{ width: 24, height: 24 }} alt="" />
+                    : <span className="rounded-full inline-flex items-center justify-center" style={{ width: 24, height: 24, background: ADD_BTN, color: '#fff', fontSize: 11 }}>{(ex.name || '?').slice(0, 1)}</span>}
+                  {ex.name}
+                  <button onClick={() => removeExec(ex.id)} className="hover:opacity-70" style={{ fontSize: 12 }}>×</button>
+                </span>
+              ))}
+              {/* 蓝色 32×32 加号 */}
+              <button onClick={() => setExecPop((v) => !v)} aria-label="添加执行人"
+                className="shrink-0 flex items-center justify-center hover:bg-[#E6F4FF] transition-colors"
+                style={{ width: 32, height: 32, borderRadius: '50%', border: `1px dashed ${ADD_BTN}`, color: ADD_BTN, fontSize: 18, lineHeight: 1 }}>+</button>
+            </div>
+            {execPop && (
+              <div className="absolute left-0 bg-white overflow-auto"
+                style={{ top: 40, width: 220, maxHeight: 208, borderRadius: 4, boxShadow: '0 2px 12px rgba(0,0,0,0.12)', zIndex: 30 }}>
+                {personnel.length === 0 && <div style={{ padding: '10px 12px', fontSize: 12, color: '#999999' }}>暂无人员</div>}
+                {personnel.map((p) => {
+                  const on = !!executors.find((x) => String(x.id) === String(p.id));
+                  return (
+                    <button key={p.id} onClick={() => toggleExec(p)}
+                      className="w-full flex items-center text-left hover:bg-[#F0F7FF] transition-colors"
+                      style={{ height: 36, padding: '0 12px', gap: 8, fontSize: 14, color: on ? '#2998EB' : '#333333', background: on ? POP_SEL : 'transparent' }}>
+                      {p.avatar
+                        ? <img src={p.avatar} className="rounded-full" style={{ width: 20, height: 20 }} alt="" />
+                        : <span className="rounded-full inline-flex items-center justify-center" style={{ width: 20, height: 20, background: ADD_BTN, color: '#fff', fontSize: 10 }}>{(p.name || '?').slice(0, 1)}</span>}
+                      {p.name}
+                      {on && <span className="ml-auto">✓</span>}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {localErr && <div style={{ marginTop: 12, fontSize: 12, color: REQ_RED }}>{localErr}</div>}
+
+        {/* ===== 底部保存 ===== */}
+        <div className="flex justify-center" style={{ marginTop: 28 }}>
+          <button onClick={save} className="text-white hover:opacity-90 transition-opacity"
+            style={{ width: 140, height: 42, background: ADD_BTN, borderRadius: 4, fontSize: 15, fontWeight: 500 }}>保存</button>
         </div>
       </div>
     </div>
