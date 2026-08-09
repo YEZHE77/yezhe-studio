@@ -172,10 +172,25 @@ export default function Packages() {
     setTimeout(() => setCopyTip(''), 2000);
   };
 
-  const del = async (id) => {
+  // 删除：已被订单关联的套系禁止物理删除，后端返回 PACKAGE_IN_USE，引导改为下架（验收②）
+  const del = async (pkg) => {
+    const id = typeof pkg === 'object' ? pkg.id : pkg;
+    const cur = typeof pkg === 'object' ? pkg : list.find((x) => x.id === id);
     if (!confirm('确认后将永久删除，建议先做好本地备份，确定继续？')) return;
-    await http.delete('/api/packages/' + id);
-    load();
+    try {
+      await http.delete('/api/packages/' + id);
+      load();
+    } catch (e) {
+      if (e && e.code === 'PACKAGE_IN_USE') {
+        const n = (e.data && e.data.count) || 0;
+        const goOff = cur && cur.status === 'on'
+          ? confirm(`该套系已关联 ${n} 个订单，为保护历史订单数据不可删除。\n是否改为「下架」隐藏？（下架后 C 端不可见，后台手动录单仍可选）`)
+          : (alert(`该套系已关联 ${n} 个订单，为保护历史订单数据不可删除，当前已处于下架状态。`), false);
+        if (goOff) { await http.put('/api/packages/' + id, { status: 'off' }); load(); }
+        return;
+      }
+      alert((e && e.message) || '删除失败');
+    }
   };
 
   // 上架 / 下架快捷开关（不改其它字段）
@@ -322,7 +337,7 @@ export default function Packages() {
                     <ActionBtn title={off ? '上架' : '下架'} onClick={() => toggleStatus(p)}>
                       {off ? <IconCartUp /> : <IconCartDown />}
                     </ActionBtn>
-                    <ActionBtn title="删除" onClick={() => del(p.id)}><IconTrash /></ActionBtn>
+                    <ActionBtn title="删除" onClick={() => del(p)}><IconTrash /></ActionBtn>
                   </div>
                 </div>
               );

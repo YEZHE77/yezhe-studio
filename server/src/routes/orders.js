@@ -163,7 +163,10 @@ router.post('/', authRequired, requireRole(['admin', 'photographer', 'finance'])
           raw_policy: p.raw_policy || '', duration: p.duration || '', cover_url: p.cover_url || '',
           category_id: p.category_id,
           addons: safeParse(p.addons, []), marketing: safeParse(p.marketing, {}),
-          specs: safeParse(p.specs, []), questionnaire: safeParse(p.questionnaire, '')
+          specs: safeParse(p.specs, []), questionnaire: safeParse(p.questionnaire, ''),
+          // details 含加片费 / 加片优惠 / 服务模板等，必须一并快照，选片核算加片费只读快照（验收⑦）
+          details: safeParse(p.details, {}),
+          snapshot_at: nowISO()
         };
         total += usePrice;
         if (b.addons && b.addons.length) {
@@ -381,6 +384,7 @@ router.post('/:id/change-package', authRequired, requireRole(['admin', 'photogra
       category_id: p.category_id, spec_id: b.spec_id || '', spec_name: specName,
       addons: safeParse(p.addons, []), marketing: safeParse(p.marketing, {}),
       specs, questionnaire: safeParse(p.questionnaire, ''),
+      details: safeParse(p.details, {}),
       snapshot_at: nowISO()
     };
     const addons = Array.isArray(b.addons) ? b.addons : (safeParse(o.addons_snapshot, []) || []);

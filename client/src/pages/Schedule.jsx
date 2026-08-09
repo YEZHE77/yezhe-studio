@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import http from '../api.js';
+import { useNavigate } from 'react-router-dom';
+import http, { conflictOf } from '../api.js';
 import { useViewState } from '../tabMemory.js';
 
 const WEEK = ['日', '一', '二', '三', '四', '五', '六'];
@@ -61,6 +62,7 @@ function dayState(rows, pends) {
 
 
 export default function Schedule() {
+  const nav = useNavigate();
   const init = new Date();
   const initMonth = `${init.getFullYear()}-${pad(init.getMonth() + 1)}`;
   const [state, setState] = useViewState('schedule', { month: initMonth, executor: '' });
@@ -309,7 +311,14 @@ export default function Schedule() {
                     {s.order_status === 'deposit' && <span className="inline-block mt-1 text-[10px] px-1.5 py-0.5" style={{ background: LEGEND_WAIT, color: '#2e7d32' }}>等待拍</span>}
                     {s.date_tbd ? <span className="inline-block mt-1 text-[10px] px-1.5 py-0.5 ml-1" style={{ background: 'rgba(255,255,255,0.12)', color: '#e5c07b' }}>日期待定</span> : null}
                   </div>
-                  <button onClick={() => openEdit(s)} className="shrink-0 ml-2 px-2 py-1 text-xs hover:opacity-80" style={{ color: '#ffffff', border: '1px solid rgba(255,255,255,0.25)' }}>编辑</button>
+                  <div className="shrink-0 ml-2 flex items-center gap-1">
+                    {/* 验收⑨：日历上点击已约档期可跳转对应订单详情 */}
+                    {s.order_id ? (
+                      <button onClick={() => nav('/orders/' + s.order_id)} className="px-2 py-1 text-xs hover:opacity-80"
+                        style={{ color: '#ffffff', background: 'rgba(40,144,240,0.9)', border: '1px solid rgba(255,255,255,0.15)' }}>查看订单</button>
+                    ) : null}
+                    <button onClick={() => openEdit(s)} className="px-2 py-1 text-xs hover:opacity-80" style={{ color: '#ffffff', border: '1px solid rgba(255,255,255,0.25)' }}>编辑</button>
+                  </div>
                 </div>
               ))}
 
@@ -446,6 +455,7 @@ function OrderDialog({ orderDlg, personnel, onClose, onSaved }) {
   const [channelName, setChannelName] = useState('');
   const [executors, setExecutors] = useState([]); // { id, name, avatar }
   const [localErr, setLocalErr] = useState('');
+  const [conflictBox, setConflictBox] = useState(null); // 档期冲突二次确认（验收③）
 
   useEffect(() => {
     http.get('/api/packages').then((r) => setPkgList(r.data || [])).catch(() => {});
@@ -522,34 +532,21 @@ function OrderDialog({ orderDlg, personnel, onClose, onSaved }) {
       channel_id: channelId ? Number(channelId) : null,
       executors
     };
+    await postOrder(payload, false);
+  };
+
+  // 建单：档期由后端 /api/orders 自动占用（禁止前端重复写 schedules，否则同一订单会占两条）
+  // 冲突时后端返回 409，前端二次确认后带 force 重提（验收③）
+  const postOrder = async (payload, force) => {
     try {
-      const r = await http.post('/api/orders', payload);
-      const orderNo = (r.data && r.data.order_no) || '';
-      // 同步落一条日历档期（仅当指定了具体拍摄日期；与订单号关联，日历按订单着色）
-      if (!dateTbd && shootDate) {
-        const periods = slots.length ? slots : ['full'];
-        const exec = executors[0] || {};
-        try {
-          await http.post('/api/schedules', {
-            date: shootDate,
-            periods,
-            date_tbd: 0,
-            status: 'booked',
-            order_no: orderNo,
-            photographer: exec.name || '',
-            executor_id: exec.id || null,
-            executor_name: exec.name || '',
-            note: remark.trim()
-          });
-        } catch (se) {
-          // 档期建档失败不影响订单本身（订单已在订单中心生成）
-          console.warn('档期建档失败', se);
-          setLocalErr('订单已创建，但日历档期写入失败：' + ((se.response && se.response.data && se.response.data.error) || '未知错误'));
-          return;
-        }
-      }
+      await http.post('/api/orders', { ...payload, force: force ? 1 : 0 });
+      setConflictBox(null);
       onSaved();
-    } catch (e) { setLocalErr((e.response && e.response.data && e.response.data.error) || '保存失败'); }
+    } catch (e) {
+      const cf = conflictOf(e);
+      if (cf && cf.forcible && !force) { setConflictBox({ message: cf.message, payload }); return; }
+      setLocalErr((e && e.message) || (e.response && e.response.data && e.response.data.error) || '保存失败');
+    }
   };
 
   const slotLabel = (s) => s === HALF ? '半天' : s === FULL ? '全天' : s;
@@ -833,6 +830,23 @@ function OrderDialog({ orderDlg, personnel, onClose, onSaved }) {
             style={{ width: 140, height: 42, background: ADD_BTN, borderRadius: 4, fontSize: 15, fontWeight: 500 }}>保存</button>
         </div>
       </div>
+
+      {/* 档期冲突警告（验收③）：所选日期已被订单占用或手动锁场 */}
+      {conflictBox && (
+        <div className="fixed inset-0 flex items-center justify-center z-[95] p-4" style={{ background: 'rgba(0,0,0,0.45)' }} onClick={(e) => e.stopPropagation()}>
+          <div onClick={(e) => e.stopPropagation()} style={{ width: '100%', maxWidth: 380, background: '#fff', borderRadius: 8, padding: 24 }}>
+            <div style={{ fontSize: 16, fontWeight: 600, color: '#222222', marginBottom: 8 }}>档期冲突</div>
+            <div style={{ fontSize: 14, color: '#333333', lineHeight: 1.7 }}>{conflictBox.message}</div>
+            <div style={{ fontSize: 12, color: '#888888', marginTop: 8 }}>继续保存会在同一天产生重复占用，请确认是否由不同执行人分别承接。</div>
+            <div className="flex justify-end" style={{ gap: 8, marginTop: 20 }}>
+              <button onClick={() => setConflictBox(null)}
+                style={{ height: 34, padding: '0 14px', borderRadius: 4, border: '1px solid #DDDDDD', background: '#fff', fontSize: 14, color: '#333333' }}>换个日期</button>
+              <button onClick={() => postOrder(conflictBox.payload, true)}
+                style={{ height: 34, padding: '0 14px', borderRadius: 4, border: 'none', background: '#FF8A34', color: '#fff', fontSize: 14 }}>仍要占用</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -897,7 +911,9 @@ function ScheduleDialog({ dlg, personnel, onClose, onSaved }) {
   const [executorId, setExecutorId] = useState(dlg.executor_id || '');
   const [executorName, setExecutorName] = useState(dlg.executor_name || '');
   const [note, setNote] = useState(dlg.note || '');
+  const [status, setStatus] = useState(dlg.status || 'free');
   const [localErr, setLocalErr] = useState('');
+  const fromOrder = !!dlg.order_no; // 订单占用的档期，状态由订单驱动，禁止手动改
 
   const togglePeriod = (h) => setPeriods((p) => p.includes(h) ? p.filter((x) => x !== h) : [...p, h]);
   const onChooseSession = (v) => { setChooseSession(v); if (v) setDateTbd(false); };
@@ -912,13 +928,16 @@ function ScheduleDialog({ dlg, personnel, onClose, onSaved }) {
       executor_id: executorId ? Number(executorId) : null,
       executor_name: executorName || (ex ? ex.name : ''),
       photographer: executorName || (ex ? ex.name : ''),
-      note, status: dlg.status || 'free', order_no: dlg.order_no || ''
+      note, status: fromOrder ? (dlg.status || 'booked') : status, order_no: dlg.order_no || ''
     };
     try {
       if (dlg.id) await http.put('/api/schedules/' + dlg.id, payload);
       else await http.post('/api/schedules', payload);
       onSaved();
-    } catch (e) { setLocalErr((e.response && e.response.data && e.response.data.error) || '保存失败'); }
+    } catch (e) {
+      // 409：手动锁档不能覆盖已有订单占用的日期（验收⑩）
+      setLocalErr((e && e.message) || (e.response && e.response.data && e.response.data.error) || '保存失败');
+    }
   };
 
   return (
@@ -932,6 +951,22 @@ function ScheduleDialog({ dlg, personnel, onClose, onSaved }) {
         <label className="text-xs text-muted">拍摄日期</label>
         <input type="date" value={date} disabled={dateTbd} onChange={(e) => setDate(e.target.value)}
           className="w-full mb-3 px-2 py-2 rounded bg-panel2 border border-[#E5E5E5] text-sm outline-none disabled:opacity-50" style={{ color: '#1f2329' }} />
+
+        {/* 档期状态：订单占用的档期由订单驱动不可手改；空档可手动锁场 */}
+        <label className="text-xs text-muted">档期状态</label>
+        <select value={fromOrder ? 'booked' : status} disabled={fromOrder} onChange={(e) => setStatus(e.target.value)}
+          className="w-full mb-1 px-2 py-2 rounded bg-panel2 border border-[#E5E5E5] text-sm outline-none disabled:opacity-50" style={{ color: '#1f2329' }}>
+          {fromOrder ? <option value="booked">已约（订单 {dlg.order_no} 占用）</option> : (
+            <>
+              <option value="free">空闲（仅登记，不占用）</option>
+              <option value="locked">锁场（手动锁档，占用该日期）</option>
+              <option value="closed">关闭（C 端不可预约）</option>
+            </>
+          )}
+        </select>
+        <div className="text-[11px] mb-3" style={{ color: '#999999' }}>
+          {fromOrder ? '该档期由订单自动占用，改期 / 作废 / 删除订单会自动同步释放。' : '手动锁场不能覆盖已被订单占用或已锁场的日期。'}
+        </div>
 
         <label className="flex items-center gap-2 text-sm cursor-pointer mb-2" style={{ color: '#1f2329' }}>
           <input type="checkbox" checked={chooseSession} onChange={(e) => onChooseSession(e.target.checked)} />

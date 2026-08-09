@@ -67,11 +67,20 @@ http.interceptors.response.use(
       if (location.pathname !== '/login') location.href = '/login';
       return Promise.reject({ type: 'auth', message: '登录已过期' });
     }
-    const msg = (err.response.data && err.response.data.error) || ('请求失败(' + err.response.status + ')');
-    if (!silentMode) toast(msg);
-    return Promise.reject({ ...err, message: msg, type: 'server' });
+    const data = err.response.data || {};
+    const msg = data.error || ('请求失败(' + err.response.status + ')');
+    // 业务冲突（档期占用 / 套系被订单引用）由调用方自行弹窗处理，不走全局 toast
+    const quiet = (cfg && cfg.skipToast) || err.response.status === 409 || data.code === 'PACKAGE_IN_USE';
+    if (!silentMode && !quiet) toast(msg);
+    return Promise.reject({ ...err, message: msg, type: 'server', status: err.response.status, code: data.code || '', data });
   }
 );
+
+// 档期冲突判定助手：命中返回 { message, conflict, forcible }，否则 null
+export function conflictOf(err) {
+  if (!err || err.status !== 409 || err.code !== 'CONFLICT') return null;
+  return { message: err.message, conflict: (err.data && err.data.conflict) || null, forcible: !!(err.data && err.data.forcible) };
+}
 
 // 简易内联 toast（零依赖，替代各页面重复代码）
 let toastTimer;

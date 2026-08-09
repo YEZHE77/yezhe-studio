@@ -103,7 +103,7 @@ router.get('/', authRequired, async (req, res) => {
     }
     const w = where.length ? 'WHERE ' + where.join(' AND ') : '';
     const rows = await query(
-      `SELECT s.*, o.customer_name AS order_customer, o.payment_status AS order_pay_status, o.status AS order_status
+      `SELECT s.*, o.id AS order_id, o.customer_name AS order_customer, o.payment_status AS order_pay_status, o.status AS order_status
        FROM schedules s LEFT JOIN orders o ON o.order_no = s.order_no ${w} ORDER BY s.date ASC, s.id ASC`,
       params
     );

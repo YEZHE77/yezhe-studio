@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import http, { img, uploadBatch } from '../api.js';
+import http, { img, uploadBatch, conflictOf } from '../api.js';
 import bgm from '../bgm.js';
 import Slideshow from '../components/Slideshow.jsx';
 
@@ -15,6 +15,21 @@ const STAGE_COLOR = {
 };
 const TYPE_LABEL = { deposit: '定金', balance: '尾款', extra: '加片/增值', refund: '退款' };
 const PAY_STATUS_LABEL = { unpaid: '未付定金', deposit: '已付定金', paid: '已付全款' };
+
+// —— 加片费核算（验收⑦：一律读订单套系快照，不读套系最新配置）——
+// 套系「加片费」为自由文本（如「¥50/张」），从中抽取数字作为单价，缺省 80 与后端 selection.js 保持一致
+function parseUnitPrice(text) {
+  const m = String(text == null ? '' : text).match(/\d+(\.\d+)?/);
+  return m ? parseFloat(m[0]) : 80;
+}
+// 梯度优惠与后端 selectionFee 完全一致：>=20 张 9 折，>=10 张 95 折
+function calcExtraFee(extraCount, unitPrice) {
+  const n = Math.max(0, parseInt(extraCount, 10) || 0);
+  let discount = 1;
+  if (n >= 20) discount = 0.9;
+  else if (n >= 10) discount = 0.95;
+  return { count: n, unitPrice, discount, fee: Math.round(n * unitPrice * discount) };
+}
 
 // 订单详情 11 步流程进度条（顺序固定，状态/时间戳完全由后端接口驱动，不写死）
 const ORDER_STEPS = [
@@ -124,6 +139,13 @@ export default function OrderDetail() {
   const [miniQr, setMiniQr] = useState(null);
   const [miniQrLoading, setMiniQrLoading] = useState(false);
   const [moreMenu, setMoreMenu] = useState(false);
+  // 改拍摄日期档期冲突二次确认（验收④）
+  const [dateConflict, setDateConflict] = useState(null);
+  // 更换套系弹窗（验收⑥）
+  const [pkgSwitch, setPkgSwitch] = useState(null);
+  const [pkgSwitching, setPkgSwitching] = useState(false);
+  // 加片设置弹窗（验收⑦：按订单快照核算）
+  const [addonBox, setAddonBox] = useState(null);
 
   const loadSel = useCallback((oid) => {
     http.get('/api/admin/photo-select/' + oid).then((r) => setSel(r.data)).catch(() => setSel(null));
@@ -187,15 +209,75 @@ export default function OrderDetail() {
     setEdit(true);
   };
   async function saveEdit(e) {
-    e.preventDefault();
+    if (e) e.preventDefault();
+    await doSaveEdit(false);
+  }
+  // 保存订单编辑；改拍摄日期时后端会做档期冲突检测（验收④），冲突则二次确认后 force 提交
+  async function doSaveEdit(force) {
     try {
-      await http.put('/api/orders/' + detail.id, editForm);
+      await http.put('/api/orders/' + detail.id, { ...editForm, force: force ? 1 : 0 });
+      setDateConflict(null);
       setEdit(false);
       reload();
-    } catch (e2) { alert((e2.response && e2.response.data && e2.response.data.error) || '保存失败'); }
+    } catch (e2) {
+      const cf = conflictOf(e2);
+      if (cf && cf.forcible && !force) { setDateConflict(cf.message); return; }
+      alert((e2 && e2.message) || (e2.response && e2.response.data && e2.response.data.error) || '保存失败');
+    }
+  }
+
+  // —— 更换套系（验收⑥）：弹窗确认，仅重写当前订单快照 ——
+  function openPkgSwitch() {
+    if (!detail) return;
+    if (detail.cancelled) { alert('订单已作废，无法更换套系'); return; }
+    setPkgSwitch({ package_id: String(detail.package_id || ''), spec_id: '', package_price: '', reason: '', step: 'pick' });
+  }
+  async function confirmPkgSwitch() {
+    if (!pkgSwitch || !pkgSwitch.package_id) { alert('请选择要更换的套系'); return; }
+    setPkgSwitching(true);
+    try {
+      await http.post('/api/orders/' + detail.id + '/change-package', {
+        package_id: Number(pkgSwitch.package_id),
+        spec_id: pkgSwitch.spec_id || '',
+        package_price: pkgSwitch.package_price === '' ? undefined : parseFloat(pkgSwitch.package_price),
+        reason: pkgSwitch.reason || ''
+      });
+      setPkgSwitch(null);
+      reload();
+    } catch (e2) { alert((e2 && e2.message) || '更换失败'); }
+    finally { setPkgSwitching(false); }
+  }
+
+  // —— 加片设置（验收⑦）：单价与精修张数一律取订单快照 ——
+  function openAddonBox() {
+    if (!detail) return;
+    const snap = detail.package_snapshot || {};
+    const dt = (snap.details && typeof snap.details === 'object') ? snap.details : {};
+    const unit = parseUnitPrice(dt.extra_photo_fee);
+    const included = parseInt(snap.retouch_count ?? dt.retouch_count, 10) || 0;
+    const picked = (sel && sel.selection && Array.isArray(sel.selection.marks)) ? sel.selection.marks.length : 0;
+    const count = Math.max(0, picked - included);
+    setAddonBox({
+      unit, included, picked, count: String(count),
+      feeText: dt.extra_photo_fee || '', discountText: dt.extra_photo_discount || '',
+      fromSnapshot: !!(snap.id || snap.name), method: 'offline'
+    });
+  }
+  async function submitAddon() {
+    if (!addonBox) return;
+    const r = calcExtraFee(addonBox.count, addonBox.unit);
+    if (r.fee <= 0) { alert('加片张数为 0，无需登记加片费'); return; }
+    try {
+      await http.post('/api/orders/' + detail.id + '/payments', {
+        type: 'extra', amount: r.fee, method: addonBox.method,
+        note: `加片 ${r.count} 张 × ¥${r.unitPrice}/张${r.discount < 1 ? ' × ' + (r.discount * 10).toFixed(1) + ' 折' : ''}（按订单套系快照核算）`
+      });
+      setAddonBox(null);
+      reload();
+    } catch (e2) { alert((e2 && e2.message) || '登记失败'); }
   }
   async function removeOrder() {
-    if (!confirm('确认删除该订单？\n将移入回收站，可在回收站恢复（不破坏收款流水与选片记录）。')) return;
+    if (!confirm('确认删除该订单？\n将移入回收站，可在回收站恢复（不破坏收款流水与选片记录）。\n删除后该订单占用的档期会自动释放。')) return;
     try { await http.delete('/api/orders/' + detail.id); nav('/orders'); }
     catch (e2) { alert((e2.response && e2.response.data && e2.response.data.error) || '删除失败'); }
   }
@@ -224,10 +306,17 @@ export default function OrderDetail() {
     catch (e2) { alert((e2.response && e2.response.data && e2.response.data.error) || '操作失败'); }
   }
   async function cancel() {
+    if (!detail) return;
+    const tip = detail.shoot_date && !detail.date_tbd
+      ? `确认作废该订单？\n作废后将自动释放已占用的档期 ${detail.shoot_date}，该日期重新变为可约。`
+      : '确认作废该订单？';
+    if (!confirm(tip)) return;
     const reason = prompt('作废原因（选填）');
     if (reason === null) return;
-    await http.post('/api/orders/' + detail.id + '/cancel', { reason });
-    reload();
+    try {
+      await http.post('/api/orders/' + detail.id + '/cancel', { reason });
+      reload();
+    } catch (e2) { alert((e2 && e2.message) || '作废失败'); }
   }
   async function refund() {
     const amt = prompt('退款金额');
@@ -306,11 +395,16 @@ export default function OrderDetail() {
   const pkgInfo = useMemo(() => {
     if (!detail) return null;
     const snap = detail.package_snapshot || {};
-    const live = pkgs.find((p) => p.id === detail.package_id) || {};
+    // 【底层强制规则 1】订单一旦保存套系快照，展示与核算一律读快照；
+    // 后续编辑原始套系不影响历史订单。仅无快照的历史脏数据才回落到最新套系配置。
+    const hasSnap = !!(snap && (snap.id || snap.name));
+    const live = hasSnap ? {} : (pkgs.find((p) => p.id === detail.package_id) || {});
     const arr = (v) => Array.isArray(v) ? v : [];
     const obj = (v) => (v && typeof v === 'object' && !Array.isArray(v)) ? v : {};
     const val = (s, l) => (s !== undefined && s !== null && s !== '' ? s : l);
     return {
+      fromSnapshot: hasSnap,
+      details: obj(snap.details).extra_photo_fee !== undefined || Object.keys(obj(snap.details)).length ? obj(snap.details) : obj(live.details),
       name: snap.name || live.name || '—',
       price: val(snap.price, live.price),
       deposit: val(snap.deposit, live.deposit),
@@ -467,7 +561,9 @@ export default function OrderDetail() {
               style={{ height: 36, borderRadius: 4, background: MINT, color: '#fff', fontSize: 14, border: 'none', padding: '0 14px', cursor: 'pointer' }}>调查问卷</button>
             <button type="button" onClick={openEdit}
               style={secBtnStyle}>编辑订单</button>
-            <button type="button" onClick={() => setPay({ type: 'extra', amount: '', method: 'offline', note: '' })}
+            <button type="button" onClick={openPkgSwitch}
+              style={secBtnStyle}>更换套系</button>
+            <button type="button" onClick={openAddonBox}
               style={secBtnStyle}>加片设置</button>
             <button type="button" onClick={() => setMoreMenu((m) => !m)}
               style={secBtnStyle}>更多设置</button>
@@ -732,6 +828,9 @@ export default function OrderDetail() {
             </div>
             <input value={editForm.shoot_date} onChange={(e) => setEditForm({ ...editForm, shoot_date: e.target.value })} type="date"
               style={{ ...modalInputStyle, marginTop: 12 }} />
+            <div style={{ fontSize: 12, color: '#888888', marginTop: 6 }}>
+              修改拍摄日期将自动释放原档期 {detail.shoot_date || '（无）'}，并占用新日期；若新日期已被占用会先提示冲突。
+            </div>
             <input value={editForm.executor} onChange={(e) => setEditForm({ ...editForm, executor: e.target.value })} placeholder="执行人"
               style={{ ...modalInputStyle, marginTop: 12 }} />
             <select value={editForm.status} onChange={(e) => setEditForm({ ...editForm, status: e.target.value })}
@@ -749,6 +848,125 @@ export default function OrderDetail() {
           </form>
         </div>
       )}
+
+      {/* 改拍摄日期档期冲突警告（验收④） */}
+      {dateConflict && (
+        <div className="fixed inset-0 flex items-center justify-center z-[90] p-4" style={{ background: 'rgba(0,0,0,0.45)' }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ width: '100%', maxWidth: 400, background: '#fff', borderRadius: 8, padding: 24 }}>
+            <div style={{ color: '#222222', fontWeight: 600, marginBottom: 8 }}>档期冲突</div>
+            <div style={{ fontSize: 14, color: '#333333', lineHeight: 1.7 }}>{dateConflict}</div>
+            <div style={{ fontSize: 12, color: '#888888', marginTop: 8 }}>继续保存会在同一天产生重复占用，请确认是否由不同执行人分别承接。</div>
+            <div className="flex justify-end" style={{ gap: 8, marginTop: 16 }}>
+              <button type="button" onClick={() => setDateConflict(null)} style={modalCancelStyle}>换个日期</button>
+              <button type="button" onClick={() => doSaveEdit(true)} style={{ ...modalSaveStyle, background: '#FF8A34' }}>仍要占用</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 更换套系弹窗（验收⑥：仅更新当前订单快照） */}
+      {pkgSwitch && (() => {
+        const target = pkgs.find((p) => String(p.id) === String(pkgSwitch.package_id));
+        const specs = target && Array.isArray(target.specs) ? target.specs : [];
+        const curSpec = specs.find((s) => String(s.id) === String(pkgSwitch.spec_id));
+        const newPrice = pkgSwitch.package_price !== ''
+          ? (parseFloat(pkgSwitch.package_price) || 0)
+          : (curSpec ? (parseFloat(curSpec.price) || 0) : (target ? parseFloat(target.price) || 0 : 0));
+        return (
+          <div className="fixed inset-0 flex items-center justify-center z-[85] p-4" style={{ background: 'rgba(0,0,0,0.45)' }} onClick={() => setPkgSwitch(null)}>
+            <div onClick={(e) => e.stopPropagation()} style={{ width: '100%', maxWidth: 460, background: '#fff', borderRadius: 8, padding: 24 }}>
+              <div style={{ color: '#222222', fontWeight: 600, marginBottom: 4 }}>更换套系</div>
+              <div style={{ fontSize: 12, color: '#888888', marginBottom: 16 }}>
+                更换后会按所选套系的<b>最新配置</b>重新生成本订单快照，<b>仅影响当前订单</b>，其它历史订单不受影响。
+              </div>
+              <div style={{ fontSize: 13, color: '#666666', marginBottom: 8 }}>
+                当前套系：{(pkgInfo && pkgInfo.name) || '—'} · ¥{Number((pkgInfo && pkgInfo.price) || 0).toLocaleString()}
+              </div>
+              <select value={pkgSwitch.package_id}
+                onChange={(e) => setPkgSwitch({ ...pkgSwitch, package_id: e.target.value, spec_id: '', package_price: '' })}
+                style={modalInputStyle}>
+                <option value="">请选择套系</option>
+                {pkgs.map((p) => (
+                  <option key={p.id} value={String(p.id)}>
+                    {p.name}{p.status === 'off' ? '（已下架）' : ''} · ¥{Number(p.price || 0).toLocaleString()}
+                  </option>
+                ))}
+              </select>
+              {specs.length > 0 && (
+                <select value={pkgSwitch.spec_id} onChange={(e) => setPkgSwitch({ ...pkgSwitch, spec_id: e.target.value, package_price: '' })}
+                  style={{ ...modalInputStyle, marginTop: 12 }}>
+                  <option value="">默认规格</option>
+                  {specs.map((s) => <option key={s.id} value={String(s.id)}>{s.name} · ¥{Number(s.price || 0).toLocaleString()}</option>)}
+                </select>
+              )}
+              <input value={pkgSwitch.package_price} type="number"
+                onChange={(e) => setPkgSwitch({ ...pkgSwitch, package_price: e.target.value })}
+                placeholder={'成交价（留空则用套系价 ¥' + newPrice.toLocaleString() + '）'}
+                style={{ ...modalInputStyle, marginTop: 12 }} />
+              <input value={pkgSwitch.reason} onChange={(e) => setPkgSwitch({ ...pkgSwitch, reason: e.target.value })}
+                placeholder="更换原因（选填，写入操作日志）" style={{ ...modalInputStyle, marginTop: 12 }} />
+              <div style={{ marginTop: 12, background: '#f9fafb', borderRadius: 4, padding: 12, fontSize: 13, color: '#333333' }}>
+                更换后套系价：¥{newPrice.toLocaleString()}（应收总额将按 套系价 + 增值项 + 其他消费 重算，已收金额不变）
+              </div>
+              <div className="flex justify-end" style={{ gap: 8, marginTop: 16 }}>
+                <button type="button" onClick={() => setPkgSwitch(null)} style={modalCancelStyle}>取消</button>
+                <button type="button" disabled={pkgSwitching || !pkgSwitch.package_id} onClick={confirmPkgSwitch}
+                  style={{ ...modalSaveStyle, opacity: pkgSwitching || !pkgSwitch.package_id ? 0.5 : 1 }}>
+                  {pkgSwitching ? '更换中…' : '确认更换'}
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* 加片设置弹窗（验收⑦：单价与精修张数一律取订单快照） */}
+      {addonBox && (() => {
+        const r = calcExtraFee(addonBox.count, addonBox.unit);
+        return (
+          <div className="fixed inset-0 flex items-center justify-center z-[85] p-4" style={{ background: 'rgba(0,0,0,0.45)' }} onClick={() => setAddonBox(null)}>
+            <div onClick={(e) => e.stopPropagation()} style={{ width: '100%', maxWidth: 440, background: '#fff', borderRadius: 8, padding: 24 }}>
+              <div style={{ color: '#222222', fontWeight: 600, marginBottom: 4 }}>加片设置</div>
+              <div style={{ fontSize: 12, color: '#888888', marginBottom: 16 }}>
+                {addonBox.fromSnapshot
+                  ? '加片单价与含修张数取自本订单下单时的套系快照，之后修改套系不会影响本单核算。'
+                  : '该订单无套系快照（历史数据），已按当前套系配置核算。'}
+              </div>
+              <div className="grid grid-cols-2" style={{ gap: '8px 16px', fontSize: 13, color: '#333333' }}>
+                <div>套系含修张数：<b>{addonBox.included}</b> 张</div>
+                <div>客户已选：<b>{addonBox.picked}</b> 张</div>
+                <div>快照加片费：<b>{addonBox.feeText || ('¥' + addonBox.unit + '/张')}</b></div>
+                <div>快照加片优惠：<b>{addonBox.discountText || '按系统梯度'}</b></div>
+              </div>
+              <div style={{ marginTop: 12 }}>
+                <div style={{ fontSize: 13, color: '#666666', marginBottom: 4 }}>加片张数</div>
+                <input value={addonBox.count} type="number" min="0"
+                  onChange={(e) => setAddonBox({ ...addonBox, count: e.target.value })} style={modalInputStyle} />
+              </div>
+              <div style={{ marginTop: 12 }}>
+                <div style={{ fontSize: 13, color: '#666666', marginBottom: 4 }}>加片单价（元/张）</div>
+                <input value={addonBox.unit} type="number" min="0"
+                  onChange={(e) => setAddonBox({ ...addonBox, unit: parseFloat(e.target.value) || 0 })} style={modalInputStyle} />
+              </div>
+              <select value={addonBox.method} onChange={(e) => setAddonBox({ ...addonBox, method: e.target.value })}
+                style={{ ...modalInputStyle, marginTop: 12 }}>
+                <option value="offline">线下收款</option>
+                <option value="online">线上收款</option>
+              </select>
+              <div style={{ marginTop: 12, background: '#f9fafb', borderRadius: 4, padding: 12, fontSize: 14, color: '#222222' }}>
+                应收加片费：<b>¥{r.fee.toLocaleString()}</b>
+                <span style={{ fontSize: 12, color: '#888888', marginLeft: 8 }}>
+                  {r.count} 张 × ¥{r.unitPrice}/张{r.discount < 1 ? ' × ' + (r.discount * 10).toFixed(1) + ' 折' : '（无梯度优惠）'}
+                </span>
+              </div>
+              <div className="flex justify-end" style={{ gap: 8, marginTop: 16 }}>
+                <button type="button" onClick={() => setAddonBox(null)} style={modalCancelStyle}>取消</button>
+                <button type="button" onClick={submitAddon} style={modalSaveStyle}>登记加片费</button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* 客户影集分享弹窗 */}
       {shareModal && (

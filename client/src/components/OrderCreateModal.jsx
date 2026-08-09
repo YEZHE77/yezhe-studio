@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import http, { img } from '../api.js';
+import http, { img, conflictOf } from '../api.js';
 
 // ===== 新增订单弹窗（按【新增订单弹窗】spec 1:1 复刻）=====
 // 交互硬规则：点击蒙层 / 右上角 × 均可关闭；必填项标 *，校验失败弹提示并停留在弹窗。
@@ -159,6 +159,8 @@ export default function OrderCreateModal({ visible, packages, initialPackageId, 
   const [channels, setChannels] = useState([]);
   const [people, setPeople] = useState([]);
   const [execOpen, setExecOpen] = useState(false);
+  // 档期冲突二次确认（验收③）：{ message, payload }
+  const [conflict, setConflict] = useState(null);
   const pkgPropRef = useRef(packages);
   pkgPropRef.current = packages;
 
@@ -169,6 +171,7 @@ export default function OrderCreateModal({ visible, packages, initialPackageId, 
     setForm({ ...emptyForm(), package_id: initialPackageId || '' });
     setErr('');
     setExecOpen(false);
+    setConflict(null);
 
     let alive = true;
     (async () => {
@@ -283,13 +286,25 @@ export default function OrderCreateModal({ visible, packages, initialPackageId, 
       channel_id: form.channel_id || null,
       executors
     };
+    await doCreate(payload, false);
+  }
+
+  // 提交建单；force=true 表示用户已在冲突弹窗中确认「仍要占用」
+  async function doCreate(payload, force) {
     try {
       setSaving(true);
-      await http.post('/api/orders', payload);
+      await http.post('/api/orders', { ...payload, force: force ? 1 : 0 });
+      setConflict(null);
       onClose();
       if (onAfterCreate) onAfterCreate();
     } catch (e2) {
-      const msg = (e2.response && e2.response.data && e2.response.data.error) || '保存失败，请重试';
+      // 档期冲突 → 弹二次确认，不直接报错（验收③）
+      const cf = conflictOf(e2);
+      if (cf && cf.forcible && !force) {
+        setConflict({ message: cf.message, payload });
+        return;
+      }
+      const msg = (e2 && e2.message) || (e2.response && e2.response.data && e2.response.data.error) || '保存失败，请重试';
       setErr(msg);
       window.alert(msg);
     } finally {
@@ -300,10 +315,11 @@ export default function OrderCreateModal({ visible, packages, initialPackageId, 
   const dateDisabled = form.date_tbd;
   const slotDisabled = form.date_tbd || !form.pick_slots;
 
-  /* 套系下拉选项 */
+  /* 套系下拉选项：下架套系 C 端不可见，后台手动录单仍可选，标注「已下架」（验收⑧） */
   const pkgOptions = pkgList.map((p) => {
     const spec = pkgSpecName(p);
-    return { value: String(p.id), label: spec ? `${p.name} | ${spec}` : p.name };
+    const base = spec ? `${p.name} | ${spec}` : p.name;
+    return { value: String(p.id), label: p.status === 'off' ? `${base}（已下架）` : base };
   });
 
   function slotBtn(h) {
@@ -619,6 +635,34 @@ export default function OrderCreateModal({ visible, packages, initialPackageId, 
             </div>
             <div className="px-5 py-3 border-t flex justify-end" style={{ borderColor: '#EEEEEE' }}>
               <button type="button" onClick={() => setExecOpen(false)} className="px-5 py-2 rounded-md text-white text-sm font-medium hover:opacity-90" style={{ background: BLUE }}>确定</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 档期冲突警告（验收③）：所选日期已被订单占用或手动锁场 */}
+      {conflict && (
+        <div className="fixed inset-0 flex items-center justify-center z-[80] p-4" style={{ background: 'rgba(0,0,0,0.45)' }} onClick={(e) => e.stopPropagation()}>
+          <div onClick={(e) => e.stopPropagation()} className="w-full max-w-sm bg-white shadow-xl overflow-hidden" style={{ borderRadius: 12 }}>
+            <div className="px-5 py-4 border-b flex items-center gap-2" style={{ borderColor: '#EEEEEE' }}>
+              <span className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white" style={{ background: '#FF8A34' }}>!</span>
+              <div className="text-base font-semibold" style={{ color: TEXT_BODY }}>档期冲突</div>
+            </div>
+            <div className="px-5 py-4 text-sm leading-6" style={{ color: TEXT_BODY }}>
+              {conflict.message}
+              <div className="mt-2 text-xs" style={{ color: TEXT_MUTED }}>
+                继续保存会在同一天产生重复占用，请确认是否由不同执行人分别承接。
+              </div>
+            </div>
+            <div className="px-5 py-3 border-t flex justify-end gap-2" style={{ borderColor: '#EEEEEE' }}>
+              <button type="button" disabled={saving} onClick={() => setConflict(null)}
+                className="px-4 py-2 rounded-md text-sm border hover:bg-[#f5f7fa] disabled:opacity-50" style={{ borderColor: INPUT_BORDER, color: TEXT_BODY }}>
+                换个日期
+              </button>
+              <button type="button" disabled={saving} onClick={() => doCreate(conflict.payload, true)}
+                className="px-4 py-2 rounded-md text-white text-sm font-medium hover:opacity-90 disabled:opacity-50" style={{ background: '#FF8A34' }}>
+                {saving ? '保存中…' : '仍要占用'}
+              </button>
             </div>
           </div>
         </div>
