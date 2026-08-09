@@ -337,8 +337,8 @@ export default function PackageEdit() {
   return (
     <div className="-mx-6 -my-6 min-h-screen flex flex-col" style={{ background: PAGE_BG }}>
       {/* 白色卡片容器：Tab 栏 + 全部 Tab 内容；底边距 0 留出底部按钮栏 */}
-      <form onSubmit={submit} className="m-6 mb-0 max-w-[840px] mx-auto w-full bg-white"
-        style={{ zoom: 0.8, borderRadius: 8, boxShadow: '0 1px 2px rgba(0,0,0,0.06)', padding: '40px 48px' }}>
+      <form onSubmit={submit} className="m-6 mb-0 max-w-[840px] mx-auto w-full"
+        style={{ zoom: 0.8, borderRadius: 8, boxShadow: '0 1px 4px rgba(0,0,0,0.06)', padding: '40px 48px', background: '#fbfbf3' }}>
 
         {/* Tab 栏：选中=方框高亮（黑边白底黑字），未选=灰字灰边透明底；无下划线 */}
         <div className="flex gap-1 overflow-x-auto" style={{ marginBottom: 28 }}>
@@ -387,24 +387,27 @@ export default function PackageEdit() {
                 </div>
               </Field>
 
-              {/* 套系名称 */}
-              <Field label="套系名称" required>
-                <input className={inputCls} value={form.name}
-                  onChange={(e) => setF({ name: e.target.value })} placeholder="婚礼跟拍｜摄影单机位" />
-              </Field>
+              {/* 基础信息：套系名称 + 套系分类 横向两列分组 */}
+              <div className="grid grid-cols-2 gap-x-4">
+                {/* 套系名称 */}
+                <Field label="套系名称" required>
+                  <input className={inputCls} value={form.name}
+                    onChange={(e) => setF({ name: e.target.value })} placeholder="婚礼跟拍｜摄影单机位" />
+                </Field>
 
-              {/* 套系分类 + 管理分类 */}
-              <Field label="套系分类" required>
-                <div className="flex items-center gap-3">
-                  <select className={inputCls} value={form.category_id}
-                    onChange={(e) => setF({ category_id: e.target.value })}>
-                    <option value="">请选择分类</option>
-                    {categories.filter(Boolean).map((c) => <option key={c.id} value={c.id}>{c.name || '未命名'}</option>)}
-                  </select>
-                  <button type="button" onClick={() => setCatOpen(true)}
-                    className="text-[13px] whitespace-nowrap" style={{ color: LINK }}>管理分类</button>
-                </div>
-              </Field>
+                {/* 套系分类 + 管理分类 */}
+                <Field label="套系分类" required>
+                  <div className="flex items-center gap-3">
+                    <select className={inputCls} value={form.category_id}
+                      onChange={(e) => setF({ category_id: e.target.value })}>
+                      <option value="">请选择分类</option>
+                      {categories.filter(Boolean).map((c) => <option key={c.id} value={c.id}>{c.name || '未命名'}</option>)}
+                    </select>
+                    <button type="button" onClick={() => setCatOpen(true)}
+                      className="text-[13px] whitespace-nowrap" style={{ color: LINK }}>管理分类</button>
+                  </div>
+                </Field>
+              </div>
 
               {/* 套系简介 */}
               <Field label="套系简介" hint="（列表页截断展示）">
@@ -566,76 +569,89 @@ export default function PackageEdit() {
                     style={{ background: d.shoot_template === 'video' ? '#222222' : '#fff', color: d.shoot_template === 'video' ? '#fff' : '#333333', borderColor: d.shoot_template === 'video' ? '#222222' : '#D1D5DB', padding: '6px 16px', borderRadius: 20 }}>摄像模版</button>
                 </div>
 
-                {/* 拍摄时长 */}
-                <Field label="拍摄时长" required>
-                  <select className={selSm} value={d.duration}
-                    onChange={(e) => setD({ duration: e.target.value })}>
-                    {!DURATION_OPTS.includes(d.duration) && d.duration && <option value={d.duration}>{d.duration}</option>}
-                    {DURATION_OPTS.map((o) => <option key={o} value={o}>{o}</option>)}
-                  </select>
-                </Field>
-
-                {/* 底片数量 + 底片全送 */}
-                <Field label="底片数量" required>
-                  <div className="flex items-center gap-3 flex-wrap">
-                    <input type="number" className={inputSm} value={d.raw_count}
-                      onChange={(e) => setD({ raw_count: e.target.value })} placeholder="如 300" />
-                    <Checkbox checked={d.raw_all_included} onChange={(v) => setD({ raw_all_included: v })} label="底片全送" />
-                  </div>
-                </Field>
-
-                {/* 精修片 */}
-                <Field label="精修片" required>
-                  <input type="number" className={inputSm} value={d.retouch_count}
-                    onChange={(e) => setD({ retouch_count: e.target.value })} placeholder="如 50" />
-                </Field>
-
-                {/* 加片费 */}
-                <Field label="加片费">
-                  <input className={inputSm} value={d.extra_photo_fee}
-                    onChange={(e) => setD({ extra_photo_fee: e.target.value })} placeholder="如 ¥50/张" />
-                </Field>
-
-                {/* 加片优惠 */}
-                <Field label="加片优惠">
-                  <div className="flex items-center gap-2">
-                    {editDisc
-                      ? <input autoFocus className={inputSm} value={d.extra_photo_discount}
-                          onChange={(e) => setD({ extra_photo_discount: e.target.value })} onBlur={() => setEditDisc(false)} placeholder="如 满 10 张 9 折" />
-                      : <span className="text-sm" style={{ color: '#333333' }}>{d.extra_photo_discount || '暂无优惠'}</span>}
-                    <button type="button" onClick={() => setEditDisc((v) => !v)} className="text-[13px]" style={{ color: LINK }}>编辑</button>
-                  </div>
-                </Field>
-
-                {/* 服装（纵向单选） */}
-                <Field label="服装">
-                  <RadioGroup vertical value={d.cloth_provide} onChange={(v) => setD({ cloth_provide: v })}
-                    options={[{ v: 'not', t: '不提供' }, { v: 'provide', t: '提供' }]} />
-                </Field>
-
-                {/* 化妆（纵向单选） */}
-                <Field label="化妆">
-                  <RadioGroup vertical value={d.makeup_provide} onChange={(v) => setD({ makeup_provide: v })}
-                    options={[{ v: 'not', t: '不提供' }, { v: 'provide', t: '提供' }]} />
-                </Field>
-
-                {/* 相册（纵向单选） */}
-                <Field label="相册">
-                  <RadioGroup vertical value={d.album_provide} onChange={(v) => setD({ album_provide: v })}
-                    options={[{ v: 'not', t: '不提供' }, { v: 'provide', t: '提供' }]} />
-                </Field>
-
-                {/* 服务地点：下拉 + 文本输入 同一行 gap 8px */}
-                <Field label="服务地点">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <select className={selSm} value="" onChange={(e) => e.target.value && setD({ service_location: e.target.value })}>
-                      <option value="">选择</option>
-                      {LOCATION_OPTS.map((o) => <option key={o} value={o}>{o}</option>)}
+                {/* 服务参数横版分组：拍摄时长 / 底片数量 */}
+                <div className="grid grid-cols-2 gap-x-4">
+                  {/* 拍摄时长 */}
+                  <Field label="拍摄时长" required>
+                    <select className={selSm} value={d.duration}
+                      onChange={(e) => setD({ duration: e.target.value })}>
+                      {!DURATION_OPTS.includes(d.duration) && d.duration && <option value={d.duration}>{d.duration}</option>}
+                      {DURATION_OPTS.map((o) => <option key={o} value={o}>{o}</option>)}
                     </select>
-                    <input className={inputSm} value={d.service_location}
-                      onChange={(e) => setD({ service_location: e.target.value })} placeholder="请输入服务地点 0/40" />
+                  </Field>
+
+                  {/* 底片数量 + 底片全送 */}
+                  <Field label="底片数量" required>
+                    <div className="flex items-center gap-3 flex-wrap">
+                      <input type="number" className={inputSm} value={d.raw_count}
+                        onChange={(e) => setD({ raw_count: e.target.value })} placeholder="如 300" />
+                      <Checkbox checked={d.raw_all_included} onChange={(v) => setD({ raw_all_included: v })} label="底片全送" />
+                    </div>
+                  </Field>
+                </div>
+
+                {/* 精修片 / 加片费 */}
+                <div className="grid grid-cols-2 gap-x-4">
+                  {/* 精修片 */}
+                  <Field label="精修片" required>
+                    <input type="number" className={inputSm} value={d.retouch_count}
+                      onChange={(e) => setD({ retouch_count: e.target.value })} placeholder="如 50" />
+                  </Field>
+
+                  {/* 加片费 */}
+                  <Field label="加片费">
+                    <input className={inputSm} value={d.extra_photo_fee}
+                      onChange={(e) => setD({ extra_photo_fee: e.target.value })} placeholder="如 ¥50/张" />
+                  </Field>
+                </div>
+
+                {/* 加片优惠 / 服务地点 */}
+                <div className="grid grid-cols-2 gap-x-4">
+                  {/* 加片优惠 */}
+                  <Field label="加片优惠">
+                    <div className="flex items-center gap-2">
+                      {editDisc
+                        ? <input autoFocus className={inputSm} value={d.extra_photo_discount}
+                            onChange={(e) => setD({ extra_photo_discount: e.target.value })} onBlur={() => setEditDisc(false)} placeholder="如 满 10 张 9 折" />
+                        : <span className="text-sm" style={{ color: '#333333' }}>{d.extra_photo_discount || '暂无优惠'}</span>}
+                      <button type="button" onClick={() => setEditDisc((v) => !v)} className="text-[13px]" style={{ color: LINK }}>编辑</button>
+                    </div>
+                  </Field>
+
+                  {/* 服务地点：下拉 + 文本输入 同一行 gap 8px */}
+                  <Field label="服务地点">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <select className={selSm} value="" onChange={(e) => e.target.value && setD({ service_location: e.target.value })}>
+                        <option value="">选择</option>
+                        {LOCATION_OPTS.map((o) => <option key={o} value={o}>{o}</option>)}
+                      </select>
+                      <input className={inputSm} value={d.service_location}
+                        onChange={(e) => setD({ service_location: e.target.value })} placeholder="请输入服务地点 0/40" />
+                    </div>
+                  </Field>
+                </div>
+
+                {/* 服装 / 化妆 / 相册：同一行三列均分（重点修改，原纵向堆叠→横向并排） */}
+                <div className="grid grid-cols-3 gap-x-4">
+                  {/* 服装 */}
+                  <div className="flex items-center gap-3">
+                    <span className="text-sm" style={{ color: '#333333', whiteSpace: 'nowrap' }}>服装</span>
+                    <RadioGroup value={d.cloth_provide} onChange={(v) => setD({ cloth_provide: v })}
+                      options={[{ v: 'not', t: '不提供' }, { v: 'provide', t: '提供' }]} />
                   </div>
-                </Field>
+                  {/* 化妆 */}
+                  <div className="flex items-center gap-3">
+                    <span className="text-sm" style={{ color: '#333333', whiteSpace: 'nowrap' }}>化妆</span>
+                    <RadioGroup value={d.makeup_provide} onChange={(v) => setD({ makeup_provide: v })}
+                      options={[{ v: 'not', t: '不提供' }, { v: 'provide', t: '提供' }]} />
+                  </div>
+                  {/* 相册 */}
+                  <div className="flex items-center gap-3">
+                    <span className="text-sm" style={{ color: '#333333', whiteSpace: 'nowrap' }}>相册</span>
+                    <RadioGroup value={d.album_provide} onChange={(v) => setD({ album_provide: v })}
+                      options={[{ v: 'not', t: '不提供' }, { v: 'provide', t: '提供' }]} />
+                  </div>
+                </div>
 
                 {/* 显示以上套系内容（复选框同行） */}
                 <label className="inline-flex items-center gap-1.5 text-sm cursor-pointer select-none mt-2" style={{ color: '#6b7280' }}>
