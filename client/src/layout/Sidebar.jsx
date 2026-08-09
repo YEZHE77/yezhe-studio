@@ -26,8 +26,8 @@ const ITEMS = [
 
 function SidebarContent() {
   return (
-    <aside className="w-60 bg-white border-r border-line flex flex-col h-full">
-      <div className="h-[72px] flex items-center gap-3 px-5 border-b border-line shrink-0">
+    <aside className="w-[220px] bg-white flex flex-col h-full" style={{ borderRight: '1px solid #E5E7EB' }}>
+      <div className="h-[72px] flex items-center gap-3 px-6 border-b border-line shrink-0">
         <div className="w-9 h-9 rounded-lg flex items-center justify-center text-white font-semibold" style={{ background: '#2890F0' }}>叶</div>
         <div>
           <div className="font-semibold leading-tight" style={{ color: '#1f2329' }}>叶哲 Studio</div>
@@ -44,11 +44,12 @@ function SidebarContent() {
                 to={m.to}
                 end={m.to === '/'}
                 className={({ isActive }) =>
-                  'flex items-center gap-3 px-5 py-2.5 text-sm transition border-l-2 ' +
+                  'flex items-center border-l-2 transition ' +
                   (isActive
-                    ? 'bg-[#e8f3ff] text-[#2890F0] border-[#2890F0] font-medium'
-                    : 'text-[#333333] border-transparent hover:bg-[#f5f7fa] hover:text-[#1f2329]')
+                    ? 'bg-[#ECF8F7] text-[#222222] border-transparent font-medium'
+                    : 'text-[#444444] border-transparent hover:bg-[#f5f7fa] hover:text-[#222222]')
                 }
+                style={{ gap: 8, padding: '12px 24px', fontSize: 14 }}
               >
                 <Icon name={m.icon} className="w-[18px] h-[18px]" />
                 {m.label}
@@ -56,7 +57,7 @@ function SidebarContent() {
             );
           }
           return (
-            <div key={m.label} className="flex items-center gap-3 px-5 py-2.5 text-sm cursor-default select-none" style={{ color: '#999999' }}>
+            <div key={m.label} className="flex items-center cursor-default select-none" style={{ gap: 8, padding: '12px 24px', fontSize: 14, color: '#999999' }}>
               <Icon name={m.icon} className="w-[18px] h-[18px]" />
               {m.label}
             </div>
