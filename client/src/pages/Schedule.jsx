@@ -688,6 +688,11 @@ function OrderDialog({ orderDlg, personnel, onClose, onSaved }) {
   const [pkgId, setPkgId] = useState('');
   const [pkgPrice, setPkgPrice] = useState('');
   const [deposit, setDeposit] = useState('');
+  // 套系默认配置（选中后同步回填，验收⑤）
+  const [pkgDuration, setPkgDuration] = useState('');
+  const [pkgRawCount, setPkgRawCount] = useState('');
+  const [pkgRetouch, setPkgRetouch] = useState('');
+  const [pkgExtraFee, setPkgExtraFee] = useState('');
   const [payStatus, setPayStatus] = useState('deposit');
   const [extras, setExtras] = useState([]); // { name, amount }
   const [location, setLocation] = useState('');
@@ -726,7 +731,16 @@ function OrderDialog({ orderDlg, personnel, onClose, onSaved }) {
   const onPickPackage = (id) => {
     setPkgId(id);
     const p = pkgList.find((x) => String(x.id) === String(id));
-    if (p) { setPkgPrice(String(p.price ?? '')); setDeposit(String(p.deposit ?? '')); }
+    if (p) {
+      setPkgPrice(String(p.price ?? ''));
+      setDeposit(String(p.deposit ?? ''));
+      // 同步默认配置：拍摄时长 / 底片数量 / 精修片数量 / 加片费用
+      const d = (p.details && typeof p.details === 'object') ? p.details : {};
+      setPkgDuration(p.duration || d.duration || '');
+      setPkgRawCount(d.raw_count || '');
+      setPkgRetouch(p.retouch_count || d.retouch_count || '');
+      setPkgExtraFee(d.extra_photo_fee || '');
+    }
   };
   const onPickChannel = (id, name) => { setChannelId(id); setChannelName(name); setChPop(false); };
 
@@ -772,7 +786,13 @@ function OrderDialog({ orderDlg, personnel, onClose, onSaved }) {
       remark: remark.trim(),
       channel: channelName,
       channel_id: channelId ? Number(channelId) : null,
-      executors
+      executors,
+      package_defaults: {
+        duration: pkgDuration || null,
+        raw_count: pkgRawCount ? Number(pkgRawCount) : null,
+        retouch_count: pkgRetouch ? Number(pkgRetouch) : null,
+        extra_photo_fee: pkgExtraFee || null
+      }
     };
     await postOrder(payload, false);
   };
@@ -844,7 +864,7 @@ function OrderDialog({ orderDlg, personnel, onClose, onSaved }) {
 
         {/* ===== 区块 1：顾客信息 ===== */}
         {/* ===== 区块 1：顾客信息卡片 ===== */}
-        <div style={{ border: `1px solid ${MODAL_BORDER}`, borderRadius: 3, padding: '18px 20px', marginBottom: 16 }}>
+        <div style={{ border: `1px solid ${MODAL_BORDER}`, borderRadius: 3, padding: '18px 20px', marginBottom: 16, minHeight: 90 }}>
           <div className="flex items-center" style={{ gap: 12 }}>
             {/* 默认头像 48×48 */}
             <div className="shrink-0 rounded-full flex items-center justify-center"
@@ -904,6 +924,20 @@ function OrderDialog({ orderDlg, personnel, onClose, onSaved }) {
                   </button>
                 );
               })}
+              {[HALF, FULL].map((k) => {
+                const on = slots.includes(k);
+                return (
+                  <button key={k} onClick={() => toggleSlot(k)} type="button"
+                    className="transition-opacity hover:opacity-90"
+                    style={{
+                      height: 30, borderRadius: 15, padding: '0 14px', fontSize: 14,
+                      background: on ? MODAL_SLOT_SEL : MODAL_SLOT_FREE,
+                      color: '#FFFFFF'
+                    }}>
+                    {on ? '✓ ' : ''}{slotLabel(k)}
+                  </button>
+                );
+              })}
             </div>
           )}
 
@@ -925,7 +959,7 @@ function OrderDialog({ orderDlg, personnel, onClose, onSaved }) {
             <input value={deposit} onChange={(e) => setDeposit(e.target.value)} placeholder="套系定金" className="placeholder-[#B5B5B5]" style={{ ...FIELD, borderColor: MODAL_BORDER }} />
             {pkgList.find((p) => String(p.id) === String(pkgId)) && (
               <div style={{ marginTop: 10, fontSize: 12, color: '#999999' }}>
-                已同步默认配置：拍摄时长 {pkgList.find((p) => String(p.id) === String(pkgId)).duration || '—'} · 精修片 {pkgList.find((p) => String(p.id) === String(pkgId)).retouch_count || '—'}
+                已同步默认配置：拍摄时长 {pkgDuration || '—'} · 底片数量 {pkgRawCount || '—'} · 精修片 {pkgRetouch || '—'} · 加片费 {pkgExtraFee || '—'}
               </div>
             )}
           </div>
