@@ -175,7 +175,72 @@ async function conflict(date, period, excludeId) {
   }) || null;
 }
 
+// ===== 订单 ↔ 档期 双向联动助手（供 orders.js 调用，禁止简化业务规则）=====
+// 冲突检测：同一日期已被【其它订单占用(booked)】或【手动锁场(locked)】视为冲突。
+// excludeOrderNo：本订单自身占用的档期不算冲突（编辑订单时用）。
+export async function scheduleConflict(date, excludeOrderNo) {
+  if (!date) return null;
+  const rows = await query(
+    "SELECT * FROM schedules WHERE date = ? AND status IN ('booked','locked') ORDER BY id ASC",
+    [date]
+  );
+  const hit = rows.find((r) => !(excludeOrderNo && r.order_no && String(r.order_no) === String(excludeOrderNo)));
+  return hit || null;
+}
+
+// 冲突文案（前端 409 直接展示）
+export function conflictText(hit) {
+  if (!hit) return '';
+  if (hit.status === 'locked') return `${hit.date} 已被手动锁场${hit.note ? '（' + hit.note + '）' : ''}，无法占用`;
+  return `${hit.date} 已被订单 ${hit.order_no || ''}${hit.groom_name || hit.bride_name ? ' / ' + [hit.groom_name, hit.bride_name].filter(Boolean).join('&') : ''} 占用，无法重复预约`;
+}
+
+// 占用档期：先冲突检测（命中抛 err.code='CONFLICT'），通过则写入/复用该订单的 booked 记录。
+// 同一订单号只保留一条 booked 档期，改日期时自动迁移（= 释放旧日期 + 占用新日期）。
+// force=true 时跳过冲突拦截（B 端二次确认「仍要占用」场景），仍照常写入占用记录
+export async function occupySchedule(date, orderNo, meta = {}, force = false) {
+  if (!date || !orderNo) return null;
+  const hit = force ? null : await scheduleConflict(date, orderNo);
+  if (hit) {
+    const err = new Error(conflictText(hit));
+    err.code = 'CONFLICT';
+    err.conflict = { id: hit.id, date: hit.date, status: hit.status, order_no: hit.order_no || '' };
+    throw err;
+  }
+  const periods = Array.isArray(meta.periods) ? meta.periods.filter(Boolean) : [];
+  const exist = await get("SELECT * FROM schedules WHERE order_no = ? AND status = 'booked' ORDER BY id ASC", [orderNo]);
+  const vals = [
+    date, 'full', JSON.stringify(periods), 'booked', 0, String(orderNo),
+    meta.photographer || meta.executor_name || '', meta.executor_id != null && meta.executor_id !== '' ? Number(meta.executor_id) : null,
+    meta.executor_name || '', meta.note || '', lunarOf(date),
+    meta.groom_name || '', meta.bride_name || '', meta.contact_phone || '', meta.address || ''
+  ];
+  if (exist) {
+    // 同订单多余的 booked 行清理（历史脏数据兜底），只保留 exist
+    await run("DELETE FROM schedules WHERE order_no = ? AND status = 'booked' AND id != ?", [String(orderNo), exist.id]);
+    await run(
+      `UPDATE schedules SET date=?, period=?, periods=?, status=?, date_tbd=?, order_no=?, photographer=?, executor_id=?, executor_name=?,
+        note=?, lunar_date=?, groom_name=?, bride_name=?, contact_phone=?, address=? WHERE id=?`,
+      [...vals, exist.id]
+    );
+    return exist.id;
+  }
+  return await insert(
+    `INSERT INTO schedules (date, period, periods, status, date_tbd, order_no, photographer, executor_id, executor_name, note, lunar_date,
+      groom_name, bride_name, contact_phone, address) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+    vals
+  );
+}
+
+// 释放档期：订单作废/删除/改为日期待定时，删除该订单占用的 booked 记录（不影响 locked/closed）
+export async function releaseSchedule(orderNo) {
+  if (!orderNo) return 0;
+  await run("DELETE FROM schedules WHERE order_no = ? AND status = 'booked'", [String(orderNo)]);
+  return 1;
+}
+
 // 创建（支持 时间段数组 periods / 日期待定 date_tbd / 绑定执行人 executor）
+// 手动锁档/新增档期时做冲突拦截：已被订单占用或已锁场的日期不允许覆盖（验收⑩）
 router.post('/', authRequired, requireRole(['admin', 'photographer']), async (req, res) => {
   try {
     const b = req.body;
@@ -183,6 +248,14 @@ router.post('/', authRequired, requireRole(['admin', 'photographer']), async (re
     const periods = Array.isArray(b.periods) ? b.periods.filter(Boolean) : [];
     const dateTbd = b.date_tbd ? 1 : 0;
     const status = b.status || 'free';
+    // 仅占用型状态（booked/locked）需要冲突检测；free/closed 不拦截
+    if ((status === 'booked' || status === 'locked') && !dateTbd) {
+      const hit = await conflict(b.date, 'full', null);
+      // 同订单号重复提交视为幂等更新，不算冲突
+      if (hit && !(b.order_no && hit.order_no && String(hit.order_no) === String(b.order_no))) {
+        return res.status(409).json({ error: conflictText(hit), code: 'CONFLICT', conflict: { id: hit.id, date: hit.date, status: hit.status, order_no: hit.order_no || '' } });
+      }
+    }
     const id = await insert(
       `INSERT INTO schedules (date, period, periods, status, date_tbd, order_no, photographer, executor_id, executor_name, note, lunar_date,
         groom_name, bride_name, contact_phone, address)
@@ -238,6 +311,14 @@ router.put('/:id', authRequired, requireRole(['admin', 'photographer']), async (
     const periods = Array.isArray(b.periods) ? b.periods.filter(Boolean) : parsePeriods(cur.periods);
     const dateTbd = b.date_tbd != null ? (b.date_tbd ? 1 : 0) : (cur.date_tbd || 0);
     const status = b.status ?? cur.status;
+    // 改到占用型状态或换日期时做冲突拦截（排除自身；同订单号不算冲突）
+    if ((status === 'booked' || status === 'locked') && !dateTbd) {
+      const hit = await conflict(date, 'full', cur.id);
+      const selfOrder = b.order_no ?? cur.order_no;
+      if (hit && !(selfOrder && hit.order_no && String(hit.order_no) === String(selfOrder))) {
+        return res.status(409).json({ error: conflictText(hit), code: 'CONFLICT', conflict: { id: hit.id, date: hit.date, status: hit.status, order_no: hit.order_no || '' } });
+      }
+    }
     await run(
       `UPDATE schedules SET date=?, period=?, periods=?, status=?, date_tbd=?, order_no=?, photographer=?, executor_id=?, executor_name=?, note=?, lunar_date=?,
         groom_name=?, bride_name=?, contact_phone=?, address=? WHERE id=?`,

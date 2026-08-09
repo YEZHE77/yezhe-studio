@@ -212,11 +212,48 @@ router.post('/:id/move', authRequired, requireRole(['admin', 'photographer']), a
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// 导出 Excel 备份（CSV，UTF-8 BOM，Excel 原生可开）
-// 删除（仅 admin）
+// 统计该套系被多少订单引用（package_id 关联 或 历史快照 package_snapshot 内含该 id）
+async function usedByOrders(pkgId) {
+  const id = Number(pkgId);
+  const row = await get(
+    `SELECT COUNT(*) AS c FROM orders WHERE package_id = ? OR COALESCE(package_snapshot, '') LIKE ?`,
+    [id, '%"id":' + id + ',%']
+  );
+  return Number(row && row.c) || 0;
+}
+
+// 引用检查（前端据此禁用删除按钮 / 提示改为下架）
+router.get('/:id/usage', authRequired, async (req, res) => {
+  try {
+    const count = await usedByOrders(req.params.id);
+    res.json({ count, deletable: count === 0 });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// 下架 / 上架（下架后 C 端不可见，后台手动录单仍可选 —— 底层强制规则 3）
+router.post('/:id/status', authRequired, requireRole(['admin', 'photographer']), async (req, res) => {
+  try {
+    const cur = await get('SELECT * FROM packages WHERE id = ?', [req.params.id]);
+    if (!cur) return res.status(404).json({ error: '套系不存在' });
+    const status = (req.body && req.body.status) === 'on' ? 'on' : 'off';
+    await run('UPDATE packages SET status = ? WHERE id = ?', [status, cur.id]);
+    res.json({ ok: true, status });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// 删除（仅 admin）—— 已被订单关联的套系禁止物理删除，只能下架隐藏（底层强制规则 3 / 验收②）
 router.delete('/:id', authRequired, requireRole(['admin']), async (req, res) => {
   try {
-    await run('DELETE FROM packages WHERE id = ?', [req.params.id]);
+    const cur = await get('SELECT * FROM packages WHERE id = ?', [req.params.id]);
+    if (!cur) return res.status(404).json({ error: '套系不存在' });
+    const count = await usedByOrders(cur.id);
+    if (count > 0) {
+      return res.status(400).json({
+        error: `该套系已关联 ${count} 个订单，无法删除，请改为「下架」隐藏`,
+        code: 'PACKAGE_IN_USE', count, suggest: 'off'
+      });
+    }
+    await run('DELETE FROM packages WHERE id = ?', [cur.id]);
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });

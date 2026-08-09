@@ -7,6 +7,7 @@ import { shareBaseUrl } from '../shareUtil.js';
 import { generateMiniProgramQr } from '../miniQr.js';
 import { authRequired, requireRole } from '../auth.js';
 import { parseRow } from '../schema.js';
+import { scheduleConflict, occupySchedule, releaseSchedule, conflictText } from './schedules.js';
 
 const router = Router();
 const JSON_COLS = ['package_snapshot', 'addons_snapshot', 'logs', 'phones', 'time_slots', 'extra_items', 'executors', 'order_photos'];
@@ -200,6 +201,18 @@ router.post('/', authRequired, requireRole(['admin', 'photographer', 'finance'])
       ? [groom, bride].filter(Boolean).join(' & ')
       : (b.customer_name || '');
     const order_name = (b.order_name || '').trim() || (customer_name ? customer_name + ' 拍摄订单' : '未命名订单');
+    // 【订单 → 档期】建单前冲突检测：所选拍摄日期若已被其它订单占用或手动锁场，返回 409 供前端弹冲突警告（验收③）
+    // 前端二次确认后可带 force=true 强行占用
+    const force = !!b.force;
+    if (shoot_date && !date_tbd && !force) {
+      const hit = await scheduleConflict(shoot_date, order_no);
+      if (hit) {
+        return res.status(409).json({
+          error: conflictText(hit), code: 'CONFLICT', forcible: true,
+          conflict: { id: hit.id, date: hit.date, status: hit.status, order_no: hit.order_no || '' }
+        });
+      }
+    }
     const id = await insert(
       `INSERT INTO orders (order_no, customer_name, customer_phone, package_id, package_snapshot, addons_snapshot, status,
         deposit, balance, deposit_method, balance_method, shoot_date, executor, total_amount, paid_amount, remark, logs,
@@ -234,6 +247,21 @@ router.post('/', authRequired, requireRole(['admin', 'photographer', 'finance'])
         }
       }
     }
+    // 【订单 → 档期】建单成功即占用档期（日期待定不占；验收③④的基础）
+    if (shoot_date && !date_tbd) {
+      try {
+        await occupySchedule(shoot_date, order_no, {
+          periods: time_slots, photographer: executors.map((x) => x.name).filter(Boolean).join('、'),
+          executor_id: executors[0] && executors[0].id, executor_name: (executors[0] && executors[0].name) || '',
+          groom_name: groom, bride_name: bride, contact_phone: phones[0] || '', address: b.address || '',
+          note: order_name
+        }, force);
+        await appendLog(id, `占用档期 ${shoot_date}`);
+      } catch (err) {
+        if (err.code !== 'CONFLICT') throw err;
+        await appendLog(id, `档期占用失败：${err.message}`);
+      }
+    }
     res.json({ id, order_no });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -266,6 +294,20 @@ router.put('/:id', authRequired, requireRole(['admin', 'photographer', 'finance'
     const orderPhotosText = b.order_photos === undefined
       ? (cur.order_photos ?? null)
       : (typeof b.order_photos === 'string' ? b.order_photos : JSON.stringify(b.order_photos));
+    // 【订单 ↔ 档期】改拍摄日期前先做冲突检测（验收④）；force=true 由前端二次确认后强行占用
+    const oldDate = cur.date_tbd ? '' : (cur.shoot_date || '');
+    const newDate = date_tbd ? '' : (shoot_date || '');
+    const dateChanged = String(oldDate) !== String(newDate);
+    const force = !!b.force;
+    if (dateChanged && newDate && !force) {
+      const hit = await scheduleConflict(newDate, cur.order_no);
+      if (hit) {
+        return res.status(409).json({
+          error: conflictText(hit), code: 'CONFLICT', forcible: true,
+          conflict: { id: hit.id, date: hit.date, status: hit.status, order_no: hit.order_no || '' }
+        });
+      }
+    }
     await run(
       `UPDATE orders SET customer_name=?, customer_phone=?, shoot_date=?, executor=?, remark=?, status=?,
         groom_name=?, bride_name=?, address=?,
@@ -284,7 +326,78 @@ router.put('/:id', authRequired, requireRole(['admin', 'photographer', 'finance'
       const MAP = { deposit: '已付定金', shot: '已拍摄', selecting: '选片中', retouching: '精修中', delivered: '已交付', completed: '已完成' };
       await appendLog(cur.id, '阶段推进 → ' + (MAP[status] || status));
     }
+    // 【订单 ↔ 档期】同步档期：有日期→占用/迁移（自动释放旧日期）；改为日期待定→释放档期（验收④）
+    const jsonArr = (t) => { try { const a = JSON.parse(t || '[]'); return Array.isArray(a) ? a : []; } catch { return []; } };
+    if (!cur.cancelled && !cur.is_deleted) {
+      if (newDate) {
+        const execArr = jsonArr(execsText);
+        try {
+          await occupySchedule(newDate, cur.order_no, {
+            periods: jsonArr(slotsText), photographer: execText || '',
+            executor_id: execArr[0] && execArr[0].id, executor_name: (execArr[0] && execArr[0].name) || '',
+            groom_name: groom, bride_name: bride, contact_phone: firstPhone || '',
+            address: b.address ?? cur.address ?? '', note: b.order_name ?? cur.order_name ?? ''
+          }, force);
+          if (dateChanged) await appendLog(cur.id, `拍摄日期 ${oldDate || '待定'} → ${newDate}，档期已同步（旧档期释放 / 新档期占用）`);
+        } catch (err) {
+          if (err.code !== 'CONFLICT') throw err;
+          await appendLog(cur.id, `档期占用失败：${err.message}`);
+        }
+      } else if (oldDate) {
+        await releaseSchedule(cur.order_no);
+        await appendLog(cur.id, `拍摄日期改为待定，已释放档期 ${oldDate}`);
+      }
+    }
     res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// 更换套系（仅更新当前订单的套系快照，不影响其它订单；验收⑥）
+// body: { package_id, package_price?, spec_id?, addons?, reason? }
+router.post('/:id/change-package', authRequired, requireRole(['admin', 'photographer', 'finance']), async (req, res) => {
+  try {
+    const b = req.body || {};
+    const o = await get('SELECT * FROM orders WHERE id = ?', [req.params.id]);
+    if (!o) return res.status(404).json({ error: '订单不存在' });
+    if (o.cancelled) return res.status(400).json({ error: '订单已作废，无法更换套系' });
+    if (!b.package_id) return res.status(400).json({ error: '请选择要更换的套系' });
+    const p = await get('SELECT * FROM packages WHERE id = ?', [b.package_id]);
+    if (!p) return res.status(404).json({ error: '套系不存在' });
+
+    const safeParse = (v, fallback = '') => { try { return v ? JSON.parse(v) : fallback; } catch { return v || fallback; } };
+    const overridePrice = b.package_price !== undefined && b.package_price !== null && b.package_price !== '';
+    let usePrice = overridePrice ? (parseFloat(b.package_price) || 0) : (parseFloat(p.price) || 0);
+    const specs = safeParse(p.specs, []);
+    let specName = '';
+    if (b.spec_id && Array.isArray(specs)) {
+      const sp = specs.find((s) => String(s.id) === String(b.spec_id));
+      if (sp) { specName = sp.name || ''; if (!overridePrice) usePrice = parseFloat(sp.price) || usePrice; }
+    }
+    // 重新生成快照 —— 读取【当前最新】套系配置，只写入本订单
+    const snapshot = {
+      id: p.id, name: p.name, price: usePrice, list_price: parseFloat(p.price) || 0, deposit: p.deposit,
+      description: p.description || '', retouch_count: p.retouch_count,
+      raw_policy: p.raw_policy || '', duration: p.duration || '', cover_url: p.cover_url || '',
+      category_id: p.category_id, spec_id: b.spec_id || '', spec_name: specName,
+      addons: safeParse(p.addons, []), marketing: safeParse(p.marketing, {}),
+      specs, questionnaire: safeParse(p.questionnaire, ''),
+      snapshot_at: nowISO()
+    };
+    const addons = Array.isArray(b.addons) ? b.addons : (safeParse(o.addons_snapshot, []) || []);
+    const addonTotal = addons.reduce((s, a) => s + (parseFloat(a && a.price) || 0), 0);
+    const extraTotal = normExtras(safeParse(o.extra_items, [])).reduce((s, x) => s + x.amount, 0);
+    const total = usePrice + addonTotal + extraTotal;
+    const paid = parseFloat(o.paid_amount) || 0;
+    const balance = Math.max(0, total - paid);
+
+    const oldSnap = safeParse(o.package_snapshot, null);
+    const oldName = (oldSnap && oldSnap.name) || '（无套系）';
+    await run(
+      'UPDATE orders SET package_id = ?, package_snapshot = ?, addons_snapshot = ?, total_amount = ?, balance = ? WHERE id = ?',
+      [p.id, JSON.stringify(snapshot), JSON.stringify(addons), total, balance, o.id]
+    );
+    await appendLog(o.id, `更换套系：${oldName} → ${p.name}${specName ? '（' + specName + '）' : ''}，应收总额 ¥${o.total_amount || 0} → ¥${total}` + (b.reason ? '；原因：' + b.reason : ''));
+    res.json({ ok: true, package_snapshot: snapshot, total_amount: total, balance });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -324,32 +437,52 @@ router.post('/:id/payments', authRequired, requireRole(['admin', 'photographer',
 // 软删除订单（进入回收站，可恢复；保留收款流水与选片记录，不破坏数据）
 router.delete('/:id', authRequired, requireRole(['admin']), async (req, res) => {
   try {
-    const o = await get('SELECT id FROM orders WHERE id = ?', [req.params.id]);
+    const o = await get('SELECT * FROM orders WHERE id = ?', [req.params.id]);
     if (!o) return res.status(404).json({ error: '订单不存在' });
     await run('UPDATE orders SET is_deleted = 1, deleted_at = ? WHERE id = ?', [nowISO(), o.id]);
     await appendLog(o.id, '订单移入回收站（软删除）');
-    res.json({ ok: true });
+    // 【订单 → 档期】删除自动释放所占档期（验收⑤）
+    await releaseSchedule(o.order_no);
+    if (o.shoot_date) await appendLog(o.id, `订单删除，已释放档期 ${o.shoot_date}`);
+    res.json({ ok: true, scheduleReleased: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // 恢复订单（移出回收站）
 router.post('/:id/restore', authRequired, requireRole(['admin']), async (req, res) => {
   try {
-    const o = await get('SELECT id FROM orders WHERE id = ?', [req.params.id]);
+    const o = await get('SELECT * FROM orders WHERE id = ?', [req.params.id]);
     if (!o) return res.status(404).json({ error: '订单不存在' });
     await run('UPDATE orders SET is_deleted = 0, deleted_at = NULL WHERE id = ?', [o.id]);
     await appendLog(o.id, '订单已从回收站恢复');
-    res.json({ ok: true });
+    // 恢复订单时尝试重新占用原档期；若该日期已被他人占用则仅记录日志，不阻断恢复
+    let scheduleOccupied = false, scheduleWarn = '';
+    if (o.shoot_date && !o.date_tbd && !o.cancelled) {
+      try {
+        await occupySchedule(o.shoot_date, o.order_no, {
+          photographer: o.executor || '', groom_name: o.groom_name || '', bride_name: o.bride_name || '',
+          contact_phone: o.customer_phone || '', address: o.address || '', note: o.order_name || ''
+        });
+        scheduleOccupied = true;
+        await appendLog(o.id, `恢复订单，重新占用档期 ${o.shoot_date}`);
+      } catch (err) {
+        if (err.code !== 'CONFLICT') throw err;
+        scheduleWarn = err.message;
+        await appendLog(o.id, `恢复订单，但档期未能占用：${err.message}`);
+      }
+    }
+    res.json({ ok: true, scheduleOccupied, scheduleWarn });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // 彻底删除（管理员，物理删除并级联收款流水与选片记录）
 router.post('/:id/purge', authRequired, requireRole(['admin']), async (req, res) => {
   try {
-    const o = await get('SELECT id FROM orders WHERE id = ?', [req.params.id]);
+    const o = await get('SELECT * FROM orders WHERE id = ?', [req.params.id]);
     if (!o) return res.status(404).json({ error: '订单不存在' });
     await run('DELETE FROM payments WHERE order_id = ?', [o.id]);
     await run('DELETE FROM photo_select WHERE order_id = ?', [o.id]);
+    await releaseSchedule(o.order_no); // 彻底删除同步释放档期
     await run('DELETE FROM orders WHERE id = ?', [o.id]);
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
@@ -362,7 +495,10 @@ router.post('/:id/cancel', authRequired, requireRole(['admin']), async (req, res
     if (!o) return res.status(404).json({ error: '订单不存在' });
     await run("UPDATE orders SET cancelled = 1, status = 'cancelled' WHERE id = ?", [o.id]);
     await appendLog(o.id, '订单作废' + (req.body.reason ? '：' + req.body.reason : ''));
-    res.json({ ok: true });
+    // 【订单 → 档期】作废自动释放所占档期（验收⑤）
+    await releaseSchedule(o.order_no);
+    if (o.shoot_date) await appendLog(o.id, `订单作废，已释放档期 ${o.shoot_date}`);
+    res.json({ ok: true, scheduleReleased: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
