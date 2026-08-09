@@ -2,7 +2,7 @@
 
     bgm.mp3
 
-放到本目录（client/public/bgm/bgm.mp3）即可生效（替换默认曲《The Way You Look Tonight - Tony Bennett》）。
+放到本目录（client/public/bgm/bgm.mp3）即可生效（替换默认曲《Kiss The Rain - Yiruma》）。
 
 说明：
 - Vite 会把 public/ 下文件原样拷贝到构建产物根目录，线上访问路径为 /bgm/bgm.mp3。

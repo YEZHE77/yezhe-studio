@@ -11,7 +11,7 @@
 //  8. 缓冲加载时通过 subscribe 暴露 loading 状态，界面展示「音乐加载中」。
 
 // 本地打包的默认 BGM（Vite public 静态资源，构建后位于 /bgm/bgm.mp3）
-// 当前默认曲：《The Way You Look Tonight - Tony Bennett》（标准 MP3，可替换）。
+// 当前默认曲：《Kiss The Rain - Yiruma》（标准 MP3，可替换）。
 // 后台未配置 bgmUrl 时自动回退到此本地文件，彻底规避网易云/QQ 音乐等
 // 防盗链导致线上（Cloudflare Pages）与微信小程序播放失败。
 const LOCAL_BGM = (import.meta.env.BASE_URL || '/') + 'bgm/bgm.mp3';

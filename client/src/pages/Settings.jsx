@@ -261,7 +261,7 @@ export default function Settings() {
           </Field>
           <Field label="幻灯片背景音乐 BGM（留空则用前端内置本地 MP3）">
             <input className={inputCls} value={form.bgmUrl} onChange={(e) => set('bgmUrl', e.target.value)} placeholder="可选：填自有 CDN/R2 代理的 MP3 地址覆盖（勿用网易云/QQ 音乐等防盗链链接）" />
-            <p className="text-xs text-muted mt-1">留空 → 使用已打包进前端的本地 MP3（当前默认《The Way You Look Tonight - Tony Bennett》）：循环播放、右上角🎵可开关、退出幻灯片自动暂停；要替换曲子把 mp3 放进前端 bgm 目录即可，或在此填自有 CDN/R2 代理地址（小程序需加入 downloadFile 合法域名）。</p>
+            <p className="text-xs text-muted mt-1">留空 → 使用已打包进前端的本地 MP3（当前默认《Kiss The Rain - Yiruma》）：循环播放、右上角🎵可开关、退出幻灯片自动暂停；要替换曲子把 mp3 放进前端 bgm 目录即可，或在此填自有 CDN/R2 代理地址（小程序需加入 downloadFile 合法域名）。</p>
           </Field>
           <Field label="简介 / 品牌故事（关于我们页正文）">
             <textarea className={inputCls + ' h-20 resize-none'} value={form.intro} onChange={(e) => set('intro', e.target.value)} />
