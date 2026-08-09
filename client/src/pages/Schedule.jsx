@@ -356,9 +356,7 @@ function StatusLegend() {
 function OrderDialog({ orderDlg, personnel, onClose, onSaved }) {
   const [pkgList, setPkgList] = useState([]);
   const [chList, setChList] = useState([]);
-  const [chPop, setChPop] = useState(false);
   const [execPop, setExecPop] = useState(false);
-  const chPopRef = useRef(null);
   const execPopRef = useRef(null);
 
   const [orderName, setOrderName] = useState('');
@@ -392,7 +390,6 @@ function OrderDialog({ orderDlg, personnel, onClose, onSaved }) {
   }, []);
   useEffect(() => {
     const onDown = (e) => {
-      if (chPopRef.current && !chPopRef.current.contains(e.target)) setChPop(false);
       if (execPopRef.current && !execPopRef.current.contains(e.target)) setExecPop(false);
     };
     document.addEventListener('mousedown', onDown);
@@ -590,19 +587,15 @@ function OrderDialog({ orderDlg, personnel, onClose, onSaved }) {
           {/* 8. 渠道来源 */}
           <section>
             <div className="text-sm font-medium mb-2" style={{ color: '#1f2329' }}>渠道来源</div>
-            <div className="relative" ref={chPopRef}>
-              <select value={channelId} onChange={(e) => { const o = chList.find((x) => String(x.id) === e.target.value); onPickChannel(e.target.value, o ? o.name : ''); }}
-                className="w-full px-3 py-2 rounded bg-panel2 border border-line text-sm outline-none" style={{ color: channelId ? '#1f2329' : '#9ca3af' }}>
-                <option value="">请选择渠道来源</option>
-                {chList.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-              </select>
-              <button onClick={() => setChPop((v) => !v)} className="absolute right-2 top-1/2 -translate-y-1/2 text-xs" style={{ color: '#2f7cf6' }}>渠道管理</button>
-              {chPop && (
-                <div className="absolute right-0 mt-1 w-44 bg-white border border-line rounded-lg shadow-lg z-30 overflow-hidden">
-                  <button onClick={() => { setChPop(false); window.location.hash = '#/channels'; }} className="w-full text-left px-3 py-2.5 text-sm hover:bg-panel2" style={{ color: '#1f2329' }}>前往渠道管理</button>
-                </div>
-              )}
-            </div>
+            <select value={channelId} onChange={(e) => { const o = chList.find((x) => String(x.id) === e.target.value); onPickChannel(e.target.value, o ? o.name : ''); }}
+              className="w-full px-3 py-2 rounded bg-panel2 border border-line text-sm outline-none" style={{ color: channelId ? '#1f2329' : '#9ca3af' }}>
+              <option value="">请选择渠道来源</option>
+              {chList.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+            {/* 下拉最底部蓝色文字链接【渠道管理】 */}
+            <a href="#/channels"
+              onClick={(e) => { e.preventDefault(); window.location.hash = '#/channels'; }}
+              className="inline-block mt-1.5 text-xs hover:underline cursor-pointer" style={{ color: '#2f7cf6' }}>渠道管理 ›</a>
           </section>
 
           {/* 9. 执行人 */}
