@@ -196,8 +196,8 @@ export default function Schedule() {
               }
 
               return (
-                <button key={i} onClick={() => setSelDate(date)}
-                  className={'min-h-[84px] rounded-lg border p-2 text-left transition ' + (isSel ? 'ring-2 ring-brand ' : '') + cellCls}
+                <div key={i} onClick={() => setSelDate(date)}
+                  className={'min-h-[84px] rounded-lg border p-2 text-left transition cursor-pointer flex flex-col ' + (isSel ? 'ring-2 ring-brand ' : '') + cellCls}
                   style={style}>
                   <div className="flex items-center justify-between">
                     <span className={'text-sm ' + (st.kind === 'closed' ? 'text-[#888]' : 'text-fg')}>{day}</span>
@@ -219,7 +219,11 @@ export default function Schedule() {
                   )}
                   {pends.length > 0 && <div className="mt-1 text-[10px] text-amber-500 truncate">待确认 ×{pends.length}</div>}
                   {rows.length > 1 && <div className="text-[10px] text-muted mt-0.5">+{rows.length - 1} 档期</div>}
-                </button>
+                  {/* 格子左下角蓝色【+添加】按钮 */}
+                  <button onClick={(e) => { e.stopPropagation(); openNew(day); }}
+                    className="mt-auto self-start inline-flex items-center gap-0.5 px-2 py-1 rounded text-white text-[11px] hover:opacity-90"
+                    style={{ background: '#2f7cf6' }}>+ 添加</button>
+                </div>
               );
             })}
           </div>
@@ -227,7 +231,7 @@ export default function Schedule() {
 
         {/* 右侧固定深色面板 #333 */}
         <div className="lg:sticky lg:top-4 self-start rounded-lg shadow-[0_2px_12px_rgba(0,0,0,0.06)] p-4" style={{ background: '#333333' }}>
-          <div className="text-sm font-medium mb-1" style={{ color: '#ffffff' }}>{selDate ? selDate : '未选择日期'}</div>
+          <div className="text-2xl font-bold mb-1" style={{ color: '#ffce3a' }}>{selDate ? selDate : '未选择日期'}</div>
           <div className="text-xs mb-3" style={{ color: '#b9bdc4' }}>{selDate ? (lunarMap[selDate] || '') : '点击日历选择日期'}</div>
 
           <div className="max-h-[52vh] overflow-auto mb-3">
@@ -483,7 +487,7 @@ function OrderDialog({ orderDlg, personnel, onClose, onSaved }) {
   const slotLabel = (s) => s === HALF ? '半天' : s === FULL ? '全天' : s;
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center z-50 p-4" style={{ background: 'rgba(0,0,0,0.45)' }}>
+    <div onClick={onClose} className="fixed inset-0 flex items-center justify-center z-50 p-4" style={{ background: 'rgba(0,0,0,0.45)' }}>
       <div onClick={(e) => e.stopPropagation()} className="w-full max-w-xl bg-white rounded-lg p-6 max-h-[90vh] overflow-auto">
         <div className="flex items-center justify-between mb-4">
           <div className="font-medium" style={{ color: '#1f2329' }}>新增订单</div>
