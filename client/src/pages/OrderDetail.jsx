@@ -16,7 +16,7 @@ const STAGE_COLOR = {
 const TYPE_LABEL = { deposit: '定金', balance: '尾款', extra: '加片/增值', refund: '退款' };
 const PAY_STATUS_LABEL = { unpaid: '未付定金', deposit: '已付定金', paid: '已付全款' };
 
-// 订单详情 11 步流程进度条（由 status + 关键标记派生，不新建接口）
+// 订单详情 11 步流程进度条（顺序固定，状态/时间戳完全由后端接口驱动，不写死）
 const ORDER_STEPS = [
   { key: 'created', label: '订单生成' },
   { key: 'contract', label: '生成合同' },
@@ -36,21 +36,49 @@ function computeStep(detail) {
   if (detail.status === 'cancelled') return -1;
   return STATUS_STEP[detail.status] ?? 2;
 }
-
-// —— 复刻 spec：订单头部 4 步进度条（支付订单‑完成拍摄‑上传底片‑完成），由订单状态驱动 ——
-const FLOW_STEPS = ['支付订单', '完成拍摄', '上传底片', '完成'];
-function getFlow(detail, photos) {
-  const paid = detail.payment_status && detail.payment_status !== 'unpaid';
-  const s = detail.status;
-  const done = [];
-  done[0] = !!paid; // 支付订单
-  done[1] = ['shot', 'selecting', 'retouching', 'delivered', 'completed'].includes(s); // 完成拍摄
-  done[2] = (photos.raw.length > 0) || ['selecting', 'retouching', 'delivered', 'completed'].includes(s); // 上传底片
-  done[3] = ['delivered', 'completed'].includes(s); // 完成
-  if (s === 'cancelled') return { done: [false, false, false, false], cur: -1 };
-  let cur = done.findIndex((d) => !d);
-  if (cur === -1) cur = done.length - 1;
-  return { done, cur };
+// 每一步对应后端 logs 中的关键字（用于回显接口返回的真实完成时间，禁止写死）
+const STEP_LOG_KW = [
+  ['下单', '创建订单', '生成订单', '创建'],               // 订单生成
+  ['合同'],                                              // 生成合同
+  ['沟通', '确认'],                                      // 沟通确认
+  ['拍摄执行', '开始拍摄', '执行拍摄'],                    // 拍摄执行
+  ['拍摄结束', '拍摄完成'],                                // 拍摄结束
+  ['选片', '进入选片'],                                    // 选片精修
+  ['预告片', '预告'],                                     // 预告片输出
+  ['全部精修', '精修完成'],                                 // 全部精修完成
+  ['原片打包', '原片上传', '打包'],                         // 原片打包
+  ['统一交付', '交付'],                                    // 统一交付
+  ['订单完结', '订单完成', '完结']                          // 订单完结
+];
+function fmtStepTime(t) {
+  if (!t) return null;
+  const d = new Date(t);
+  if (isNaN(d.getTime())) return null;
+  const p = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+function findStepTime(logs, i) {
+  const kws = STEP_LOG_KW[i] || [];
+  for (const kw of kws) {
+    const hit = (logs || []).find((l) => (l.text || '').includes(kw));
+    if (hit && hit.t) return fmtStepTime(hit.t);
+  }
+  return null;
+}
+// 由后端 订单 status / logs / 原片 派生 11 步状态（done / current / pending）
+function buildSteps(detail, photos, logs) {
+  if (!detail || detail.status === 'cancelled')
+    return ORDER_STEPS.map((s) => ({ ...s, state: 'pending', time: null }));
+  const cur = computeStep(detail);
+  return ORDER_STEPS.map((s, i) => {
+    let state = i < cur ? 'done' : i === cur ? 'current' : 'pending';
+    if (state === 'done') {
+      if (s.key === 'contract' && !((logs || []).some((l) => (l.text || '').includes('合同')))) state = 'pending';
+      if (s.key === 'raw_pack' && (!photos || photos.raw.length === 0)) state = 'pending';
+    }
+    const time = state === 'done' ? findStepTime(logs, i) : null;
+    return { ...s, state, time };
+  });
 }
 
 // spec 全局色号
@@ -321,15 +349,6 @@ export default function OrderDetail() {
   const extraSum = extras.reduce((s, x) => s + (Number(x.amount) || 0), 0);
   const tbd = Number(detail.date_tbd) === 1;
   const payKey = detail.payment_status || 'deposit';
-  const curStep = computeStep(detail);
-  const logText = (detail.logs || []).map((l) => l.text || '').join(' ');
-  const isStepDone = (i) => {
-    if (curStep < 0) return false;
-    if (i > curStep) return false;
-    if (i === 1 && !logText.includes('合同')) return false; // 生成合同需日志
-    if (i === 8 && photos.raw.length === 0) return false;   // 原片打包需有原片
-    return true;
-  };
 
   // 下载记录：原片 + 精修片 + 选片
   const downloadItems = [
@@ -338,7 +357,7 @@ export default function OrderDetail() {
     ...(sel && sel.photos ? sel.photos.map((p) => ({ url: p.photo_url, kind: '选片' })) : [])
   ];
 
-  const flow = getFlow(detail, photos);
+  const steps = buildSteps(detail, photos, detail.logs);
   const statusText =
     (detail.payment_status === 'unpaid' ? '未付定金' : (PAY_STATUS_LABEL[payKey] || '')) +
     (detail.status ? '，' + (STATUS_LABEL[detail.status] || '') : '');
@@ -391,27 +410,30 @@ export default function OrderDetail() {
               )}
             </div>
 
-            {/* 右侧 4 步进度条 */}
+            {/* 右侧 11 步横向流程进度条（由后端 status/logs/原片 驱动，支持横向滚动） */}
             <div className="flex-1" style={{ minWidth: 0 }}>
-              <div className="flex items-center" style={{ height: 64 }}>
-                {FLOW_STEPS.map((s, i) => (
-                  <React.Fragment key={s}>
-                    <div className="flex flex-col items-center" style={{ minWidth: 110 }}>
-                      <div style={{
-                        width: 28, height: 28, borderRadius: '50%',
-                        background: flow.done[i] ? MINT : (i === flow.cur ? BLUE : '#ffffff'),
-                        border: flow.done[i] || i === flow.cur ? 'none' : '2px solid #cccccc',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff'
-                      }}>
-                        {flow.done[i] ? <CheckIcon /> : (i === flow.cur ? <span style={{ fontSize: 13, fontWeight: 600 }}>{i + 1}</span> : null)}
+              <div style={{ overflowX: 'auto', overflowY: 'hidden' }}>
+                <div className="flex items-start" style={{ gap: 0, padding: '8px 0', minWidth: 'max-content' }}>
+                  {steps.map((st, i) => (
+                    <React.Fragment key={st.key}>
+                      <div className="flex flex-col items-center" style={{ width: 116, flexShrink: 0 }}>
+                        <div style={{
+                          width: 28, height: 28, borderRadius: '50%',
+                          background: (st.state === 'done' || st.state === 'current') ? BLUE : '#ffffff',
+                          border: (st.state === 'done' || st.state === 'current') ? 'none' : '2px solid #cccccc',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff'
+                        }}>
+                          {st.state === 'done' ? <CheckIcon /> : st.state === 'current' ? <span style={{ fontSize: 13, fontWeight: 600 }}>{i + 1}</span> : null}
+                        </div>
+                        <span style={{ fontSize: 13, marginTop: 8, textAlign: 'center', color: st.state === 'pending' ? '#999999' : '#111111', fontWeight: st.state === 'current' ? 600 : 400 }}>{st.label}</span>
+                        {st.time ? <span style={{ fontSize: 12, marginTop: 4, textAlign: 'center', color: '#666666' }}>{st.time}</span> : null}
                       </div>
-                      <span style={{ fontSize: 13, marginTop: 8, color: (flow.done[i] || i === flow.cur) ? '#111111' : '#999999', fontWeight: i === flow.cur ? 600 : 400 }}>{s}</span>
-                    </div>
-                    {i < FLOW_STEPS.length - 1 && (
-                      <div style={{ flex: 1, height: 2, minWidth: 36, background: flow.done[i] ? MINT : '#e2e2e2' }} />
-                    )}
-                  </React.Fragment>
-                ))}
+                      {i < steps.length - 1 && (
+                        <div style={{ flex: 1, height: 2, minWidth: 40, marginTop: 13, background: st.state === 'done' ? BLUE : '#e2e2e2' }} />
+                      )}
+                    </React.Fragment>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
