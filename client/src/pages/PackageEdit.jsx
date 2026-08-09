@@ -16,8 +16,7 @@ import http, { img, uploadImage, uploadBatch } from '../api.js';
 const LINK = '#2196F3';          // 蓝色文字链接（管理分类/编辑/点击上传视频/下一步）
 const SAVE_BTN = '#3488EB';      // 保存按钮蓝色
 const TOGGLE_ON = '#34C759';     // 开关开启绿色
-const PAGE_BG = '#ffffff';
-const YELLOW = '#FDFCEB';        // 浅黄色模块底色
+const PAGE_BG = '#f7f9fc';
 const YELLOW_BORDER = '#D1D5DB'; // 浅黄色模块虚线边框
 const TAB_BORDER = '#E5E7EB';    // Tab 未选中边框
 const TAB_ACTIVE_BORDER = '#333333';
@@ -538,8 +537,8 @@ export default function PackageEdit() {
                 </div>
               </Field>
 
-              {/* 客户问卷区域（浅黄虚线块 #FDFCEB / #D1D5DB） */}
-              <div className="mt-3 rounded border border-dashed" style={{ background: YELLOW, borderColor: YELLOW_BORDER, padding: '20px 24px' }}>
+              {/* 客户问卷区域（价格及问卷 Tab 虚线块：内底 #fbfbf3 / 边框 #dcdcdc，仅本 Tab 生效） */}
+              <div className="mt-3 rounded border border-dashed" style={{ background: '#fbfbf3', borderColor: '#dcdcdc', padding: '20px 24px' }}>
                 <div className="mb-3">
                   <RadioGroup value={d.questionnaire_visibility} onChange={(v) => setD({ questionnaire_visibility: v })}
                     options={[{ v: 'none', t: '不显示' }, { v: 'after_pay', t: '支付后显示' }, { v: 'after_book', t: '预约后显示' }]} />
