@@ -121,7 +121,7 @@ function RadioGroup({ value, onChange, options }) {
     <div className="flex items-center gap-2 flex-wrap">
       {options.map((o) => (
         <button key={o.v} type="button" onClick={() => onChange(o.v)}
-          className="px-4 py-1.5 rounded-lg text-sm border transition-colors"
+          className="px-4 py-1.5 rounded-md text-sm border transition-colors"
           style={{ borderColor: value === o.v ? BRAND : '#e5e7eb', color: value === o.v ? BRAND : '#6b7280', background: value === o.v ? '#eef4ff' : '#fff' }}>
           {o.t}
         </button>
@@ -130,22 +130,23 @@ function RadioGroup({ value, onChange, options }) {
   );
 }
 
-// 字段外壳：标签居左 + 必填星号 + 提示
+// 字段外壳：标签在上方 + 必填星号（与文字留微小间距）+ 提示
 function Field({ label, required, hint, children }) {
   return (
-    <div className="flex items-start gap-4 mb-7">
-      <div className="w-36 shrink-0 pt-2 text-right" style={{ color: '#1f2329' }}>
-        <span className="text-sm">{label}</span>
-        {required && <span style={{ color: RED }}> *</span>}
-        {hint && <div className="text-xs mt-0.5" style={{ color: NOTE }}>{hint}</div>}
+    <div className="mb-4">
+      <div className="flex items-center gap-2 mb-1.5 text-[13px]" style={{ color: '#1f2329' }}>
+        <span>{label}</span>
+        {required && <span style={{ color: RED, marginLeft: 3 }}>*</span>}
+        {hint && <span className="text-xs" style={{ color: NOTE }}>{hint}</span>}
       </div>
-      <div className="flex-1 min-w-0">{children}</div>
+      <div>{children}</div>
     </div>
   );
 }
 
-const inputCls = "w-full px-3 py-2 rounded-lg bg-white border border-line text-sm outline-none focus:border-brand text-fg";
-const selCls = "px-3 py-2 rounded-lg bg-white border border-line text-sm outline-none focus:border-brand text-fg";
+const inputCls = "w-full max-w-sm px-3 py-1.5 rounded-md bg-white border border-line text-sm outline-none focus:border-brand text-fg";
+const selCls = "px-3 py-1.5 rounded-md bg-white border border-line text-sm outline-none focus:border-brand text-fg";
+const textareaCls = "w-full max-w-2xl px-3 py-1.5 rounded-md bg-white border border-line text-sm outline-none focus:border-brand text-fg";
 const inputBg = { background: '#fafbfc' };
 
 export default function PackageEdit() {
@@ -313,27 +314,29 @@ export default function PackageEdit() {
   return (
     <div className="-mx-6 -my-6 min-h-screen flex flex-col" style={{ background: PAGE_BG }}>
       {/* 白色卡片容器：Tab 栏 + 全部 Tab 内容 */}
-      <form onSubmit={submit} className="flex-1 flex flex-col m-6 mb-0 bg-white rounded-lg overflow-hidden"
+      <form onSubmit={submit} className="m-6 mb-0 bg-white rounded-md overflow-hidden max-w-3xl mx-auto w-full"
         style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
-        {/* Tab 栏：选中=白底黑字，未选=#F0F0F0底 #666字；移动端横向滚动 */}
+        {/* Tab 栏：选中=方框高亮边框，未选=白底灰字 */}
         <div className="flex gap-1 px-4 pt-4 overflow-x-auto">
           {TABS.map((t, i) => (
             <button key={t} type="button" onClick={() => setTab(i)}
-              className="px-5 py-2.5 text-sm rounded-t-md transition-colors whitespace-nowrap shrink-0"
+              className="px-4 py-2 text-[13px] border rounded-md transition-colors whitespace-nowrap shrink-0"
               style={{
-                background: tab === i ? '#ffffff' : TAB_INACTIVE,
+                background: tab === i ? '#f5f9ff' : '#ffffff',
                 color: tab === i ? '#1f2329' : '#666666',
-                fontWeight: tab === i ? 700 : 400
+                borderColor: tab === i ? BRAND : '#e5e7eb',
+                fontWeight: tab === i ? 600 : 400
               }}>
               {t}
             </button>
           ))}
         </div>
+        <div className="border-t mt-3" style={{ borderColor: '#e5e7eb' }} />
 
         {/* 卡片内容区 */}
-        <div className="flex-1 px-6 py-6 md:px-8 md:py-8">
+        <div className="px-6 py-5">
           {errors.length > 0 && (
-            <div className="mb-5 px-3 py-2 rounded-lg text-sm" style={{ background: '#fff1f0', color: RED, border: '1px solid #ffccc7' }}>
+            <div className="mb-5 px-3 py-2 rounded-md text-sm" style={{ background: '#fff1f0', color: RED, border: '1px solid #ffccc7' }}>
               请完善必填项：{errors.join('、')}
             </div>
           )}
@@ -344,18 +347,18 @@ export default function PackageEdit() {
               {/* 套系封面 */}
               <Field label="套系封面" required>
                 <div className="flex items-center gap-4">
-                  <label className="relative w-32 h-32 rounded-lg border-2 border-dashed flex items-center justify-center cursor-pointer overflow-hidden shrink-0"
+                  <label className="relative w-24 h-24 rounded-md border-2 border-dashed flex items-center justify-center cursor-pointer overflow-hidden shrink-0"
                     style={{ borderColor: DASH, background: '#fff' }}>
                     {form.cover_url
                       ? <img src={img(form.cover_url)} alt="" className="w-full h-full object-cover" />
-                      : <span className="w-12 h-12 rounded-full flex items-center justify-center" style={{ background: '#f0f2f5', color: '#9aa0a8' }}><IconPlus width={22} height={22} /></span>}
+                      : <span className="w-10 h-10 rounded-full flex items-center justify-center" style={{ background: '#f0f2f5', color: '#9aa0a8' }}><IconPlus width={20} height={20} /></span>}
                     <input type="file" accept="image/*" onChange={onCover} className="hidden" />
                   </label>
-                  <div className="flex flex-col gap-2">
+                  <div className="flex flex-col gap-1.5">
                     <span className="text-xs" style={{ color: NOTE }}>{uploading === 'cover' ? '上传中…' : '点击虚线框上传封面'}</span>
                     {form.cover_url && (
                       <button type="button" onClick={() => setF({ cover_url: '' })}
-                        className="text-xs px-3 py-1.5 rounded-lg border border-line text-muted hover:border-brand w-fit">移除</button>
+                        className="text-xs w-fit hover:opacity-80" style={{ color: NOTE }}>移除</button>
                     )}
                   </div>
                 </div>
@@ -382,15 +385,15 @@ export default function PackageEdit() {
 
               {/* 套系简介 */}
               <Field label="套系简介" hint="（列表页截断展示）">
-                <textarea className={inputCls} style={inputBg} rows={2} value={form.description}
+                <textarea className={textareaCls} style={inputBg} rows={2} value={form.description}
                   onChange={(e) => setF({ description: e.target.value })} placeholder="一句话介绍套系亮点" />
               </Field>
 
               {/* 详情图片 0/80 */}
-              <Field label="详情图片" hint={`（${form.details.detail_images.length}/80张）`}>
+              <Field label="详情图片">
                 <div className="flex flex-wrap gap-2">
                   {form.details.detail_images.map((u, i) => (
-                    <div key={i} className="relative w-24 h-24 rounded-lg overflow-hidden border border-line group">
+                    <div key={i} className="relative w-20 h-20 rounded-md overflow-hidden border border-line group">
                       <img src={img(u)} alt="" className="w-full h-full object-cover" />
                       <button type="button" onClick={() => removeDetailImage(i)}
                         className="absolute top-1 right-1 p-1 rounded-full bg-black/60 text-white opacity-0 group-hover:opacity-100 transition-opacity">
@@ -399,24 +402,22 @@ export default function PackageEdit() {
                     </div>
                   ))}
                   {form.details.detail_images.length < 80 && (
-                    <label className="w-24 h-24 rounded-lg border-2 border-dashed flex flex-col items-center justify-center gap-1 cursor-pointer hover:border-brand"
+                    <label className="w-20 h-20 rounded-md border-2 border-dashed flex flex-col items-center justify-center gap-1 cursor-pointer hover:border-brand"
                       style={{ borderColor: DASH, color: NOTE }}>
-                      <span className="w-9 h-9 rounded-full flex items-center justify-center" style={{ background: '#f0f2f5', color: '#9aa0a8' }}><IconPlus /></span>
+                      <span className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: '#f0f2f5', color: '#9aa0a8' }}><IconPlus /></span>
                       <span className="text-[11px]">{uploading === 'images' ? '上传中' : '上传样片'}</span>
                       <input type="file" accept="image/*" multiple onChange={onDetailImages} className="hidden" />
                     </label>
                   )}
                 </div>
-                <div className="mt-1 text-xs" style={{ color: NOTE }}>{form.details.detail_images.length}/80张</div>
+                <div className="mt-1.5 text-xs" style={{ color: NOTE }}>{form.details.detail_images.length}/80张</div>
               </Field>
 
               {/* 套系视频 */}
               <Field label="套系视频">
-                <div className="flex items-center gap-3">
-                  {form.details.video_url ? (
-                    <video src={form.details.video_url} className="w-40 h-24 rounded-lg object-cover bg-black" controls />
-                  ) : (
-                    <div className="w-40 h-24 rounded-lg border border-line flex items-center justify-center text-xs" style={{ color: '#b0b3b8', background: '#f5f6f8' }}>未上传</div>
+                <div className="flex items-center gap-3 flex-wrap">
+                  {form.details.video_url && (
+                    <video src={form.details.video_url} className="w-40 h-24 rounded-md object-cover bg-black" controls />
                   )}
                   <label className="inline-flex items-center gap-1.5 text-sm cursor-pointer" style={{ color: BRAND }}>
                     <IconPlus />{uploading === 'video' ? '上传中…' : '点击上传套系视频'}
@@ -424,7 +425,7 @@ export default function PackageEdit() {
                   </label>
                   {form.details.video_url && (
                     <button type="button" onClick={() => setD({ video_url: '' })}
-                      className="text-xs px-3 py-1.5 rounded-lg border border-line text-muted hover:border-brand">移除</button>
+                      className="text-xs w-fit hover:opacity-80" style={{ color: NOTE }}>移除</button>
                   )}
                 </div>
               </Field>
@@ -511,7 +512,7 @@ export default function PackageEdit() {
               </Field>
 
               {/* 客户问卷区域（浅黄虚线块） */}
-              <div className="mt-2 p-4 rounded-lg border-2 border-dashed" style={{ background: YELLOW, borderColor: YELLOW_BORDER }}>
+              <div className="mt-2 p-4 rounded-md border-2 border-dashed" style={{ background: YELLOW, borderColor: YELLOW_BORDER }}>
                 <div className="text-sm font-medium mb-3" style={{ color: '#1f2329' }}>客户问卷</div>
                 <div className="mb-3">
                   <RadioGroup value={d.questionnaire_visibility} onChange={(v) => setD({ questionnaire_visibility: v })}
@@ -536,15 +537,15 @@ export default function PackageEdit() {
               </div>
 
               {/* 浅黄色虚线模块 */}
-              <div className="p-4 rounded-lg border-2 border-dashed mb-6" style={{ background: YELLOW, borderColor: YELLOW_BORDER }}>
+              <div className="p-4 rounded-md border-2 border-dashed mb-6" style={{ background: YELLOW, borderColor: YELLOW_BORDER }}>
                 {/* 摄影 / 摄像模版切换 */}
                 <div className="flex items-center gap-2 mb-5">
                   <span className="text-sm" style={{ color: '#1f2329' }}>模板：</span>
                   <button type="button" onClick={() => setD({ shoot_template: 'photo' })}
-                    className="px-4 py-1.5 rounded-lg text-sm border"
+                    className="px-4 py-1.5 rounded-md text-sm border"
                     style={{ background: d.shoot_template === 'photo' ? '#1f2329' : '#fff', color: d.shoot_template === 'photo' ? '#fff' : '#6b7280', borderColor: d.shoot_template === 'photo' ? '#1f2329' : '#e5e7eb' }}>摄影模版</button>
                   <button type="button" onClick={() => setD({ shoot_template: 'video' })}
-                    className="px-4 py-1.5 rounded-lg text-sm border"
+                    className="px-4 py-1.5 rounded-md text-sm border"
                     style={{ background: d.shoot_template === 'video' ? '#1f2329' : '#fff', color: d.shoot_template === 'video' ? '#fff' : '#6b7280', borderColor: d.shoot_template === 'video' ? '#1f2329' : '#e5e7eb' }}>摄像模版</button>
                 </div>
 
@@ -627,7 +628,7 @@ export default function PackageEdit() {
 
               {/* 自定义服务详情 */}
               <Field label="自定义服务详情">
-                <textarea className={inputCls} style={inputBg} rows={5} value={d.service_detail_text}
+                <textarea className={textareaCls} style={inputBg} rows={5} value={d.service_detail_text}
                   onChange={(e) => setD({ service_detail_text: e.target.value })} placeholder="例如：本套系包含专业摄影师全程跟拍、精修调色、相册设计等服务，拍摄前可沟通风格需求。" />
                 <div className="mt-2 flex gap-2">
                   <button type="button" onClick={() => setD({ service_detail_text: d.service_detail_text + (d.service_detail_text ? '\n' : '') + '【摄影类】' })}
@@ -667,7 +668,7 @@ export default function PackageEdit() {
 
               {/* 温馨提示 */}
               <Field label="温馨提示">
-                <textarea className={inputCls} style={inputBg} rows={5} value={d.warm_tips}
+                <textarea className={textareaCls} style={inputBg} rows={5} value={d.warm_tips}
                   onChange={(e) => setD({ warm_tips: e.target.value })} placeholder="例如：拍摄前请保持充足睡眠，避免熬夜；可提前准备喜欢的照片风格参考……" />
               </Field>
 
@@ -692,7 +693,7 @@ export default function PackageEdit() {
                 <div className="flex items-center gap-2">
                   <IconHelp />
                   {editAgr
-                    ? <textarea autoFocus rows={4} className={inputCls} style={inputBg} value={d.customer_agreement}
+                    ? <textarea autoFocus rows={4} className={textareaCls} style={inputBg} value={d.customer_agreement}
                         onChange={(e) => setD({ customer_agreement: e.target.value })} onBlur={() => setEditAgr(false)} placeholder="填写客户需知 / 协议条款" />
                     : <span className="text-sm" style={{ color: '#1f2329' }}>{d.customer_agreement || '未启用'}</span>}
                   <button type="button" onClick={() => setEditAgr((v) => !v)} className="text-sm" style={{ color: BRAND }}>编辑</button>
@@ -711,13 +712,13 @@ export default function PackageEdit() {
         </div>
       </form>
 
-      {/* 底部固定按钮：取消（左） / 保存（右，蓝） */}
-      <div className="sticky bottom-0 z-20 flex items-center justify-between px-6 py-3 border-t"
+      {/* 底部固定按钮：取消 / 保存 并排居中 */}
+      <div className="sticky bottom-0 z-20 flex items-center justify-center gap-3 px-6 py-3 border-t max-w-3xl mx-auto w-full"
         style={{ background: PAGE_BG, borderColor: '#e5e5e5' }}>
         <button type="button" onClick={() => nav('/packages')}
-          className="px-5 py-2 rounded-lg text-sm hover:opacity-90" style={{ background: CANCEL_BG, color: '#333333' }}>取消</button>
+          className="px-4 py-1.5 rounded-md text-sm hover:opacity-90" style={{ background: CANCEL_BG, color: '#333333' }}>取消</button>
         <button type="button" onClick={submit} disabled={saving}
-          className="px-6 py-2 rounded-lg text-sm text-white disabled:opacity-60" style={{ background: SAVE }}>
+          className="px-5 py-1.5 rounded-md text-sm text-white disabled:opacity-60" style={{ background: SAVE }}>
           {saving ? '保存中…' : '保存'}
         </button>
       </div>
@@ -734,7 +735,7 @@ export default function PackageEdit() {
               {categories.length === 0 && <div className="text-sm text-muted text-center py-4">暂无分类</div>}
               {categories.filter(Boolean).map((c) => (
                 <button key={c.id} type="button" onClick={() => { setF({ category_id: c.id }); setCatOpen(false); }}
-                  className="w-full text-left px-3 py-2 rounded-lg text-sm hover:bg-panel2 flex items-center justify-between"
+                  className="w-full text-left px-3 py-2 rounded-md text-sm hover:bg-panel2 flex items-center justify-between"
                   style={{ color: form.category_id === c.id ? BRAND : '#1f2329', background: form.category_id === c.id ? '#eef4ff' : 'transparent' }}>
                   <span>{c.name || '未命名'}</span>
                   {form.category_id === c.id && <span className="text-xs">已选</span>}
@@ -745,7 +746,7 @@ export default function PackageEdit() {
               <input className={inputCls} value={catName} onChange={(e) => setCatName(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && addCategory()} placeholder="新建分类名称" />
               <button type="button" onClick={addCategory}
-                className="px-3 py-2 rounded-lg text-sm text-white whitespace-nowrap" style={{ background: BRAND }}>新建</button>
+                className="px-3 py-2 rounded-md text-sm text-white whitespace-nowrap" style={{ background: BRAND }}>新建</button>
             </div>
           </div>
         </div>
