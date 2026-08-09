@@ -61,14 +61,20 @@ try {
     return getComputedStyle(priceSpan).color.replace(/\s/g, '') === 'rgb(228,57,60)';
   });
 
-  // 6) 右侧图标按钮组顺序：分享｜编辑｜下架｜删除
+  // 6) 右侧图标按钮组顺序：分享｜编辑｜下架｜删除（行内作用域，排除黑色栏筛选图标干扰）
   facts.iconBtns = await page.evaluate(() => {
     const want = ['分享', '编辑', '下架', '删除'];
-    const idx = want.map((w) => {
-      const els = Array.from(document.querySelectorAll('[title]'));
-      return els.findIndex((e) => e.getAttribute('title') === w);
-    });
-    return { ordered: JSON.stringify(idx) === JSON.stringify([0, 1, 2, 3]) };
+    const shareBtn = document.querySelector('[title="分享"]');
+    if (!shareBtn) return { ordered: false, found: false };
+    let el = shareBtn;
+    while (el && el.parentElement) {
+      const btns = [...el.querySelectorAll('[title]')];
+      if (btns.length >= 4) break;
+      el = el.parentElement;
+    }
+    const order = [...el.querySelectorAll('[title]')].map((b) => b.getAttribute('title'));
+    const sub = order.filter((t) => want.includes(t));
+    return { ordered: JSON.stringify(sub) === JSON.stringify(want), found: true, order };
   });
 
   // 7) 点击【分享】 → 唤起弹窗，校验 H5/小程序 Tab + 二维码 + 复制链接
