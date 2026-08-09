@@ -33,6 +33,21 @@ const REQ_RED = '#F53F3F';           // 必填星号红
 const POP_HOVER = '#F0F7FF';         // 下拉浮层 hover
 const POP_SEL = '#E6F4FF';           // 下拉浮层选中
 
+// ===== 新增订单弹窗（补充规范）色号 =====
+const MODAL_BLUE = '#2DB7F5';        // 主蓝（保存/添加/选中/链接）
+const MODAL_BORDER = '#DDDDDD';      // 区块/输入框边框
+const MODAL_PLACE = '#B5B5B5';       // 占位文字
+const MODAL_RED = '#FF5B5B';         // 必填星号红
+const MODAL_POP_HOVER = '#EAFBFC';   // 下拉 hover/选中
+const MODAL_TBD = '#FFF9E8';         // 日期待定提示底色
+const MODAL_TBD_BORDER = '#FFF0C2';  // 日期待定提示边框
+const MODAL_SLOT_FREE = '#8BDCB8';   // 时间段(可选)绿底
+const MODAL_SLOT_SEL = '#333333';    // 时间段(选中)深灰底
+const MODAL_SLOT_DIS = '#E5E5E5';    // 时间段(禁用)灰底
+const MODAL_SLOT_DIS_TX = '#BFBFBF'; // 时间段(禁用)灰字
+const MODAL_ACTIVE = '#BFEFFF';      // 输入框激活边框（收款/渠道）
+const MODAL_DIV = '#EEEEEE';         // 分割线
+
 // 订单状态说明色块（右侧面板 badge 使用）
 const LEGEND_UNPAID = '#FFF2CC';    // 未付定金
 const LEGEND_WAIT = '#D5E8B7';      // 等待拍摄
@@ -514,6 +529,7 @@ function OrderDialog({ orderDlg, personnel, onClose, onSaved }) {
     if (!pkgPrice || parseFloat(pkgPrice) <= 0) return setLocalErr('请填写套系价格');
     if (!deposit || parseFloat(deposit) <= 0) return setLocalErr('请填写套系定金');
     if (payStatus === 'deposit' && parseFloat(deposit) <= 0) return setLocalErr('收款状态为「已付定金」时，定金必须大于 0');
+    if (chooseSession && slots.length === 0) return setLocalErr('请选择场次时间段');
     const payload = {
       order_name: orderName.trim(),
       customer_name: customerName.trim(),
@@ -551,6 +567,15 @@ function OrderDialog({ orderDlg, personnel, onClose, onSaved }) {
 
   const slotLabel = (s) => s === HALF ? '半天' : s === FULL ? '全天' : s;
 
+  // 关闭逻辑（规范 十五）：遮罩不关闭；X 点击时若已填内容则二次确认
+  const isDirty = () => !!(orderName.trim() || customerName.trim() || phones.some((p) => p.trim()) || shootDate || pkgId || pkgPrice || deposit || payStatus !== 'deposit' || remark.trim() || location.trim() || channelId || executors.length || extras.length || slots.length || dateTbd);
+  const requestClose = () => {
+    if (isDirty()) {
+      if (!window.confirm('确定放弃当前填写的内容吗？')) return;
+    }
+    onClose();
+  };
+
   // —— 弹窗内统一样式令牌（严格按 1:1 复刻 spec）——
   const BLOCK = { border: `1px solid ${DLG_BLOCK_BORDER}`, borderRadius: 6, padding: 16, marginBottom: 16 };
   const BLOCK_TITLE = { fontSize: 14, fontWeight: 500, color: '#333333', marginBottom: 12 };
@@ -565,53 +590,58 @@ function OrderDialog({ orderDlg, personnel, onClose, onSaved }) {
     { v: 'deposit', label: '已付定金' },
     { v: 'paid', label: '已付全款' }
   ];
-  const Caret = () => (
+  const Caret = ({ rotate }) => (
     <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#999999" strokeWidth="2"
-      strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><path d="m6 9 6 6 6-6" /></svg>
+      strokeLinecap="round" strokeLinejoin="round" className="shrink-0"
+      style={{ transform: rotate ? 'rotate(180deg)' : 'none', transition: 'transform .15s' }}><path d="m6 9 6 6 6-6" /></svg>
   );
-  const Star = () => <span style={{ color: REQ_RED, marginRight: 2 }}>*</span>;
+  const Star = () => <span style={{ color: MODAL_RED, marginRight: 2 }}>*</span>;
 
   return (
-    <div onClick={onClose} className="fixed inset-0" style={{ background: 'rgba(0,0,0,0.45)', zIndex: 999 }}>
+    <div className="fixed inset-0" style={{ background: 'rgba(0,0,0,0.45)', zIndex: 999, overflowY: 'auto' }}>
       <div
         onClick={(e) => e.stopPropagation()}
-        className="fixed bg-white"
+        className="bg-white"
         style={{
-          top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
-          width: 620, maxHeight: '90vh', overflowY: 'auto',
-          borderRadius: 8, boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
-          padding: '28px 32px', zIndex: 1000
+          width: 700, minHeight: 1080, margin: '40px auto',
+          borderRadius: 4, boxShadow: '0 4px 18px rgba(0,0,0,0.18)',
+          padding: '38px 42px', position: 'relative', zIndex: 1000
         }}
       >
         {/* ===== 头部：居中标题 + 右上角关闭 ===== */}
         <div className="relative" style={{ marginBottom: 24 }}>
-          <div className="text-center" style={{ fontSize: 18, fontWeight: 500, color: '#222222' }}>新增订单</div>
-          <button onClick={onClose} aria-label="关闭"
+          <div className="text-center" style={{ fontSize: 16, fontWeight: 500, color: '#333333' }}>新增订单</div>
+          <button onClick={requestClose} aria-label="关闭"
             className="absolute top-0 hover:text-[#333333] transition-colors"
-            style={{ right: 0, fontSize: 20, lineHeight: 1, color: '#888888' }}>×</button>
+            style={{ right: 0, fontSize: 24, lineHeight: 1, color: '#999999' }}>×</button>
         </div>
 
         {/* ===== 区块 1：顾客信息 ===== */}
-        <div style={BLOCK}>
-          <div style={BLOCK_TITLE}>顾客信息</div>
+        {/* ===== 区块 1：顾客信息卡片 ===== */}
+        <div style={{ border: `1px solid ${MODAL_BORDER}`, borderRadius: 3, padding: '18px 20px', marginBottom: 16 }}>
           <div className="flex items-center" style={{ gap: 12 }}>
-            {/* 头像占位 44×44 */}
+            {/* 默认头像 48×48 */}
             <div className="shrink-0 rounded-full flex items-center justify-center"
-              style={{ width: 44, height: 44, background: '#E8E8E8', color: '#BBBBBB' }}>
-              <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+              style={{ width: 48, height: 48, background: '#D8D8D8', color: '#FFFFFF' }}>
+              <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="12" cy="8" r="3.4" /><path d="M4.5 20a7.5 7.5 0 0 1 15 0" />
               </svg>
             </div>
-            <input value={orderName} onChange={(e) => setOrderName(e.target.value)} placeholder="请输入订单名称" className="placeholder-[#AAAAAA]" style={FIELD} />
+            <input value={orderName} onChange={(e) => setOrderName(e.target.value)} placeholder="请输入订单名称"
+              className="placeholder-[#B5B5B5]" style={{ ...FIELD, flex: 1, width: 'auto', borderColor: MODAL_BORDER }} />
+            {/* 加号 18×18 */}
+            <button onClick={addPhone} aria-label="添加电话"
+              className="shrink-0 flex items-center justify-center"
+              style={{ width: 18, height: 18, border: `1px solid ${MODAL_BORDER}`, borderRadius: '50%', color: '#999999', fontSize: 14, lineHeight: 1 }}>+</button>
           </div>
           <div className="flex items-center" style={{ gap: 12, marginTop: 12 }}>
             <input value={customerName} onChange={(e) => setCustomerName(e.target.value)} placeholder="顾客姓名"
-              className="placeholder-[#AAAAAA]"
-              style={{ ...FIELD, flex: 1, width: 'auto' }} />
+              className="placeholder-[#B5B5B5]"
+              style={{ ...FIELD, flex: 1, width: 'auto', borderColor: MODAL_BORDER }} />
             <div className="flex items-center" style={{ gap: 8, flex: 1 }}>
               {phones.map((p, i) => (
                 <div key={i} className="relative" style={{ flex: 1 }}>
-                  <input value={p} onChange={(e) => setPhoneAt(i, e.target.value)} placeholder="添加电话" className="placeholder-[#AAAAAA]" style={FIELD} />
+                  <input value={p} onChange={(e) => setPhoneAt(i, e.target.value)} placeholder="添加电话" className="placeholder-[#B5B5B5]" style={{ ...FIELD, borderColor: MODAL_BORDER }} />
                   {phones.length > 1 && (
                     <button onClick={() => removePhoneAt(i)} className="absolute top-1/2 -translate-y-1/2 hover:text-[#666666]"
                       style={{ right: 8, fontSize: 12, color: '#BBBBBB' }}>×</button>
@@ -619,92 +649,81 @@ function OrderDialog({ orderDlg, personnel, onClose, onSaved }) {
                 </div>
               ))}
             </div>
-            {/* 加号 28×28 */}
-            <button onClick={addPhone} aria-label="添加电话"
-              className="shrink-0 flex items-center justify-center hover:bg-[#F4F7FB] transition-colors"
-              style={{ width: 28, height: 28, border: `1px solid ${DLG_FIELD_BORDER}`, borderRadius: 4, color: '#666666', fontSize: 16, lineHeight: 1 }}>+</button>
           </div>
         </div>
 
         {/* ===== 区块 2：日期 & 场次 + 套系 ===== */}
-        <div style={BLOCK}>
-          <div style={BLOCK_TITLE}>日期 & 场次</div>
+        <div style={{ border: `1px solid ${MODAL_BORDER}`, borderRadius: 3, padding: '18px 20px', marginBottom: 16 }}>
           <div className="flex items-center" style={{ gap: 12 }}>
             <DatePicker value={shootDate} onChange={setShootDate} disabled={dateTbd} />
-            <label className="flex items-center cursor-pointer shrink-0" style={{ gap: 6, fontSize: 13, color: '#666666' }}>
-              <input type="checkbox" checked={chooseSession} onChange={(e) => onChooseSession(e.target.checked)} />
+            <label className="flex items-center cursor-pointer shrink-0" style={{ gap: 6, fontSize: 14, color: '#999999' }}>
+              <input type="checkbox" checked={chooseSession} onChange={(e) => onChooseSession(e.target.checked)} style={{ width: 16, height: 16, accentColor: MODAL_BLUE }} />
               选择场次
             </label>
           </div>
 
           {chooseSession && (
-            <div className="flex flex-wrap" style={{ gap: '8px 10px', marginTop: 12 }}>
-              {[...HOURS, HALF, FULL].map((k) => {
+            <div className="flex flex-wrap" style={{ gap: '10px 8px', marginTop: 12 }}>
+              {HOURS.map((k) => {
                 const on = slots.includes(k);
                 return (
-                  <button key={k} onClick={() => toggleSlot(k)}
+                  <button key={k} onClick={() => toggleSlot(k)} type="button"
                     className="transition-opacity hover:opacity-90"
                     style={{
-                      height: 36, borderRadius: 20, padding: '0 14px', fontSize: 13,
-                      background: on ? SLOT_TX : SLOT_BG,
-                      color: on ? '#FFFFFF' : SLOT_TX
+                      height: 30, borderRadius: 15, padding: '0 14px', fontSize: 14,
+                      background: on ? MODAL_SLOT_SEL : MODAL_SLOT_FREE,
+                      color: '#FFFFFF'
                     }}>
-                    {slotLabel(k)}
+                    {on ? '✓ ' : ''}{k}
                   </button>
                 );
               })}
             </div>
           )}
 
-          <label className="flex items-center cursor-pointer" style={{ gap: 6, fontSize: 13, color: '#666666', marginTop: 12 }}>
-            <input type="checkbox" checked={dateTbd} onChange={(e) => onDateTbd(e.target.checked)} />
-            日期待定（不占具体日历日，仅作意向登记）
-          </label>
-          {dateTbd && (
-            <div style={{ marginTop: 12, background: TBD_BG, borderRadius: 4, padding: '8px 12px', fontSize: 12, color: '#B9742A' }}>
-              该订单标记为日期待定，日期与场次已置灰，仅记录意向。
-            </div>
-          )}
+          {/* 日期待定 */}
+          <div style={{ marginTop: 12, background: MODAL_TBD, border: `1px solid ${MODAL_TBD_BORDER}`, borderRadius: 3, height: 36, display: 'flex', alignItems: 'center', padding: '0 8px' }}>
+            <label className="flex items-center cursor-pointer" style={{ gap: 6, fontSize: 14, color: '#666666' }}>
+              <input type="checkbox" checked={dateTbd} onChange={(e) => onDateTbd(e.target.checked)} style={{ width: 16, height: 16, accentColor: MODAL_BLUE }} />
+              日期待定
+            </label>
+          </div>
 
-          {/* 套系（必填，双栏 + 下拉） */}
-          {/* 套系（必填，双栏：左=名称+价格，右=定金） */}
-          <div className="flex items-start" style={{ marginTop: 16, gap: 12 }}>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 13, color: '#666666', marginBottom: 6 }}><Star />套系名称</div>
-              <select value={pkgId} onChange={(e) => onPickPackage(e.target.value)}
-                style={{ ...FIELD, color: pkgId ? '#333333' : '#AAAAAA' }}>
-                <option value="">请选择套系名称</option>
-                {pkgList.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-              </select>
-              <div style={{ fontSize: 13, color: '#666666', marginBottom: 6, marginTop: 12 }}><Star />套系价格</div>
-              <input value={pkgPrice} onChange={(e) => setPkgPrice(e.target.value)} placeholder="套系价格" className="placeholder-[#AAAAAA]" style={FIELD} />
-            </div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 13, color: '#666666', marginBottom: 6 }}><Star />套系定金</div>
-              <input value={deposit} onChange={(e) => setDeposit(e.target.value)} placeholder="套系定金" className="placeholder-[#AAAAAA]" style={FIELD} />
-            </div>
+          {/* 套系（必填） */}
+          <div style={{ marginTop: 16 }}>
+            <div style={{ fontSize: 13, color: '#666666', marginBottom: 6 }}><Star />套系名称</div>
+            <PackagePicker pkgList={pkgList} value={pkgId} onPick={onPickPackage} />
+            <div style={{ fontSize: 13, color: '#666666', marginBottom: 6, marginTop: 12 }}><Star />套系价格</div>
+            <input value={pkgPrice} onChange={(e) => setPkgPrice(e.target.value)} placeholder="套系价格" className="placeholder-[#B5B5B5]" style={{ ...FIELD, borderColor: MODAL_BORDER }} />
+            <div style={{ fontSize: 13, color: '#666666', marginBottom: 6, marginTop: 12 }}><Star />套系定金</div>
+            <input value={deposit} onChange={(e) => setDeposit(e.target.value)} placeholder="套系定金" className="placeholder-[#B5B5B5]" style={{ ...FIELD, borderColor: MODAL_BORDER }} />
+            {pkgList.find((p) => String(p.id) === String(pkgId)) && (
+              <div style={{ marginTop: 10, fontSize: 12, color: '#999999' }}>
+                已同步默认配置：拍摄时长 {pkgList.find((p) => String(p.id) === String(pkgId)).duration || '—'} · 精修片 {pkgList.find((p) => String(p.id) === String(pkgId)).retouch_count || '—'}
+              </div>
+            )}
           </div>
         </div>
 
         {/* ===== 区块 3：收款状态 + 其他消费 ===== */}
-        <div style={BLOCK}>
-          <div style={BLOCK_TITLE}><Star />收款状态</div>
+        <div style={{ border: `1px solid ${MODAL_BORDER}`, borderRadius: 3, padding: '18px 20px', marginBottom: 16 }}>
+          <div style={{ fontSize: 14, fontWeight: 500, color: '#333333', marginBottom: 12 }}><Star />收款状态</div>
           <div className="relative" ref={payPopRef}>
             <button onClick={() => setPayPop((v) => !v)}
               className="flex items-center justify-between"
-              style={{ ...FIELD, color: payStatus ? '#333333' : '#AAAAAA' }}>
+              style={{ height: 44, width: 150, background: '#FFFFFF', border: `1px solid ${payPop ? MODAL_ACTIVE : MODAL_BORDER}`, borderRadius: 4, padding: '0 12px', fontSize: 14, color: payStatus ? '#666666' : '#AAAAAA', outline: 'none' }}>
               <span>{payLabel}</span>
-              <Caret />
+              <Caret rotate={payPop} />
             </button>
             {payPop && (
-              <div className="absolute left-0 right-0 bg-white overflow-hidden"
-                style={{ top: 42, borderRadius: 4, boxShadow: '0 3px 8px rgba(0,0,0,0.12)', zIndex: 30 }}>
+              <div className="absolute left-0 bg-white overflow-hidden"
+                style={{ top: 50, width: 150, borderRadius: 4, boxShadow: '0 2px 8px rgba(0,0,0,0.12)', zIndex: 30 }}>
                 {PAY_OPTIONS.map((o) => {
                   const on = payStatus === o.v;
                   return (
                     <button key={o.v} onClick={() => { setPayStatus(o.v); setPayPop(false); }}
-                      className="w-full text-left hover:bg-[#F0F7FF] transition-colors"
-                      style={{ height: 36, padding: '0 12px', fontSize: 14, color: on ? '#2998EB' : '#333333', background: on ? POP_SEL : 'transparent' }}>
+                      className="w-full text-left transition-colors"
+                      style={{ height: 44, padding: '0 12px', fontSize: 14, color: on ? MODAL_BLUE : '#666666', background: on ? MODAL_POP_HOVER : 'transparent' }}>
                       {o.label}
                     </button>
                   );
@@ -713,65 +732,75 @@ function OrderDialog({ orderDlg, personnel, onClose, onSaved }) {
             )}
           </div>
 
-          <div className="flex items-center justify-between" style={{ marginTop: 16, marginBottom: extras.length ? 12 : 0 }}>
-            <div style={{ fontSize: 14, fontWeight: 500, color: '#333333' }}>其他消费</div>
-            <button onClick={addExtra} className="hover:opacity-80" style={{ fontSize: 14, color: ADD_BTN }}>【添加】</button>
+          <div style={{ borderTop: `1px solid ${MODAL_DIV}`, marginTop: 16 }} />
+          <div className="flex items-center justify-between" style={{ height: 50 }}>
+            <div style={{ fontSize: 14, fontWeight: 500, color: '#666666' }}>其他消费</div>
+            <button onClick={addExtra} className="hover:opacity-80" style={{ fontSize: 14, color: MODAL_BLUE }}>添加</button>
           </div>
+          <div style={{ borderBottom: `1px solid ${MODAL_DIV}`, marginBottom: 4 }} />
           {extras.map((e, i) => (
             <div key={i} className="flex items-center" style={{ gap: 12, marginBottom: 8 }}>
               <input value={e.name} onChange={(ev) => setExtraAt(i, 'name', ev.target.value)} placeholder="消费名称"
-                className="placeholder-[#AAAAAA]" style={{ ...FIELD, flex: 1, width: 'auto' }} />
+                className="placeholder-[#B5B5B5]" style={{ ...FIELD, flex: 1, width: 'auto', borderColor: MODAL_BORDER }} />
               <input value={e.amount} onChange={(ev) => setExtraAt(i, 'amount', ev.target.value)} placeholder="金额"
-                className="placeholder-[#AAAAAA]" style={{ ...FIELD, width: 120 }} />
+                className="placeholder-[#B5B5B5]" style={{ ...FIELD, width: 120, borderColor: MODAL_BORDER }} />
               <button onClick={() => removeExtraAt(i)} className="shrink-0 hover:text-[#666666]" style={{ fontSize: 14, color: '#BBBBBB' }}>×</button>
             </div>
           ))}
         </div>
 
         {/* ===== 区块 4：拍摄地点 + 备注 ===== */}
-        <div style={BLOCK}>
-          <div className="flex items-center justify-between" style={{ marginBottom: 12 }}>
-            <div style={{ fontSize: 14, fontWeight: 500, color: '#333333' }}>拍摄地点</div>
-            {!showRemark && (
-              <button onClick={() => setShowRemark(true)} className="hover:opacity-80" style={{ fontSize: 14, color: ADD_BTN }}>【添加备注】</button>
-            )}
+        <div style={{ border: `1px solid ${MODAL_BORDER}`, borderRadius: 3, padding: '18px 20px', marginBottom: 16 }}>
+          <div style={{ fontSize: 14, fontWeight: 500, color: '#333333', marginBottom: 12 }}>拍摄地点</div>
+          <div className="relative">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: '#B5B5B5', pointerEvents: 'none' }}>
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0Z" /><circle cx="12" cy="10" r="3" /></svg>
+            </span>
+            <input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="输入拍摄地点"
+              className="placeholder-[#B5B5B5]" style={{ ...FIELD, height: 60, paddingLeft: 38, borderColor: MODAL_BORDER }} />
           </div>
-          <input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="输入拍摄地点" className="placeholder-[#AAAAAA]" style={FIELD} />
+          {!showRemark && !remark && (
+            <button onClick={() => setShowRemark(true)} className="hover:opacity-80 flex items-center gap-1.5" style={{ height: 42, fontSize: 14, color: MODAL_BLUE }}>
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" /></svg>
+              添加备注
+            </button>
+          )}
           {(showRemark || remark) && (
-            <input value={remark} onChange={(e) => setRemark(e.target.value)} placeholder="备注：如 婚礼跟拍 / 特殊要求"
-              className="placeholder-[#AAAAAA]" style={{ ...FIELD, marginTop: 12 }} />
+            <textarea value={remark} onChange={(e) => setRemark(e.target.value)} placeholder="备注：如 婚礼跟拍 / 特殊要求"
+              className="placeholder-[#B5B5B5]" rows={3}
+              style={{ ...FIELD, height: 'auto', marginTop: 12, padding: '10px 12px', resize: 'vertical', borderColor: MODAL_BORDER }} />
           )}
         </div>
 
         {/* ===== 区块 5：渠道来源 ===== */}
-        <div style={BLOCK}>
-          <div style={BLOCK_TITLE}>渠道来源</div>
+        <div style={{ border: `1px solid ${MODAL_BORDER}`, borderRadius: 3, padding: '18px 20px', marginBottom: 16 }}>
+          <div style={{ fontSize: 14, fontWeight: 500, color: '#333333', marginBottom: 12 }}>渠道来源</div>
           <div className="relative" ref={chPopRef}>
             <button onClick={() => setChPop((v) => !v)}
               className="flex items-center justify-between"
-              style={{ ...FIELD, color: channelName ? '#333333' : '#AAAAAA' }}>
+              style={{ ...FIELD, color: channelName ? '#666666' : MODAL_PLACE, borderColor: MODAL_BORDER }}>
               <span>{channelName || '请选择渠道来源'}</span>
-              <Caret />
+              <Caret rotate={chPop} />
             </button>
             {chPop && (
-              <div className="absolute left-0 right-0 bg-white overflow-hidden"
-                style={{ top: 42, borderRadius: 4, boxShadow: '0 3px 8px rgba(0,0,0,0.12)', zIndex: 30, maxHeight: 240, overflowY: 'auto' }}>
+              <div className="absolute left-0 bg-white overflow-hidden"
+                style={{ top: 50, width: 170, borderRadius: 4, boxShadow: '0 2px 10px rgba(0,0,0,0.12)', zIndex: 30, maxHeight: 280, overflowY: 'auto' }}>
                 {chList.map((c) => {
                   const on = String(channelId) === String(c.id);
                   return (
                     <button key={c.id} onClick={() => onPickChannel(c.id, c.name)}
-                      className="w-full flex items-center text-left hover:bg-[#F0F7FF] transition-colors"
-                      style={{ height: 36, padding: '0 12px', gap: 8, fontSize: 14, color: on ? '#2998EB' : '#333333', background: on ? POP_SEL : 'transparent' }}>
+                      className="w-full flex items-center text-left transition-colors"
+                      style={{ height: 44, padding: '0 12px', gap: 8, fontSize: 14, color: on ? MODAL_BLUE : '#666666', background: on ? MODAL_POP_HOVER : 'transparent' }}>
                       <span className="shrink-0 rounded-full inline-flex items-center justify-center"
-                        style={{ width: 20, height: 20, background: '#EAF2FE', color: '#2998EB', fontSize: 11 }}>{(c.name || '?').slice(0, 1)}</span>
+                        style={{ width: 20, height: 20, background: '#EAF2FE', color: MODAL_BLUE, fontSize: 11 }}>{(c.name || '?').slice(0, 1)}</span>
                       {c.name}
                     </button>
                   );
                 })}
                 <button
                   onClick={() => { setChPop(false); window.location.hash = '#/channels'; }}
-                  className="w-full text-left hover:bg-[#F0F7FF] transition-colors"
-                  style={{ height: 36, padding: '0 12px', fontSize: 13, color: ADD_BTN, borderTop: `1px solid ${DLG_BLOCK_BORDER}` }}>
+                  className="w-full text-left transition-colors"
+                  style={{ height: 44, padding: '0 12px', fontSize: 13, color: MODAL_BLUE, borderTop: `1px solid ${MODAL_DIV}` }}>
                   渠道管理
                 </button>
               </div>
@@ -780,24 +809,24 @@ function OrderDialog({ orderDlg, personnel, onClose, onSaved }) {
         </div>
 
         {/* ===== 区块 6：执行人 ===== */}
-        <div style={{ ...BLOCK, marginBottom: 0 }}>
-          <div style={BLOCK_TITLE}>执行人</div>
-          <div className="relative" ref={execPopRef}>
+        <div style={{ border: `1px solid ${MODAL_BORDER}`, borderRadius: 3, padding: '0 20px', height: 52, marginBottom: 0, display: 'flex', alignItems: 'center' }}>
+          <div className="relative flex-1" ref={execPopRef}>
             <div className="flex flex-wrap items-center" style={{ gap: 10 }}>
+              <span style={{ fontSize: 14, color: '#333333', fontWeight: 500, marginRight: 4 }}>执行人</span>
               {executors.map((ex) => (
                 <span key={ex.id ?? ex.name} className="inline-flex items-center"
-                  style={{ gap: 6, height: 32, padding: '0 10px 0 4px', borderRadius: 16, background: '#EAF2FE', color: '#1D6FE0', fontSize: 13 }}>
+                  style={{ gap: 6, height: 32, padding: '0 8px 0 4px', borderRadius: 16, background: '#F2F2F2', color: '#333333', fontSize: 13 }}>
                   {ex.avatar
                     ? <img src={ex.avatar} className="rounded-full" style={{ width: 24, height: 24 }} alt="" />
-                    : <span className="rounded-full inline-flex items-center justify-center" style={{ width: 24, height: 24, background: ADD_BTN, color: '#fff', fontSize: 11 }}>{(ex.name || '?').slice(0, 1)}</span>}
+                    : <span className="rounded-full inline-flex items-center justify-center" style={{ width: 24, height: 24, background: '#333333', color: '#fff', fontSize: 11 }}>{(ex.name || '?').slice(0, 1)}</span>}
                   {ex.name}
                   <button onClick={() => removeExec(ex.id)} className="hover:opacity-70" style={{ fontSize: 12 }}>×</button>
                 </span>
               ))}
-              {/* 蓝色 32×32 加号 */}
+              {/* 蓝色 26×26 实心加号 */}
               <button onClick={() => setExecPop((v) => !v)} aria-label="添加执行人"
-                className="shrink-0 flex items-center justify-center hover:bg-[#E6F4FF] transition-colors"
-                style={{ width: 32, height: 32, borderRadius: '50%', border: `1px dashed ${ADD_BTN}`, color: ADD_BTN, fontSize: 18, lineHeight: 1 }}>+</button>
+                className="shrink-0 flex items-center justify-center"
+                style={{ width: 26, height: 26, borderRadius: '50%', background: MODAL_BLUE, color: '#fff', fontSize: 16, lineHeight: 1 }}>＋</button>
             </div>
             {execPop && (
               <div className="absolute left-0 bg-white overflow-auto"
@@ -807,11 +836,11 @@ function OrderDialog({ orderDlg, personnel, onClose, onSaved }) {
                   const on = !!executors.find((x) => String(x.id) === String(p.id));
                   return (
                     <button key={p.id} onClick={() => toggleExec(p)}
-                      className="w-full flex items-center text-left hover:bg-[#F0F7FF] transition-colors"
-                      style={{ height: 36, padding: '0 12px', gap: 8, fontSize: 14, color: on ? '#2998EB' : '#333333', background: on ? POP_SEL : 'transparent' }}>
+                      className="w-full flex items-center text-left transition-colors"
+                      style={{ height: 44, padding: '0 12px', gap: 8, fontSize: 14, color: on ? MODAL_BLUE : '#666666', background: on ? MODAL_POP_HOVER : 'transparent' }}>
                       {p.avatar
                         ? <img src={p.avatar} className="rounded-full" style={{ width: 20, height: 20 }} alt="" />
-                        : <span className="rounded-full inline-flex items-center justify-center" style={{ width: 20, height: 20, background: ADD_BTN, color: '#fff', fontSize: 10 }}>{(p.name || '?').slice(0, 1)}</span>}
+                        : <span className="rounded-full inline-flex items-center justify-center" style={{ width: 20, height: 20, background: '#333333', color: '#fff', fontSize: 10 }}>{(p.name || '?').slice(0, 1)}</span>}
                       {p.name}
                       {on && <span className="ml-auto">✓</span>}
                     </button>
@@ -825,9 +854,9 @@ function OrderDialog({ orderDlg, personnel, onClose, onSaved }) {
         {localErr && <div style={{ marginTop: 12, fontSize: 12, color: REQ_RED }}>{localErr}</div>}
 
         {/* ===== 底部保存 ===== */}
-        <div className="flex justify-center" style={{ marginTop: 28 }}>
+        <div className="flex justify-center" style={{ marginTop: 36 }}>
           <button onClick={save} className="text-white hover:opacity-90 transition-opacity"
-            style={{ width: 140, height: 42, background: ADD_BTN, borderRadius: 4, fontSize: 15, fontWeight: 500 }}>保存</button>
+            style={{ width: 100, height: 40, background: MODAL_BLUE, borderRadius: 2, fontSize: 16 }}>保存</button>
         </div>
       </div>
 
@@ -870,7 +899,7 @@ function DatePicker({ value, onChange, disabled }) {
     <div className="relative" ref={ref} style={{ flex: 1, minWidth: 0 }}>
       <button type="button" disabled={disabled} onClick={() => setOpen((v) => !v)}
         className="flex items-center justify-between"
-        style={{ height: 38, width: '100%', background: '#FFFFFF', border: `1px solid ${DLG_FIELD_BORDER}`, borderRadius: 4, padding: '0 12px', fontSize: 14, color: disabled ? '#999999' : (value ? '#333333' : '#AAAAAA'), cursor: disabled ? 'not-allowed' : 'pointer', outline: 'none' }}>
+        style={{ height: 38, width: '100%', background: '#FFFFFF', border: `1px solid ${MODAL_BORDER}`, borderRadius: 4, padding: '0 12px', fontSize: 15, color: disabled ? '#999999' : (value ? '#666666' : MODAL_PLACE), cursor: disabled ? 'not-allowed' : 'pointer', outline: 'none' }}>
         <span>{value ? value : '未选择日期'}</span>
         <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
           <rect x="3" y="4" width="18" height="17" rx="2" /><path d="M3 9h18M8 2v4M16 2v4" />
@@ -896,6 +925,48 @@ function DatePicker({ value, onChange, disabled }) {
               );
             })}
           </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ============ 套系选择下拉（新增订单弹窗用：列出已有套系并回填默认配置） ============ */
+function PackagePicker({ pkgList, value, onPick }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+  const sel = pkgList.find((p) => String(p.id) === String(value));
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', onDown);
+    return () => document.removeEventListener('mousedown', onDown);
+  }, [open]);
+  return (
+    <div className="relative" ref={ref}>
+      <button type="button" onClick={() => setOpen((v) => !v)} className="flex items-center justify-between w-full text-left"
+        style={{ height: 38, width: '100%', background: '#FFFFFF', border: `1px solid ${MODAL_BORDER}`, borderRadius: 4, padding: '0 12px', fontSize: 14, color: sel ? '#333333' : MODAL_PLACE, outline: 'none' }}>
+        <span className="truncate">{sel ? sel.name : '请选择套系名称'}</span>
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#999999" strokeWidth="2"
+          strokeLinecap="round" strokeLinejoin="round" className="shrink-0"
+          style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform .15s' }}><path d="m6 9 6 6 6-6" /></svg>
+      </button>
+      {open && (
+        <div className="absolute left-0 bg-white z-30" style={{ top: 44, width: 320, maxHeight: 320, overflowY: 'auto', borderRadius: 4, border: `1px solid ${MODAL_BORDER}`, boxShadow: '0 2px 10px rgba(0,0,0,0.12)' }}>
+          {pkgList.length === 0 && <div style={{ padding: '12px', fontSize: 14, color: '#999999' }}>暂无套系</div>}
+          {pkgList.map((p) => {
+            const on = String(p.id) === String(value);
+            return (
+              <button key={p.id} type="button" onClick={() => { onPick(String(p.id)); setOpen(false); }}
+                className="w-full text-left transition-colors"
+                style={{ padding: '10px 12px', fontSize: 14, color: '#666666', background: on ? MODAL_POP_HOVER : 'transparent', borderBottom: '1px solid #F2F2F2' }}>
+                <div style={{ fontWeight: 500, color: '#333333' }}>{p.name}</div>
+                <div style={{ fontSize: 12, color: '#999999', marginTop: 2 }}>
+                  ¥{p.price ?? '—'} · 定金 ¥{p.deposit ?? '—'} · 时长 {p.duration || '—'} · 精修 {p.retouch_count ?? '—'}
+                </div>
+              </button>
+            );
+          })}
         </div>
       )}
     </div>
