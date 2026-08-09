@@ -267,7 +267,7 @@ export default function PackageEdit() {
       {/* 面包屑由全局 <Breadcrumb /> 渲染 */}
 
       {/* 标题 */}
-      <div className="px-6 pb-3 flex items-center justify-between">
+      <div className="px-6 pt-5 pb-3 flex items-center justify-between">
         <h1 className="text-xl font-semibold" style={{ color: '#1f2329' }}>{isEdit ? '编辑套系' : '新建套系'}</h1>
       </div>
 
