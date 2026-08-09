@@ -102,13 +102,7 @@ export default function Schedule() {
 
   return (
     <div className="max-w-6xl mx-auto">
-      {/* 面包屑 */}
-      <div className="flex items-center gap-1 text-xs text-muted mb-3">
-        <a href="#/" onClick={(e) => { e.preventDefault(); window.history.pushState({}, '', '/'); window.dispatchEvent(new PopStateEvent('popstate')); }} className="hover:text-brand">工作台</a>
-        <span>/</span>
-        <span className="text-white">档期</span>
-      </div>
-
+      {/* 面包屑由全局 <Breadcrumb /> 渲染 */}
       <h1 className="text-xl font-semibold text-white mb-3">档期日历</h1>
 
       {/* 顶部工具栏 */}

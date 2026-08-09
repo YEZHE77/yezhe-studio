@@ -264,13 +264,7 @@ export default function PackageEdit() {
 
   return (
     <div className="-m-6 min-h-full flex flex-col" style={{ background: PAGE_BG }}>
-      {/* 面包屑 */}
-      <div className="px-6 pt-5 pb-3 flex items-center gap-2 text-xs" style={{ color: '#9ca3af' }}>
-        <button onClick={() => nav('/packages')} className="flex items-center gap-1 hover:text-brand" style={{ color: '#9ca3af' }}>
-          <IconArrowLeft />返回
-        </button>
-        <span>工作台 &gt; 套系 &gt; <span style={{ color: '#1f2329' }}>套系编辑</span></span>
-      </div>
+      {/* 面包屑由全局 <Breadcrumb /> 渲染 */}
 
       {/* 标题 */}
       <div className="px-6 pb-3 flex items-center justify-between">

@@ -210,10 +210,9 @@ export default function Packages() {
 
   return (
     <div className="-m-6 p-6 min-h-full" style={{ background: '#ffffff' }}>
-      {/* 面包屑 + 标题（左） + 搜索区（右） */}
+      {/* 标题（左） + 搜索区（右）；面包屑由全局 <Breadcrumb /> 渲染 */}
       <div className="flex items-end justify-between gap-4 flex-wrap mb-4">
         <div>
-          <div className="text-xs mb-1" style={{ color: '#9ca3af' }}>工作台 &gt; 套系</div>
           <h1 className="text-2xl font-semibold" style={{ color: '#1f2329' }}>套系</h1>
         </div>
         <div className="flex items-center gap-2">

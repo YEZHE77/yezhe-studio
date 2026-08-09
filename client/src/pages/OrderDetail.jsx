@@ -319,12 +319,7 @@ export default function OrderDetail() {
 
   return (
     <div className="max-w-6xl mx-auto">
-      {/* 面包屑 + 返回 */}
-      <div className="text-xs text-muted mb-1">
-        <button onClick={() => nav('/orders')} className="hover:text-brand">工作台 &gt; 订单中心</button>
-        <span className="mx-1">&gt;</span>
-        <span className="text-fg">订单详情</span>
-      </div>
+      {/* 面包屑由全局 <Breadcrumb /> 渲染 */}
 
       {/* 顶部浅绿色顶边横线 */}
       <div className="rounded-xl2 overflow-hidden border border-line bg-panel">

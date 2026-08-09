@@ -4,6 +4,7 @@ import { useAuth } from './auth.jsx';
 import Sidebar from './layout/Sidebar.jsx';
 import Topbar from './layout/Topbar.jsx';
 import ErrorBoundary from './components/ErrorBoundary.jsx';
+import Breadcrumb from './components/Breadcrumb.jsx';
 
 // 首屏必须同步加载（Login + Dashboard + Sidebar）
 import Login from './pages/Login.jsx';
@@ -51,6 +52,7 @@ function AppShell() {
       <div className="flex-1 flex flex-col min-w-0">
         <Topbar />
         <main className="flex-1 overflow-auto p-6 bg-ink">
+          <Breadcrumb />
           <ErrorBoundary resetKeys={[location.pathname]}>
             <Suspense fallback={<PageLoader />}>
               <Routes>

@@ -234,14 +234,9 @@ export default function Orders() {
   // 页面底色为纯白 #ffffff（AppShell 外层是 #f4f6f9，这里用负外边距铺满）
   return (
     <div className="-m-6 p-6 min-h-full" style={{ background: '#ffffff' }}>
-      {/* 顶部：面包屑 + 大标题（左） / 搜索区（右） */}
+      {/* 大标题（左） / 搜索区（右）；面包屑由全局 <Breadcrumb /> 渲染 */}
       <div className="flex items-start justify-between gap-4 flex-wrap mb-4">
         <div>
-          <div className="text-xs text-muted mb-1">
-            <span className="hover:text-brand cursor-default">工作台</span>
-            <span className="mx-1">&gt;</span>
-            <span>订单中心</span>
-          </div>
           <h1 className="text-2xl font-semibold" style={{ color: '#1f2329' }}>订单中心</h1>
         </div>
         <div className="flex items-center gap-2">
