@@ -11,10 +11,11 @@ const SSTATUS = { free: '空闲', booked: '已约', locked: '锁场', closed: '�
 
 // 档期页色号（对齐 spec）
 const PAGE_BG = '#F7F8FA';
-const PANEL_BG = '#333333';
-const DATE_CIRCLE = '#FFCC00';      // 右侧面板日期黄块
-const BLUE = '#2196F3';             // +添加 / 添加档期 / 链接蓝
-const ADV_BG = '#333333';           // 高级选项按钮
+const PANEL_BG = '#3A3A3A';         // 右侧面板深灰（非纯黑 #333）
+const DATE_CIRCLE = '#FFBC00';      // 右侧面板日期黄块（白字）
+const BLUE = '#2196F3';             // +添加 / 链接蓝
+const ADV_BG = '#2D2D2D';           // 高级选项按钮（白字白图标）
+const ADD_BTN = '#2998EB';          // 添加档期按钮蓝
 const BOOKED_BG = '#FFD6D6';        // 有订单占用日期粉红底色
 
 // 订单状态说明（8 状态，严格按 spec 色号）
@@ -194,7 +195,7 @@ export default function Schedule() {
       </div>
 
       {/* ===================== 日历主体 + 右侧面板 ===================== */}
-      <div className="flex items-start gap-5">
+      <div className="flex items-stretch gap-5">
         {/* 日历主卡片（白底圆角阴影） */}
         <div className="flex-1 min-w-0 bg-white rounded-lg" style={{ boxShadow: '0 1px 2px rgba(0,0,0,0.06)', padding: 20 }}>
           {/* 星期表头 */}
@@ -219,7 +220,7 @@ export default function Schedule() {
               let bgCls = 'bg-white hover:bg-[#F9FAFB]';
               if (isBooked) bgCls = 'bg-[#FFD6D6]';
               const style = isClosed
-                ? { backgroundImage: 'repeating-linear-gradient(-45deg,#F3F4F6 0px,#F3F4F6 4px,#ffffff 4px,#ffffff 8px)' }
+                ? { backgroundImage: 'repeating-linear-gradient(-45deg,#f3f3f3 0px,#f3f3f3 4px,#ffffff 4px,#ffffff 8px)' }
                 : {};
               const orderRow = st.orderRows[0];
               const statusColor = orderRow ? (orderRow.order_pay_status === 'unpaid' ? LEGEND_UNPAID : LEGEND_WAIT) : null;
@@ -259,21 +260,22 @@ export default function Schedule() {
           </div>
         </div>
 
-        {/* 右侧固定深色信息面板 */}
-        <div className="w-[260px] shrink-0 lg:sticky lg:top-4 lg:self-start flex flex-col rounded-l-lg" style={{ background: PANEL_BG, color: '#FFFFFF', borderRadius: '8px 0 0 8px' }}>
-          <div style={{ padding: '20px 16px' }}>
-            <div className="text-center text-sm" style={{ color: '#cccccc' }}>{y}年{m}月</div>
-            <div className="flex justify-center">
-              <div className="flex items-center justify-center" style={{ background: DATE_CIRCLE, width: 64, height: 64, borderRadius: 6, margin: '0 auto 12px' }}>
-                <span style={{ fontSize: 36, fontWeight: 'bold', color: '#222222' }}>{selParts[2] || '--'}</span>
-              </div>
+        {/* 右侧深色信息面板（跟随日历高度齐平，禁止 sticky/fixed） */}
+        <div className="w-[260px] shrink-0 flex flex-col" style={{ background: PANEL_BG, color: '#FFFFFF', borderRadius: 8, padding: '24px 20px' }}>
+          {/* 顶部：年月 + 黄色日期块 + 农历 */}
+          <div className="text-center" style={{ fontSize: 14, color: '#bbbbbb', marginBottom: 16 }}>{y}年{m}月</div>
+          <div className="flex justify-center">
+            <div className="flex items-center justify-center" style={{ background: DATE_CIRCLE, width: 120, height: 120, borderRadius: 6, margin: '0 auto' }}>
+              <span style={{ fontSize: 64, fontWeight: 'bold', color: '#ffffff' }}>{selParts[2] || '--'}</span>
             </div>
-            <div className="text-center text-[13px]" style={{ color: '#cccccc' }}>{selDate ? (lunarMap[selDate] || '') : ''}</div>
           </div>
+          <div className="text-center" style={{ fontSize: 16, color: '#cccccc', marginTop: 14, marginBottom: 24 }}>{selDate ? (lunarMap[selDate] || '') : ''}</div>
 
-          <div className="px-4 flex-1 overflow-auto mb-3">
+          <div style={{ borderTop: '1px solid #555555', margin: '0 0 20px' }} />
+
+          <div className="flex-1">
             {dayRows.length === 0 && dayPends.length === 0 && (
-              <div className="text-center text-[13px]" style={{ color: '#EEEEEE', margin: '16px 0' }}>无档期安排</div>
+              <div className="text-center" style={{ fontSize: 15, color: '#eeeeee' }}>无档期安排</div>
             )}
 
             {dayRows.map((s) => (
@@ -308,9 +310,11 @@ export default function Schedule() {
             ))}
           </div>
 
-          <div style={{ padding: '20px 16px' }}>
-            <button onClick={selClosed ? undefined : () => openNew(selDate ? Number(selDate.slice(8, 10)) : null)} disabled={selClosed} className="w-full text-white text-[13px] hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed" style={{ background: BLUE, height: 36, borderRadius: 4 }}>+ 添加档期</button>
-          </div>
+          <div style={{ borderTop: '1px solid #555555', margin: '20px 0' }} />
+
+          <button onClick={selClosed ? undefined : () => openNew(selDate ? Number(selDate.slice(8, 10)) : null)} disabled={selClosed}
+            className="w-full text-white text-sm hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+            style={{ marginTop: 'auto', background: ADD_BTN, height: 42, borderRadius: 4, fontSize: 14, boxShadow: '0 2px 4px rgba(0,0,0,0.2)' }}>+ 添加档期</button>
         </div>
       </div>
 
