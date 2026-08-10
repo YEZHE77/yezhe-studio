@@ -155,6 +155,10 @@ export default function OrderDetail() {
   const [uploading, setUploading] = useState({ raw: false, retouched: false });
   // 底部 Tab
   const [bottomTab, setBottomTab] = useState('status');
+  // 原片/精修片 排序（工具栏排序按钮）
+  const [sortKey, setSortKey] = useState('upload');
+  const [sortOpen, setSortOpen] = useState(false);
+  const [sortTip, setSortTip] = useState(false);
   // 分享订单小程序二维码（复用 /api/orders/:id/mini-qr）
   const [miniQr, setMiniQr] = useState(null);
   const [miniQrLoading, setMiniQrLoading] = useState(false);
@@ -550,6 +554,26 @@ export default function OrderDetail() {
     <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="m5 13 4 4 10-10" /></svg>
   );
 
+  // 原片列表排序选项与排序逻辑（工具栏排序按钮）
+  const SORT_OPTS = [
+    { k: 'upload', t: '按上传时间' },
+    { k: 'shoot', t: '按拍摄时间' },
+    { k: 'name', t: '按文件名' },
+    { k: 'shuffle', t: '打乱顺序' }
+  ];
+  const sortPhotos = (arr, key) => {
+    if (!Array.isArray(arr) || arr.length === 0) return arr;
+    if (key === 'name') return [...arr].sort((a, b) => String(a).localeCompare(String(b)));
+    if (key === 'shuffle') {
+      const c = [...arr];
+      for (let i = c.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [c[i], c[j]] = [c[j], c[i]]; }
+      return c;
+    }
+    return arr; // 按上传时间 / 按拍摄时间：沿用原始顺序
+  };
+  const sortedRaw = useMemo(() => sortPhotos(photos.raw, sortKey), [photos.raw, sortKey]);
+  const sortedRetouched = useMemo(() => sortPhotos(photos.retouched, sortKey), [photos.retouched, sortKey]);
+
   return (
     <div style={{ background: '#f7f9fc', minHeight: '100vh', paddingBottom: 24 }}>
       {/* ============ Module 3：订单状态卡片（青绿顶线 + 左侧操作 + 右侧 11 步进度条） ============ */}
@@ -756,22 +780,48 @@ export default function OrderDetail() {
             请先上传完整原片后再通知客户选片；精修片交付前请确认已通过全部精修。
           </div>
 
-          {/* 筛选操作栏 */}
+          {/* 筛选操作栏：左侧 全部相册/底片/推荐；右侧 全选 → 仅下载精修片 → 排序 */}
           <div className="flex items-center" style={{ height: 40, marginTop: 12, gap: 12, fontSize: 14, color: '#444444', flexWrap: 'wrap' }}>
             <select style={filterCtrlStyle}><option>全部相册</option></select>
             <button type="button" style={filterBtnStyle}>底片（{photos.raw.length}）</button>
             <button type="button" style={filterBtnStyle}>推荐（0）</button>
+
+            <div style={{ flex: 1 }} />
+
             <label className="flex items-center" style={{ gap: 6, fontSize: 14, color: '#444444' }}>
               <input type="checkbox" /> 全选
             </label>
             <select style={filterCtrlStyle}><option>仅下载精修片</option><option>全部素材</option></select>
-            <button type="button" style={{ ...filterBtnStyle, marginLeft: 'auto' }}>更多</button>
+
+            <div style={{ position: 'relative' }}>
+              <button type="button"
+                onMouseEnter={() => setSortTip(true)}
+                onMouseLeave={() => setSortTip(false)}
+                onClick={() => setSortOpen((o) => !o)}
+                style={{ ...filterBtnStyle, display: 'flex', alignItems: 'center', gap: 4 }}>
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18M6 12h12M10 18h4" /></svg>
+                排序
+              </button>
+              {sortTip && (
+                <span style={{ position: 'absolute', bottom: '100%', left: '50%', transform: 'translateX(-50%)', marginBottom: 6, background: '#FFFFFF', border: '1px solid #D1D5DB', borderRadius: 4, padding: '4px 10px', fontSize: 13, color: TEXT_MAIN, whiteSpace: 'nowrap', boxShadow: '0 2px 8px rgba(0,0,0,0.08)', zIndex: 20, pointerEvents: 'none' }}>排序</span>
+              )}
+              {sortOpen && (
+                <div style={{ position: 'absolute', top: '100%', right: 0, marginTop: 6, minWidth: 150, background: '#FFFFFF', border: '1px solid #D1D5DB', borderRadius: 4, boxShadow: '0 2px 8px rgba(0,0,0,0.08)', zIndex: 30, padding: 4 }}>
+                  {SORT_OPTS.map((o) => (
+                    <div key={o.k} onClick={() => { setSortKey(o.k); setSortOpen(false); }}
+                      style={{ padding: '8px 12px', fontSize: 14, cursor: 'pointer', borderRadius: 2, color: sortKey === o.k ? BLUE : TEXT_MAIN, background: sortKey === o.k ? 'rgba(45,183,245,0.08)' : 'transparent' }}>
+                      {o.t}{sortKey === o.k ? '  ✓' : ''}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Tab 内容 */}
           <div style={{ marginTop: 16 }}>
             {imgTab === 'raw' && (
-              <PhotoZone kind="raw" title="原片" photos={photos.raw} uploading={uploading.raw}
+              <PhotoZone kind="raw" title="原片" photos={sortedRaw} uploading={uploading.raw}
                 onAdd={(files) => addPhotos('raw', files)} onRemove={(u) => removePhoto('raw', u)} />
             )}
             {imgTab === 'sel' && (
@@ -807,7 +857,7 @@ export default function OrderDetail() {
               </div>
             )}
             {imgTab === 'retouched' && (
-              <PhotoZone kind="retouched" title="精修片" photos={photos.retouched} uploading={uploading.retouched}
+              <PhotoZone kind="retouched" title="精修片" photos={sortedRetouched} uploading={uploading.retouched}
                 onAdd={(files) => addPhotos('retouched', files)} onRemove={(u) => removePhoto('retouched', u)} />
             )}
           </div>
