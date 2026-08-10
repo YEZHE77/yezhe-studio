@@ -660,12 +660,12 @@ export default function OrderDetail() {
   );
 
   return (
-    <div style={{ background: '#f7f9fc', minHeight: '100vh', paddingBottom: 24, maxWidth: 1280, width: '100%', margin: '0 auto' }}>
+    <div style={{ background: '#f7f7f7', minHeight: '100vh', padding: '0 16px 24px', maxWidth: 1280, width: '100%', margin: '0 auto' }}>
       {/* ============ Module 3：订单状态卡片（白色卡片 + 左侧操作 + 右侧 4 步进度条，复刻第3张） ============ */}
-      <section style={{ margin: '16px 24px 0', background: '#FFFFFF', border: '1px solid ' + CARD_BORDER, borderRadius: 4, boxShadow: '0 1px 5px rgba(0,0,0,0.04)', overflow: 'hidden' }}>
+      <section style={{ margin: '16px 24px 0', background: '#FFFFFF', border: '1px solid ' + CARD_BORDER, borderTop: '3px solid #52c41a', borderRadius: 4, boxShadow: '0 1px 5px rgba(0,0,0,0.04)', overflow: 'hidden' }}>
         <div className="flex items-stretch" style={{ minHeight: 132 }}>
           {/* 左侧订单操作区 */}
-          <div className="flex flex-col justify-center shrink-0" style={{ width: '30%', minWidth: 240, padding: '16px 28px', gap: 10, position: 'relative' }}>
+          <div className="flex flex-col justify-center shrink-0" style={{ width: '26%', minWidth: 240, padding: '16px 28px', gap: 10, position: 'relative' }}>
             <div style={{ fontSize: 13, color: TEXT_SUB, marginBottom: 2 }}>
               订单编号：<span style={{ color: '#333333', fontWeight: 500 }}>{detail.order_no}</span>
             </div>
@@ -691,7 +691,7 @@ export default function OrderDetail() {
           {/* 竖向分割线 */}
           <div style={{ width: 1, background: DIV, margin: '16px 0' }} />
 
-          {/* 右侧 11 步横向流程进度条（由后端 status/logs 驱动，支持横向滚动） */}
+          {/* 右侧 4 步横向流程进度条（由后端 status/logs 驱动，支持横向滚动） */}
           <div className="flex-1" style={{ minWidth: 0, padding: '14px 28px', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 12 }}>
             <div style={{ fontSize: 13, color: TEXT_SUB, textAlign: 'right' }}>
               {statusText}<span style={{ color: BLUE, marginLeft: 8, cursor: 'pointer' }} onClick={() => { setLogTab('status'); setLogModal(true); }}>查看记录</span>
@@ -1013,8 +1013,8 @@ export default function OrderDetail() {
             <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.3 1 2.3h6c0-1 .4-1.8 1-2.3A7 7 0 0 0 12 2z" /></svg>
             <span>上传小图用于选片和浏览，同时，在网盘中提供原图用于下载，可节省存储和流量成本。</span>
             <span style={{ flex: 1 }} />
-            <button type="button" onClick={() => nav('/capacity')}
-              style={{ background: 'none', border: 'none', color: BLUE, fontSize: 13, cursor: 'pointer', fontWeight: 500, whiteSpace: 'nowrap' }}>查看容量</button>
+            <span onClick={() => nav('/capacity')}
+              style={{ color: BLUE, fontSize: 13, cursor: 'pointer', fontWeight: 500, whiteSpace: 'nowrap' }}>查看容量</span>
           </div>
 
           {/* 筛选操作栏：左侧 全部相册/底片/推荐；右侧 全选 → 仅下载精修片 → 排序 */}
@@ -1035,8 +1035,10 @@ export default function OrderDetail() {
               <option>全部素材</option>
             </select>
 
-            <button type="button" onClick={() => nav('/works')}
-              style={{ background: 'none', border: 'none', color: BLUE, fontSize: 13, cursor: 'pointer', padding: 0 }}>更多选片设置</button>
+            <button type="button" onClick={() => nav('/works')} title="更多选片设置"
+              style={{ background: 'none', border: 'none', color: '#666666', fontSize: 13, cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center' }}>
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="1" /><circle cx="19" cy="12" r="1" /><circle cx="5" cy="12" r="1" /></svg>
+            </button>
 
             <div style={{ position: 'relative' }}>
               <button type="button"
