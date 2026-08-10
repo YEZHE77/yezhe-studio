@@ -31,27 +31,22 @@ function calcExtraFee(extraCount, unitPrice) {
   return { count: n, unitPrice, discount, fee: Math.round(n * unitPrice * discount) };
 }
 
-// 订单详情 9 步流程进度条（spec 原型复刻）
+// 订单详情 4 步流程进度条（目标截图复刻：支付订单→完成拍摄→上传底片→完成）
 const ORDER_STEPS = [
-  { key: 'created', label: '订单生成' },
-  { key: 'contract_created', label: '生成合同' },
-  { key: 'confirmed', label: '沟通确认' },
-  { key: 'shooting', label: '拍摄执行' },
-  { key: 'shooting_finished', label: '拍摄结束' },
-  { key: 'retouch_selecting', label: '选片精修' },
-  { key: 'trailer_output', label: '预告片输出' },
-  { key: 'retouch_finished', label: '全部精修完成' },
-  { key: 'raw_packed', label: '原片打包交付' }
+  { key: 'paid', label: '支付订单' },
+  { key: 'shot', label: '完成拍摄' },
+  { key: 'upload_negatives', label: '上传底片' },
+  { key: 'completed', label: '完成' }
 ];
-// 由后端 status（6 阶段）推导 9 步的「当前节点」下标
+// 由后端 status（6 阶段）推导 4 步的「当前节点」下标
 function stepIndexFor(detail) {
   if (!detail) return -1;
-  if (detail.cancelled) return 3; // 作废停在拍摄执行阶段
-  const map = { deposit: 3, shot: 4, selecting: 5, retouching: 7, delivered: 8, completed: 9 };
+  if (detail.cancelled) return 1; // 作废停在完成拍摄阶段
+  const map = { deposit: 1, shot: 2, selecting: 2, retouching: 3, delivered: 4, completed: 4 };
   const idx = map[detail.status];
   return idx === undefined ? 0 : idx;
 }
-function build9Steps(detail, logs) {
+function build4Steps(detail, logs) {
   if (!detail) return ORDER_STEPS.map((s) => ({ ...s, state: 'pending', time: null }));
   const cur = stepIndexFor(detail);
   return ORDER_STEPS.map((s, i) => {
@@ -59,7 +54,7 @@ function build9Steps(detail, logs) {
     let time = null;
     if (state === 'done') {
       const t = findStepTime(logs, STEP_TIME_KW[s.key]);
-      time = s.key === 'created' && !t ? fmtStepTime(detail.created_at) : t;
+      time = s.key === 'paid' && !t ? fmtStepTime(detail.created_at) : t;
     }
     return { ...s, state, time };
   });
@@ -79,15 +74,10 @@ function findStepTime(logs, kws) {
   return null;
 }
 const STEP_TIME_KW = {
-  created: ['创建订单', '订单生成'],
-  contract_created: ['合同'],
-  confirmed: ['沟通确认', '确认'],
-  shooting: ['拍摄执行', '开始拍摄'],
-  shooting_finished: ['拍摄结束', '完成拍摄'],
-  retouch_selecting: ['选片', '进入精修'],
-  trailer_output: ['预告片'],
-  retouch_finished: ['全部精修完成', '精修完成'],
-  raw_packed: ['原片打包', '打包交付', '原片打包交付']
+  paid: ['支付订单', '订单生成', '创建订单'],
+  shot: ['完成拍摄', '拍摄结束'],
+  upload_negatives: ['上传底片', '上传', '选片'],
+  completed: ['完成', '订单完结', '交付']
 };
 
 // 新规范全局色号（订单详情页 v2：轻量低饱和后台风）
@@ -196,7 +186,8 @@ export default function OrderDetail() {
   const [execPickerSelections, setExecPickerSelections] = useState([]);
   // 打印单据
   const [printMode, setPrintMode] = useState(false);
-  // 底部记录面板 Tab（订单状态详情 / 交易记录 / 下载记录）
+  // 右上角【查看记录】唤起日志弹窗（订单状态详情 / 交易记录 / 下载记录 3Tab）
+  const [logModal, setLogModal] = useState(false);
   const [logTab, setLogTab] = useState('status');
   // 调查问卷弹窗
   const [questionnaireModal, setQuestionnaireModal] = useState(false);
@@ -643,7 +634,7 @@ export default function OrderDetail() {
     ...(sel && sel.photos ? sel.photos.map((p) => ({ url: p.photo_url, kind: '选片' })) : [])
   ];
 
-  const steps = build9Steps(detail, detail.logs);
+  const steps = build4Steps(detail, detail.logs);
   const statusText =
     (detail.payment_status === 'unpaid' ? '未付定金' : (PAY_STATUS_LABEL[payKey] || '')) +
     (detail.status ? '，' + (STATUS_LABEL[detail.status] || '') : '');
@@ -669,7 +660,7 @@ export default function OrderDetail() {
   );
 
   return (
-    <div style={{ background: '#f7f9fc', minHeight: '100vh', paddingBottom: 24 }}>
+    <div style={{ background: '#f7f9fc', minHeight: '100vh', paddingBottom: 24, maxWidth: 1280, width: '100%', margin: '0 auto' }}>
       {/* ============ Module 3：订单状态卡片（白色卡片 + 左侧操作 + 右侧 4 步进度条，复刻第3张） ============ */}
       <section style={{ margin: '16px 24px 0', background: '#FFFFFF', border: '1px solid ' + CARD_BORDER, borderRadius: 4, boxShadow: '0 1px 5px rgba(0,0,0,0.04)', overflow: 'hidden' }}>
         <div className="flex items-stretch" style={{ minHeight: 132 }}>
@@ -703,7 +694,7 @@ export default function OrderDetail() {
           {/* 右侧 11 步横向流程进度条（由后端 status/logs 驱动，支持横向滚动） */}
           <div className="flex-1" style={{ minWidth: 0, padding: '14px 28px', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 12 }}>
             <div style={{ fontSize: 13, color: TEXT_SUB, textAlign: 'right' }}>
-              {statusText}<span style={{ color: BLUE, marginLeft: 8, cursor: 'pointer' }} onClick={() => { setLogTab('status'); document.getElementById('order-log-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }}>查看记录</span>
+              {statusText}<span style={{ color: BLUE, marginLeft: 8, cursor: 'pointer' }} onClick={() => { setLogTab('status'); setLogModal(true); }}>查看记录</span>
             </div>
             <div style={{ overflowX: 'auto', overflowY: 'hidden' }}>
               <div className="flex items-start" style={{ gap: 0, minWidth: 1080 }}>
@@ -915,54 +906,38 @@ export default function OrderDetail() {
           <div style={{ marginTop: 14 }}>
              </div>
 
-        {/* ——— 4、浅灰色套系摘要区块（背景 #f9faf8，强制 4 列等宽网格） ——— */}
-        <div style={{ marginTop: 14, background: '#f9faf8', borderTop: '1px solid ' + CARD_BORDER }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr' }}>
+        {/* ——— 4、浅灰色套系摘要区块（单行横向平铺网格，不拆行为两行） ——— */}
+        <div style={{ marginTop: 14, background: '#f9faf8', borderTop: '1px solid ' + CARD_BORDER, padding: '14px 0' }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center' }}>
             {(() => {
-              const DIVIDER = '1px solid #e8e8e8';
-              const ROW_1 = [
+              const DIVIDER = '1px solid #d9d9d9';
+              const ALL_FIELDS = [
                 { t: '总价', v: '¥' + total.toLocaleString(), ic: <path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" /> },
                 { t: '服务详情', v: (sumService && sumService !== '—' && sumService !== '暂无') ? (String(sumService).length > 16 ? String(sumService).slice(0, 16) + '…' : String(sumService)) : '暂无', ic: <><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><path d="M14 2v6h6" /><path d="M9 13h6M9 17h6" /></> },
                 { t: '底片全送', v: sumRawPolicy, ic: <><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8.5" cy="8.5" r="1.5" /><path d="M21 15l-5-5L5 21" /></> },
                 { t: '加片费', v: sumExtraFee, ic: <><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></> },
-              ];
-              const ROW_2 = [
                 { t: '拍摄时长', v: sumDuration, ic: <><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></> },
                 { t: '拍摄', v: sumRawCount ? String(sumRawCount) + ' 张' : '暂无', ic: <><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" /><circle cx="12" cy="13" r="4" /></> },
                 { t: '精修片', v: sumRetouch, ic: <><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></> },
               ];
-
               return (
                 <>
-                  {ROW_1.map((f, i) => (
+                  {ALL_FIELDS.map((f, i) => (
                     <div key={f.t} style={{
-                      padding: '14px 16px',
-                      borderRight: i < 3 ? DIVIDER : 'none',
-                      borderBottom: DIVIDER
+                      padding: '8px 20px',
+                      display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
+                      borderRight: i < ALL_FIELDS.length - 1 ? DIVIDER : 'none'
                     }}>
-                      <div className="flex items-center" style={{ fontSize: 13, color: LABEL_COLOR, gap: 5, marginBottom: 6 }}>
+                      <div className="flex items-center" style={{ fontSize: 12, color: LABEL_COLOR, gap: 4 }}>
                         <svg viewBox="0 0 24 24" width={14} height={14} fill="none" stroke={ICON_COLOR} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">{f.ic}</svg>
                         {f.t}
                       </div>
                       <div style={{ fontSize: 14, color: '#222222', fontWeight: (f.t === '总价' || f.t === '加片费') ? 500 : 400 }}>{f.v}</div>
                     </div>
                   ))}
-                  {ROW_2.map((f, i) => (
-                    <div key={f.t} style={{
-                      padding: '14px 16px',
-                      borderRight: i < 2 ? DIVIDER : 'none'
-                    }}>
-                      <div className="flex items-center" style={{ fontSize: 13, color: LABEL_COLOR, gap: 5, marginBottom: 6 }}>
-                        <svg viewBox="0 0 24 24" width={14} height={14} fill="none" stroke={ICON_COLOR} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">{f.ic}</svg>
-                        {f.t}
-                      </div>
-                      <div style={{ fontSize: 14, color: '#222222' }}>{f.v}</div>
-                    </div>
-                  ))}
-                  {/* 更多内容 - 第 8 格，无图标 */}
-                  <div style={{ padding: '14px 16px', display: 'flex', alignItems: 'flex-end' }}>
+                  <div style={{ padding: '8px 20px', display: 'flex', alignItems: 'center', flexShrink: 0 }}>
                     <button type="button" onClick={() => { setPkgDetailTab('service'); setPkgDetailModal(true); }}
-                      style={{ background: 'none', border: 'none', color: MORE_LINK, fontSize: 14, cursor: 'pointer', padding: 0 }}>更多内容</button>
+                      style={{ background: 'none', border: 'none', color: MORE_LINK, fontSize: 14, cursor: 'pointer', padding: 0, whiteSpace: 'nowrap' }}>更多内容</button>
                   </div>
                 </>
               );
@@ -1030,19 +1005,13 @@ export default function OrderDetail() {
           })}
           </div>
           <div style={{ flex: 1 }} />
-          <input id="order-detail-upload-input" type="file" accept="image/*" multiple style={{ display: 'none' }}
-            onChange={(e) => { if (e.target.files && e.target.files.length) addPhotos(imgTab, e.target.files); e.target.value = ''; }} />
-          <button type="button" onClick={() => document.getElementById('order-detail-upload-input')?.click()}
-            style={{ marginRight: 24, padding: '6px 16px', borderRadius: 4, background: BLUE, color: '#fff', fontSize: 13, border: 'none', cursor: 'pointer', fontWeight: 500, flexShrink: 0 }}>
-            + 上传{imgTab === 'raw' ? '原片' : imgTab === 'retouched' ? '精修片' : ''}
-          </button>
         </div>
 
         <div style={{ padding: '12px 24px 24px' }}>
           {/* 提示警告条（黄色提示 + 灯泡图标） */}
           <div style={{ background: '#fffbe6', color: '#b58900', fontSize: 13, padding: '9px 16px', display: 'flex', alignItems: 'center', gap: 8, borderRadius: 4 }}>
             <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.3 1 2.3h6c0-1 .4-1.8 1-2.3A7 7 0 0 0 12 2z" /></svg>
-            <span>原片建议在拍摄后7天内完成上传；精修片交付前请确保已通过全部质检。</span>
+            <span>上传小图用于选片和浏览，同时，在网盘中提供原图用于下载，可节省存储和流量成本。</span>
             <span style={{ flex: 1 }} />
             <button type="button" onClick={() => nav('/capacity')}
               style={{ background: 'none', border: 'none', color: BLUE, fontSize: 13, cursor: 'pointer', fontWeight: 500, whiteSpace: 'nowrap' }}>查看容量</button>
@@ -1144,76 +1113,7 @@ export default function OrderDetail() {
         </div>
       </section>
 
-      {/* ============ Module 6：底部记录卡片（订单状态详情 / 交易记录 / 下载记录） ============ */}
-      <section id="order-log-panel" style={{ margin: '24px 24px 24px', background: '#FFFFFF', border: '1px solid ' + CARD_BORDER, borderRadius: 4 }}>
-        <div className="flex" style={{ height: 44, borderBottom: '1px solid ' + DIV }}>
-          {[{ k: 'status', t: '订单状态详情' }, { k: 'trade', t: '交易记录' }, { k: 'download', t: '下载记录' }].map((tb) => {
-            const active = logTab === tb.k;
-            return (
-              <button key={tb.k} type="button" onClick={() => setLogTab(tb.k)}
-                style={{
-                  padding: '0 20px', height: 44, background: 'none', border: 'none', cursor: 'pointer', fontSize: 14,
-                  color: active ? BLUE : '#666666',
-                  borderBottom: active ? '2px solid ' + BLUE : '2px solid transparent', fontWeight: active ? 500 : 400
-                }}>{tb.t}</button>
-            );
-          })}
-        </div>
-        <div style={{ padding: '20px 24px' }}>
-          {logTab === 'status' && (
-            <>
-              <div style={{ color: '#222222', fontWeight: 500, marginBottom: 8 }}>操作日志</div>
-              {(detail.logs || []).length === 0 && <div style={{ color: '#999999', fontSize: 14, padding: '4px 0' }}>暂无日志</div>}
-              {(detail.logs || []).map((l, i, arr) => (
-                <div key={i} className="flex" style={{ gap: 12 }}>
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: 10, flexShrink: 0 }}>
-                    <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#52C41A', marginTop: 7, flexShrink: 0 }} />
-                    {i < arr.length - 1 && <span style={{ flex: 1, width: 1, background: '#EAEAEA', marginTop: 4 }} />}
-                  </div>
-                  <div style={{ flex: 1, paddingBottom: 14 }}>
-                    <div style={{ fontSize: 14, color: '#333333' }}>{l.text}</div>
-                    <div style={{ fontSize: 12, color: TEXT_SUB, marginTop: 2 }}>{new Date(l.t).toLocaleString('zh-CN')}</div>
-                  </div>
-                </div>
-              ))}
-            </>
-          )}
-          {logTab === 'trade' && (
-            <div>
-              <div style={{ color: '#222222', fontWeight: 500, marginBottom: 8 }}>收款流水</div>
-              {(!detail.payments || detail.payments.length === 0) && <div style={{ color: '#999999', fontSize: 14, padding: '4px 0' }}>暂无流水</div>}
-              {detail.payments && detail.payments.map((p) => (
-                <div key={p.id} className="flex items-center justify-between" style={{ borderBottom: '1px solid ' + DIV, padding: '8px 0' }}>
-                  <div>
-                    <span style={{ color: '#222222' }}>{TYPE_LABEL[p.type]}</span>
-                    <span style={{ color: '#666666', marginLeft: 8 }}>{p.method === 'online' ? '线上' : '线下'}</span>
-                  </div>
-                  <div style={{ color: p.type === 'refund' ? '#ef4444' : '#10b981' }}>
-                    {p.type === 'refund' ? '-' : '+'}¥{Number(p.amount).toLocaleString()}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-          {logTab === 'download' && (
-            <div>
-              <div style={{ color: '#222222', fontWeight: 500, marginBottom: 8 }}>可下载素材（原片 / 精修片 / 选片）</div>
-              {downloadItems.length === 0 && <div style={{ color: '#999999', fontSize: 14, padding: '4px 0' }}>暂无素材（请在上方可片/原片/精修片 Tab 上传）</div>}
-              <div style={{ display: 'grid', gap: 4 }}>
-                {downloadItems.map((it, i) => (
-                  <div key={i} className="flex items-center justify-between" style={{ borderBottom: '1px solid ' + DIV, padding: '8px 0' }}>
-                    <div className="flex items-center" style={{ gap: 8, minWidth: 0 }}>
-                      <span style={{ padding: '2px 6px', borderRadius: 4, background: '#f3f4f6', fontSize: 11, color: '#666666', flexShrink: 0 }}>{it.kind}</span>
-                      <span style={{ color: '#222222', fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{it.url}</span>
-                    </div>
-                    <button type="button" onClick={() => downloadFile(it.url)} style={{ padding: '4px 8px', borderRadius: 4, border: '1px solid ' + DIV, fontSize: 12, color: '#222222', background: '#fff', cursor: 'pointer', flexShrink: 0 }}>下载</button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-      </section>
+      {/* ============ Module 6：底部记录已迁移至右上角【查看记录】弹窗，不再常驻页面 DOM ============ */}
 
       {/* 收款弹窗 */}
       {pay && (
@@ -1774,6 +1674,84 @@ export default function OrderDetail() {
           </div>
         </div>
       </div>
+
+      {/* 右上角【查看记录】唤起日志弹窗：3 个 Tab（订单状态详情 / 交易记录 / 下载记录） */}
+      {logModal && (
+        <div onClick={() => setLogModal(false)} style={{ position: 'fixed', inset: 0, zIndex: 70, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ width: '100%', maxWidth: 720, maxHeight: '80vh', background: '#ffffff', borderRadius: 8, overflow: 'hidden', boxShadow: '0 12px 40px rgba(0,0,0,0.18)', display: 'flex', flexDirection: 'column' }}>
+            <div className="flex items-center justify-between" style={{ padding: '16px 24px', borderBottom: '1px solid ' + DIV, flexShrink: 0 }}>
+              <div style={{ fontSize: 16, fontWeight: 600, color: '#222222' }}>订单记录 · {detail.order_no}</div>
+              <button type="button" onClick={() => setLogModal(false)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#999999', fontSize: 22, lineHeight: 1, padding: 0 }} aria-label="关闭">×</button>
+            </div>
+            <div className="flex" style={{ borderBottom: '1px solid ' + DIV, padding: '0 24px', flexShrink: 0 }}>
+              {[{ k: 'status', t: '订单状态详情' }, { k: 'trade', t: '交易记录' }, { k: 'download', t: '下载记录' }].map((tb) => {
+                const active = logTab === tb.k;
+                return (
+                  <button key={tb.k} type="button" onClick={() => setLogTab(tb.k)}
+                    style={{ padding: '10px 16px', background: 'none', border: 'none', cursor: 'pointer', fontSize: 14, color: active ? BLUE : '#666666', borderBottom: active ? ('2px solid ' + BLUE) : '2px solid transparent', fontWeight: active ? 500 : 400 }}>
+                    {tb.t}
+                  </button>
+                );
+              })}
+            </div>
+            <div style={{ padding: '20px 24px', overflow: 'auto', flex: 1 }}>
+              {logTab === 'status' && (
+                <>
+                  <div style={{ color: '#222222', fontWeight: 500, marginBottom: 8 }}>操作日志</div>
+                  {(detail.logs || []).length === 0 && <div style={{ color: '#999999', fontSize: 14, padding: '4px 0' }}>暂无日志</div>}
+                  {(detail.logs || []).map((l, i, arr) => (
+                    <div key={i} className="flex" style={{ gap: 12 }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: 10, flexShrink: 0 }}>
+                        <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#52C41A', marginTop: 7, flexShrink: 0 }} />
+                        {i < arr.length - 1 && <span style={{ flex: 1, width: 1, background: '#EAEAEA', marginTop: 4 }} />}
+                      </div>
+                      <div style={{ flex: 1, paddingBottom: 14 }}>
+                        <div style={{ fontSize: 14, color: '#333333' }}>{l.text}</div>
+                        <div style={{ fontSize: 12, color: TEXT_SUB, marginTop: 2 }}>{new Date(l.t).toLocaleString('zh-CN')}</div>
+                      </div>
+                    </div>
+                  ))}
+                </>
+              )}
+              {logTab === 'trade' && (
+                <div>
+                  <div style={{ color: '#222222', fontWeight: 500, marginBottom: 8 }}>收款流水</div>
+                  {(!detail.payments || detail.payments.length === 0) && <div style={{ color: '#999999', fontSize: 14, padding: '4px 0' }}>暂无流水</div>}
+                  {detail.payments && detail.payments.map((p) => (
+                    <div key={p.id} className="flex items-center justify-between" style={{ borderBottom: '1px solid ' + DIV, padding: '8px 0' }}>
+                      <div>
+                        <span style={{ color: '#222222' }}>{TYPE_LABEL[p.type]}</span>
+                        <span style={{ color: '#666666', marginLeft: 8 }}>{p.method === 'online' ? '线上' : '线下'}</span>
+                      </div>
+                      <div style={{ color: p.type === 'refund' ? '#ef4444' : '#10b981' }}>
+                        {p.type === 'refund' ? '-' : '+'}¥{Number(p.amount).toLocaleString()}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {logTab === 'download' && (
+                <div>
+                  <div style={{ color: '#222222', fontWeight: 500, marginBottom: 8 }}>可下载素材（原片 / 精修片 / 选片）</div>
+                  {downloadItems.length === 0 && <div style={{ color: '#999999', fontSize: 14, padding: '4px 0' }}>暂无素材</div>}
+                  <div style={{ display: 'grid', gap: 4 }}>
+                    {downloadItems.map((it, i) => (
+                      <div key={i} className="flex items-center justify-between" style={{ borderBottom: '1px solid ' + DIV, padding: '8px 0' }}>
+                        <div className="flex items-center" style={{ gap: 8, minWidth: 0 }}>
+                          <span style={{ padding: '2px 6px', borderRadius: 4, background: '#f3f4f6', fontSize: 11, color: '#666666', flexShrink: 0 }}>{it.kind}</span>
+                          <span style={{ color: '#222222', fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{it.url}</span>
+                        </div>
+                        <button type="button" onClick={() => downloadFile(it.url)} style={{ padding: '4px 8px', borderRadius: 4, border: '1px solid ' + DIV, fontSize: 12, color: '#222222', background: '#fff', cursor: 'pointer', flexShrink: 0 }}>下载</button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 调查问卷弹窗（点击头部【调查问卷】按钮唤起） */}
       {questionnaireModal && (
