@@ -4,7 +4,7 @@ import Icon from '../components/Icon.jsx';
 /* ==========================================================================
    B 端左侧固定侧边导航（1:1 复刻档期页 spec）
    宽 220px · 白底 · 右边框 #E8E8EB · padding 32px 12px
-   顶部「开通VIP」按钮 176×36 #2998EB · 菜单项 高40 圆角6 padding 0 14px
+   菜单项 高40 圆角6 padding 0 14px
    普通 文字#444444 图标#888888 · 激活 背景#E6F7FF 文字/图标#2998EB · hover #F4F7FB
    —— 仅视觉复刻，路由与业务逻辑保持不变。
    ========================================================================== */
@@ -57,23 +57,6 @@ function SidebarContent() {
       className="w-[220px] bg-white flex flex-col h-full shrink-0"
       style={{ borderRight: '1px solid #E8E8EB', padding: '32px 12px' }}
     >
-      {/* 顶部：开通VIP */}
-      <button
-        type="button"
-        className="shrink-0 flex items-center justify-center text-white transition-opacity hover:opacity-90"
-        style={{
-          width: 176,
-          height: 36,
-          margin: '0 auto 32px',
-          background: '#2998EB',
-          borderRadius: 4,
-          fontSize: 14,
-          fontWeight: 500
-        }}
-      >
-        开通VIP
-      </button>
-
       {/* 菜单 */}
       <nav className="flex-1 overflow-y-auto">
         {ITEMS.map((m) => {

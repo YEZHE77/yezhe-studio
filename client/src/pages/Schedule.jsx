@@ -122,7 +122,11 @@ export default function Schedule() {
   const [orderDlg, setOrderDlg] = useState(null);
   const [booking, setBooking] = useState(null);
   const [share, setShare] = useState(null);
-  const [hover, setHover] = useState(null); // 单元格 hover 气泡：{ date, rect }
+  // 日历单元格 Tooltip 悬浮气泡（spec：200ms 延迟显示 / 300ms 淡出 / 边缘箭头翻转）
+  // hoverTooltip: { date, rect, visible } —— visible=false 时仍渲染但 opacity=0（淡出动画）
+  const [hoverTooltip, setHoverTooltip] = useState(null);
+  const hoverTimerRef = useRef(null);
+  const fadeTimerRef = useRef(null);
   const advRef = useRef(null);
   const accRef = useRef(null);
 
@@ -161,6 +165,28 @@ export default function Schedule() {
     const onDown = (e) => { if (accRef.current && !accRef.current.contains(e.target)) setAccOpen(false); };
     document.addEventListener('mousedown', onDown);
     return () => document.removeEventListener('mousedown', onDown);
+  }, []);
+
+  // 切换月份 / 打开弹窗时关闭 tooltip
+  useEffect(() => {
+    clearTimeout(hoverTimerRef.current);
+    clearTimeout(fadeTimerRef.current);
+    setHoverTooltip(null);
+  }, [state.month, dlg, orderDlg, booking, share]);
+
+  // Tooltip 淡出结束（visible=false 持续）后从 DOM 移除
+  useEffect(() => {
+    if (!hoverTooltip || hoverTooltip.visible) return;
+    const t = setTimeout(() => setHoverTooltip(null), 350);
+    return () => clearTimeout(t);
+  }, [hoverTooltip]);
+
+  // 组件卸载：清理所有 timer
+  useEffect(() => {
+    return () => {
+      clearTimeout(hoverTimerRef.current);
+      clearTimeout(fadeTimerRef.current);
+    };
   }, []);
 
   const cells = buildMonth(y, m - 1);
@@ -299,8 +325,19 @@ export default function Schedule() {
 
                 return (
                   <div key={i} onClick={() => setSelDate(date)}
-                    onMouseEnter={(e) => setHover({ date, rect: e.currentTarget.getBoundingClientRect() })}
-                    onMouseLeave={() => setHover(null)}
+                    onMouseEnter={(e) => {
+                      clearTimeout(hoverTimerRef.current);
+                      clearTimeout(fadeTimerRef.current);
+                      hoverTimerRef.current = setTimeout(() => {
+                        setHoverTooltip({ date, rect: e.currentTarget.getBoundingClientRect(), visible: true });
+                      }, 200);
+                    }}
+                    onMouseLeave={() => {
+                      clearTimeout(hoverTimerRef.current);
+                      fadeTimerRef.current = setTimeout(() => {
+                        setHoverTooltip((prev) => prev ? { ...prev, visible: false } : null);
+                      }, 300);
+                    }}
                     className={'relative cursor-pointer flex flex-col ' + (!selected && !isClosed ? 'hover:bg-[#FAFCFE]' : '')}
                     style={{ minHeight: 120, background: cellBg, padding: 8, boxShadow: selected ? `inset 0 0 0 1px ${G_BLUE}` : 'none' }}>
                     <div className="flex items-start justify-between gap-1">
@@ -349,33 +386,99 @@ export default function Schedule() {
         </div>
       </div>
 
-      {/* 单元格 hover 气泡：展示顾客姓名/手机号（无数据隐藏，#586） */}
-      {hover && (() => {
-        const hRows = rowsOf(hover.date).filter((r) => r.order_no);
-        const visible = hRows.filter((r) => (r.order_customer || orderPhones(r)));
-        if (!visible.length) return null;
-        const rect = hover.rect;
-        const W = 240;
-        let left = rect.right + 8;
-        if (left + W > (window.innerWidth || 1200) - 4) left = rect.left - W - 8;
+      {/* 日历单元格 Tooltip 悬浮气泡（spec：200ms 延迟 / 300ms 淡出 / 620rpx 等宽容器 / 箭头边缘翻转） */}
+      {hoverTooltip && (() => {
+        const hRows = rowsOf(hoverTooltip.date).filter((r) => r.order_no);
+        if (!hRows.length) return null;
+        const r = hRows[0]; // 取首个订单
+        const sk = statusKeyOf(r);
+        const stColor = sk ? G_STATUS_MAP[sk].color : '#B1E89C';
+        const rect = hoverTooltip.rect;
+        const W = 310; // 620rpx
+        const ARROW = 12; // 24rpx
+        const GAP = 8;
+
+        // 定位：默认在单元格右侧，箭头在左；溢出则翻转到左侧，箭头在右
+        let left = rect.right + GAP;
+        let arrowSide = 'left'; // 箭头在 tooltip 左侧 → 指向左（即指向单元格）
+
+        if (left + W > (window.innerWidth || 1200) - 4) {
+          left = rect.left - W - GAP;
+          arrowSide = 'right'; // 箭头翻到右侧 → 指向右（即指向单元格）
+        }
         if (left < 4) left = 4;
+
+        // 垂直定位：对齐单元格顶部
+        const top = rect.top;
+
+        // 拍摄时间格式化
+        const timeSlots = (() => {
+          try {
+            let ts = r.order_time_slots;
+            if (typeof ts === 'string') ts = JSON.parse(ts);
+            return Array.isArray(ts) && ts.length ? ts.join(' / ') : '';
+          } catch (e) { return ''; }
+        })();
+
+        // 付款信息
+        const payMap = { unpaid: '未付款', deposit: '已付定金', paid: '已付全款' };
+        const payLabel = payMap[r.order_pay_status] || '';
+        const balance = r.order_balance ? parseFloat(r.order_balance) : 0;
+        const payTx = payLabel + (balance > 0 ? ` · 尾款 ¥${balance}` : '');
+
         return (
-          <div className="fixed z-50" style={{ left, top: rect.top, width: W, background: '#FFFFFF', border: '1px solid #E5E5E5', borderRadius: 6, boxShadow: '0 4px 16px rgba(0,0,0,0.18)', padding: '12px 14px' }}>
-            <div style={{ fontSize: 12, color: '#999999', marginBottom: 8 }}>{hover.date}</div>
-            {visible.map((r) => {
-              const sk = statusKeyOf(r);
-              const ph = orderPhones(r);
-              return (
-                <div key={r.id} style={{ borderTop: '1px solid #F2F2F2', paddingTop: 8, marginTop: 8 }}>
-                  <div className="flex items-center" style={{ gap: 6 }}>
-                    {sk && <span style={{ width: 8, height: 8, borderRadius: '50%', background: G_STATUS_MAP[sk].color, flexShrink: 0 }} />}
-                    {r.order_customer && <span style={{ fontSize: 14, color: '#333333', fontWeight: 500 }}>{r.order_customer}</span>}
-                  </div>
-                  {ph && <div style={{ fontSize: 13, color: '#666666', marginTop: 4 }}>{ph}</div>}
-                  {r.order_package && <div style={{ fontSize: 12, color: '#999999', marginTop: 2 }}>{r.order_package}{sk ? ' · ' + G_STATUS_MAP[sk].label : ''}</div>}
-                </div>
-              );
-            })}
+          <div className="fixed z-50" style={{
+            left, top,
+            width: W,
+            background: '#FFFFFF',
+            borderRadius: 8,
+            boxShadow: '0 2px 8px rgba(0,0,0,0.12)',
+            padding: 20,
+            opacity: hoverTooltip.visible ? 1 : 0,
+            transition: 'opacity 0.25s ease',
+            pointerEvents: 'none'
+          }}>
+            {/* 箭头三角形 */}
+            <div style={{
+              position: 'absolute',
+              top: 20,
+              [arrowSide]: -ARROW,
+              width: 0, height: 0,
+              ...(arrowSide === 'left'
+                ? { borderTop: '6px solid transparent', borderBottom: '6px solid transparent', borderRight: `${ARROW}px solid #FFFFFF` }
+                : { borderTop: '6px solid transparent', borderBottom: '6px solid transparent', borderLeft: `${ARROW}px solid #FFFFFF` })
+            }} />
+
+            {/* 标题：客户姓名 */}
+            <div style={{ fontSize: 22, color: '#222222', fontWeight: 500, marginBottom: 12 }}>
+              {r.order_customer || '未命名客户'}
+            </div>
+
+            {/* 分隔线 */}
+            <div style={{ height: 1, background: '#E5E5E5', marginBottom: 12 }} />
+
+            {/* 状态块 */}
+            {sk && G_STATUS_MAP[sk] && (
+              <div className="flex items-center" style={{ gap: 8 }}>
+                <span style={{ width: 18, height: 18, borderRadius: 3, background: stColor, flexShrink: 0 }} />
+                <span style={{ fontSize: 18, color: '#333333' }}>{G_STATUS_MAP[sk].label}</span>
+              </div>
+            )}
+
+            {/* 拍摄时间 */}
+            {timeSlots && (
+              <div style={{ fontSize: 18, color: '#444444', marginTop: 10 }}>{timeSlots}</div>
+            )}
+
+            {/* 套系信息 */}
+            {r.order_package && (
+              <div style={{ fontSize: 18, color: '#444444', marginTop: 10 }}>{r.order_package}</div>
+            )}
+
+            {/* 付款信息 */}
+            {payTx && (
+              <div style={{ fontSize: 18, color: '#444444', marginTop: 10 }}>{payTx}</div>
+            )}
           </div>
         );
       })()}
