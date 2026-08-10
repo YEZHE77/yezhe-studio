@@ -897,17 +897,17 @@ export default function OrderDetail() {
                   value={
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                       {execs.length ? execs.map((p, i) => (
-                        <div key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#f5f5f5', borderRadius: 999, padding: '2px 12px 2px 4px' }}>
-                          {p.avatar ? <img src={p.avatar} alt="" style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} onError={(e) => { e.target.style.display = 'none'; e.target.parentElement.insertAdjacentHTML('afterbegin', '<div style="width:32px;height:32px;border-radius:50%;background:#333;color:#fff;font-size:13px;display:flex;align-items:center;justify-content:center;flex-shrink:0">' + p.name.slice(0,1) + '</div>'); }} />
-                          : <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#333333', color: '#fff', fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{p.name.slice(0, 1)}</div>}
-                          <span style={{ fontSize: 14, color: '#222222' }}>{p.name}</span>
+                        <div key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: '#f5f5f5', borderRadius: 999, padding: '1px 10px 1px 3px' }}>
+                          {p.avatar ? <img src={p.avatar} alt="" style={{ width: 22, height: 22, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} onError={(e) => { e.target.style.display = 'none'; e.target.parentElement.insertAdjacentHTML('afterbegin', '<div style="width:22px;height:22px;border-radius:50%;background:#333;color:#fff;font-size:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0">' + p.name.slice(0,1) + '</div>'); }} />
+                          : <div style={{ width: 22, height: 22, borderRadius: '50%', background: '#333333', color: '#fff', fontSize: 11, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{p.name.slice(0, 1)}</div>}
+                          <span style={{ fontSize: 12, color: '#222222' }}>{p.name}</span>
                           <button type="button" onClick={() => removeExecutor(i)} title="移除此执行人"
-                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#444444', padding: 0, fontSize: 18, lineHeight: 1, flexShrink: 0 }}>&times;</button>
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#888888', padding: 0, fontSize: 14, lineHeight: 1, flexShrink: 0 }}>&times;</button>
                         </div>
                       )) : <span style={{ color: '#999999', fontSize: 12 }}>暂无</span>}
                       <button type="button" onClick={() => { setExecPickerSelections(execs.map((e) => ({ id: e.id, name: e.name, avatar: e.avatar || '' }))); setExecPickerOpen(true); }}
                         title="添加执行人"
-                        style={{ width: 32, height: 32, borderRadius: '50%', background: '#21a6ff', color: '#fff', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: 16, padding: 0, flexShrink: 0 }}>+</button>
+                        style={{ width: 22, height: 22, borderRadius: '50%', background: '#21a6ff', color: '#fff', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: 14, padding: 0, flexShrink: 0 }}>+</button>
                     </div>
                   }
                 />
@@ -930,8 +930,11 @@ export default function OrderDetail() {
                   value={detail.address || '暂无'} />
               </div>
 
-              {/* 右下卡片：套系摘要 */}
-              <div style={{ background: '#fafbf8', borderRadius: 2, padding: '18px 20px', flex: 1, display: 'flex', flexDirection: 'column' }}>
+            </div>
+          </div>
+
+          {/* 套系摘要卡：整行紧接执行人下方（参考图） */}
+          <div style={{ background: '#fafbf8', borderRadius: 2, padding: '18px 20px', marginTop: 16 }}>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px 12px' }}>
                   {(() => {
                     const SUM_FIELDS = [
@@ -958,8 +961,6 @@ export default function OrderDetail() {
                   </div>
                 </div>
               </div>
-            </div>
-          </div>
         </div>
 
         {/* ——— 3、执行人单行（已迁移至左侧基础信息内） ——— */}
