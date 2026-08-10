@@ -728,8 +728,8 @@ function OrderDialog({ orderDlg, personnel, onClose, onSaved }) {
   const chPopRef = useRef(null);
 
   const [orderName, setOrderName] = useState('');
-  const [customerName, setCustomerName] = useState('');
-  const [phones, setPhones] = useState(['']);
+  // 多顾客：每行 = 顾客姓名 + 电话号码（可再添加一行，婚礼新郎/新娘场景）
+  const [customers, setCustomers] = useState([{ name: '', phone: '' }]);
   const [chooseSession, setChooseSession] = useState(false);
   const [dateTbd, setDateTbd] = useState(false);
   const [shootDate, setShootDate] = useState(orderDlg.date || ''); // 可自由编辑的拍摄日期（不写死）
@@ -793,9 +793,9 @@ function OrderDialog({ orderDlg, personnel, onClose, onSaved }) {
   };
   const onPickChannel = (id, name) => { setChannelId(id); setChannelName(name); setChPop(false); };
 
-  const addPhone = () => setPhones((p) => [...p, '']);
-  const setPhoneAt = (i, v) => setPhones((p) => p.map((x, idx) => idx === i ? v : x));
-  const removePhoneAt = (i) => setPhones((p) => (p.length > 1 ? p.filter((_, idx) => idx !== i) : ['']));
+  const addCustomer = () => setCustomers((c) => [...c, { name: '', phone: '' }]);
+  const setCustomerAt = (i, key, v) => setCustomers((c) => c.map((x, idx) => idx === i ? { ...x, [key]: v } : x));
+  const removeCustomerAt = (i) => setCustomers((c) => (c.length > 1 ? c.filter((_, idx) => idx !== i) : [{ name: '', phone: '' }]));
 
   const addExtra = () => setExtras((e) => [...e, { name: '', amount: '' }]);
   const setExtraAt = (i, key, v) => setExtras((e) => e.map((x, idx) => idx === i ? { ...x, [key]: v } : x));
@@ -813,8 +813,11 @@ function OrderDialog({ orderDlg, personnel, onClose, onSaved }) {
   const save = async () => {
     setLocalErr('');
     if (!dateTbd && !shootDate) return setLocalErr('请选择拍摄日期');
-    if (!customerName.trim()) return setLocalErr('请填写顾客姓名');
-    const phoneList = phones.map((p) => p.trim()).filter(Boolean);
+    const filled = customers.filter((c) => c.name.trim() || c.phone.trim());
+    const names = filled.map((c) => c.name.trim()).filter(Boolean);
+    if (names.length === 0) return setLocalErr('请填写顾客姓名');
+    const customerName = names.join(' & ');
+    const phoneList = filled.map((c) => c.phone.trim()).filter(Boolean);
     if (phoneList.length === 0) return setLocalErr('请至少填写一个联系电话');
     if (!phoneList.every((p) => PHONE_RE.test(p))) {
       const msg = '联系电话格式不正确，请填写有效的 11 位手机号';
@@ -871,7 +874,7 @@ function OrderDialog({ orderDlg, personnel, onClose, onSaved }) {
   const slotLabel = (s) => s === HALF ? '半天' : s === FULL ? '全天' : s;
 
   // 关闭逻辑（规范 十五）：遮罩不关闭；X 点击时若已填内容则二次确认
-  const isDirty = () => !!(orderName.trim() || customerName.trim() || phones.some((p) => p.trim()) || shootDate || pkgId || pkgPrice || deposit || payStatus !== 'deposit' || remark.trim() || location.trim() || channelId || executors.length || extras.length || slots.length || dateTbd);
+  const isDirty = () => !!(orderName.trim() || customers.some((c) => c.name.trim() || c.phone.trim()) || shootDate || pkgId || pkgPrice || deposit || payStatus !== 'deposit' || remark.trim() || location.trim() || channelId || executors.length || extras.length || slots.length || dateTbd);
   const requestClose = () => {
     if (isDirty()) {
       if (!window.confirm('确定放弃当前填写的内容吗？')) return;
@@ -932,30 +935,33 @@ function OrderDialog({ orderDlg, personnel, onClose, onSaved }) {
             </div>
             <input value={orderName} onChange={(e) => setOrderName(e.target.value)} placeholder="请输入订单名称"
               className="placeholder-[#B5B5B5]" style={{ ...FIELD, flex: 1, width: 'auto', borderColor: MODAL_BORDER }} />
-            {/* 加号 18×18 */}
-            <button onClick={addPhone} aria-label="添加电话"
-              className="shrink-0 flex items-center justify-center"
-              style={{ width: 18, height: 18, border: `1px solid ${MODAL_BORDER}`, borderRadius: '50%', color: '#999999', fontSize: 14, lineHeight: 1 }}>+</button>
           </div>
-          <div className="flex items-center" style={{ gap: 12, marginTop: 12 }}>
-            <div className="flex items-center" style={{ gap: 4, flex: 1, width: 'auto' }}>
-              <Star />
-              <input value={customerName} onChange={(e) => setCustomerName(e.target.value)} placeholder="顾客姓名"
-                className="placeholder-[#B5B5B5]"
-                style={{ ...FIELD, flex: 1, width: 'auto', borderColor: MODAL_BORDER }} />
-            </div>
-            <div className="flex items-center" style={{ gap: 8, flex: 1 }}>
-              {phones.map((p, i) => (
-                <div key={i} className="relative flex items-center" style={{ gap: 4, flex: 1 }}>
+          {/* 多顾客行：每行 顾客姓名 + 电话号码，可「添加顾客」再加一行 */}
+          <div style={{ marginTop: 12 }}>
+            {customers.map((c, i) => (
+              <div key={i} className="flex items-center" style={{ gap: 12, marginBottom: i < customers.length - 1 ? 10 : 0 }}>
+                <div className="flex items-center" style={{ gap: 4, flex: 1, width: 'auto' }}>
                   <Star />
-                  <input value={p} onChange={(e) => setPhoneAt(i, e.target.value)} placeholder="添加电话" className="placeholder-[#B5B5B5]" style={{ ...FIELD, flex: 1, width: 'auto', borderColor: MODAL_BORDER }} />
-                  {phones.length > 1 && (
-                    <button onClick={() => removePhoneAt(i)} className="absolute top-1/2 -translate-y-1/2 hover:text-[#666666]"
-                      style={{ right: 8, fontSize: 12, color: '#BBBBBB' }}>×</button>
+                  <input value={c.name} onChange={(e) => setCustomerAt(i, 'name', e.target.value)} placeholder="顾客姓名"
+                    className="placeholder-[#B5B5B5]"
+                    style={{ ...FIELD, flex: 1, width: 'auto', borderColor: MODAL_BORDER }} />
+                </div>
+                <div className="relative flex items-center" style={{ gap: 4, flex: 1 }}>
+                  <Star />
+                  <input value={c.phone} onChange={(e) => setCustomerAt(i, 'phone', e.target.value)} placeholder="电话号码"
+                    className="placeholder-[#B5B5B5]"
+                    style={{ ...FIELD, flex: 1, width: 'auto', borderColor: MODAL_BORDER }} />
+                  {customers.length > 1 && (
+                    <button type="button" onClick={() => removeCustomerAt(i)} className="absolute top-1/2 -translate-y-1/2 hover:text-[#666666]"
+                      style={{ right: 8, fontSize: 12, color: '#BBBBBB', background: 'none', border: 'none' }}>×</button>
                   )}
                 </div>
-              ))}
-            </div>
+              </div>
+            ))}
+            <button type="button" onClick={addCustomer} className="flex items-center" style={{ gap: 4, color: MODAL_BLUE, fontSize: 12, background: 'none', border: 'none', cursor: 'pointer', padding: '6px 0' }}>
+              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12h14" /></svg>
+              添加顾客
+            </button>
           </div>
         </div>
 
