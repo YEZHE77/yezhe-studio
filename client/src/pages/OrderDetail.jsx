@@ -915,20 +915,19 @@ export default function OrderDetail() {
                       { t: '拍摄', v: sumRawCount ? String(sumRawCount) + ' 张' : '暂无', ic: <><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" /><circle cx="12" cy="13" r="4" /></> },
                       { t: '精修片', v: sumRetouch, ic: <><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></> },
                     ];
+                    // 参考图：行内「图标 标签：值」对，4 列 2 行；「更多内容」作为第 8 格
                     return SUM_FIELDS.map((f) => (
-                      <div key={f.t} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                        <div className="flex items-center" style={{ fontSize: 12, color: LABEL_COLOR, gap: 5 }}>
-                          <svg viewBox="0 0 24 24" width={14} height={14} fill="none" stroke={ICON_COLOR} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">{f.ic}</svg>
-                          {f.t}
-                        </div>
-                        <div style={{ fontSize: 12, color: LABEL_COLOR }}>{f.v}</div>
+                      <div key={f.t} className="flex items-center" style={{ fontSize: 12, color: LABEL_COLOR, gap: 5, minWidth: 0 }}>
+                        <svg viewBox="0 0 24 24" width={14} height={14} fill="none" stroke={ICON_COLOR} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">{f.ic}</svg>
+                        <span className="truncate">{f.t}：{f.v}</span>
                       </div>
                     ));
                   })()}
-                </div>
-                <div style={{ marginTop: 'auto', paddingTop: 16, display: 'flex', justifyContent: 'flex-end' }}>
-                  <button type="button" onClick={() => { setPkgDetailTab('service'); setPkgDetailModal(true); }}
-                    style={{ background: 'none', border: 'none', color: MORE_LINK, fontSize: 12, cursor: 'pointer', padding: 0, whiteSpace: 'nowrap' }}>更多内容</button>
+                  <div className="flex items-center" style={{ fontSize: 12, color: MORE_LINK, gap: 5, cursor: 'pointer' }}
+                    onClick={() => { setPkgDetailTab('service'); setPkgDetailModal(true); }}>
+                    <svg viewBox="0 0 24 24" width={14} height={14} fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="1" /><circle cx="19" cy="12" r="1" /><circle cx="5" cy="12" r="1" /></svg>
+                    更多内容
+                  </div>
                 </div>
               </div>
             </div>
