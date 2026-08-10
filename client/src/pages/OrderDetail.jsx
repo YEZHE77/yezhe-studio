@@ -31,30 +31,55 @@ function calcExtraFee(extraCount, unitPrice) {
   return { count: n, unitPrice, discount, fee: Math.round(n * unitPrice * discount) };
 }
 
-// 订单详情 4 步流程进度条（目标截图复刻：支付订单→完成拍摄→上传底片→完成）
-const ORDER_STEPS = [
-  { key: 'paid', label: '支付订单' },
-  { key: 'shot', label: '完成拍摄' },
-  { key: 'upload_negatives', label: '上传底片' },
-  { key: 'completed', label: '完成' }
+// 订单详情 11 步横向流程进度条（spec：订单生成 → … → 订单完结）
+// 每一步的完成状态/时间全部由后端接口数据推导（status 阶段机 + 操作日志 logs + 原片上传数），禁止写死日期
+const ORDER_STEPS_11 = [
+  { key: 'created', label: '订单生成', kws: ['创建订单', '订单生成'] },
+  { key: 'contract', label: '生成合同', kws: ['生成合同', '合同'] },
+  { key: 'confirm', label: '沟通确认', kws: ['沟通确认', '沟通'] },
+  { key: 'shooting', label: '拍摄执行', kws: ['拍摄执行', '开始拍摄', '阶段推进 → 已拍摄'] },
+  { key: 'shot_done', label: '拍摄结束', kws: ['完成拍摄', '拍摄结束', '阶段推进 → 已拍摄'] },
+  { key: 'selecting', label: '选片精修', kws: ['选片', '精修'] },
+  { key: 'teaser', label: '预告片输出', kws: ['预告片'] },
+  { key: 'retouch_done', label: '全部精修完成', kws: ['精修完成', '全部精修完成'] },
+  { key: 'raw_pack', label: '原片打包', kws: ['上传原片', '原片打包'], raw: true },
+  { key: 'deliver', label: '统一交付', kws: ['已交付', '统一交付'] },
+  { key: 'complete', label: '订单完结', kws: ['已完成', '订单完结'] }
 ];
-// 由后端 status（6 阶段）推导 4 步的「当前节点」下标
-function stepIndexFor(detail) {
-  if (!detail) return -1;
-  if (detail.cancelled) return 1; // 作废停在完成拍摄阶段
-  const map = { deposit: 1, shot: 2, selecting: 2, retouching: 3, delivered: 4, completed: 4 };
-  const idx = map[detail.status];
-  return idx === undefined ? 0 : idx;
+// 后端 status（6 阶段）→ 已完成的最后一步（1 起）
+const STATUS_BOUNDARY_11 = { deposit: 1, shot: 5, selecting: 6, retouching: 6, delivered: 10, completed: 11 };
+// 作废订单：按日志倒推已推进到哪一步（禁止写死）
+function boundaryFromLogs(logs) {
+  const has = (kw) => (logs || []).some((l) => (l.text || '').includes(kw));
+  if (has('已完成') || has('订单完结')) return 11;
+  if (has('已交付')) return 10;
+  if (has('选片') || has('精修')) return 6;
+  if (has('完成拍摄') || has('拍摄结束') || has('已拍摄')) return 5;
+  return 1;
 }
-function build4Steps(detail, logs) {
-  if (!detail) return ORDER_STEPS.map((s) => ({ ...s, state: 'pending', time: null }));
-  const cur = stepIndexFor(detail);
-  return ORDER_STEPS.map((s, i) => {
-    const state = i < cur ? 'done' : i === cur ? 'current' : 'pending';
+// 11 步推导：done = 已到该步（状态边界）且数据满足；current = 第一个未完成节点；time 全部取后端日志时间
+function build11Steps(detail, logs, rawCount = 0) {
+  if (!detail) return ORDER_STEPS_11.map((s) => ({ ...s, state: 'pending', time: null }));
+  const boundary = detail.cancelled
+    ? boundaryFromLogs(logs)
+    : (STATUS_BOUNDARY_11[detail.status] || 1);
+  let currentIdx = 0;
+  for (let i = 0; i < ORDER_STEPS_11.length; i++) {
+    const s = ORDER_STEPS_11[i];
+    const within = (i + 1) <= boundary;
+    const rawDone = !!s.raw && rawCount > 0 && boundary >= 4; // 原片已上传且拍摄已执行
+    if (!within && !rawDone) { currentIdx = i; break; }
+    if (i === ORDER_STEPS_11.length - 1) currentIdx = ORDER_STEPS_11.length;
+  }
+  return ORDER_STEPS_11.map((s, i) => {
+    const within = (i + 1) <= boundary;
+    const rawDone = !!s.raw && rawCount > 0 && boundary >= 4;
+    const done = within || rawDone;
+    const state = done ? 'done' : (i === currentIdx ? 'current' : 'pending');
     let time = null;
-    if (state === 'done') {
-      const t = findStepTime(logs, STEP_TIME_KW[s.key]);
-      time = s.key === 'paid' && !t ? fmtStepTime(detail.created_at) : t;
+    if (done) {
+      if (s.key === 'created') time = findStepTime(logs, s.kws) || fmtStepTime(detail.created_at);
+      else time = findStepTime(logs, s.kws);
     }
     return { ...s, state, time };
   });
@@ -73,13 +98,6 @@ function findStepTime(logs, kws) {
   }
   return null;
 }
-const STEP_TIME_KW = {
-  paid: ['支付订单', '订单生成', '创建订单'],
-  shot: ['完成拍摄', '拍摄结束'],
-  upload_negatives: ['上传底片', '上传', '选片'],
-  completed: ['完成', '订单完结', '交付']
-};
-
 // 新规范全局色号（订单详情页 v2：轻量低饱和后台风）
 const TEAL = '#67CFC3';          // 状态卡片顶部青绿细线 / 品牌点缀
 const BLUE = '#2DB7F5';          // 主蓝色 / 当前·已完成节点 / 完成拍摄 / Tab 选中 / 确定按钮
@@ -636,7 +654,7 @@ export default function OrderDetail() {
     ...(sel && sel.photos ? sel.photos.map((p) => ({ url: p.photo_url, kind: '选片' })) : [])
   ];
 
-  const steps = build4Steps(detail, detail.logs);
+  const steps = build11Steps(detail, detail.logs, photos.raw.length);
   const statusText =
     (detail.payment_status === 'unpaid' ? '未付定金' : (PAY_STATUS_LABEL[payKey] || '')) +
     (detail.status ? '，' + (STATUS_LABEL[detail.status] || '') : '');
@@ -693,32 +711,32 @@ export default function OrderDetail() {
           {/* 竖向分割线 */}
           <div style={{ width: 1, background: DIV, margin: '16px 0' }} />
 
-          {/* 右侧 4 步横向流程进度条（由后端 status/logs 驱动，支持横向滚动） */}
+          {/* 右侧 11 步横向流程进度条（spec：完成=蓝色圆圈+蓝色对勾 / 当前=蓝色实心 / 未达=灰色空心；连接线蓝/灰；支持横向滚动） */}
           <div className="flex-1" style={{ minWidth: 0, padding: '14px 28px', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 12 }}>
             <div style={{ fontSize: 12, color: TEXT_SUB, textAlign: 'right' }}>
               {statusText}<span style={{ color: BLUE, marginLeft: 8, cursor: 'pointer' }} onClick={() => setLogModal(true)}>查看记录</span>
             </div>
             <div style={{ overflowX: 'auto', overflowY: 'hidden' }}>
-              <div className="flex items-start" style={{ gap: 0, minWidth: 520 }}>
+              <div className="flex items-start" style={{ gap: 0, minWidth: steps.length * 78 + (steps.length - 1) * 22 }}>
                 {steps.map((st, i) => (
                   <React.Fragment key={st.key}>
-                    <div className="flex flex-col items-center" style={{ width: 96, flexShrink: 0 }}>
+                    <div className="flex flex-col items-center" style={{ width: 78, flexShrink: 0 }}>
                       <div style={{
-                        width: 32, height: 32, borderRadius: '50%',
-                        background: st.state === 'current' ? BLUE : '#FFFFFF',
-                        border: st.state === 'done' ? ('1px solid ' + BLUE) : st.state === 'current' ? ('1px solid ' + BLUE) : '1px solid rgba(0,0,0,0.25)',
+                        width: 30, height: 30, borderRadius: '50%',
+                        background: st.state === 'done' ? '#EAF6FD' : st.state === 'current' ? BLUE : '#FFFFFF',
+                        border: st.state === 'done' || st.state === 'current' ? ('1px solid ' + BLUE) : '1px solid rgba(0,0,0,0.25)',
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        color: st.state === 'pending' ? 'rgba(0,0,0,0.25)' : BLUE
+                        color: st.state === 'done' ? BLUE : (st.state === 'pending' ? 'rgba(0,0,0,0.25)' : '#FFFFFF')
                       }}>
                         {st.state === 'done'
                           ? <CheckIcon />
-                          : <span style={{ fontSize: 14, fontWeight: 400, color: st.state === 'current' ? '#fff' : 'rgba(0,0,0,0.25)' }}>{i + 1}</span>}
+                          : <span style={{ fontSize: 13, fontWeight: 400, color: st.state === 'current' ? '#FFFFFF' : 'rgba(0,0,0,0.25)' }}>{i + 1}</span>}
                       </div>
-                      <span style={{ fontSize: 14, marginTop: 7, textAlign: 'center', whiteSpace: 'nowrap', color: st.state === 'pending' ? 'rgba(0,0,0,0.25)' : st.state === 'current' ? '#555555' : 'rgba(0,0,0,0.65)' }}>{st.label}</span>
-                      {st.time ? <span style={{ marginTop: 5, fontSize: 12, textAlign: 'center', color: 'rgba(0,0,0,0.45)' }}>{st.time}</span> : null}
+                      <span style={{ fontSize: 12, marginTop: 7, textAlign: 'center', whiteSpace: 'nowrap', color: st.state === 'pending' ? 'rgba(0,0,0,0.25)' : st.state === 'current' ? '#555555' : 'rgba(0,0,0,0.65)' }}>{st.label}</span>
+                      {st.time ? <span style={{ marginTop: 5, fontSize: 11, textAlign: 'center', color: 'rgba(0,0,0,0.45)' }}>{st.time}</span> : null}
                     </div>
                     {i < steps.length - 1 && (
-                      <div style={{ flex: 1, height: 1, minWidth: 28, marginTop: 16, background: st.state === 'done' ? BLUE : '#E5E5E5' }} />
+                      <div style={{ flex: 1, height: 1, minWidth: 22, marginTop: 15, background: (st.state === 'done' && steps[i + 1].state === 'done') ? BLUE : '#E5E5E5' }} />
                     )}
                   </React.Fragment>
                 ))}
