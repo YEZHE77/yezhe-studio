@@ -97,6 +97,32 @@ function build11Steps(detail, logs) {
   });
 }
 
+// UI 展示用：把 11 个业务微步骤折叠为 4 个宏观节点，不改动后端 status/logs 逻辑
+const DISPLAY_STEP_RANGES = [
+  { label: '支付订单', start: 0, end: 2 },     // 订单生成 / 生成合同 / 沟通确认
+  { label: '完成拍摄', start: 3, end: 4 },     // 拍摄执行 / 拍摄结束
+  { label: '上传底片', start: 5, end: 8 },     // 选片精修 / 预告片输出 / 全部精修完成 / 原片打包
+  { label: '完成', start: 9, end: 10 }          // 统一交付 / 订单完结
+];
+function build4DisplaySteps(steps) {
+  return DISPLAY_STEP_RANGES.map((range, idx) => {
+    const slice = steps.slice(range.start, range.end + 1);
+    const hasCurrent = slice.some((s) => s.state === 'current');
+    const allDone = slice.every((s) => s.state === 'done');
+    let state = 'pending';
+    if (hasCurrent) state = 'current';
+    else if (allDone) state = 'done';
+    // 完成态取组内最后一个有时间的 done 节点
+    let time = null;
+    if (state === 'done') {
+      for (let i = slice.length - 1; i >= 0; i--) {
+        if (slice[i].time) { time = slice[i].time; break; }
+      }
+    }
+    return { key: range.label, label: range.label, state, time, index: idx + 1 };
+  });
+}
+
 // 新规范全局色号（订单详情页 v2：轻量低饱和后台风）
 const TEAL = '#67CFC3';          // 状态卡片顶部青绿细线 / 品牌点缀
 const BLUE = '#2DB7F5';          // 主蓝色 / 当前·已完成节点 / 完成拍摄 / Tab 选中 / 确定按钮
@@ -552,6 +578,7 @@ export default function OrderDetail() {
   ];
 
   const steps = build11Steps(detail, detail.logs);
+  const displaySteps = build4DisplaySteps(steps);
   const statusText =
     (detail.payment_status === 'unpaid' ? '未付定金' : (PAY_STATUS_LABEL[payKey] || '')) +
     (detail.status ? '，' + (STATUS_LABEL[detail.status] || '') : '');
@@ -605,36 +632,34 @@ export default function OrderDetail() {
           {/* 竖向分割线 */}
           <div style={{ width: 1, background: DIV, margin: '16px 0' }} />
 
-          {/* 右侧 11 步横向流程进度条（由后端 status/logs 驱动，支持横向滚动） */}
+          {/* 右侧 4 步宏观流程进度条（由 11 步业务状态折叠展示，不改后端 status/logs 逻辑） */}
           <div className="flex-1" style={{ minWidth: 0, padding: '14px 28px', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 12 }}>
             <div style={{ fontSize: 13, color: TEXT_SUB, textAlign: 'right' }}>
               {statusText}<span style={{ color: BLUE, marginLeft: 8, cursor: 'pointer' }} onClick={() => setBottomTab('status')}>查看记录</span>
             </div>
-            <div style={{ overflowX: 'auto', overflowY: 'hidden' }}>
-              <div className="flex items-start" style={{ gap: 0, minWidth: 1080 }}>
-                {steps.map((st, i) => (
-                  <React.Fragment key={st.key}>
-                    <div className="flex flex-col items-center" style={{ width: 96, flexShrink: 0 }}>
-                      <div style={{
-                        width: 32, height: 32, borderRadius: '50%',
-                        background: st.state === 'current' ? BLUE : '#FFFFFF',
-                        border: st.state === 'done' ? ('1px solid ' + BLUE) : st.state === 'current' ? ('1px solid ' + BLUE) : '1px solid #DCDCDC',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        color: st.state === 'pending' ? '#CFCFCF' : BLUE
-                      }}>
-                        {st.state === 'done'
-                          ? <CheckIcon />
-                          : <span style={{ fontSize: 13, fontWeight: 600, color: st.state === 'current' ? '#fff' : '#CFCFCF' }}>{i + 1}</span>}
-                      </div>
-                      <span style={{ fontSize: 13, marginTop: 7, textAlign: 'center', whiteSpace: 'nowrap', color: st.state === 'pending' ? TEXT_WEAK : st.state === 'current' ? '#555555' : TEXT_MAIN }}>{st.label}</span>
-                      {st.time ? <span style={{ marginTop: 5, fontSize: 12, textAlign: 'center', color: TEXT_SUB }}>{st.time}</span> : null}
+            <div className="flex items-start justify-center" style={{ gap: 0 }}>
+              {displaySteps.map((st, i) => (
+                <React.Fragment key={st.key}>
+                  <div className="flex flex-col items-center" style={{ width: 120, flexShrink: 0 }}>
+                    <div style={{
+                      width: 32, height: 32, borderRadius: '50%',
+                      background: st.state === 'current' ? BLUE : '#FFFFFF',
+                      border: st.state === 'done' ? ('1px solid ' + BLUE) : st.state === 'current' ? ('1px solid ' + BLUE) : '1px solid #DCDCDC',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      color: st.state === 'pending' ? '#CFCFCF' : BLUE
+                    }}>
+                      {st.state === 'done'
+                        ? <CheckIcon />
+                        : <span style={{ fontSize: 13, fontWeight: 600, color: st.state === 'current' ? '#fff' : '#CFCFCF' }}>{st.index}</span>}
                     </div>
-                    {i < steps.length - 1 && (
-                      <div style={{ flex: 1, height: 1, minWidth: 28, marginTop: 16, background: st.state === 'done' ? BLUE : '#E5E5E5' }} />
-                    )}
-                  </React.Fragment>
-                ))}
-              </div>
+                    <span style={{ fontSize: 13, marginTop: 7, textAlign: 'center', whiteSpace: 'nowrap', fontWeight: st.state === 'current' ? 600 : 400, color: st.state === 'pending' ? TEXT_WEAK : st.state === 'current' ? '#555555' : TEXT_MAIN }}>{st.label}</span>
+                    {st.time ? <span style={{ marginTop: 5, fontSize: 12, textAlign: 'center', color: TEXT_SUB }}>{st.time}</span> : null}
+                  </div>
+                  {i < displaySteps.length - 1 && (
+                    <div style={{ width: 80, height: 1, marginTop: 16, background: st.state === 'done' ? BLUE : '#E5E5E5' }} />
+                  )}
+                </React.Fragment>
+              ))}
             </div>
           </div>
         </div>
@@ -695,13 +720,14 @@ export default function OrderDetail() {
             </div>
             <div className="flex-1">
               <div className="grid grid-cols-2" style={{ gap: '16px 40px' }}>
+                {/* 左列：套系 / 定金 / 已付加片费 / 渠道来源 / 执行人；右列：拍摄时间 / 尾款 / 拍摄地址 / 客户（对齐参考图3） */}
                 <InfoRow label="套系名称" value={pkgInfo && pkgInfo.name && pkgInfo.name !== '—' ? pkgInfo.name : '—'} />
-                <InfoRow label="定金" value={'¥' + Number(pkgInfo?.deposit || 0).toLocaleString()} />
-                <InfoRow label="已付加片费" value={'¥' + extraSum.toLocaleString()} />
-                <InfoRow label="渠道来源" value={detail.channel || detail.source || '—'} />
                 <InfoRow label="拍摄时间" value={tbd ? '日期待定' : (detail.shoot_date || '—')} extra={slots} />
+                <InfoRow label="定金" value={'¥' + Number(pkgInfo?.deposit || 0).toLocaleString()} />
                 <InfoRow label="尾款" value={'¥' + remain.toLocaleString()} />
+                <InfoRow label="已付加片费" value={'¥' + extraSum.toLocaleString()} />
                 <InfoRow label="拍摄地址" value={detail.address || '—'} />
+                <InfoRow label="渠道来源" value={detail.channel || detail.source || '—'} />
                 <InfoRow label="客户" value={custName} />
                 <InfoRow label="联系电话" value={phoneList.length ? phoneList.join(' / ') : '—'} />
                 <InfoRow label="收款状态" value={PAY_STATUS_LABEL[payKey] || payKey}
@@ -709,7 +735,7 @@ export default function OrderDetail() {
                     offlinePay ? { t: '线下退款', bg: GREEN, fg: '#fff' } : null,
                     remain > 0 ? { t: '未结算', bg: BLACK_TAG, fg: '#fff' } : null
                   ].filter(Boolean)} />
-                <InfoRow label="参与者" value={execs.length ? execs.map((p) => p.name).join('、') : '—'} />
+                <InfoRow label="执行人" value={execs.length ? execs.map((p) => p.name).join('、') : '—'} />
               </div>
             </div>
           </div>
