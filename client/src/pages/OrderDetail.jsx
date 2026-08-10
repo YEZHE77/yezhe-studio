@@ -175,6 +175,7 @@ export default function OrderDetail() {
   const [miniQr, setMiniQr] = useState(null);
   const [miniQrLoading, setMiniQrLoading] = useState(false);
   const [moreMenu, setMoreMenu] = useState(false);
+  const [custMoreMenu, setCustMoreMenu] = useState(false);
   // 改拍摄日期档期冲突二次确认（验收④）
   const [dateConflict, setDateConflict] = useState(null);
   // 更换套系弹窗（验收⑥）
@@ -240,15 +241,16 @@ export default function OrderDetail() {
   useEffect(() => () => { bgm.pause(); }, []);
   // 点击空白收起下拉（客户信息 / 更多设置 / 执行人下拉）
   useEffect(() => {
-    if (!custInfoOpen && !moreMenu && !execDropdownOpen) return;
+    if (!custInfoOpen && !moreMenu && !custMoreMenu && !execDropdownOpen) return;
     const handler = (e) => {
       if (custInfoOpen) setCustInfoOpen(false);
       if (moreMenu) setMoreMenu(false);
+      if (custMoreMenu) setCustMoreMenu(false);
       if (execDropdownOpen) setExecDropdownOpen(false);
     };
     const id = setTimeout(() => document.addEventListener('click', handler), 0);
     return () => { clearTimeout(id); document.removeEventListener('click', handler); };
-  }, [custInfoOpen, moreMenu, execDropdownOpen]);
+  }, [custInfoOpen, moreMenu, custMoreMenu, execDropdownOpen]);
   // 订单图片（原片/精修片）随订单初始化一次（同 id 不覆盖本地编辑）
   useEffect(() => {
     if (detail && detail.order_photos) {
@@ -563,15 +565,16 @@ export default function OrderDetail() {
   }
 
   // 更多设置下拉菜单（复刻截图：仅保留 编辑订单 / 打印单据 2 项）
-  const renderMoreMenu = () => (
-    <div style={{ position: 'absolute', zIndex: 60, marginTop: 4, background: '#fff', border: '1px solid ' + DIV, borderRadius: 4, boxShadow: '0 6px 20px rgba(0,0,0,0.10)', padding: '6px 0', fontSize: 14, width: 142 }}>
-      <button type="button" onClick={() => { setMoreMenu(false); openEdit(); }} style={moreItemStyle}>
+  // 菜单渲染在按钮内部，position:absolute + top:100% 保证紧贴按钮正下方；align 控制左右对齐
+  const renderMoreMenu = (onClose, align = 'left') => (
+    <div style={{ position: 'absolute', top: '100%', zIndex: 60, marginTop: 4, ...(align === 'right' ? { right: 0 } : { left: 0 }), background: '#fff', border: '1px solid ' + DIV, borderRadius: 4, boxShadow: '0 6px 20px rgba(0,0,0,0.10)', padding: '6px 0', fontSize: 14, width: 142 }}>
+      <button type="button" onClick={() => { onClose && onClose(); openEdit(); }} style={moreItemStyle}>
         <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>
           编辑订单
         </span>
       </button>
-      <button type="button" onClick={() => { setMoreMenu(false); printOrder(); }} style={moreItemStyle}>
+      <button type="button" onClick={() => { onClose && onClose(); printOrder(); }} style={moreItemStyle}>
         <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 6 2 18 2 18 9" /><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" /><rect x="6" y="14" width="12" height="8" /></svg>
           打印单据
@@ -706,13 +709,13 @@ export default function OrderDetail() {
                 <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>
                 关闭订单
               </button>
-              <button type="button" onClick={() => setMoreMenu((m) => !m)}
+              <button type="button" onClick={() => { setMoreMenu((m) => !m); setCustMoreMenu(false); }}
                 style={{ background: 'none', border: 'none', color: TEXT_MAIN, fontSize: 12, textAlign: 'right', cursor: 'pointer', padding: 0, position: 'relative', display: 'flex', alignItems: 'center', gap: 4 }}>
                 <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect x="14" y="14" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" /></svg>
                 更多设置
+                {moreMenu && renderMoreMenu(() => setMoreMenu(false), 'left')}
               </button>
             </div>
-            {moreMenu && renderMoreMenu()}
           </div>
 
           {/* 竖向分割线 */}
@@ -823,12 +826,12 @@ export default function OrderDetail() {
                 <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="4" y1="21" x2="4" y2="14" /><line x1="4" y1="10" x2="4" y2="3" /><line x1="12" y1="21" x2="12" y2="12" /><line x1="12" y1="8" x2="12" y2="3" /><line x1="20" y1="21" x2="20" y2="16" /><line x1="20" y1="12" x2="20" y2="3" /><line x1="1" y1="14" x2="7" y2="14" /><line x1="9" y1="8" x2="15" y2="8" /><line x1="17" y1="16" x2="23" y2="16" /></svg>
                 加片设置
               </button>
-              <button type="button" onClick={() => setMoreMenu((m) => !m)}
+              <button type="button" onClick={() => { setCustMoreMenu((m) => !m); setMoreMenu(false); }}
                 style={{ ...secBtnStyle, display: 'flex', alignItems: 'center', gap: 6, position: 'relative' }}>
                 <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="5" cy="12" r="1" /><circle cx="12" cy="12" r="1" /><circle cx="19" cy="12" r="1" /></svg>
                 更多设置
+                {custMoreMenu && renderMoreMenu(() => setCustMoreMenu(false), 'right')}
               </button>
-              {moreMenu && renderMoreMenu()}
             </div>
           </div>
 
