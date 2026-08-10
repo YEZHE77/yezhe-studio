@@ -499,6 +499,24 @@ export default function OrderDetail() {
     };
   }, [detail, pkgs]);
 
+  // 原片列表排序选项与排序逻辑（工具栏排序按钮；必须放在下面 useMemo 之前，避免工厂函数访问 TDZ）
+  const SORT_OPTS = [
+    { k: 'upload', t: '按上传时间' },
+    { k: 'shoot', t: '按拍摄时间' },
+    { k: 'name', t: '按文件名' },
+    { k: 'shuffle', t: '打乱顺序' }
+  ];
+  const sortPhotos = (arr, key) => {
+    if (!Array.isArray(arr) || arr.length === 0) return arr;
+    if (key === 'name') return [...arr].sort((a, b) => String(a).localeCompare(String(b)));
+    if (key === 'shuffle') {
+      const c = [...arr];
+      for (let i = c.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [c[i], c[j]] = [c[j], c[i]]; }
+      return c;
+    }
+    return arr; // 按上传时间 / 按拍摄时间：沿用原始顺序
+  };
+
   // 原片/精修片 排序（必须放在提前 return 之前，避免 hooks 数量不一致触发 React #310）
   const sortedRaw = useMemo(() => sortPhotos(photos.raw, sortKey), [photos.raw, sortKey]);
   const sortedRetouched = useMemo(() => sortPhotos(photos.retouched, sortKey), [photos.retouched, sortKey]);
@@ -558,23 +576,6 @@ export default function OrderDetail() {
     <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="m5 13 4 4 10-10" /></svg>
   );
 
-  // 原片列表排序选项与排序逻辑（工具栏排序按钮）
-  const SORT_OPTS = [
-    { k: 'upload', t: '按上传时间' },
-    { k: 'shoot', t: '按拍摄时间' },
-    { k: 'name', t: '按文件名' },
-    { k: 'shuffle', t: '打乱顺序' }
-  ];
-  const sortPhotos = (arr, key) => {
-    if (!Array.isArray(arr) || arr.length === 0) return arr;
-    if (key === 'name') return [...arr].sort((a, b) => String(a).localeCompare(String(b)));
-    if (key === 'shuffle') {
-      const c = [...arr];
-      for (let i = c.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [c[i], c[j]] = [c[j], c[i]]; }
-      return c;
-    }
-    return arr; // 按上传时间 / 按拍摄时间：沿用原始顺序
-  };
   return (
     <div style={{ background: '#f7f9fc', minHeight: '100vh', paddingBottom: 24 }}>
       {/* ============ Module 3：订单状态卡片（青绿顶线 + 左侧操作 + 右侧 11 步进度条） ============ */}
