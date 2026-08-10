@@ -727,16 +727,16 @@ export default function OrderDetail() {
       </section>
 
       {/* ============ 客户&订单基础信息卡片（全卡 1:1 复刻，750 设计稿，rpx） ============ */}
-      <section style={{ margin: '18px 24px 0', background: '#FFFFFF', borderRadius: CARD_RADIUS, boxShadow: CARD_SHADOW, overflow: 'hidden' }}>
+      <section style={{ margin: '18px 0 0', background: '#FFFFFF', borderRadius: CARD_RADIUS, boxShadow: CARD_SHADOW, overflow: 'hidden' }}>
 
         {/* ——— 1、卡片头部行 ——— */}
-        <div style={{ padding: '16px 16px 0' }}>
+        <div style={{ padding: '20px 24px 0' }}>
           <div className="flex items-center justify-between">
             {/* 左：圆形客户头像 / 客户姓名 / 手机号 / 编辑笔 / 红色边框【客户信息】 */}
             <div className="flex items-center" style={{ gap: 8 }}>
-              <div style={{ width: 36, height: 36, borderRadius: '50%', background: AVATAR_PURPLE, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 16, fontWeight: 600, flexShrink: 0 }}>{custInitial}</div>
-              <span style={{ fontSize: 15, fontWeight: 600, color: '#333333' }}>{custName}</span>
-              <span style={{ fontSize: 13, color: '#999999' }}>{phoneList.length ? phoneList.join(' / ') : (detail.customer_phone || '')}</span>
+              <div style={{ width: 40, height: 40, borderRadius: '50%', background: AVATAR_PURPLE, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 16, flexShrink: 0 }}>{custInitial}</div>
+              <span style={{ fontSize: 17, color: '#333333' }}>{custName}</span>
+              <span style={{ fontSize: 14, color: '#999999' }}>{phoneList.length ? phoneList.join(' / ') : (detail.customer_phone || '')}</span>
               <button type="button" onClick={openEdit} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2, color: '#999999', display: 'flex' }} title="编辑订单">
                 <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9" /><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z" /></svg>
               </button>
@@ -746,9 +746,9 @@ export default function OrderDetail() {
                 {custInfoOpen && (
                   <div style={{ position: 'absolute', top: '100%', left: 0, marginTop: 6, zIndex: 65, background: '#FFFFFF', border: '1px solid ' + CARD_BORDER, borderRadius: 6, padding: 18, boxShadow: '0 6px 20px rgba(0,0,0,0.12)', width: 260 }}>
                     <div className="flex items-center" style={{ gap: 10, marginBottom: 14 }}>
-                      <div style={{ width: 42, height: 42, borderRadius: '50%', background: AVATAR_PURPLE, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 18, fontWeight: 600, flexShrink: 0 }}>{custInitial}</div>
+                      <div style={{ width: 42, height: 42, borderRadius: '50%', background: AVATAR_PURPLE, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 18, flexShrink: 0 }}>{custInitial}</div>
                       <div>
-                        <div style={{ fontSize: 15, fontWeight: 600, color: '#333333' }}>{custName}</div>
+                        <div style={{ fontSize: 17, color: '#333333' }}>{custName}</div>
                         <div style={{ fontSize: 12, color: TEXT_SUB, marginTop: 2 }}>{detail.order_no || '—'}</div>
                       </div>
                     </div>
@@ -808,30 +808,28 @@ export default function OrderDetail() {
           <div style={{ height: 1, background: HEAD_DIVIDER, margin: '12px 0' }} />
         </div>
 
-        {/* ——— 2、订单信息主体：左封面图 + 右双列信息 ——— */}
-        <div style={{ padding: '0 16px' }}>
-          <div className="flex" style={{ gap: 20 }}>
-            {/* 左侧：套系封面图片 */}
-            <div style={{ width: 190, height: 138, borderRadius: 4, overflow: 'hidden', background: '#f3f4f6', flexShrink: 0 }}>
-              {pkgInfo && pkgInfo.cover_url
-                ? <img src={img(pkgInfo.cover_url)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#999', fontSize: 12 }}>套系缩略图</div>}
-            </div>
-            {/* 右侧：双列信息区 */}
-            <div className="flex-1" style={{ display: 'flex', gap: 48 }}>
-              {/* 左列 */}
-              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 14 }}>
+        {/* ——— 2、订单信息主体：左侧基础信息 + 右侧灰色小卡片分组 ——— */}
+        <div style={{ padding: '0 24px' }}>
+          <div className="flex" style={{ gap: 24, alignItems: 'stretch' }}>
+            {/* 左侧：套系封面图 + 基础信息 */}
+            <div style={{ flex: '0 0 46%', display: 'flex', flexDirection: 'column', gap: 18 }}>
+              <div style={{ width: 190, height: 138, borderRadius: 8, overflow: 'hidden', background: '#f3f4f6', flexShrink: 0 }}>
+                {pkgInfo && pkgInfo.cover_url
+                  ? <img src={img(pkgInfo.cover_url)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#999', fontSize: 12 }}>套系缩略图</div>}
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                 <InfoRow label="套系名称" labelColor={LABEL_COLOR}
                   icon={<><rect x="4" y="3" width="16" height="18" rx="2" /><line x1="8" y1="8" x2="16" y2="8" /><line x1="8" y1="12" x2="16" y2="12" /><line x1="8" y1="16" x2="12" y2="16" /></>}
                   value={pkgInfo && pkgInfo.name && pkgInfo.name !== '—' ? pkgInfo.name : '暂无'} />
                 <InfoRow label="定金" labelColor={LABEL_COLOR}
                   icon={<path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />}
-                  value={<span style={{ fontSize: 15, fontWeight: 500 }}>{'¥' + Number(pkgInfo?.deposit || 0).toLocaleString()}</span>}
+                  value={<span style={{ fontSize: 15 }}>{'¥' + Number(pkgInfo?.deposit || 0).toLocaleString()}</span>}
                   tags={detail.pay_method === 'offline' ? [{ t: '线下收取', bg: TAG_OFFLINE, fg: '#fff' }] : []} />
                 <InfoRow label="已付加片费" labelColor={LABEL_COLOR}
                   icon={<><path d="M4 2v20l2-2 2 2 2-2 2 2 2-2 2 2 2-2 2 2V2l-2 2-2-2-2 2-2-2-2 2-2-2-2 2z" /><line x1="8" y1="7" x2="16" y2="7" /><line x1="8" y1="11" x2="16" y2="11" /><line x1="8" y1="15" x2="12" y2="15" /></>}
                   value={
-                    <span style={{ display: 'flex', alignItems: 'center', gap: 6, position: 'relative', fontSize: 15, fontWeight: 500 }}>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 6, position: 'relative', fontSize: 15 }}>
                       <span>{'¥' + extraSum.toLocaleString()}</span>
                       <span
                         onMouseEnter={() => setAddonHelp(true)} onMouseLeave={() => setAddonHelp(false)}
@@ -857,93 +855,89 @@ export default function OrderDetail() {
                           reload();
                         } catch {}
                       }}
-                      style={{ border: '1px solid #d9d9d9', borderRadius: 3, padding: '2px 6px', fontSize: 13, color: '#222222', background: '#fff', outline: 'none', cursor: 'pointer', maxWidth: 140 }}>
+                      style={{ border: '1px solid #d9d9d9', borderRadius: 4, padding: '3px 8px', fontSize: 14, color: '#222222', background: '#fff', outline: 'none', cursor: 'pointer', maxWidth: 160 }}>
                       <option value="">暂无</option>
                       {channels.map((c) => (
                         <option key={c.id} value={c.name}>{c.name}</option>
                       ))}
                     </select>
                   } />
-                {/* 执行人组件（放在左列内部，头像标签+蓝色加号） */}
                 <InfoRow label="执行人" labelColor={LABEL_COLOR}
                   icon={<><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></>}
                   value={
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                       {execs.length ? execs.map((p, i) => (
                         <div key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#f5f5f5', borderRadius: 999, padding: '2px 12px 2px 4px' }}>
-                          {p.avatar ? <img src={p.avatar} alt="" style={{ width: 36, height: 36, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} onError={(e) => { e.target.style.display = 'none'; e.target.parentElement.insertAdjacentHTML('afterbegin', '<div style="width:36px;height:36px;border-radius:50%;background:#333;color:#fff;font-size:14px;font-weight:500;display:flex;align-items:center;justify-content:center;flex-shrink:0">' + p.name.slice(0,1) + '</div>'); }} />
-                          : <div style={{ width: 36, height: 36, borderRadius: '50%', background: '#333333', color: '#fff', fontSize: 14, fontWeight: 500, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{p.name.slice(0, 1)}</div>}
+                          {p.avatar ? <img src={p.avatar} alt="" style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} onError={(e) => { e.target.style.display = 'none'; e.target.parentElement.insertAdjacentHTML('afterbegin', '<div style="width:32px;height:32px;border-radius:50%;background:#333;color:#fff;font-size:13px;display:flex;align-items:center;justify-content:center;flex-shrink:0">' + p.name.slice(0,1) + '</div>'); }} />
+                          : <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#333333', color: '#fff', fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{p.name.slice(0, 1)}</div>}
                           <span style={{ fontSize: 14, color: '#222222' }}>{p.name}</span>
                           <button type="button" onClick={() => removeExecutor(i)} title="移除此执行人"
-                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#444444', padding: 0, fontSize: 18, lineHeight: 1, flexShrink: 0, fontWeight: 400 }}>&times;</button>
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#444444', padding: 0, fontSize: 18, lineHeight: 1, flexShrink: 0 }}>&times;</button>
                         </div>
                       )) : <span style={{ color: '#999999', fontSize: 14 }}>暂无</span>}
                       <button type="button" onClick={() => { setExecPickerSelections(execs.map((e) => ({ id: e.id, name: e.name, avatar: e.avatar || '' }))); setExecPickerOpen(true); }}
                         title="添加执行人"
-                        style={{ width: 36, height: 36, borderRadius: '50%', background: '#21a6ff', color: '#fff', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: 18, padding: 0, flexShrink: 0, lineHeight: 1, fontWeight: 700 }}>+</button>
+                        style={{ width: 32, height: 32, borderRadius: '50%', background: '#21a6ff', color: '#fff', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: 16, padding: 0, flexShrink: 0 }}>+</button>
                     </div>
                   }
                 />
               </div>
-              </div>
-              {/* 右列 */}
-              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 14 }}>
+            </div>
+
+            {/* 右侧：灰色小卡片分组 */}
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 16, minWidth: 0 }}>
+              {/* 右上卡片：拍摄信息 */}
+              <div style={{ background: '#f7f7f7', borderRadius: 8, padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 16 }}>
                 <InfoRow label="拍摄时间" labelColor={LABEL_COLOR}
                   icon={<><rect x="3" y="4" width="18" height="18" rx="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></>}
                   value={tbd ? '日期待定' : ((detail.shoot_date || '暂无') + (slots.length ? ' ' + slots.join(' ') : ''))} />
                 <InfoRow label="尾款" labelColor={LABEL_COLOR}
                   icon={<><path d="M20 12V8H6a2 2 0 0 1 0-4h14v4" /><path d="M4 6v12a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-4" /><circle cx="16" cy="13" r="1" /></>}
-                  value={<span style={{ fontSize: 15, fontWeight: 500 }}>{'¥' + remain.toLocaleString()}</span>}
+                  value={<span style={{ fontSize: 15 }}>{'¥' + remain.toLocaleString()}</span>}
                   tags={remain > 0 ? [{ t: '未结算', bg: TAG_UNSETTLED, fg: '#fff' }] : []} />
                 <InfoRow label="拍摄地址" labelColor={LABEL_COLOR}
                   icon={<><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" /></>}
                   value={detail.address || '暂无'} />
               </div>
+
+              {/* 右下卡片：套系摘要 */}
+              <div style={{ background: '#f7f7f7', borderRadius: 8, padding: '20px 24px', flex: 1, display: 'flex', flexDirection: 'column' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px 12px' }}>
+                  {(() => {
+                    const SUM_FIELDS = [
+                      { t: '总价', v: '¥' + total.toLocaleString(), ic: <path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" /> },
+                      { t: '服务详情', v: (sumService && sumService !== '—' && sumService !== '暂无') ? (String(sumService).length > 14 ? String(sumService).slice(0, 14) + '…' : String(sumService)) : '暂无', ic: <><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><path d="M14 2v6h6" /><path d="M9 13h6M9 17h6" /></> },
+                      { t: '底片全送', v: sumRawPolicy, ic: <><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8.5" cy="8.5" r="1.5" /><path d="M21 15l-5-5L5 21" /></> },
+                      { t: '加片费', v: sumExtraFee, ic: <><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></> },
+                      { t: '拍摄时长', v: sumDuration, ic: <><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></> },
+                      { t: '拍摄', v: sumRawCount ? String(sumRawCount) + ' 张' : '暂无', ic: <><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" /><circle cx="12" cy="13" r="4" /></> },
+                      { t: '精修片', v: sumRetouch, ic: <><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></> },
+                    ];
+                    return SUM_FIELDS.map((f) => (
+                      <div key={f.t} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                        <div className="flex items-center" style={{ fontSize: 13, color: LABEL_COLOR, gap: 5 }}>
+                          <svg viewBox="0 0 24 24" width={14} height={14} fill="none" stroke={ICON_COLOR} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">{f.ic}</svg>
+                          {f.t}
+                        </div>
+                        <div style={{ fontSize: 15, color: '#222222' }}>{f.v}</div>
+                      </div>
+                    ));
+                  })()}
+                </div>
+                <div style={{ marginTop: 'auto', paddingTop: 16, display: 'flex', justifyContent: 'flex-end' }}>
+                  <button type="button" onClick={() => { setPkgDetailTab('service'); setPkgDetailModal(true); }}
+                    style={{ background: 'none', border: 'none', color: MORE_LINK, fontSize: 14, cursor: 'pointer', padding: 0, whiteSpace: 'nowrap' }}>更多内容</button>
+                </div>
+              </div>
             </div>
           </div>
-
-          {/* ——— 3、执行人单行 ——— */}
-          <div style={{ marginTop: 14 }}>
-             </div>
-
-        {/* ——— 4、浅灰色套系摘要区块（单行横向平铺网格，不拆行为两行） ——— */}
-        <div style={{ marginTop: 14, background: '#f9faf8', borderTop: '1px solid ' + CARD_BORDER, padding: '14px 0' }}>
-          <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center' }}>
-            {(() => {
-              const DIVIDER = '1px solid #d9d9d9';
-              const ALL_FIELDS = [
-                { t: '总价', v: '¥' + total.toLocaleString(), ic: <path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" /> },
-                { t: '服务详情', v: (sumService && sumService !== '—' && sumService !== '暂无') ? (String(sumService).length > 16 ? String(sumService).slice(0, 16) + '…' : String(sumService)) : '暂无', ic: <><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><path d="M14 2v6h6" /><path d="M9 13h6M9 17h6" /></> },
-                { t: '底片全送', v: sumRawPolicy, ic: <><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8.5" cy="8.5" r="1.5" /><path d="M21 15l-5-5L5 21" /></> },
-                { t: '加片费', v: sumExtraFee, ic: <><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></> },
-                { t: '拍摄时长', v: sumDuration, ic: <><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></> },
-                { t: '拍摄', v: sumRawCount ? String(sumRawCount) + ' 张' : '暂无', ic: <><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" /><circle cx="12" cy="13" r="4" /></> },
-                { t: '精修片', v: sumRetouch, ic: <><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></> },
-              ];
-              return (
-                <>
-                  {ALL_FIELDS.map((f, i) => (
-                    <div key={f.t} style={{
-                      padding: '8px 20px',
-                      display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
-                      borderRight: i < ALL_FIELDS.length - 1 ? DIVIDER : 'none'
-                    }}>
-                      <div className="flex items-center" style={{ fontSize: 12, color: LABEL_COLOR, gap: 4 }}>
-                        <svg viewBox="0 0 24 24" width={14} height={14} fill="none" stroke={ICON_COLOR} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">{f.ic}</svg>
-                        {f.t}
-                      </div>
-                      <div style={{ fontSize: 14, color: '#222222', fontWeight: (f.t === '总价' || f.t === '加片费') ? 500 : 400 }}>{f.v}</div>
-                    </div>
-                  ))}
-                  <div style={{ padding: '8px 20px', display: 'flex', alignItems: 'center', flexShrink: 0 }}>
-                    <button type="button" onClick={() => { setPkgDetailTab('service'); setPkgDetailModal(true); }}
-                      style={{ background: 'none', border: 'none', color: MORE_LINK, fontSize: 14, cursor: 'pointer', padding: 0, whiteSpace: 'nowrap' }}>更多内容</button>
-                  </div>
-                </>
-              );
-            })()}
-          </div>
         </div>
+
+        {/* ——— 3、执行人单行（已迁移至左侧基础信息内） ——— */}
+        <div style={{ marginTop: 0 }} />
+
+        {/* ——— 4、浅灰色套系摘要区块（已迁移至右侧灰色小卡片） ——— */}
+        <div style={{ marginTop: 0 }} />
 
         {/* ——— 5、卡片底部：备注信息 ——— */}
         <div style={{ padding: '14px 16px 12px' }}>
@@ -1819,9 +1813,9 @@ const modalSaveStyle = { padding: '8px 16px', borderRadius: 4, fontSize: 14, col
 function InfoRow({ label, value, tags, extra, icon, labelColor }) {
   const lc = labelColor || ICON_COLOR;
   return (
-    <div className="flex" style={{ alignItems: 'flex-start', gap: 0, fontSize: 14, lineHeight: 1.8 }}>
-      <span style={{ color: lc, flexShrink: 0, display: 'flex', alignItems: 'center', gap: 5 }}>
-        {icon ? <svg viewBox="0 0 24 24" width={ICON_SIZE} height={ICON_SIZE} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">{icon}</svg> : null}
+    <div className="flex" style={{ alignItems: 'center', gap: 0, fontSize: 14, lineHeight: 1.6 }}>
+      <span style={{ color: lc, flexShrink: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
+        {icon ? <svg viewBox="0 0 24 24" width={ICON_SIZE} height={ICON_SIZE} fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">{icon}</svg> : null}
         {label}：
       </span>
       <div style={{ color: '#222222', flex: 1 }}>
