@@ -195,14 +195,14 @@ router.post('/', authRequired, requireRole(['admin', 'photographer', 'finance'])
     const logs = JSON.stringify([{ t: nowISO(), text: '创建订单' }]);
     const groom = (b.groom_name || '').trim();
     const bride = (b.bride_name || '').trim();
-    const phones = normPhones(b.phones ?? b.customer_phone);
+    const phones = normPhones(b.customerPhoneList ?? b.phones ?? b.customer_phone);
     const time_slots = normSlots(b.time_slots);
     const executors = normExecutors(b.executors);
     const date_tbd = b.date_tbd ? 1 : 0;
     const shoot_date = date_tbd ? '' : (b.shoot_date || '');
     const customer_name = groom || bride
       ? [groom, bride].filter(Boolean).join(' & ')
-      : (b.customer_name || '');
+      : (b.customerName ?? b.customer_name ?? '');
     const order_name = (b.order_name || '').trim() || (customer_name ? customer_name + ' 拍摄订单' : '未命名订单');
     // 【订单 → 档期】建单前冲突检测：所选拍摄日期若已被其它订单占用或手动锁场，返回 409 供前端弹冲突警告（验收③）
     // 前端二次确认后可带 force=true 强行占用

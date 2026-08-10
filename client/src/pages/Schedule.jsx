@@ -75,6 +75,16 @@ function statusKeyOf(r) {
   return G_STATUS_MAP[r.order_status] ? r.order_status : 'deposit';
 }
 
+// 档期行携带的顾客电话：优先取 JSON 数组 order_phones，回退 order_phone 单值（字段见后端 #583 扩展）
+function orderPhones(r) {
+  if (!r) return '';
+  try {
+    const a = r.order_phones ? JSON.parse(r.order_phones) : null;
+    if (Array.isArray(a) && a.length) return a.filter(Boolean).join(' / ');
+  } catch (e) { /* ignore */ }
+  return r.order_phone || '';
+}
+
 const pad = (n) => String(n).padStart(2, '0');
 
 const ymd = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
@@ -112,6 +122,7 @@ export default function Schedule() {
   const [orderDlg, setOrderDlg] = useState(null);
   const [booking, setBooking] = useState(null);
   const [share, setShare] = useState(null);
+  const [hover, setHover] = useState(null); // 单元格 hover 气泡：{ date, rect }
   const advRef = useRef(null);
   const accRef = useRef(null);
 
@@ -193,6 +204,7 @@ export default function Schedule() {
   const selParts = selDate ? selDate.split('-') : [];
   const selClosed = selDate ? (map[selDate] || []).some((r) => r.status === 'closed' && !(r.order_no)) : false;
   const selState = selDate ? dayState(dayRows, dayPends) : null;
+  const selCustomerRows = selState && selState.orderRows ? selState.orderRows.filter((r) => (r.order_customer || orderPhones(r))) : [];
 
   let sideStatus = '';
   if (!selDate) sideStatus = '请选择日期';
@@ -287,6 +299,8 @@ export default function Schedule() {
 
                 return (
                   <div key={i} onClick={() => setSelDate(date)}
+                    onMouseEnter={(e) => setHover({ date, rect: e.currentTarget.getBoundingClientRect() })}
+                    onMouseLeave={() => setHover(null)}
                     className={'relative cursor-pointer flex flex-col ' + (!selected && !isClosed ? 'hover:bg-[#FAFCFE]' : '')}
                     style={{ minHeight: 120, background: cellBg, padding: 8, boxShadow: selected ? `inset 0 0 0 1px ${G_BLUE}` : 'none' }}>
                     <div className="flex items-start justify-between gap-1">
@@ -335,6 +349,37 @@ export default function Schedule() {
         </div>
       </div>
 
+      {/* 单元格 hover 气泡：展示顾客姓名/手机号（无数据隐藏，#586） */}
+      {hover && (() => {
+        const hRows = rowsOf(hover.date).filter((r) => r.order_no);
+        const visible = hRows.filter((r) => (r.order_customer || orderPhones(r)));
+        if (!visible.length) return null;
+        const rect = hover.rect;
+        const W = 240;
+        let left = rect.right + 8;
+        if (left + W > (window.innerWidth || 1200) - 4) left = rect.left - W - 8;
+        if (left < 4) left = 4;
+        return (
+          <div className="fixed z-50" style={{ left, top: rect.top, width: W, background: '#FFFFFF', border: '1px solid #E5E5E5', borderRadius: 6, boxShadow: '0 4px 16px rgba(0,0,0,0.18)', padding: '12px 14px' }}>
+            <div style={{ fontSize: 12, color: '#999999', marginBottom: 8 }}>{hover.date}</div>
+            {visible.map((r) => {
+              const sk = statusKeyOf(r);
+              const ph = orderPhones(r);
+              return (
+                <div key={r.id} style={{ borderTop: '1px solid #F2F2F2', paddingTop: 8, marginTop: 8 }}>
+                  <div className="flex items-center" style={{ gap: 6 }}>
+                    {sk && <span style={{ width: 8, height: 8, borderRadius: '50%', background: G_STATUS_MAP[sk].color, flexShrink: 0 }} />}
+                    {r.order_customer && <span style={{ fontSize: 14, color: '#333333', fontWeight: 500 }}>{r.order_customer}</span>}
+                  </div>
+                  {ph && <div style={{ fontSize: 13, color: '#666666', marginTop: 4 }}>{ph}</div>}
+                  {r.order_package && <div style={{ fontSize: 12, color: '#999999', marginTop: 2 }}>{r.order_package}{sk ? ' · ' + G_STATUS_MAP[sk].label : ''}</div>}
+                </div>
+              );
+            })}
+          </div>
+        );
+      })()}
+
       {/* 模块 D：右侧深色悬浮面板 */}
       <div className="fixed top-0 right-0 bottom-0 flex flex-col" style={{ width: 220, background: G_PANEL, color: '#FFFFFF', zIndex: 20, padding: '20px 14px' }}>
         <div className="text-center" style={{ fontSize: 12, color: '#BBBBBB', marginBottom: 16 }}>{selDate ? `${Number(selParts[0])}年${Number(selParts[1])}月` : `${y}年${m}月`}</div>
@@ -349,6 +394,26 @@ export default function Schedule() {
         <div style={{ borderTop: '1px solid #555555', margin: '12px 0' }} />
         <div className="text-center" style={{ fontSize: 13, color: '#CCCCCC', padding: '8px 0' }}>{sideStatus}</div>
         <div style={{ borderTop: '1px solid #555555', margin: '12px 0' }} />
+
+        {/* 选中日期有客户数据：展示姓名/手机号（无数据隐藏，#586 修改点4） */}
+        {selCustomerRows.length > 0 && (
+          <div style={{ overflowY: 'auto', maxHeight: 240, marginTop: 4 }}>
+            {selCustomerRows.map((r) => {
+              const ph = orderPhones(r);
+              const sk = statusKeyOf(r);
+              return (
+                <div key={r.id} style={{ background: 'rgba(255,255,255,0.06)', borderRadius: 4, padding: '8px 10px', marginBottom: 8 }}>
+                  <div className="flex items-center" style={{ gap: 6 }}>
+                    {sk && <span style={{ width: 8, height: 8, borderRadius: '50%', background: G_STATUS_MAP[sk].color, flexShrink: 0 }} />}
+                    {r.order_customer && <span style={{ fontSize: 13, color: '#FFFFFF', fontWeight: 500 }}>{r.order_customer}</span>}
+                  </div>
+                  {ph && <div style={{ fontSize: 12, color: '#BBBBBB', marginTop: 3 }}>{ph}</div>}
+                  {r.order_package && <div style={{ fontSize: 12, color: '#999999', marginTop: 2 }}>{r.order_package}{sk ? ' · ' + G_STATUS_MAP[sk].label : ''}</div>}
+                </div>
+              );
+            })}
+          </div>
+        )}
 
         <div style={{ marginTop: 'auto', marginBottom: 'auto', display: 'flex', justifyContent: 'center', width: '100%' }}>
           <button onClick={selClosed ? undefined : () => openNew(selDate)} disabled={selClosed}
@@ -450,6 +515,21 @@ function StatusLegend() {
 
 
 /* ============ 新增订单弹窗（原「添加档期」入口） ============ */
+const PHONE_RE = /^1[3-9]\d{9}$/;
+function toast(msg) {
+  let el = document.getElementById('__schedule_toast__');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = '__schedule_toast__';
+    el.style.cssText = 'position:fixed;left:50%;top:18%;transform:translateX(-50%);background:rgba(0,0,0,.8);color:#fff;padding:8px 16px;border-radius:6px;font-size:14px;z-index:3000;transition:opacity .3s;pointer-events:none;white-space:nowrap;';
+    document.body.appendChild(el);
+  }
+  el.textContent = msg;
+  el.style.opacity = '1';
+  clearTimeout(el.__t);
+  el.__t = setTimeout(() => { el.style.opacity = '0'; }, 2400);
+}
+
 function OrderDialog({ orderDlg, personnel, onClose, onSaved }) {
   const [pkgList, setPkgList] = useState([]);
   const [chList, setChList] = useState([]);
@@ -549,6 +629,12 @@ function OrderDialog({ orderDlg, personnel, onClose, onSaved }) {
     setLocalErr('');
     if (!dateTbd && !shootDate) return setLocalErr('请选择拍摄日期');
     if (!customerName.trim()) return setLocalErr('请填写顾客姓名');
+    const phoneList = phones.map((p) => p.trim()).filter(Boolean);
+    if (phoneList.length === 0) return setLocalErr('请至少填写一个联系电话');
+    if (!phoneList.every((p) => PHONE_RE.test(p))) {
+      const msg = '联系电话格式不正确，请填写有效的 11 位手机号';
+      setLocalErr(msg); toast(msg); return;
+    }
     if (!pkgId) return setLocalErr('请选择套系名称');
     if (!pkgPrice || parseFloat(pkgPrice) <= 0) return setLocalErr('请填写套系价格');
     if (!deposit || parseFloat(deposit) <= 0) return setLocalErr('请填写套系定金');
@@ -556,8 +642,10 @@ function OrderDialog({ orderDlg, personnel, onClose, onSaved }) {
     if (chooseSession && slots.length === 0) return setLocalErr('请选择场次时间段');
     const payload = {
       order_name: orderName.trim(),
+      customerName: customerName.trim(),
+      customerPhoneList: phoneList,
       customer_name: customerName.trim(),
-      phones: phones.map((p) => p.trim()).filter(Boolean),
+      phones: phoneList,
       shoot_date: dateTbd ? '' : shootDate,
       date_tbd: dateTbd ? 1 : 0,
       time_slots: slots,
@@ -665,13 +753,17 @@ function OrderDialog({ orderDlg, personnel, onClose, onSaved }) {
               style={{ width: 18, height: 18, border: `1px solid ${MODAL_BORDER}`, borderRadius: '50%', color: '#999999', fontSize: 14, lineHeight: 1 }}>+</button>
           </div>
           <div className="flex items-center" style={{ gap: 12, marginTop: 12 }}>
-            <input value={customerName} onChange={(e) => setCustomerName(e.target.value)} placeholder="顾客姓名"
-              className="placeholder-[#B5B5B5]"
-              style={{ ...FIELD, flex: 1, width: 'auto', borderColor: MODAL_BORDER }} />
+            <div className="flex items-center" style={{ gap: 4, flex: 1, width: 'auto' }}>
+              <Star />
+              <input value={customerName} onChange={(e) => setCustomerName(e.target.value)} placeholder="顾客姓名"
+                className="placeholder-[#B5B5B5]"
+                style={{ ...FIELD, flex: 1, width: 'auto', borderColor: MODAL_BORDER }} />
+            </div>
             <div className="flex items-center" style={{ gap: 8, flex: 1 }}>
               {phones.map((p, i) => (
-                <div key={i} className="relative" style={{ flex: 1 }}>
-                  <input value={p} onChange={(e) => setPhoneAt(i, e.target.value)} placeholder="添加电话" className="placeholder-[#B5B5B5]" style={{ ...FIELD, borderColor: MODAL_BORDER }} />
+                <div key={i} className="relative flex items-center" style={{ gap: 4, flex: 1 }}>
+                  <Star />
+                  <input value={p} onChange={(e) => setPhoneAt(i, e.target.value)} placeholder="添加电话" className="placeholder-[#B5B5B5]" style={{ ...FIELD, flex: 1, width: 'auto', borderColor: MODAL_BORDER }} />
                   {phones.length > 1 && (
                     <button onClick={() => removePhoneAt(i)} className="absolute top-1/2 -translate-y-1/2 hover:text-[#666666]"
                       style={{ right: 8, fontSize: 12, color: '#BBBBBB' }}>×</button>
@@ -1000,11 +1092,16 @@ function PackagePicker({ pkgList, value, onPick }) {
           {pkgList.length === 0 && <div style={{ padding: '12px', fontSize: 14, color: '#999999' }}>暂无套系</div>}
           {pkgList.map((p) => {
             const on = String(p.id) === String(value);
+            const off = p.status === 'off';
             return (
-              <button key={p.id} type="button" onClick={() => { onPick(String(p.id)); setOpen(false); }}
+              <button key={p.id} type="button" disabled={off}
+                onClick={() => { if (off) return; onPick(String(p.id)); setOpen(false); }}
                 className="w-full text-left transition-colors"
-                style={{ padding: '10px 12px', fontSize: 14, color: '#666666', background: on ? MODAL_POP_HOVER : 'transparent', borderBottom: '1px solid #F2F2F2' }}>
-                <div style={{ fontWeight: 500, color: '#333333' }}>{p.name}</div>
+                style={{ padding: '10px 12px', fontSize: 14, color: off ? '#BBBBBB' : '#666666', background: on ? MODAL_POP_HOVER : 'transparent', borderBottom: '1px solid #F2F2F2', cursor: off ? 'not-allowed' : 'pointer', opacity: off ? 0.6 : 1 }}>
+                <div className="flex items-center" style={{ justifyContent: 'space-between' }}>
+                  <span style={{ fontWeight: 500, color: off ? '#999999' : '#333333' }}>{p.name}</span>
+                  {off && <span style={{ fontSize: 12, color: '#BBBBBB', marginLeft: 8 }}>已下架</span>}
+                </div>
                 <div style={{ fontSize: 12, color: '#999999', marginTop: 2 }}>
                   ¥{p.price ?? '—'} · 定金 ¥{p.deposit ?? '—'} · 时长 {p.duration || '—'} · 精修 {p.retouch_count ?? '—'}
                 </div>
