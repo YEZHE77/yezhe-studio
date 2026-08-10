@@ -664,11 +664,8 @@ export default function OrderDetail() {
           </div>
         </div>
 
-        {/* 实线分割：基础信息 / 摘要 */}
-        <div style={{ height: 1, background: '#e5e7eb' }} />
-
         {/* 中间分区：套系快照摘要（#fbfbf3 独立子卡，全部读取订单快照） */}
-        <div style={{ margin: '24px 36px', background: '#fbfbf3', border: '1px solid ' + CARD_BORDER, borderRadius: 4, padding: '24px 36px' }}>
+        <div style={{ margin: '12px 36px', background: '#fbfbf3', border: '1px solid ' + CARD_BORDER, borderRadius: 4, padding: '24px 36px' }}>
           <div className="grid grid-cols-4" style={{ rowGap: 20 }}>
             {[
               { t: '总价', v: '¥' + total.toLocaleString() },
@@ -690,9 +687,6 @@ export default function OrderDetail() {
             </div>
           </div>
         </div>
-
-        {/* 实线分割：摘要 / 备注 */}
-        <div style={{ height: 1, background: '#e5e7eb' }} />
 
         {/* 底部分区：备注信息（可编辑文本域，带笔形图标） */}
         <div style={{ padding: '16px 20px' }}>
