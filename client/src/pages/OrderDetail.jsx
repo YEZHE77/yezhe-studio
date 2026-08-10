@@ -15,6 +15,7 @@ const STAGE_COLOR = {
 };
 const TYPE_LABEL = { deposit: '定金', balance: '尾款', extra: '加片/增值', refund: '退款' };
 const PAY_STATUS_LABEL = { unpaid: '未付定金', deposit: '已付定金', paid: '已付全款' };
+const HOURS = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0') + ':00');
 
 // —— 加片费核算（验收⑦：一律读订单套系快照，不读套系最新配置）——
 // 套系「加片费」为自由文本（如「¥50/张」），从中抽取数字作为单价，缺省 80 与后端 selection.js 保持一致
@@ -154,7 +155,7 @@ export default function OrderDetail() {
   const [pay, setPay] = useState(null);
   const [err, setErr] = useState('');
   const [edit, setEdit] = useState(false);
-  const [editForm, setEditForm] = useState({ order_name: '', groom_name: '', bride_name: '', customer_phone: '', address: '', shoot_date: '', executor: '', remark: '', status: '' });
+  const [editForm, setEditForm] = useState({ order_name: '', groom_name: '', bride_name: '', customer_phone: '', address: '', shoot_date: '', executor: '', remark: '', status: '', time_slots: [], extra_items: [] });
   const [share, setShare] = useState(null);
   const [shareModal, setShareModal] = useState(false);
   const [shareBusy, setShareBusy] = useState(false);
@@ -287,7 +288,9 @@ export default function OrderDetail() {
       address: detail.address || '', shoot_date: detail.shoot_date || '',
       executors: asArr(detail.executors).map((x) => typeof x === 'object' ? x : { id: null, name: x }),
       channel: detail.channel || '', channel_id: detail.channel_id || '',
-      remark: detail.remark || '', status: detail.status
+      remark: detail.remark || '', status: detail.status,
+      time_slots: asArr(detail.time_slots),
+      extra_items: asArr(detail.extra_items).map((x) => ({ name: String((x && x.name) || ''), amount: (x && x.amount) != null ? String(x.amount) : '' }))
     });
     setEditErrors({});
     setEdit(true);
@@ -314,6 +317,10 @@ export default function OrderDetail() {
         phones: phoneVal ? [phoneVal] : [],
         channel: editForm.channel || '',
         channel_id: editForm.channel_id || '',
+        time_slots: (editForm.time_slots || []).filter(Boolean),
+        extra_items: (editForm.extra_items || [])
+          .map((x) => ({ name: String((x && x.name) || '').trim(), amount: parseFloat(x && x.amount) || 0 }))
+          .filter((x) => x.name || x.amount),
         force: force ? 1 : 0
       });
       setDateConflict(null);
@@ -1223,11 +1230,68 @@ export default function OrderDetail() {
         </div>
       )}
 
-      {/* 编辑订单弹窗（卡片式横向布局，复刻截图） */}
+      {/* 编辑订单右侧抽屉（参考图：套系/价格/定金/尾款/其他消费/拍摄时间 + 客户信息） */}
       {edit && (
-        <div className="fixed inset-0 flex items-center justify-center z-[70] p-4" style={{ background: 'rgba(0,0,0,0.45)' }}>
-          <form onClick={(e) => e.stopPropagation()} onSubmit={saveEdit} style={{ width: '100%', maxWidth: 780, background: '#fff', border: '1px solid ' + DIV, borderRadius: 8, padding: 28, maxHeight: '90vh', overflow: 'auto' }}>
-            <div style={{ color: '#222222', fontWeight: 400, marginBottom: 22, fontSize: 16 }}>编辑订单 · {detail.order_no}</div>
+        <div className="fixed inset-0 z-[70]" style={{ background: 'rgba(0,0,0,0.35)' }} onClick={() => { setEdit(false); setEditErrors({}); }}>
+          <form onClick={(e) => e.stopPropagation()} onSubmit={saveEdit} className="fixed top-0 right-0 bottom-0 flex flex-col" style={{ width: 460, maxWidth: '92vw', background: '#fff', boxShadow: '-2px 0 16px rgba(0,0,0,0.14)', zIndex: 71 }}>
+            <div className="flex items-center justify-between shrink-0" style={{ padding: '16px 20px', borderBottom: '1px solid ' + DIV }}>
+              <span style={{ fontSize: 15, color: '#222222' }}>编辑订单 · {detail.order_no}</span>
+              <button type="button" onClick={() => { setEdit(false); setEditErrors({}); }} style={{ background: 'none', border: 'none', fontSize: 20, lineHeight: 1, color: '#999999', cursor: 'pointer', padding: 2 }}>×</button>
+            </div>
+            <div style={{ flex: 1, overflowY: 'auto', padding: '18px 20px' }}>
+
+              {/* 套系与价格（参考图：套系名称 / 订单价格 / 定金 / 尾款 / 其他消费） */}
+              <div style={{ marginBottom: 16 }}>
+                <div className="flex items-center justify-between" style={{ marginBottom: 8 }}>
+                  <span style={{ fontSize: 13, color: '#666666' }}>套系名称</span>
+                  <button type="button" onClick={openPkgSwitch} style={{ background: 'none', border: 'none', color: BLUE, fontSize: 12, cursor: 'pointer', padding: 0 }}>更换套系</button>
+                </div>
+                <div style={{ background: '#FAFAFA', border: '1px solid ' + DIV, borderRadius: 4, padding: '8px 12px', fontSize: 14, color: '#222222' }}>
+                  {[pkgInfo && pkgInfo.name, pkgInfo && pkgInfo.spec && pkgInfo.spec.name].filter(Boolean).join('｜') || '—'}
+                  <span style={{ color: '#999999', marginLeft: 8, fontSize: 12 }}>¥{Number((pkgInfo && pkgInfo.price) || 0).toLocaleString()}</span>
+                </div>
+              </div>
+              <div className="grid grid-cols-3" style={{ gap: 12, marginBottom: 16 }}>
+                <div>
+                  <div style={{ fontSize: 13, color: '#666666', marginBottom: 4 }}>订单价格</div>
+                  <div style={{ background: '#FAFAFA', border: '1px solid ' + DIV, borderRadius: 4, padding: '8px 12px', fontSize: 13, color: '#333333' }}>¥{total.toLocaleString()}</div>
+                </div>
+                <div>
+                  <div style={{ fontSize: 13, color: '#666666', marginBottom: 4 }}>定金</div>
+                  <div style={{ background: '#FAFAFA', border: '1px solid ' + DIV, borderRadius: 4, padding: '8px 12px', fontSize: 13, color: '#333333' }}>¥{Number(detail.deposit || 0).toLocaleString()}</div>
+                </div>
+                <div>
+                  <div style={{ fontSize: 13, color: '#666666', marginBottom: 4 }}>尾款</div>
+                  <div style={{ background: '#FAFAFA', border: '1px solid ' + DIV, borderRadius: 4, padding: '8px 12px', fontSize: 13, color: '#333333' }}>¥{remain.toLocaleString()}</div>
+                </div>
+              </div>
+              <div style={{ marginBottom: 16 }}>
+                <div style={{ fontSize: 13, color: '#666666', marginBottom: 8 }}>其他消费</div>
+                {(editForm.extra_items || []).map((x, i) => (
+                  <div key={i} className="flex items-center" style={{ gap: 8, marginBottom: 8 }}>
+                    <input value={x.name} onChange={(e) => setEditForm((f) => { const arr = [...f.extra_items]; arr[i] = { ...arr[i], name: e.target.value }; return { ...f, extra_items: arr }; })} placeholder="项目（如 加急费）" style={{ ...modalInputStyle, fontSize: 13, flex: 1 }} />
+                    <input value={x.amount} type="number" onChange={(e) => setEditForm((f) => { const arr = [...f.extra_items]; arr[i] = { ...arr[i], amount: e.target.value }; return { ...f, extra_items: arr }; })} placeholder="金额" style={{ ...modalInputStyle, fontSize: 13, width: 90 }} />
+                    <button type="button" onClick={() => setEditForm((f) => ({ ...f, extra_items: f.extra_items.filter((_, j) => j !== i) }))} style={{ background: 'none', border: 'none', color: '#BBBBBB', fontSize: 16, cursor: 'pointer', padding: '0 4px' }}>×</button>
+                  </div>
+                ))}
+                <button type="button" onClick={() => setEditForm((f) => ({ ...f, extra_items: [...(f.extra_items || []), { name: '', amount: '' }] }))} style={{ background: 'none', border: '1px dashed #D8D8D8', borderRadius: 3, color: BLUE, fontSize: 12, padding: '5px 14px', cursor: 'pointer' }}>+ 添加</button>
+              </div>
+              <div style={{ marginBottom: 16 }}>
+                <div style={{ fontSize: 13, color: '#666666', marginBottom: 8 }}>拍摄时间</div>
+                <div className="flex items-center" style={{ gap: 10, marginBottom: 8 }}>
+                  <input value={editForm.shoot_date} onChange={(e) => setEditForm({ ...editForm, shoot_date: e.target.value })} type="date" style={{ ...modalInputStyle, fontSize: 13 }} />
+                  <span style={{ fontSize: 11, color: '#999999' }}>修改日期将释放旧档期并占用新日期；冲突时会先提示。</span>
+                </div>
+                <div className="flex flex-wrap" style={{ gap: 6 }}>
+                  {HOURS.map((h) => {
+                    const on = (editForm.time_slots || []).includes(h);
+                    return (
+                      <button key={h} type="button" onClick={() => setEditForm((f) => ({ ...f, time_slots: on ? f.time_slots.filter((x) => x !== h) : [...(f.time_slots || []), h] }))}
+                        style={{ padding: '3px 9px', borderRadius: 3, fontSize: 12, border: on ? ('1px solid ' + BLUE) : '1px solid #D8D8D8', background: on ? '#EAF6FD' : '#fff', color: on ? BLUE : '#666666', cursor: 'pointer' }}>{h}</button>
+                    );
+                  })}
+                </div>
+              </div>
 
             {/* 双卡片横向布局 */}
             <div style={{ display: 'flex', gap: 20, marginBottom: 20 }}>
@@ -1343,15 +1407,10 @@ export default function OrderDetail() {
                   <input value={editForm.remark} onChange={(e) => setEditForm({ ...editForm, remark: e.target.value })} placeholder="选填备注" style={{ ...modalInputStyle, fontSize: 13 }} />
                 </div>
               </div>
-              <div style={{ marginTop: 16, background: '#fff', borderRadius: 4, padding: '12px 14px', fontSize: 13 }}>
-                <span style={{ color: '#999999' }}>当前套系：</span>
-                <b style={{ color: '#333333' }}>{(pkgInfo && pkgInfo.name) || '—'}</b>
-                <span style={{ color: '#10b981', marginLeft: 8 }}>¥{Number((pkgInfo && pkgInfo.price) || 0).toLocaleString()}</span>
-                <span style={{ color: '#999999', marginLeft: 8, fontSize: 11 }}>（只读，更换套系请在"更多设置"操作）</span>
-              </div>
             </div>
 
-            <div className="flex justify-end" style={{ gap: 10 }}>
+            </div>
+            <div className="flex justify-end shrink-0" style={{ gap: 10, padding: '14px 20px', borderTop: '1px solid ' + DIV }}>
               <button type="button" onClick={() => { setEdit(false); setEditErrors({}); }} style={modalCancelStyle}>取消</button>
               <button type="submit" style={modalSaveStyle}>保存</button>
             </div>
