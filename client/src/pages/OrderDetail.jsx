@@ -172,6 +172,7 @@ export default function OrderDetail() {
   // 备注行内编辑（需求：备注由纯文本改为可编辑文本域）
   const [editingRemark, setEditingRemark] = useState(false);
   const [remarkDraft, setRemarkDraft] = useState('');
+  const [hoverRemark, setHoverRemark] = useState(false);
 
   const loadSel = useCallback((oid) => {
     http.get('/api/admin/photo-select/' + oid).then((r) => setSel(r.data)).catch(() => setSel(null));
@@ -690,30 +691,42 @@ export default function OrderDetail() {
           </div>
         </div>
 
-        {/* 底部分区：备注信息（可编辑文本域，带笔形图标） */}
+        {/* 底部分区：备注信息（图标+标题+内容同行，hover 内容弹「✍️编辑」气泡） */}
         <div style={{ padding: '16px 20px' }}>
-          <div className="flex items-center" style={{ gap: 8, marginBottom: 8 }}>
-            <span style={{ fontSize: 14, color: TEXT_SUB }}>备注信息</span>
-            {!editingRemark && (
-              <button type="button" onClick={() => { setRemarkDraft(detail.remark || ''); setEditingRemark(true); }}
-                title="编辑备注" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: TEXT_SUB, display: 'flex', alignItems: 'center' }}>
-                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9" /><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z" /></svg>
-              </button>
-            )}
-          </div>
           {editingRemark ? (
-            <textarea
-              autoFocus
-              value={remarkDraft}
-              onChange={(e) => setRemarkDraft(e.target.value)}
-              onBlur={saveRemark}
-              placeholder="暂无"
-              rows={3}
-              style={{ width: '100%', resize: 'vertical', fontSize: 14, color: TEXT_MAIN, padding: '8px 10px', border: '1px solid ' + CARD_BORDER, borderRadius: 4, outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box', lineHeight: 1.6 }}
-            />
+            <div>
+              <div className="flex items-center" style={{ gap: 6, marginBottom: 8 }}>
+                <span style={{ fontSize: 14 }}>✍️</span>
+                <span style={{ fontSize: 14, color: TEXT_SUB, flexShrink: 0 }}>备注信息：</span>
+              </div>
+              <textarea
+                autoFocus
+                value={remarkDraft}
+                onChange={(e) => setRemarkDraft(e.target.value)}
+                onBlur={saveRemark}
+                placeholder="暂无"
+                rows={3}
+                style={{ width: '100%', resize: 'vertical', fontSize: 14, color: TEXT_MAIN, padding: '8px 10px', border: '1px solid ' + CARD_BORDER, borderRadius: 4, outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box', lineHeight: 1.6 }}
+              />
+            </div>
           ) : (
-            <div style={{ fontSize: 14, color: TEXT_MAIN, whiteSpace: 'pre-wrap', minHeight: 20 }}>
-              {detail.remark ? detail.remark : <span style={{ color: '#888888' }}>暂无</span>}
+            <div className="flex items-center" style={{ gap: 6, fontSize: 14 }}>
+              <span style={{ flexShrink: 0 }}>✍️</span>
+              <span style={{ color: TEXT_SUB, flexShrink: 0 }}>备注信息：</span>
+              <span
+                style={{ position: 'relative', display: 'inline-block', color: detail.remark ? TEXT_MAIN : '#888888', cursor: 'pointer' }}
+                onMouseEnter={() => setHoverRemark(true)}
+                onMouseLeave={() => setHoverRemark(false)}
+                onClick={() => { setRemarkDraft(detail.remark || ''); setEditingRemark(true); }}
+              >
+                {detail.remark ? detail.remark : '暂无'}
+                {hoverRemark && (
+                  <span style={{ position: 'absolute', bottom: '100%', left: 0, marginBottom: 6, background: '#FFFFFF', border: '1px solid #D1D5DB', borderRadius: 4, padding: '4px 10px', fontSize: 13, color: TEXT_MAIN, whiteSpace: 'nowrap', boxShadow: '0 2px 8px rgba(0,0,0,0.08)', zIndex: 20, cursor: 'pointer' }}>
+                    ✍️ 编辑
+                    <span style={{ position: 'absolute', top: '100%', left: 12, width: 0, height: 0, borderLeft: '5px solid transparent', borderRight: '5px solid transparent', borderTop: '5px solid #D1D5DB' }} />
+                  </span>
+                )}
+              </span>
             </div>
           )}
         </div>
