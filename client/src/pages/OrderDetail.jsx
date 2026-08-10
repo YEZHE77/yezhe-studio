@@ -669,12 +669,12 @@ export default function OrderDetail() {
           {/* 左侧订单操作区 */}
           <div className="flex flex-col justify-center shrink-0" style={{ width: '26%', minWidth: 240, padding: '16px 28px', gap: 10, position: 'relative' }}>
             <div style={{ fontSize: 12, color: TEXT_SUB, marginBottom: 2 }}>
-              订单编号：<span style={{ color: '#333333', fontWeight: 500 }}>{detail.order_no}</span>
+              订单编号：<span style={{ color: '#333333', fontWeight: 400 }}>{detail.order_no}</span>
             </div>
             <button type="button" onClick={finishShoot} disabled={detail.status === 'cancelled'}
-              style={{ width: '100%', height: 38, borderRadius: 2, background: BLUE, color: '#fff', fontSize: 12, fontWeight: 500, border: '1px solid ' + BLUE, opacity: detail.status === 'cancelled' ? 0.4 : 1, cursor: 'pointer' }}>完成拍摄</button>
+              style={{ width: '100%', height: 38, borderRadius: 2, background: BLUE, color: '#fff', fontSize: 12, fontWeight: 400, border: '1px solid ' + BLUE, opacity: detail.status === 'cancelled' ? 0.4 : 1, cursor: 'pointer' }}>完成拍摄</button>
             <button type="button" onClick={openMiniQr} disabled={miniQrLoading}
-              style={{ width: '100%', height: 38, borderRadius: 2, background: BLACK_TAG, color: '#fff', fontSize: 12, fontWeight: 500, border: '1px solid ' + BLACK_TAG, cursor: 'pointer', opacity: miniQrLoading ? 0.6 : 1 }}>分享订单</button>
+              style={{ width: '100%', height: 38, borderRadius: 2, background: BLACK_TAG, color: '#fff', fontSize: 12, fontWeight: 400, border: '1px solid ' + BLACK_TAG, cursor: 'pointer', opacity: miniQrLoading ? 0.6 : 1 }}>分享订单</button>
             <div className="flex items-center" style={{ justifyContent: 'space-between', marginTop: 2 }}>
               <button type="button" onClick={cancel}
                 style={{ background: 'none', border: 'none', color: TEXT_MAIN, fontSize: 12, textAlign: 'left', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', gap: 4 }}>
@@ -784,7 +784,7 @@ export default function OrderDetail() {
             {/* 右：四个功能按钮 */}
             <div className="flex items-center" style={{ gap: 12 }}>
               <button type="button" onClick={() => setQuestionnaireModal(true)}
-                style={{ height: 36, borderRadius: 2, background: SURVEY_BTN, color: '#fff', fontSize: 12, fontWeight: 500, border: '1px solid ' + SURVEY_BTN, padding: '0 14px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
+                style={{ height: 36, borderRadius: 2, background: SURVEY_BTN, color: '#fff', fontSize: 12, fontWeight: 400, border: '1px solid ' + SURVEY_BTN, padding: '0 14px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
                 <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><path d="M14 2v6h6" /><path d="M9 13h6M9 17h6" /></svg>
                 调查问卷
               </button>
@@ -995,7 +995,7 @@ export default function OrderDetail() {
                 style={{
                   padding: '0 20px', height: 44, background: 'none', border: 'none', cursor: 'pointer', fontSize: 12,
                   color: active ? BLUE : 'rgba(0,0,0,0.65)',
-                  borderBottom: active ? '2px solid ' + BLUE : '2px solid transparent', fontWeight: active ? 500 : 400
+                  borderBottom: active ? '2px solid ' + BLUE : '2px solid transparent', fontWeight: 400
                 }}>{tb.t}({count})</button>
             );
           })}
@@ -1121,7 +1121,7 @@ export default function OrderDetail() {
                 style={{
                   padding: '0 16px', height: 46, background: 'none', border: 'none', cursor: 'pointer', fontSize: 12,
                   color: active ? BLUE : 'rgba(0,0,0,0.65)',
-                  borderBottom: active ? ('2px solid ' + BLUE) : '2px solid transparent', fontWeight: active ? 500 : 400
+                  borderBottom: active ? ('2px solid ' + BLUE) : '2px solid transparent', fontWeight: 400
                 }}>{tb.t}</button>
             );
           })}
@@ -1186,7 +1186,7 @@ export default function OrderDetail() {
       {pay && (
         <div className="fixed inset-0 flex items-center justify-center z-[70] p-4" style={{ background: 'rgba(0,0,0,0.45)' }}>
           <div onClick={(e) => e.stopPropagation()} style={{ width: '100%', maxWidth: 420, background: '#fff', border: '1px solid ' + DIV, borderRadius: 8, padding: 24 }}>
-            <div style={{ color: '#222222', fontWeight: 500, marginBottom: 16 }}>登记收款 · {detail.order_no}</div>
+            <div style={{ color: '#222222', fontWeight: 400, marginBottom: 16 }}>登记收款 · {detail.order_no}</div>
             <select value={pay.type} onChange={(e) => setPay({ ...pay, type: e.target.value })} style={modalInputStyle}>
               <option value="deposit">定金</option><option value="balance">尾款</option><option value="extra">加片/增值</option>
             </select>
@@ -1210,13 +1210,13 @@ export default function OrderDetail() {
       {edit && (
         <div className="fixed inset-0 flex items-center justify-center z-[70] p-4" style={{ background: 'rgba(0,0,0,0.45)' }}>
           <form onClick={(e) => e.stopPropagation()} onSubmit={saveEdit} style={{ width: '100%', maxWidth: 780, background: '#fff', border: '1px solid ' + DIV, borderRadius: 8, padding: 28, maxHeight: '90vh', overflow: 'auto' }}>
-            <div style={{ color: '#222222', fontWeight: 600, marginBottom: 22, fontSize: 16 }}>编辑订单 · {detail.order_no}</div>
+            <div style={{ color: '#222222', fontWeight: 400, marginBottom: 22, fontSize: 16 }}>编辑订单 · {detail.order_no}</div>
 
             {/* 双卡片横向布局 */}
             <div style={{ display: 'flex', gap: 20, marginBottom: 20 }}>
               {/* 卡片 1：基本信息 */}
               <div style={{ flex: '1 1 50%', minWidth: 0, background: '#FAFAFA', border: '1px solid ' + DIV, borderRadius: 6, padding: 18 }}>
-                <div style={{ fontSize: 14, fontWeight: 600, color: '#333333', marginBottom: 16, paddingBottom: 10, borderBottom: '1px solid ' + DIV }}>
+                <div style={{ fontSize: 14, fontWeight: 400, color: '#333333', marginBottom: 16, paddingBottom: 10, borderBottom: '1px solid ' + DIV }}>
                   <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 6, verticalAlign: -2 }}>
                     <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" />
                   </svg>
@@ -1246,7 +1246,7 @@ export default function OrderDetail() {
 
               {/* 卡片 2：订单详情 */}
               <div style={{ flex: '1 1 50%', minWidth: 0, background: '#FAFAFA', border: '1px solid ' + DIV, borderRadius: 6, padding: 18 }}>
-                <div style={{ fontSize: 14, fontWeight: 600, color: '#333333', marginBottom: 16, paddingBottom: 10, borderBottom: '1px solid ' + DIV }}>
+                <div style={{ fontSize: 14, fontWeight: 400, color: '#333333', marginBottom: 16, paddingBottom: 10, borderBottom: '1px solid ' + DIV }}>
                   <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 6, verticalAlign: -2 }}>
                     <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><path d="M14 2v6h6" />
                   </svg>
@@ -1346,7 +1346,7 @@ export default function OrderDetail() {
       {dateConflict && (
         <div className="fixed inset-0 flex items-center justify-center z-[90] p-4" style={{ background: 'rgba(0,0,0,0.45)' }}>
           <div onClick={(e) => e.stopPropagation()} style={{ width: '100%', maxWidth: 400, background: '#fff', borderRadius: 8, padding: 24 }}>
-            <div style={{ color: '#222222', fontWeight: 600, marginBottom: 8 }}>档期冲突</div>
+            <div style={{ color: '#222222', fontWeight: 400, marginBottom: 8 }}>档期冲突</div>
             <div style={{ fontSize: 14, color: '#333333', lineHeight: 1.7 }}>{dateConflict}</div>
             <div style={{ fontSize: 12, color: '#888888', marginTop: 8 }}>继续保存会在同一天产生重复占用，请确认是否由不同执行人分别承接。</div>
             <div className="flex justify-end" style={{ gap: 8, marginTop: 16 }}>
@@ -1368,7 +1368,7 @@ export default function OrderDetail() {
         return (
           <div className="fixed inset-0 flex items-center justify-center z-[85] p-4" style={{ background: 'rgba(0,0,0,0.45)' }}>
             <div onClick={(e) => e.stopPropagation()} style={{ width: '100%', maxWidth: 460, background: '#fff', borderRadius: 8, padding: 24 }}>
-              <div style={{ color: '#222222', fontWeight: 600, marginBottom: 4 }}>更换套系</div>
+              <div style={{ color: '#222222', fontWeight: 400, marginBottom: 4 }}>更换套系</div>
               <div style={{ fontSize: 12, color: '#888888', marginBottom: 16 }}>
                 更换后会按所选套系的<b>最新配置</b>重新生成本订单快照，<b>仅影响当前订单</b>，其它历史订单不受影响。
               </div>
@@ -1419,7 +1419,7 @@ export default function OrderDetail() {
         return (
           <div className="fixed inset-0 flex items-center justify-center z-[85] p-4" style={{ background: 'rgba(0,0,0,0.45)' }}>
             <div onClick={(e) => e.stopPropagation()} style={{ width: '100%', maxWidth: 440, background: '#fff', borderRadius: 8, padding: 24 }}>
-              <div style={{ color: '#222222', fontWeight: 600, marginBottom: 4 }}>加片设置</div>
+              <div style={{ color: '#222222', fontWeight: 400, marginBottom: 4 }}>加片设置</div>
               <div style={{ fontSize: 12, color: '#888888', marginBottom: 16 }}>
                 {addonBox.fromSnapshot
                   ? '加片单价与含修张数取自本订单下单时的套系快照，之后修改套系不会影响本单核算。'
@@ -1467,7 +1467,7 @@ export default function OrderDetail() {
           <div onClick={(e) => e.stopPropagation()} style={{ width: '100%', maxWidth: 620, background: '#ffffff', borderRadius: 8, maxHeight: '90vh', overflow: 'auto', boxShadow: '0 12px 40px rgba(0,0,0,0.18)' }}>
             {/* 头部 */}
             <div className="flex items-center justify-between" style={{ padding: '20px 24px', borderBottom: '1px solid ' + DIV }}>
-              <div style={{ fontSize: 16, fontWeight: 600, color: '#222222' }}>套餐更多内容</div>
+              <div style={{ fontSize: 16, fontWeight: 400, color: '#222222' }}>套餐更多内容</div>
               <button type="button" onClick={() => setPkgDetailModal(false)}
                 style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#999999', fontSize: 22, lineHeight: 1 }} aria-label="关闭">×</button>
             </div>
@@ -1486,7 +1486,7 @@ export default function OrderDetail() {
                 const a = pkgDetailTab === tb.k;
                 return (
                   <button key={tb.k} type="button" onClick={() => setPkgDetailTab(tb.k)}
-                    style={{ padding: '10px 16px', background: 'none', border: 'none', cursor: 'pointer', fontSize: 14, color: a ? BLUE : '#666666', borderBottom: a ? ('2px solid ' + BLUE) : '2px solid transparent', fontWeight: a ? 500 : 400 }}>
+                    style={{ padding: '10px 16px', background: 'none', border: 'none', cursor: 'pointer', fontSize: 14, color: a ? BLUE : '#666666', borderBottom: a ? ('2px solid ' + BLUE) : '2px solid transparent', fontWeight: 400 }}>
                     {tb.t}
                   </button>
                 );
@@ -1521,7 +1521,7 @@ export default function OrderDetail() {
       {execPickerOpen && (
         <div onClick={() => setExecPickerOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 96, background: 'rgba(0,0,0,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <div onClick={(e) => e.stopPropagation()} style={{ background: '#fff', borderRadius: 8, padding: 24, width: 360, maxHeight: '70vh', overflow: 'auto', boxShadow: '0 8px 32px rgba(0,0,0,0.18)' }}>
-            <div style={{ fontSize: 16, fontWeight: 600, color: '#222222', marginBottom: 16 }}>选择执行人</div>
+            <div style={{ fontSize: 16, fontWeight: 400, color: '#222222', marginBottom: 16 }}>选择执行人</div>
             {personnel.length === 0 && <div style={{ padding: '12px 0', fontSize: 14, color: '#999999' }}>暂无人员（请先在设置中配置执行人）</div>}
             {personnel.map((p) => {
               const sel = execPickerSelections.some((x) => x.id === p.id);
@@ -1532,7 +1532,7 @@ export default function OrderDetail() {
                 }} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', cursor: 'pointer', borderRadius: 4, background: sel ? '#e6f4ff' : 'transparent', marginBottom: 2 }}>
                   <span style={{ width: 18, height: 18, borderRadius: 3, border: '2px solid ' + (sel ? BLUE : '#D8D8D8'), background: sel ? BLUE : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 12, flexShrink: 0 }}>{sel ? '✓' : ''}</span>
                   {p.avatar ? <img src={p.avatar} alt="" style={{ width: 28, height: 28, borderRadius: '50%', objectFit: 'cover' }} />
-                    : <div style={{ width: 28, height: 28, borderRadius: '50%', background: '#333333', color: '#fff', fontSize: 12, fontWeight: 500, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{p.name.slice(0, 1)}</div>}
+                    : <div style={{ width: 28, height: 28, borderRadius: '50%', background: '#333333', color: '#fff', fontSize: 12, fontWeight: 400, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{p.name.slice(0, 1)}</div>}
                   <span style={{ fontSize: 14, color: '#222222' }}>{p.name}</span>
                 </div>
               );
@@ -1551,7 +1551,7 @@ export default function OrderDetail() {
       {shareModal && (
         <div className="fixed inset-0 flex items-center justify-center z-[80] p-4" style={{ background: 'rgba(0,0,0,0.45)' }}>
           <div onClick={(e) => e.stopPropagation()} style={{ width: '100%', maxWidth: 420, background: '#fff', border: '1px solid ' + DIV, borderRadius: 8, padding: 24, textAlign: 'center' }}>
-            <div style={{ color: '#222222', fontWeight: 500, marginBottom: 4 }}>客户影集分享</div>
+            <div style={{ color: '#222222', fontWeight: 400, marginBottom: 4 }}>客户影集分享</div>
             <div style={{ fontSize: 12, color: '#666666', marginBottom: 16 }}>扫码或复制链接，客户即可在手机上查看成品影集（仅展示样片/成片，不含原片）</div>
             {share && share.qr_url ? (
               <>
@@ -1575,7 +1575,7 @@ export default function OrderDetail() {
           <div className="fixed inset-0 z-[90]" style={{ background: 'rgba(0,0,0,0.3)' }} onClick={closeMiniQr} />
           <div onClick={(e) => e.stopPropagation()}
             style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 95, width: 240, background: '#fff', borderRadius: 8, padding: 16, boxShadow: '0 20px 60px rgba(0,0,0,0.18)' }}>
-            <div style={{ color: '#222222', fontWeight: 500, marginBottom: 8 }}>订单二维码</div>
+            <div style={{ color: '#222222', fontWeight: 400, marginBottom: 8 }}>订单二维码</div>
             {miniQr ? (
               <img src={miniQr} alt="订单二维码" style={{ width: 176, height: 176, margin: '0 auto', borderRadius: 8 }} />
             ) : (
@@ -1599,13 +1599,13 @@ export default function OrderDetail() {
         <div style={{ maxWidth: 700, margin: '0 auto', fontFamily: 'SimSun, STSong, serif', color: '#000' }}>
           {/* 标题 */}
           <div style={{ textAlign: 'center', borderBottom: '2px solid #000', paddingBottom: 16, marginBottom: 20 }}>
-            <div style={{ fontSize: 22, fontWeight: 'bold', letterSpacing: 4 }}>拍摄服务单</div>
+            <div style={{ fontSize: 22, fontWeight: 400, letterSpacing: 4 }}>拍摄服务单</div>
             <div style={{ fontSize: 14, marginTop: 8, color: '#555' }}>订单编号：{detail.order_no}</div>
           </div>
 
           {/* 客户信息 */}
           <div style={{ marginBottom: 20 }}>
-            <div style={{ fontSize: 16, fontWeight: 'bold', borderBottom: '1px solid #ccc', paddingBottom: 6, marginBottom: 10 }}>客户信息</div>
+            <div style={{ fontSize: 16, fontWeight: 400, borderBottom: '1px solid #ccc', paddingBottom: 6, marginBottom: 10 }}>客户信息</div>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
               <tbody>
                 <tr>
@@ -1630,7 +1630,7 @@ export default function OrderDetail() {
 
           {/* 订单信息 */}
           <div style={{ marginBottom: 20 }}>
-            <div style={{ fontSize: 16, fontWeight: 'bold', borderBottom: '1px solid #ccc', paddingBottom: 6, marginBottom: 10 }}>订单信息</div>
+            <div style={{ fontSize: 16, fontWeight: 400, borderBottom: '1px solid #ccc', paddingBottom: 6, marginBottom: 10 }}>订单信息</div>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
               <tbody>
                 <tr>
@@ -1656,7 +1656,7 @@ export default function OrderDetail() {
           {/* 套系详情 */}
           {pkgInfo && (
             <div style={{ marginBottom: 20 }}>
-              <div style={{ fontSize: 16, fontWeight: 'bold', borderBottom: '1px solid #ccc', paddingBottom: 6, marginBottom: 10 }}>套系详情</div>
+              <div style={{ fontSize: 16, fontWeight: 400, borderBottom: '1px solid #ccc', paddingBottom: 6, marginBottom: 10 }}>套系详情</div>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
                 <tbody>
                   <tr>
@@ -1684,14 +1684,14 @@ export default function OrderDetail() {
 
           {/* 收款信息 */}
           <div style={{ marginBottom: 20 }}>
-            <div style={{ fontSize: 16, fontWeight: 'bold', borderBottom: '1px solid #ccc', paddingBottom: 6, marginBottom: 10 }}>收款信息</div>
+            <div style={{ fontSize: 16, fontWeight: 400, borderBottom: '1px solid #ccc', paddingBottom: 6, marginBottom: 10 }}>收款信息</div>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
               <tbody>
                 <tr>
                   <td style={{ padding: '4px 8px', width: 100, color: '#555' }}>应收总额</td>
-                  <td style={{ padding: '4px 8px', fontWeight: 'bold' }}>¥{total.toLocaleString()}</td>
+                  <td style={{ padding: '4px 8px', fontWeight: 400 }}>¥{total.toLocaleString()}</td>
                   <td style={{ padding: '4px 8px', width: 80, color: '#555' }}>已收金额</td>
-                  <td style={{ padding: '4px 8px', color: '#10b981', fontWeight: 'bold' }}>¥{paid.toLocaleString()}</td>
+                  <td style={{ padding: '4px 8px', color: '#10b981', fontWeight: 400 }}>¥{paid.toLocaleString()}</td>
                 </tr>
                 <tr>
                   <td style={{ padding: '4px 8px', color: '#555' }}>待收余额</td>
@@ -1729,7 +1729,7 @@ export default function OrderDetail() {
           {/* 备注 */}
           {detail.remark && (
             <div style={{ marginBottom: 20 }}>
-              <div style={{ fontSize: 16, fontWeight: 'bold', borderBottom: '1px solid #ccc', paddingBottom: 6, marginBottom: 10 }}>备注</div>
+              <div style={{ fontSize: 16, fontWeight: 400, borderBottom: '1px solid #ccc', paddingBottom: 6, marginBottom: 10 }}>备注</div>
               <div style={{ fontSize: 14, whiteSpace: 'pre-wrap' }}>{detail.remark}</div>
             </div>
           )}
@@ -1747,7 +1747,7 @@ export default function OrderDetail() {
         <div onClick={() => setLogModal(false)} style={{ position: 'fixed', inset: 0, zIndex: 70, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <div onClick={(e) => e.stopPropagation()} style={{ width: '100%', maxWidth: 720, maxHeight: '80vh', background: '#ffffff', borderRadius: 8, overflow: 'hidden', boxShadow: '0 12px 40px rgba(0,0,0,0.18)', display: 'flex', flexDirection: 'column' }}>
             <div className="flex items-center justify-between" style={{ padding: '16px 24px', borderBottom: '1px solid ' + DIV, flexShrink: 0 }}>
-              <div style={{ fontSize: 16, fontWeight: 600, color: '#222222' }}>订单记录 · {detail.order_no}</div>
+              <div style={{ fontSize: 16, fontWeight: 400, color: '#222222' }}>订单记录 · {detail.order_no}</div>
               <button type="button" onClick={() => setLogModal(false)}
                 style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#999999', fontSize: 22, lineHeight: 1, padding: 0 }} aria-label="关闭">×</button>
             </div>
@@ -1756,7 +1756,7 @@ export default function OrderDetail() {
                 const active = logModalTab === tb.k;
                 return (
                   <button key={tb.k} type="button" onClick={() => setLogModalTab(tb.k)}
-                    style={{ padding: '10px 16px', background: 'none', border: 'none', cursor: 'pointer', fontSize: 14, color: active ? BLUE : '#666666', borderBottom: active ? ('2px solid ' + BLUE) : '2px solid transparent', fontWeight: active ? 500 : 400 }}>
+                    style={{ padding: '10px 16px', background: 'none', border: 'none', cursor: 'pointer', fontSize: 14, color: active ? BLUE : '#666666', borderBottom: active ? ('2px solid ' + BLUE) : '2px solid transparent', fontWeight: 400 }}>
                     {tb.t}
                   </button>
                 );
@@ -1765,7 +1765,7 @@ export default function OrderDetail() {
             <div style={{ padding: '20px 24px', overflow: 'auto', flex: 1 }}>
               {logModalTab === 'status' && (
                 <>
-                  <div style={{ color: '#222222', fontWeight: 500, marginBottom: 8 }}>操作日志</div>
+                  <div style={{ color: '#222222', fontWeight: 400, marginBottom: 8 }}>操作日志</div>
                   {(detail.logs || []).length === 0 && <div style={{ color: '#999999', fontSize: 14, padding: '4px 0' }}>暂无日志</div>}
                   {(detail.logs || []).map((l, i, arr) => (
                     <div key={i} className="flex" style={{ gap: 12 }}>
@@ -1783,7 +1783,7 @@ export default function OrderDetail() {
               )}
               {logModalTab === 'trade' && (
                 <div>
-                  <div style={{ color: '#222222', fontWeight: 500, marginBottom: 8 }}>收款流水</div>
+                  <div style={{ color: '#222222', fontWeight: 400, marginBottom: 8 }}>收款流水</div>
                   {(!detail.payments || detail.payments.length === 0) && <div style={{ color: '#999999', fontSize: 14, padding: '4px 0' }}>暂无流水</div>}
                   {detail.payments && detail.payments.map((p) => (
                     <div key={p.id} className="flex items-center justify-between" style={{ borderBottom: '1px solid ' + DIV, padding: '8px 0' }}>
@@ -1800,7 +1800,7 @@ export default function OrderDetail() {
               )}
               {logModalTab === 'download' && (
                 <div>
-                  <div style={{ color: '#222222', fontWeight: 500, marginBottom: 8 }}>可下载素材（原片 / 精修片 / 选片）</div>
+                  <div style={{ color: '#222222', fontWeight: 400, marginBottom: 8 }}>可下载素材（原片 / 精修片 / 选片）</div>
                   {downloadItems.length === 0 && <div style={{ color: '#999999', fontSize: 14, padding: '4px 0' }}>暂无素材</div>}
                   <div style={{ display: 'grid', gap: 4 }}>
                     {downloadItems.map((it, i) => (
@@ -1825,7 +1825,7 @@ export default function OrderDetail() {
         <div onClick={() => setQuestionnaireModal(false)} style={{ position: 'fixed', inset: 0, zIndex: 70, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <div onClick={(e) => e.stopPropagation()} style={{ width: '100%', maxWidth: 560, maxHeight: '80vh', background: '#ffffff', borderRadius: 8, overflow: 'hidden', boxShadow: '0 12px 40px rgba(0,0,0,0.18)', display: 'flex', flexDirection: 'column' }}>
             <div className="flex items-center justify-between" style={{ padding: '16px 24px', borderBottom: '1px solid ' + DIV, flexShrink: 0 }}>
-              <div style={{ fontSize: 16, fontWeight: 600, color: '#222222' }}>调查问卷 · {detail.order_no}</div>
+              <div style={{ fontSize: 16, fontWeight: 400, color: '#222222' }}>调查问卷 · {detail.order_no}</div>
               <button type="button" onClick={() => setQuestionnaireModal(false)}
                 style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#999999', fontSize: 22, lineHeight: 1, padding: 0 }} aria-label="关闭">×</button>
             </div>
@@ -1868,7 +1868,7 @@ export default function OrderDetail() {
 // —— 复刻 spec 样式片段（模块内复用） ——
 const secBtnStyle = {
   height: 36, borderRadius: 2, background: '#fff', color: '#666666',
-  border: '1px solid #D9D9D9', fontSize: 12, fontWeight: 500, padding: '0 14px', cursor: 'pointer'
+  border: '1px solid #D9D9D9', fontSize: 12, fontWeight: 400, padding: '0 14px', cursor: 'pointer'
 };
 const moreItemStyle = {
   display: 'block', width: '100%', textAlign: 'left', padding: '8px 14px',
