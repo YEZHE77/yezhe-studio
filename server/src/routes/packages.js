@@ -241,6 +241,20 @@ router.post('/:id/status', authRequired, requireRole(['admin', 'photographer']),
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// 批量上架 / 下架（spec：支持批量上下架；下架不删除数据，C 端隐藏、后台录单仍可选）
+router.post('/batch-status', authRequired, requireRole(['admin', 'photographer']), async (req, res) => {
+  try {
+    const ids = Array.isArray(req.body.ids)
+      ? [...new Set(req.body.ids.map((x) => Number(x)).filter((n) => Number.isFinite(n) && n > 0))]
+      : [];
+    const status = (req.body && req.body.status) === 'on' ? 'on' : 'off';
+    if (!ids.length) return res.status(400).json({ error: '请先勾选要操作的套系' });
+    const ph = ids.map(() => '?').join(',');
+    await run(`UPDATE packages SET status = ? WHERE id IN (${ph})`, [status, ...ids]);
+    res.json({ ok: true, updated: ids.length, status });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // 删除（仅 admin）—— 已被订单关联的套系禁止物理删除，只能下架隐藏（底层强制规则 3 / 验收②）
 router.delete('/:id', authRequired, requireRole(['admin']), async (req, res) => {
   try {

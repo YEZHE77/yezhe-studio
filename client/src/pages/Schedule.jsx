@@ -109,10 +109,11 @@ export default function Schedule() {
   const nav = useNavigate();
   const init = new Date();
   const initMonth = `${init.getFullYear()}-${pad(init.getMonth() + 1)}`;
-  const [state, setState] = useViewState('schedule', { month: initMonth, executor: '' });
+  const [state, setState] = useViewState('schedule', { month: initMonth, executor: '', package_id: '', status: '', view: 'month' });
   const [map, setMap] = useState({});
   const [pendMap, setPendMap] = useState({});
   const [personnel, setPersonnel] = useState([]);
+  const [pkgList, setPkgList] = useState([]);
   const [lunarMap, setLunarMap] = useState({});
   const [selDate, setSelDate] = useState(`${init.getFullYear()}-${pad(init.getMonth() + 1)}-${pad(init.getDate())}`);
   const [err, setErr] = useState('');
@@ -138,6 +139,8 @@ export default function Schedule() {
     const params = new URLSearchParams();
     params.set('month', state.month);
     if (state.executor) params.set('executor', state.executor);
+    if (state.package_id) params.set('package_id', state.package_id);
+    if (state.status && state.status !== 'all') params.set('status', state.status);
     http.get('/api/schedules?' + params.toString()).then((r) => {
       const nm = {};
       for (const s of (r.data || [])) { (nm[s.date] = nm[s.date] || []).push(s); }
@@ -149,9 +152,12 @@ export default function Schedule() {
       setPendMap(pm);
     }).catch(() => {});
   };
-  useEffect(load, [state.month, state.executor]);
+  useEffect(load, [state.month, state.executor, state.package_id, state.status]);
   useEffect(() => {
     http.get('/api/admin/personnel').then((r) => setPersonnel(r.data || [])).catch(() => {});
+  }, []);
+  useEffect(() => {
+    http.get('/api/packages?status=all').then((r) => setPkgList(r.data || [])).catch(() => {});
   }, []);
   useEffect(() => {
     http.get('/api/schedules/lunar?month=' + encodeURIComponent(state.month)).then((r) => setLunarMap(r.data || {})).catch(() => {});
@@ -190,9 +196,21 @@ export default function Schedule() {
   }, []);
 
   const cells = buildMonth(y, m - 1);
+  const view = state.view || 'month';
 
   const rowsOf = (date) => map[date] || [];
   const pendsOf = (date) => pendMap[date] || [];
+
+  const addDays = (ds, n) => {
+    const d = new Date(ds + 'T00:00:00');
+    d.setDate(d.getDate() + n);
+    return ymd(d);
+  };
+  const weekDaysOf = (ds) => {
+    const d = new Date(ds + 'T00:00:00');
+    const mon = addDays(ds, -((d.getDay() + 6) % 7));
+    return [0, 1, 2, 3, 4, 5, 6].map((i) => addDays(mon, i));
+  };
 
   const shiftMonth = (delta) => {
     const total = y * 12 + (m - 1) + delta;
@@ -201,6 +219,20 @@ export default function Schedule() {
     setState((s) => ({ ...s, month: `${ny}-${pad(nm)}` }));
   };
   const setYM = (ny, nm) => setState((s) => ({ ...s, month: `${ny}-${pad(nm)}` }));
+  // 视图导航：月=翻月 / 周=±7 天 / 日=±1 天，并同步月份与选中日期
+  const gotoDate = (ds) => {
+    setSelDate(ds);
+    setState((s) => ({ ...s, month: ds.slice(0, 7) }));
+  };
+  const shiftView = (delta) => {
+    if (view === 'week') gotoDate(addDays(selDate || todayStr, delta * 7));
+    else if (view === 'day') gotoDate(addDays(selDate || todayStr, delta));
+    else shiftMonth(delta);
+  };
+  const setView = (v) => {
+    setState((s) => ({ ...s, view: v }));
+    if (v !== 'month' && !selDate) setSelDate(todayStr);
+  };
 
   const openNew = (day) => {
     let date;
@@ -238,6 +270,80 @@ export default function Schedule() {
   else if (selState.kind === 'booked') sideStatus = `${selState.orderRows.length} 单`;
   else sideStatus = '档期开放，可预约';
 
+  // 日期单元格渲染（月/周/日视图共用；maxRows 控制单格展示订单条数，日视图全部展示）
+  const renderDateCell = (date, maxRows = 2, minHeight = 120) => {
+    const day = Number(date.slice(8));
+    const rows = rowsOf(date);
+    const pends = pendsOf(date);
+    const st = dayState(rows, pends);
+    const lunar = lunarMap[date] || '';
+    const selected = selDate === date;
+    const isToday = date === todayStr;
+    const isClosed = st.kind === 'closed';
+
+    let cellBg = '#FFFFFF';
+    if (isClosed) cellBg = 'repeating-linear-gradient(-45deg, rgba(150,150,150,0.22) 0px, rgba(150,150,150,0.22) 1px, transparent 1px, transparent 8px), #F7F7F7';
+    else if (selected) cellBg = G_SEL;
+
+    return (
+      <div key={date} onClick={() => setSelDate(date)}
+        onMouseEnter={(e) => {
+          clearTimeout(hoverTimerRef.current);
+          clearTimeout(fadeTimerRef.current);
+          hoverTimerRef.current = setTimeout(() => {
+            setHoverTooltip({ date, rect: e.currentTarget.getBoundingClientRect(), visible: true });
+          }, 200);
+        }}
+        onMouseLeave={() => {
+          clearTimeout(hoverTimerRef.current);
+          fadeTimerRef.current = setTimeout(() => {
+            setHoverTooltip((prev) => prev ? { ...prev, visible: false } : null);
+          }, 300);
+        }}
+        className={'relative cursor-pointer flex flex-col ' + (!selected && !isClosed ? 'hover:bg-[#FAFCFE]' : '')}
+        style={{ minHeight, background: cellBg, padding: 8, boxShadow: selected ? `inset 0 0 0 1px ${G_BLUE}` : 'none' }}>
+        <div className="flex items-start justify-between gap-1">
+          <div className="flex flex-col" style={{ gap: 2 }}>
+            <span className="inline-flex items-center justify-center"
+              style={isToday
+                ? { width: 22, height: 22, borderRadius: 4, background: G_YELLOW, color: G_TODAY, fontSize: 14, fontWeight: 500 }
+                : { fontSize: 14, color: isToday ? G_TODAY : '#333333' }}>{day}</span>
+            {lunar && <span style={{ fontSize: 11, color: '#999999' }}>{lunar}</span>}
+          </div>
+          {pends.length > 0 && <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#F0A020' }} />}
+        </div>
+
+        {!isClosed && (
+          <div className="mt-1.5 flex flex-col" style={{ gap: 3 }}>
+            {st.orderRows.slice(0, maxRows).map((r) => {
+              const sk = statusKeyOf(r);
+              return (
+                <div key={r.id} onClick={(e) => { e.stopPropagation(); if (r.order_id) nav('/orders/' + r.order_id); }}
+                  className="flex items-center truncate hover:opacity-85"
+                  style={{ background: G_BOOKED, borderRadius: 2, height: 20, padding: '0 5px', gap: 4 }}>
+                  {sk && <span style={{ width: 6, height: 6, borderRadius: '50%', background: G_STATUS_MAP[sk].color }} />}
+                  <span className="truncate" style={{ fontSize: 11, color: '#5A2730' }}>{r.order_customer || r.executor_name || r.photographer || '已预约'}</span>
+                </div>
+              );
+            })}
+            {st.orderRows.length > maxRows && <div style={{ fontSize: 11, color: '#888888' }}>+{st.orderRows.length - maxRows} 更多</div>}
+          </div>
+        )}
+
+        {isClosed ? (
+          <div className="mt-auto flex items-end justify-center pt-1">
+            <span style={{ fontSize: 12, color: '#999999' }}>档期已关闭</span>
+          </div>
+        ) : (
+          <div className="mt-auto flex items-end justify-between gap-1 pt-1">
+            <button onClick={(e) => { e.stopPropagation(); openNew(date); }} className="hover:opacity-80" style={{ color: G_BLUE, fontSize: 12 }}>+ 添加</button>
+            {st.orderRows.length > 0 && <span style={{ fontSize: 11, color: '#888888' }}>{st.orderRows.length}单</span>}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div className="w-full min-h-screen" style={{ background: G_PAGE_BG, paddingRight: 220 }}>
       {/* 模块 A：面包屑 */}
@@ -252,20 +358,53 @@ export default function Schedule() {
           {/* 状态图例下拉 */}
           <StatusLegend />
 
-          {/* 年月切换（居中） */}
+          {/* 视图切换 + 日期导航（居中） */}
           <div className="flex items-center" style={{ gap: 8, position: 'absolute', left: '50%', transform: 'translateX(-50%)' }}>
-            <button onClick={() => shiftMonth(-1)} style={{ width: 28, height: 28, border: `1px solid ${G_BORDER}`, borderRadius: 4, color: '#888888', background: '#FFFFFF', fontSize: 16 }}>‹</button>
-            <select value={y} onChange={(e) => setYM(Number(e.target.value), m)} style={{ height: 28, border: `1px solid ${G_BORDER}`, borderRadius: 4, padding: '0 8px', fontSize: 13, color: '#333333', background: '#FFFFFF', outline: 'none' }}>
-              {Array.from({ length: 21 }, (_, i) => y - 10 + i).map((yy) => <option key={yy} value={yy}>{yy}年</option>)}
-            </select>
-            <select value={m} onChange={(e) => setYM(y, Number(e.target.value))} style={{ height: 28, border: `1px solid ${G_BORDER}`, borderRadius: 4, padding: '0 8px', fontSize: 13, color: '#333333', background: '#FFFFFF', outline: 'none' }}>
-              {Array.from({ length: 12 }, (_, i) => i + 1).map((mm) => <option key={mm} value={mm}>{mm}月</option>)}
-            </select>
-            <button onClick={() => shiftMonth(1)} style={{ width: 28, height: 28, border: `1px solid ${G_BORDER}`, borderRadius: 4, color: '#888888', background: '#FFFFFF', fontSize: 16 }}>›</button>
+            <div className="flex items-center" style={{ gap: 4, marginRight: 2 }}>
+              {[['month', '月'], ['week', '周'], ['day', '日']].map(([k, lab]) => (
+                <button key={k} onClick={() => setView(k)}
+                  style={{ height: 28, padding: '0 10px', borderRadius: 4, fontSize: 13,
+                    border: `1px solid ${G_BORDER}`, background: view === k ? G_BLUE : '#FFFFFF',
+                    color: view === k ? '#FFFFFF' : '#333333' }}>{lab}</button>
+              ))}
+            </div>
+            <button onClick={() => shiftView(-1)} style={{ width: 28, height: 28, border: `1px solid ${G_BORDER}`, borderRadius: 4, color: '#888888', background: '#FFFFFF', fontSize: 16 }}>‹</button>
+            {view === 'month' ? (
+              <>
+                <select value={y} onChange={(e) => setYM(Number(e.target.value), m)} style={{ height: 28, border: `1px solid ${G_BORDER}`, borderRadius: 4, padding: '0 8px', fontSize: 13, color: '#333333', background: '#FFFFFF', outline: 'none' }}>
+                  {Array.from({ length: 21 }, (_, i) => y - 10 + i).map((yy) => <option key={yy} value={yy}>{yy}年</option>)}
+                </select>
+                <select value={m} onChange={(e) => setYM(y, Number(e.target.value))} style={{ height: 28, border: `1px solid ${G_BORDER}`, borderRadius: 4, padding: '0 8px', fontSize: 13, color: '#333333', background: '#FFFFFF', outline: 'none' }}>
+                  {Array.from({ length: 12 }, (_, i) => i + 1).map((mm) => <option key={mm} value={mm}>{mm}月</option>)}
+                </select>
+              </>
+            ) : (
+              <div style={{ fontSize: 13, color: '#333333', minWidth: 150, textAlign: 'center' }}>
+                {view === 'week'
+                  ? (() => { const wds = weekDaysOf(selDate || todayStr); return `${wds[0].slice(5)} ~ ${wds[6].slice(5)}`; })()
+                  : (selDate || todayStr)}
+              </div>
+            )}
+            <button onClick={() => shiftView(1)} style={{ width: 28, height: 28, border: `1px solid ${G_BORDER}`, borderRadius: 4, color: '#888888', background: '#FFFFFF', fontSize: 16 }}>›</button>
           </div>
 
           {/* 右侧按钮组 */}
           <div className="flex items-center" style={{ gap: 10 }}>
+            {/* 套系筛选 + 状态筛选（spec：按摄影师、套系、订单状态筛选日历视图） */}
+            <select value={state.package_id} onChange={(e) => setState((s) => ({ ...s, package_id: e.target.value }))}
+              style={{ height: 28, border: `1px solid ${G_BORDER}`, borderRadius: 4, fontSize: 13, color: '#333333', background: '#FFFFFF', padding: '0 8px', maxWidth: 150 }}>
+              <option value="">全部套系</option>
+              {pkgList.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+            </select>
+            <select value={state.status} onChange={(e) => setState((s) => ({ ...s, status: e.target.value }))}
+              style={{ height: 28, border: `1px solid ${G_BORDER}`, borderRadius: 4, fontSize: 13, color: '#333333', background: '#FFFFFF', padding: '0 8px' }}>
+              <option value="">全部状态</option>
+              <option value="free">空闲</option>
+              <option value="booked">已预约</option>
+              <option value="locked">锁场</option>
+              <option value="closed">已关闭</option>
+              <option value="pending">待确认</option>
+            </select>
             <div className="relative" ref={accRef}>
               <button onClick={() => setAccOpen((v) => !v)} className="flex items-center" style={{ gap: 6, height: 28, padding: '0 12px', border: `1px solid ${G_BORDER}`, borderRadius: 4, background: '#FFFFFF', fontSize: 13, color: '#333333' }}>
                 <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 6h18M3 12h12M3 18h6" /></svg>
@@ -297,7 +436,7 @@ export default function Schedule() {
           </div>
         </div>
 
-        {/* 模块 C：月视图日历网格 */}
+        {/* 模块 C：档期日历（月 / 周 / 日视图） */}
         <div className="flex" style={{ minHeight: 620 }}>
           <div className="flex-1 flex flex-col">
             {/* 星期表头 */}
@@ -306,82 +445,28 @@ export default function Schedule() {
                 <div key={w} className="text-center" style={{ fontSize: 13, color: '#666666', height: 36, lineHeight: '36px', borderBottom: `1px solid ${G_BORDER}` }}>{w}</div>
               ))}
             </div>
-            {/* 日期格 */}
-            <div className="grid grid-cols-7 flex-1" style={{ gap: 1, background: G_BORDER, gridAutoRows: 'minmax(120px, 1fr)' }}>
-              {cells.map((day, i) => {
-                if (day == null) return <div key={i} style={{ minHeight: 120, background: '#FAFAFA' }} />;
-                const date = `${y}-${pad(m)}-${pad(day)}`;
-                const rows = rowsOf(date);
-                const pends = pendsOf(date);
-                const st = dayState(rows, pends);
-                const lunar = lunarMap[date] || '';
-                const selected = selDate === date;
-                const isToday = date === todayStr;
-                const isClosed = st.kind === 'closed';
 
-                let cellBg = '#FFFFFF';
-                if (isClosed) cellBg = 'repeating-linear-gradient(-45deg, rgba(150,150,150,0.22) 0px, rgba(150,150,150,0.22) 1px, transparent 1px, transparent 8px), #F7F7F7';
-                else if (selected) cellBg = G_SEL;
+            {view === 'month' && (
+              <div className="grid grid-cols-7 flex-1" style={{ gap: 1, background: G_BORDER, gridAutoRows: 'minmax(120px, 1fr)' }}>
+                {cells.map((day, i) => (
+                  day == null
+                    ? <div key={i} style={{ minHeight: 120, background: '#FAFAFA' }} />
+                    : renderDateCell(`${y}-${pad(m)}-${pad(day)}`, 2, 120)
+                ))}
+              </div>
+            )}
 
-                return (
-                  <div key={i} onClick={() => setSelDate(date)}
-                    onMouseEnter={(e) => {
-                      clearTimeout(hoverTimerRef.current);
-                      clearTimeout(fadeTimerRef.current);
-                      hoverTimerRef.current = setTimeout(() => {
-                        setHoverTooltip({ date, rect: e.currentTarget.getBoundingClientRect(), visible: true });
-                      }, 200);
-                    }}
-                    onMouseLeave={() => {
-                      clearTimeout(hoverTimerRef.current);
-                      fadeTimerRef.current = setTimeout(() => {
-                        setHoverTooltip((prev) => prev ? { ...prev, visible: false } : null);
-                      }, 300);
-                    }}
-                    className={'relative cursor-pointer flex flex-col ' + (!selected && !isClosed ? 'hover:bg-[#FAFCFE]' : '')}
-                    style={{ minHeight: 120, background: cellBg, padding: 8, boxShadow: selected ? `inset 0 0 0 1px ${G_BLUE}` : 'none' }}>
-                    <div className="flex items-start justify-between gap-1">
-                      <div className="flex flex-col" style={{ gap: 2 }}>
-                        <span className="inline-flex items-center justify-center"
-                          style={isToday
-                            ? { width: 22, height: 22, borderRadius: 4, background: G_YELLOW, color: G_TODAY, fontSize: 14, fontWeight: 500 }
-                            : { fontSize: 14, color: isToday ? G_TODAY : '#333333' }}>{day}</span>
-                        {lunar && <span style={{ fontSize: 11, color: '#999999' }}>{lunar}</span>}
-                      </div>
-                      {pends.length > 0 && <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#F0A020' }} />}
-                    </div>
+            {view === 'week' && (
+              <div className="grid grid-cols-7 flex-1" style={{ gap: 1, background: G_BORDER, gridAutoRows: 'minmax(160px, 1fr)' }}>
+                {weekDaysOf(selDate || todayStr).map((date) => renderDateCell(date, 2, 160))}
+              </div>
+            )}
 
-                    {!isClosed && (
-                      <div className="mt-1.5 flex flex-col" style={{ gap: 3 }}>
-                        {st.orderRows.slice(0, 2).map((r) => {
-                          const sk = statusKeyOf(r);
-                          return (
-                            <div key={r.id} onClick={(e) => { e.stopPropagation(); if (r.order_id) nav('/orders/' + r.order_id); }}
-                              className="flex items-center truncate hover:opacity-85"
-                              style={{ background: G_BOOKED, borderRadius: 2, height: 20, padding: '0 5px', gap: 4 }}>
-                              {sk && <span style={{ width: 6, height: 6, borderRadius: '50%', background: G_STATUS_MAP[sk].color }} />}
-                              <span className="truncate" style={{ fontSize: 11, color: '#5A2730' }}>{r.order_customer || r.executor_name || r.photographer || '已预约'}</span>
-                            </div>
-                          );
-                        })}
-                        {st.orderRows.length > 2 && <div style={{ fontSize: 11, color: '#888888' }}>+{st.orderRows.length - 2} 更多</div>}
-                      </div>
-                    )}
-
-                    {isClosed ? (
-                      <div className="mt-auto flex items-end justify-center pt-1">
-                        <span style={{ fontSize: 12, color: '#999999' }}>档期已关闭</span>
-                      </div>
-                    ) : (
-                      <div className="mt-auto flex items-end justify-between gap-1 pt-1">
-                        <button onClick={(e) => { e.stopPropagation(); openNew(date); }} className="hover:opacity-80" style={{ color: G_BLUE, fontSize: 12 }}>+ 添加</button>
-                        {st.orderRows.length > 0 && <span style={{ fontSize: 11, color: '#888888' }}>{st.orderRows.length}单</span>}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
+            {view === 'day' && (
+              <div className="flex-1 p-2" style={{ gap: 1, background: G_BORDER }}>
+                {renderDateCell(selDate || todayStr, 999, 480)}
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -1332,14 +1417,25 @@ function ScheduleDialog({ dlg, personnel, onClose, onSaved }) {
 /* ============ 档期及预约设置 ============ */
 function BookingDialog({ onClose }) {
   const [cfg, setCfg] = useState({ open: true, openDays: [0, 1, 2, 3, 4, 5, 6] });
+  const [cap, setCap] = useState({ daily: 0, perPhotographer: false });
   const [loading, setLoading] = useState(true);
   const [saved, setSaved] = useState(false);
   useEffect(() => {
-    http.get('/api/settings/booking').then((r) => { if (r.data) setCfg({ open: r.data.open !== false, openDays: Array.isArray(r.data.openDays) ? r.data.openDays : [0, 1, 2, 3, 4, 5, 6] }); }).catch(() => {}).finally(() => setLoading(false));
+    Promise.all([
+      http.get('/api/settings/booking').catch(() => null),
+      http.get('/api/schedules/capacity').catch(() => null)
+    ]).then(([b, c]) => {
+      if (b && b.data) setCfg({ open: b.data.open !== false, openDays: Array.isArray(b.data.openDays) ? b.data.openDays : [0, 1, 2, 3, 4, 5, 6] });
+      if (c && c.data) setCap({ daily: Number(c.data.daily) || 0, perPhotographer: !!c.data.perPhotographer });
+    }).finally(() => setLoading(false));
   }, []);
   const toggleDay = (d) => setCfg((c) => ({ ...c, openDays: c.openDays.includes(d) ? c.openDays.filter((x) => x !== d) : [...c.openDays, d].sort((a, b) => a - b) }));
   const save = async () => {
-    try { await http.put('/api/settings/booking', cfg); setSaved(true); setTimeout(onClose, 800); } catch (e) { alert((e.response && e.response.data && e.response.data.error) || '保存失败'); }
+    try {
+      await http.put('/api/settings/booking', cfg);
+      await http.put('/api/schedules/capacity', cap);
+      setSaved(true); setTimeout(onClose, 800);
+    } catch (e) { alert((e.response && e.response.data && e.response.data.error) || '保存失败'); }
   };
   return (
     <div className="fixed inset-0 flex items-center justify-center z-50 p-4" style={{ background: 'rgba(0,0,0,0.4)' }}>
@@ -1361,6 +1457,16 @@ function BookingDialog({ onClose }) {
                   className={'px-2 py-1.5 rounded text-xs border ' + (cfg.openDays.includes(d) ? 'bg-brand text-white border-brand' : 'bg-panel2 text-muted border-[#E5E5E5]')}>{lab}</button>
               ))}
             </div>
+            <div className="text-xs text-muted mb-1">单日最大接单数（0 = 不限）</div>
+            <input type="number" min="0" value={cap.daily}
+              onChange={(e) => setCap((c) => ({ ...c, daily: Math.max(0, parseInt(e.target.value, 10) || 0) }))}
+              className="w-full border rounded px-3 py-2 text-sm mb-3" style={{ borderColor: '#E5E5E5', color: '#1f2329' }} />
+            <label className="flex items-center justify-between text-sm mb-1" style={{ color: '#1f2329' }}>
+              <span>按摄影师隔离容量（A 摄影师约满不影响 B 摄影师同天接单）</span>
+              <input type="checkbox" checked={cap.perPhotographer}
+                onChange={(e) => setCap((c) => ({ ...c, perPhotographer: e.target.checked }))} />
+            </label>
+            <div className="text-[11px] text-muted mb-4">达到上限后，C 端预约该日期自动禁用；B 端录单会弹出约满警告，仍可强行占用。</div>
             {saved && <div className="text-xs text-emerald-500 mb-2">已保存</div>}
             <div className="flex gap-2 justify-end">
               <button onClick={onClose} className="px-4 py-2 rounded border border-[#E5E5E5] text-muted text-sm hover:bg-panel2">取消</button>

@@ -230,6 +230,19 @@ export default function Orders() {
     alert('链接已复制：\n' + share.share_url);
   };
 
+  // 导出 Excel（携带当前筛选条件；后端 /api/orders/export 输出 UTF-8 BOM CSV）
+  const doExport = () => {
+    const base = (http.defaults.baseURL || '').replace(/\/+$/, '');
+    const p = new URLSearchParams();
+    if (state.status) p.set('status', state.status);
+    if (state.q) p.set('q', state.q);
+    if (state.executor) p.set('executor', state.executor);
+    if (state.shootFrom) p.set('shootFrom', state.shootFrom);
+    if (state.shootTo) p.set('shootTo', state.shootTo);
+    const qs = p.toString();
+    window.open(base + '/api/orders/export' + (qs ? '?' + qs : ''), '_blank');
+  };
+
   /* ------------------------------ 渲染 ------------------------------ */
   // 页面底色为纯白 #ffffff（AppShell 外层是 #f4f6f9，这里用负外边距铺满）
   return (
@@ -296,6 +309,10 @@ export default function Orders() {
           <option value="shoot_date">拍摄时间</option>
           <option value="amount">订单金额</option>
         </select>
+
+        <button onClick={doExport}
+          className="px-3 py-1.5 rounded text-sm whitespace-nowrap"
+          style={{ background: '#3a3a3a', color: '#fff', border: '1px solid #555555' }}>导出 Excel</button>
 
         <div className="flex-1" />
 

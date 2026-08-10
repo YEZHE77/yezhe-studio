@@ -111,6 +111,8 @@ Page({
       // 数据格式校验：若不是对象/数组，按空数组兜底，避免 forEach 崩溃
       const arr = (v) => Array.isArray(v) ? v : [];
       arr(av && av.occupied).forEach((x) => fill(occupied, x));
+      // 已达单日接单上限的日期（容量满）→ 与「约满」同等处理，不可选
+      arr(av && av.full).forEach((x) => fill(occupied, x));
       arr(av && av.closed).forEach((x) => fill(closed, x));
       arr(av && av.pending).forEach((x) => fill(pending, x));
 
