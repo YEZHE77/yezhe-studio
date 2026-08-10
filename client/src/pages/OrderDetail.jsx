@@ -31,30 +31,45 @@ function calcExtraFee(extraCount, unitPrice) {
   return { count: n, unitPrice, discount, fee: Math.round(n * unitPrice * discount) };
 }
 
-// 订单详情 11 步流程进度条（新规范）：订单生成→生成合同→沟通确认→拍摄执行→拍摄结束
-// →选片精修→预告片输出→全部精修完成→原片打包→统一交付→订单完结
+// 订单详情 4 步流程进度条（spec）：支付订单→完成拍摄→上传底片→完成
 const ORDER_STEPS = [
-  { key: 'created', label: '订单生成' },
-  { key: 'contract_created', label: '生成合同' },
-  { key: 'confirmed', label: '沟通确认' },
-  { key: 'shooting', label: '拍摄执行' },
-  { key: 'shooting_finished', label: '拍摄结束' },
-  { key: 'retouch_selecting', label: '选片精修' },
-  { key: 'trailer_output', label: '预告片输出' },
-  { key: 'retouch_finished', label: '全部精修完成' },
-  { key: 'raw_packed', label: '原片打包' },
-  { key: 'delivered', label: '统一交付' },
-  { key: 'completed', label: '订单完结' }
+  { key: 'paid', label: '支付订单' },
+  { key: 'shot', label: '完成拍摄' },
+  { key: 'raw_uploaded', label: '上传底片' },
+  { key: 'completed', label: '完成' }
 ];
-// 由后端 status（6 阶段）推导 11 步的「当前节点」下标；
-// 订单一旦存在，订单生成/生成合同/沟通确认 默认已走过的 done 态
+// 由订单 payment_status / status / order_photos 推导 4 步的「当前节点」下标
 function stepIndexFor(detail) {
   if (!detail) return -1;
-  if (detail.cancelled) return 3; // 作废停在拍摄执行阶段
-  const map = { deposit: 3, shot: 4, selecting: 5, retouching: 7, delivered: 10, completed: 11 };
-  const idx = map[detail.status];
-  return idx === undefined ? 0 : idx;
+  if (detail.status === 'cancelled') return 1; // 作废时停在完成拍摄
+  // Step 0 支付订单：payment_status 非 unpaid 或已付金额 > 0 视为已完成
+  const hasPaid = detail.payment_status !== 'unpaid' || Number(detail.paid_amount || 0) > 0;
+  if (!hasPaid) return 0;
+  // Step 1 完成拍摄：status 在 shot 及之后
+  const statusIdx = STAGE_SEQ.indexOf(detail.status);
+  const isShotOrBeyond = statusIdx >= 1; // shot / selecting / retouching / delivered / completed
+  if (!isShotOrBeyond) return 1;
+  // Step 2 上传底片：order_photos.raw 有内容
+  const rawArr = detail.order_photos?.raw || (typeof detail.order_photos === 'string' ? asArr(JSON.parse(detail.order_photos || '{}').raw) : []);
+  const hasRaw = Array.isArray(rawArr) && rawArr.length > 0;
+  if (!hasRaw) return 2;
+  // Step 3 完成：status === completed
+  if (detail.status === 'completed') return 4;
+  return 3;
 }
+function build4Steps(detail, logs) {
+  if (!detail) return ORDER_STEPS.map((s) => ({ ...s, state: 'pending', time: null }));
+  const cur = stepIndexFor(detail);
+  return ORDER_STEPS.map((s, i) => {
+    const state = i < cur ? 'done' : i === cur ? 'current' : 'pending';
+    let time = null;
+    if (state === 'done') {
+      const t = findStepTime(logs, STEP_TIME_KW[s.key]);
+      time = s.key === 'paid' && !t ? fmtStepTime(detail.created_at) : t;
+    }
+    return { ...s, state, time };
+  });
+}        
 function fmtStepTime(t) {
   if (!t) return null;
   const d = new Date(t);
@@ -70,32 +85,11 @@ function findStepTime(logs, kws) {
   return null;
 }
 const STEP_TIME_KW = {
-  created: ['创建订单', '订单生成'],
-  contract_created: ['合同'],
-  confirmed: ['沟通确认', '确认'],
-  shooting: ['拍摄执行', '开始拍摄'],
-  shooting_finished: ['拍摄结束', '完成拍摄'],
-  retouch_selecting: ['选片', '进入精修'],
-  trailer_output: ['预告片'],
-  retouch_finished: ['全部精修完成', '精修完成'],
-  raw_packed: ['原片打包', '打包'],
-  delivered: ['统一交付', '交付'],
-  completed: ['订单完结', '完结']
+  paid: ['支付订单', '支付', '定金', '收款', '创建订单', '订单生成'],
+  shot: ['完成拍摄', '拍摄完成', '已拍摄'],
+  raw_uploaded: ['上传底片', '底片上传', '原片上传'],
+  completed: ['订单完成', '完成', '完结']
 };
-// 由订单 status / logs 派生 11 步状态（done / current / pending）
-function build11Steps(detail, logs) {
-  if (!detail) return ORDER_STEPS.map((s) => ({ ...s, state: 'pending', time: null }));
-  const cur = stepIndexFor(detail);
-  return ORDER_STEPS.map((s, i) => {
-    const state = i < cur ? 'done' : i === cur ? 'current' : 'pending';
-    let time = null;
-    if (state === 'done') {
-      const t = findStepTime(logs, STEP_TIME_KW[s.key]);
-      time = s.key === 'created' && !t ? fmtStepTime(detail.created_at) : t;
-    }
-    return { ...s, state, time };
-  });
-}
 
 // 新规范全局色号（订单详情页 v2：轻量低饱和后台风）
 const TEAL = '#67CFC3';          // 状态卡片顶部青绿细线 / 品牌点缀
@@ -177,6 +171,8 @@ export default function OrderDetail() {
   const [editingRemark, setEditingRemark] = useState(false);
   const [remarkDraft, setRemarkDraft] = useState('');
   const [hoverRemark, setHoverRemark] = useState(false);
+  // 客户信息头像下拉浮层
+  const [custInfoOpen, setCustInfoOpen] = useState(false);
 
   const loadSel = useCallback((oid) => {
     http.get('/api/admin/photo-select/' + oid).then((r) => setSel(r.data)).catch(() => setSel(null));
@@ -197,7 +193,17 @@ export default function OrderDetail() {
     return () => ctrl.abort();
   }, []);
   useEffect(() => () => { bgm.pause(); }, []);
-
+  // 点击空白收起下拉（客户信息 / 更多设置）
+  useEffect(() => {
+    if (!custInfoOpen && !moreMenu) return;
+    const handler = (e) => {
+      if (custInfoOpen) setCustInfoOpen(false);
+      if (moreMenu) setMoreMenu(false);
+    };
+    // 短暂延迟避免触发按钮自身 onClick
+    const id = setTimeout(() => document.addEventListener('click', handler), 0);
+    return () => { clearTimeout(id); document.removeEventListener('click', handler); };
+  }, [custInfoOpen, moreMenu]);
   // 订单图片（原片/精修片）随订单初始化一次（同 id 不覆盖本地编辑）
   useEffect(() => {
     if (detail && detail.order_photos) {
@@ -323,6 +329,10 @@ export default function OrderDetail() {
     if (!confirm('确认删除该订单？\n将移入回收站，可在回收站恢复（不破坏收款流水与选片记录）。\n删除后该订单占用的档期会自动释放。')) return;
     try { await http.delete('/api/orders/' + detail.id); nav('/orders'); }
     catch (e2) { alert((e2.response && e2.response.data && e2.response.data.error) || '删除失败'); }
+  }
+  function printOrder() {
+    if (!detail) return;
+    window.print();
   }
   async function restoreOrder() {
     if (!confirm('确认恢复该订单？')) return;
@@ -455,9 +465,12 @@ export default function OrderDetail() {
     document.body.appendChild(a); a.click(); a.remove();
   }
 
-  // 更多设置下拉菜单（更换套系 / 复制订单 / 作废关闭订单 / 收款 / 退款 / 删除恢复）
+  // 更多设置下拉菜单（编辑订单 / 打印单据 / 更换套系 / 复制订单 / 作废关闭订单 / 收款 / 退款 / 删除恢复）
   const renderMoreMenu = () => (
-    <div style={{ position: 'absolute', zIndex: 60, marginTop: 4, background: '#fff', border: '1px solid ' + DIV, borderRadius: 4, boxShadow: '0 6px 20px rgba(0,0,0,0.10)', padding: '4px 0', fontSize: 14, width: 140 }}>
+    <div style={{ position: 'absolute', zIndex: 60, marginTop: 4, background: '#fff', border: '1px solid ' + DIV, borderRadius: 4, boxShadow: '0 6px 20px rgba(0,0,0,0.10)', padding: '4px 0', fontSize: 14, width: 150 }}>
+      <button type="button" onClick={() => { setMoreMenu(false); openEdit(); }} style={moreItemStyle}>编辑订单</button>
+      <button type="button" onClick={() => { setMoreMenu(false); printOrder(); }} style={moreItemStyle}>打印单据</button>
+      <div style={{ height: 1, background: DIV, margin: '4px 0' }} />
       <button type="button" onClick={() => { setMoreMenu(false); openPkgSwitch(); }} style={moreItemStyle}>更换套系</button>
       <button type="button" onClick={() => { setMoreMenu(false); copyOrder(); }} style={moreItemStyle}>复制订单</button>
       <button type="button" onClick={() => { setMoreMenu(false); cancel(); }} style={moreItemStyle}>作废/关闭订单</button>
@@ -551,7 +564,7 @@ export default function OrderDetail() {
     ...(sel && sel.photos ? sel.photos.map((p) => ({ url: p.photo_url, kind: '选片' })) : [])
   ];
 
-  const steps = build11Steps(detail, detail.logs);
+  const steps = build4Steps(detail, detail.logs);
   const statusText =
     (detail.payment_status === 'unpaid' ? '未付定金' : (PAY_STATUS_LABEL[payKey] || '')) +
     (detail.status ? '，' + (STATUS_LABEL[detail.status] || '') : '');
@@ -578,7 +591,7 @@ export default function OrderDetail() {
 
   return (
     <div style={{ background: '#f7f9fc', minHeight: '100vh', paddingBottom: 24 }}>
-      {/* ============ Module 3：订单状态卡片（白色卡片 + 左侧操作 + 右侧 11 步进度条，复刻第3张） ============ */}
+      {/* ============ Module 3：订单状态卡片（白色卡片 + 左侧操作 + 右侧 4 步进度条，复刻第3张） ============ */}
       <section style={{ margin: '16px 24px 0', background: '#FFFFFF', border: '1px solid ' + CARD_BORDER, borderRadius: 4, boxShadow: '0 1px 5px rgba(0,0,0,0.04)', overflow: 'hidden' }}>
         <div className="flex items-stretch" style={{ minHeight: 132 }}>
           {/* 左侧订单操作区 */}
@@ -605,16 +618,16 @@ export default function OrderDetail() {
           {/* 竖向分割线 */}
           <div style={{ width: 1, background: DIV, margin: '16px 0' }} />
 
-          {/* 右侧 11 步横向流程进度条（由后端 status/logs 驱动，支持横向滚动） */}
+          {/* 右侧 4 步横向流程进度条（由 payment_status / status / order_photos 驱动） */}
           <div className="flex-1" style={{ minWidth: 0, padding: '14px 28px', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 12 }}>
             <div style={{ fontSize: 13, color: TEXT_SUB, textAlign: 'right' }}>
               {statusText}<span style={{ color: BLUE, marginLeft: 8, cursor: 'pointer' }} onClick={() => setBottomTab('status')}>查看记录</span>
             </div>
             <div style={{ overflowX: 'auto', overflowY: 'hidden' }}>
-              <div className="flex items-start" style={{ gap: 0, minWidth: 1080 }}>
+              <div className="flex items-start" style={{ gap: 0, minWidth: 480 }}>
                 {steps.map((st, i) => (
                   <React.Fragment key={st.key}>
-                    <div className="flex flex-col items-center" style={{ width: 96, flexShrink: 0 }}>
+                    <div className="flex flex-col items-center" style={{ width: 120, flexShrink: 0 }}>
                       <div style={{
                         width: 32, height: 32, borderRadius: '50%',
                         background: st.state === 'current' ? BLUE : '#FFFFFF',
@@ -655,7 +668,30 @@ export default function OrderDetail() {
               <button type="button" onClick={openEdit} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2, color: '#999999', display: 'flex' }} title="编辑客户">
                 <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9" /><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z" /></svg>
               </button>
-              <button type="button" style={{ fontSize: 12, color: '#ef4444', background: '#fff', border: '1px solid #FFB6B6', borderRadius: 2, padding: '2px 8px', cursor: 'pointer' }}>客户信息</button>
+              <div style={{ position: 'relative' }}>
+                <button type="button" onClick={() => setCustInfoOpen((v) => !v)}
+                  style={{ fontSize: 12, color: '#ef4444', background: '#fff', border: '1px solid #FFB6B6', borderRadius: 2, padding: '2px 8px', cursor: 'pointer' }}>客户信息</button>
+                {custInfoOpen && (
+                  <div style={{ position: 'absolute', top: '100%', left: 0, marginTop: 6, zIndex: 65, background: '#FFFFFF', border: '1px solid ' + CARD_BORDER, borderRadius: 6, padding: 18, boxShadow: '0 6px 20px rgba(0,0,0,0.12)', width: 260 }}>
+                    <div className="flex items-center" style={{ gap: 10, marginBottom: 14 }}>
+                      <div style={{ width: 42, height: 42, borderRadius: '50%', background: pickAvatarColor(custName), display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 18, fontWeight: 600, flexShrink: 0 }}>{custInitial}</div>
+                      <div>
+                        <div style={{ fontSize: 15, fontWeight: 600, color: '#333333' }}>{custName}</div>
+                        <div style={{ fontSize: 12, color: TEXT_SUB, marginTop: 2 }}>{detail.order_no || '—'}</div>
+                      </div>
+                    </div>
+                    <div style={{ borderTop: '1px solid ' + DIV, paddingTop: 12, display: 'grid', gap: 8 }}>
+                      <div style={{ fontSize: 13 }}><span style={{ color: TEXT_SUB }}>电话：</span><span style={{ color: '#333333' }}>{phoneList.length ? phoneList.join(' / ') : '—'}</span></div>
+                      <div style={{ fontSize: 13 }}><span style={{ color: TEXT_SUB }}>地址：</span><span style={{ color: '#333333' }}>{detail.address || '—'}</span></div>
+                      <div style={{ fontSize: 13 }}><span style={{ color: TEXT_SUB }}>拍摄日期：</span><span style={{ color: '#333333' }}>{tbd ? '日期待定' : (detail.shoot_date || '—')}</span></div>
+                      <div style={{ fontSize: 13 }}><span style={{ color: TEXT_SUB }}>渠道：</span><span style={{ color: '#333333' }}>{detail.channel || detail.source || '—'}</span></div>
+                      <div style={{ fontSize: 13 }}><span style={{ color: TEXT_SUB }}>执行人：</span><span style={{ color: '#333333' }}>{execs.length ? execs.map((p) => p.name).join('、') : '—'}</span></div>
+                    </div>
+                    <button type="button" onClick={() => setCustInfoOpen(false)}
+                      style={{ marginTop: 12, width: '100%', height: 32, borderRadius: 4, background: BLUE, color: '#fff', fontSize: 13, border: 'none', cursor: 'pointer' }}>关闭</button>
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* 右上角按钮组：浅色边框图标按钮（复刻第3张） */}
@@ -820,7 +856,15 @@ export default function OrderDetail() {
             <label className="flex items-center" style={{ gap: 6, fontSize: 14, color: '#444444' }}>
               <input type="checkbox" /> 全选
             </label>
-            <select style={filterCtrlStyle}><option>仅下载精修片</option><option>全部素材</option></select>
+            <select style={filterCtrlStyle}>
+              <option>仅下载精修片</option>
+              <option>仅下载原片</option>
+              <option>仅下载选片</option>
+              <option>全部素材</option>
+            </select>
+
+            <button type="button" onClick={() => nav('/works')}
+              style={{ background: 'none', border: 'none', color: BLUE, fontSize: 13, cursor: 'pointer', padding: 0 }}>更多选片设置</button>
 
             <div style={{ position: 'relative' }}>
               <button type="button"
@@ -991,7 +1035,7 @@ export default function OrderDetail() {
 
       {/* 收款弹窗 */}
       {pay && (
-        <div className="fixed inset-0 flex items-center justify-center z-[70] p-4" style={{ background: 'rgba(0,0,0,0.45)' }} onClick={() => setPay(null)}>
+        <div className="fixed inset-0 flex items-center justify-center z-[70] p-4" style={{ background: 'rgba(0,0,0,0.45)' }}>
           <div onClick={(e) => e.stopPropagation()} style={{ width: '100%', maxWidth: 420, background: '#fff', border: '1px solid ' + DIV, borderRadius: 8, padding: 24 }}>
             <div style={{ color: '#222222', fontWeight: 500, marginBottom: 16 }}>登记收款 · {detail.order_no}</div>
             <select value={pay.type} onChange={(e) => setPay({ ...pay, type: e.target.value })} style={modalInputStyle}>
@@ -1015,7 +1059,7 @@ export default function OrderDetail() {
 
       {/* 编辑订单弹窗 */}
       {edit && (
-        <div className="fixed inset-0 flex items-center justify-center z-[70] p-4" style={{ background: 'rgba(0,0,0,0.45)' }} onClick={() => setEdit(false)}>
+        <div className="fixed inset-0 flex items-center justify-center z-[70] p-4" style={{ background: 'rgba(0,0,0,0.45)' }}>
           <form onClick={(e) => e.stopPropagation()} onSubmit={saveEdit} style={{ width: '100%', maxWidth: 448, background: '#fff', border: '1px solid ' + DIV, borderRadius: 8, padding: 24 }}>
             <div style={{ color: '#222222', fontWeight: 500, marginBottom: 16 }}>编辑订单 · {detail.order_no}</div>
             <input value={editForm.order_name} onChange={(e) => setEditForm({ ...editForm, order_name: e.target.value })} placeholder="订单名称"
@@ -1075,7 +1119,7 @@ export default function OrderDetail() {
           ? (parseFloat(pkgSwitch.package_price) || 0)
           : (curSpec ? (parseFloat(curSpec.price) || 0) : (target ? parseFloat(target.price) || 0 : 0));
         return (
-          <div className="fixed inset-0 flex items-center justify-center z-[85] p-4" style={{ background: 'rgba(0,0,0,0.45)' }} onClick={() => setPkgSwitch(null)}>
+          <div className="fixed inset-0 flex items-center justify-center z-[85] p-4" style={{ background: 'rgba(0,0,0,0.45)' }}>
             <div onClick={(e) => e.stopPropagation()} style={{ width: '100%', maxWidth: 460, background: '#fff', borderRadius: 8, padding: 24 }}>
               <div style={{ color: '#222222', fontWeight: 600, marginBottom: 4 }}>更换套系</div>
               <div style={{ fontSize: 12, color: '#888888', marginBottom: 16 }}>
@@ -1126,7 +1170,7 @@ export default function OrderDetail() {
       {addonBox && (() => {
         const r = calcExtraFee(addonBox.count, addonBox.unit);
         return (
-          <div className="fixed inset-0 flex items-center justify-center z-[85] p-4" style={{ background: 'rgba(0,0,0,0.45)' }} onClick={() => setAddonBox(null)}>
+          <div className="fixed inset-0 flex items-center justify-center z-[85] p-4" style={{ background: 'rgba(0,0,0,0.45)' }}>
             <div onClick={(e) => e.stopPropagation()} style={{ width: '100%', maxWidth: 440, background: '#fff', borderRadius: 8, padding: 24 }}>
               <div style={{ color: '#222222', fontWeight: 600, marginBottom: 4 }}>加片设置</div>
               <div style={{ fontSize: 12, color: '#888888', marginBottom: 16 }}>
@@ -1172,7 +1216,7 @@ export default function OrderDetail() {
 
       {/* 套系服务详情弹窗（点击「更多内容」唤起；全部读取订单快照，仅查看不可编辑） */}
       {pkgDetailModal && (
-        <div className="fixed inset-0 flex items-center justify-center z-[95] p-4" style={{ background: 'rgba(0,0,0,0.45)' }} onClick={() => setPkgDetailModal(false)}>
+        <div className="fixed inset-0 flex items-center justify-center z-[95] p-4" style={{ background: 'rgba(0,0,0,0.45)' }}>
           <div onClick={(e) => e.stopPropagation()} style={{ width: '100%', maxWidth: 620, background: '#ffffff', borderRadius: 8, maxHeight: '90vh', overflow: 'auto', boxShadow: '0 12px 40px rgba(0,0,0,0.18)' }}>
             {/* 头部 */}
             <div className="flex items-center justify-between" style={{ padding: '20px 24px', borderBottom: '1px solid ' + DIV }}>
@@ -1228,7 +1272,7 @@ export default function OrderDetail() {
 
       {/* 客户影集分享弹窗 */}
       {shareModal && (
-        <div className="fixed inset-0 flex items-center justify-center z-[80] p-4" style={{ background: 'rgba(0,0,0,0.45)' }} onClick={() => setShareModal(false)}>
+        <div className="fixed inset-0 flex items-center justify-center z-[80] p-4" style={{ background: 'rgba(0,0,0,0.45)' }}>
           <div onClick={(e) => e.stopPropagation()} style={{ width: '100%', maxWidth: 420, background: '#fff', border: '1px solid ' + DIV, borderRadius: 8, padding: 24, textAlign: 'center' }}>
             <div style={{ color: '#222222', fontWeight: 500, marginBottom: 4 }}>客户影集分享</div>
             <div style={{ fontSize: 12, color: '#666666', marginBottom: 16 }}>扫码或复制链接，客户即可在手机上查看成品影集（仅展示样片/成片，不含原片）</div>
