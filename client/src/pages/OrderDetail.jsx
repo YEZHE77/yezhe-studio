@@ -186,9 +186,11 @@ export default function OrderDetail() {
   const [execPickerSelections, setExecPickerSelections] = useState([]);
   // 打印单据
   const [printMode, setPrintMode] = useState(false);
-  // 右上角【查看记录】唤起日志弹窗（订单状态详情 / 交易记录 / 下载记录 3Tab）
-  const [logModal, setLogModal] = useState(false);
+  // 底部常驻记录卡片 Tab（订单状态详情 / 交易记录 / 下载记录）
   const [logTab, setLogTab] = useState('status');
+  // 右上角【查看记录】唤起日志弹窗（与底部卡片并存，独立 Tab 状态）
+  const [logModal, setLogModal] = useState(false);
+  const [logModalTab, setLogModalTab] = useState('status');
   // 调查问卷弹窗
   const [questionnaireModal, setQuestionnaireModal] = useState(false);
 
@@ -694,7 +696,7 @@ export default function OrderDetail() {
           {/* 右侧 4 步横向流程进度条（由后端 status/logs 驱动，支持横向滚动） */}
           <div className="flex-1" style={{ minWidth: 0, padding: '14px 28px', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 12 }}>
             <div style={{ fontSize: 13, color: TEXT_SUB, textAlign: 'right' }}>
-              {statusText}<span style={{ color: BLUE, marginLeft: 8, cursor: 'pointer' }} onClick={() => { setLogTab('status'); setLogModal(true); }}>查看记录</span>
+              {statusText}<span style={{ color: BLUE, marginLeft: 8, cursor: 'pointer' }} onClick={() => setLogModal(true)}>查看记录</span>
             </div>
             <div style={{ overflowX: 'auto', overflowY: 'hidden' }}>
               <div className="flex items-start" style={{ gap: 0, minWidth: 1080 }}>
@@ -1109,7 +1111,76 @@ export default function OrderDetail() {
         </div>
       </section>
 
-      {/* ============ Module 6：底部记录已迁移至右上角【查看记录】弹窗，不再常驻页面 DOM ============ */}
+      {/* ============ Module 6：底部记录卡片（订单状态详情 / 交易记录 / 下载记录），与顶部【查看记录】弹窗并存 ============ */}
+      <section style={{ margin: '18px 24px 24px', background: '#FFFFFF', border: '1px solid ' + CARD_BORDER, borderRadius: CARD_RADIUS, boxShadow: CARD_SHADOW, overflow: 'hidden' }}>
+        <div className="flex" style={{ height: 46, borderBottom: '1px solid ' + DIV, padding: '0 8px' }}>
+          {[{ k: 'status', t: '订单状态详情' }, { k: 'trade', t: '交易记录' }, { k: 'download', t: '下载记录' }].map((tb) => {
+            const active = logTab === tb.k;
+            return (
+              <button key={tb.k} type="button" onClick={() => setLogTab(tb.k)}
+                style={{
+                  padding: '0 16px', height: 46, background: 'none', border: 'none', cursor: 'pointer', fontSize: 14,
+                  color: active ? BLUE : '#666666',
+                  borderBottom: active ? ('2px solid ' + BLUE) : '2px solid transparent', fontWeight: active ? 500 : 400
+                }}>{tb.t}</button>
+            );
+          })}
+        </div>
+        <div style={{ padding: '20px 24px' }}>
+          {logTab === 'status' && (
+            <>
+              <div style={{ color: '#222222', marginBottom: 8 }}>操作日志</div>
+              {(detail.logs || []).length === 0 && <div style={{ color: '#999999', fontSize: 14, padding: '4px 0' }}>暂无日志</div>}
+              {(detail.logs || []).map((l, i, arr) => (
+                <div key={i} className="flex" style={{ gap: 12 }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: 10, flexShrink: 0 }}>
+                    <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#52C41A', marginTop: 7, flexShrink: 0 }} />
+                    {i < arr.length - 1 && <span style={{ flex: 1, width: 1, background: '#EAEAEA', marginTop: 4 }} />}
+                  </div>
+                  <div style={{ flex: 1, paddingBottom: 14 }}>
+                    <div style={{ fontSize: 14, color: '#333333' }}>{l.text}</div>
+                    <div style={{ fontSize: 12, color: TEXT_SUB, marginTop: 2 }}>{new Date(l.t).toLocaleString('zh-CN')}</div>
+                  </div>
+                </div>
+              ))}
+            </>
+          )}
+          {logTab === 'trade' && (
+            <div>
+              <div style={{ color: '#222222', marginBottom: 8 }}>收款流水</div>
+              {(!detail.payments || detail.payments.length === 0) && <div style={{ color: '#999999', fontSize: 14, padding: '4px 0' }}>暂无流水</div>}
+              {detail.payments && detail.payments.map((p) => (
+                <div key={p.id} className="flex items-center justify-between" style={{ borderBottom: '1px solid ' + DIV, padding: '8px 0' }}>
+                  <div>
+                    <span style={{ color: '#222222' }}>{TYPE_LABEL[p.type]}</span>
+                    <span style={{ color: '#666666', marginLeft: 8 }}>{p.method === 'online' ? '线上' : '线下'}</span>
+                  </div>
+                  <div style={{ color: p.type === 'refund' ? '#ef4444' : '#10b981' }}>
+                    {p.type === 'refund' ? '-' : '+'}¥{Number(p.amount).toLocaleString()}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+          {logTab === 'download' && (
+            <div>
+              <div style={{ color: '#222222', marginBottom: 8 }}>可下载素材（原片 / 精修片 / 选片）</div>
+              {downloadItems.length === 0 && <div style={{ color: '#999999', fontSize: 14, padding: '4px 0' }}>暂无素材（请在上方可片/原片/精修片 Tab 上传）</div>}
+              <div style={{ display: 'grid', gap: 4 }}>
+                {downloadItems.map((it, i) => (
+                  <div key={i} className="flex items-center justify-between" style={{ borderBottom: '1px solid ' + DIV, padding: '8px 0' }}>
+                    <div className="flex items-center" style={{ gap: 8, minWidth: 0 }}>
+                      <span style={{ padding: '2px 6px', borderRadius: 4, background: '#f3f4f6', fontSize: 11, color: '#666666', flexShrink: 0 }}>{it.kind}</span>
+                      <span style={{ color: '#222222', fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{it.url}</span>
+                    </div>
+                    <button type="button" onClick={() => downloadFile(it.url)} style={{ padding: '4px 8px', borderRadius: 4, border: '1px solid ' + DIV, fontSize: 12, color: '#222222', background: '#fff', cursor: 'pointer', flexShrink: 0 }}>下载</button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </section>
 
       {/* 收款弹窗 */}
       {pay && (
@@ -1682,9 +1753,9 @@ export default function OrderDetail() {
             </div>
             <div className="flex" style={{ borderBottom: '1px solid ' + DIV, padding: '0 24px', flexShrink: 0 }}>
               {[{ k: 'status', t: '订单状态详情' }, { k: 'trade', t: '交易记录' }, { k: 'download', t: '下载记录' }].map((tb) => {
-                const active = logTab === tb.k;
+                const active = logModalTab === tb.k;
                 return (
-                  <button key={tb.k} type="button" onClick={() => setLogTab(tb.k)}
+                  <button key={tb.k} type="button" onClick={() => setLogModalTab(tb.k)}
                     style={{ padding: '10px 16px', background: 'none', border: 'none', cursor: 'pointer', fontSize: 14, color: active ? BLUE : '#666666', borderBottom: active ? ('2px solid ' + BLUE) : '2px solid transparent', fontWeight: active ? 500 : 400 }}>
                     {tb.t}
                   </button>
@@ -1692,7 +1763,7 @@ export default function OrderDetail() {
               })}
             </div>
             <div style={{ padding: '20px 24px', overflow: 'auto', flex: 1 }}>
-              {logTab === 'status' && (
+              {logModalTab === 'status' && (
                 <>
                   <div style={{ color: '#222222', fontWeight: 500, marginBottom: 8 }}>操作日志</div>
                   {(detail.logs || []).length === 0 && <div style={{ color: '#999999', fontSize: 14, padding: '4px 0' }}>暂无日志</div>}
@@ -1710,7 +1781,7 @@ export default function OrderDetail() {
                   ))}
                 </>
               )}
-              {logTab === 'trade' && (
+              {logModalTab === 'trade' && (
                 <div>
                   <div style={{ color: '#222222', fontWeight: 500, marginBottom: 8 }}>收款流水</div>
                   {(!detail.payments || detail.payments.length === 0) && <div style={{ color: '#999999', fontSize: 14, padding: '4px 0' }}>暂无流水</div>}
@@ -1727,7 +1798,7 @@ export default function OrderDetail() {
                   ))}
                 </div>
               )}
-              {logTab === 'download' && (
+              {logModalTab === 'download' && (
                 <div>
                   <div style={{ color: '#222222', fontWeight: 500, marginBottom: 8 }}>可下载素材（原片 / 精修片 / 选片）</div>
                   {downloadItems.length === 0 && <div style={{ color: '#999999', fontSize: 14, padding: '4px 0' }}>暂无素材</div>}
