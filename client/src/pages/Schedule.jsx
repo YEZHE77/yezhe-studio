@@ -347,9 +347,9 @@ export default function Schedule() {
   };
 
   return (
-    <div className="w-full min-h-screen" style={{ background: G_PAGE_BG, paddingRight: 140 }}>
+    <div className="w-full min-h-screen" style={{ background: G_PAGE_BG, paddingRight: 116 }}>
       {/* 白色日历大卡 */}
-      <div className="bg-white" style={{ border: `1px solid ${G_BORDER}`, borderRadius: 6, margin: '0 12px 12px', minHeight: 'calc(100vh - 44px)' }}>
+      <div className="bg-white" style={{ border: `1px solid ${G_BORDER}`, borderRadius: 6, margin: '0 0 12px 12px', minHeight: 'calc(100vh - 44px)' }}>
         {/* 模块 B：顶部操作栏 */}
         <div className="flex items-center justify-between relative" style={{ padding: '14px 16px', borderBottom: `1px solid ${G_BORDER}` }}>
           {/* 状态图例下拉 */}
