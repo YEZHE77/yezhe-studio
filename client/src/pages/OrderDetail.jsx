@@ -173,6 +173,15 @@ export default function OrderDetail() {
   const [hoverRemark, setHoverRemark] = useState(false);
   // 客户信息头像下拉浮层
   const [custInfoOpen, setCustInfoOpen] = useState(false);
+  // 编辑订单弹窗：渠道列表 + 人员列表（联调后端）
+  const [channels, setChannels] = useState([]);
+  const [personnel, setPersonnel] = useState([]);
+  // 编辑订单表单校验错误
+  const [editErrors, setEditErrors] = useState({});
+  // 执行人多选下拉
+  const [execDropdownOpen, setExecDropdownOpen] = useState(false);
+  // 打印单据
+  const [printMode, setPrintMode] = useState(false);
 
   const loadSel = useCallback((oid) => {
     http.get('/api/admin/photo-select/' + oid).then((r) => setSel(r.data)).catch(() => setSel(null));
@@ -189,21 +198,27 @@ export default function OrderDetail() {
   useEffect(() => { reload(); }, [reload]);
   useEffect(() => {
     const ctrl = new AbortController();
+    http.get('/api/channels', { signal: ctrl.signal }).then((r) => setChannels(Array.isArray(r.data) ? r.data : [])).catch(() => {});
+    http.get('/api/admin/personnel', { signal: ctrl.signal }).then((r) => setPersonnel(Array.isArray(r.data) ? r.data : [])).catch(() => {});
+    return () => ctrl.abort();
+  }, []);
+  useEffect(() => {
+    const ctrl = new AbortController();
     http.get('/api/packages?status=all', { signal: ctrl.signal }).then((r) => setPkgs(r.data)).catch(() => {});
     return () => ctrl.abort();
   }, []);
   useEffect(() => () => { bgm.pause(); }, []);
-  // 点击空白收起下拉（客户信息 / 更多设置）
+  // 点击空白收起下拉（客户信息 / 更多设置 / 执行人下拉）
   useEffect(() => {
-    if (!custInfoOpen && !moreMenu) return;
+    if (!custInfoOpen && !moreMenu && !execDropdownOpen) return;
     const handler = (e) => {
       if (custInfoOpen) setCustInfoOpen(false);
       if (moreMenu) setMoreMenu(false);
+      if (execDropdownOpen) setExecDropdownOpen(false);
     };
-    // 短暂延迟避免触发按钮自身 onClick
     const id = setTimeout(() => document.addEventListener('click', handler), 0);
     return () => { clearTimeout(id); document.removeEventListener('click', handler); };
-  }, [custInfoOpen, moreMenu]);
+  }, [custInfoOpen, moreMenu, execDropdownOpen]);
   // 订单图片（原片/精修片）随订单初始化一次（同 id 不覆盖本地编辑）
   useEffect(() => {
     if (detail && detail.order_photos) {
@@ -240,19 +255,38 @@ export default function OrderDetail() {
     setEditForm({
       order_name: detail.order_name || '',
       groom_name: detail.groom_name || '', bride_name: detail.bride_name || '', customer_phone: detail.customer_phone || '',
-      address: detail.address || '', shoot_date: detail.shoot_date || '', executor: detail.executor || '',
+      address: detail.address || '', shoot_date: detail.shoot_date || '',
+      executors: asArr(detail.executors).map((x) => typeof x === 'object' ? x : { id: null, name: x }),
+      channel: detail.channel || '', channel_id: detail.channel_id || '',
       remark: detail.remark || '', status: detail.status
     });
+    setEditErrors({});
     setEdit(true);
   };
   async function saveEdit(e) {
     if (e) e.preventDefault();
+    // 前端表单校验
+    const errs = {};
+    const name = [editForm.groom_name, editForm.bride_name].filter(Boolean).join('').trim();
+    if (!name) errs.customer_name = '请至少填写新郎或新娘姓名';
+    const phone = (editForm.customer_phone || '').trim();
+    if (!phone) errs.customer_phone = '请填写联系电话';
+    else if (!/^1\d{10}$/.test(phone)) errs.customer_phone = '手机号格式不正确（应为 11 位数字）';
+    if (Object.keys(errs).length > 0) { setEditErrors(errs); return; }
     await doSaveEdit(false);
   }
   // 保存订单编辑；改拍摄日期时后端会做档期冲突检测（验收④），冲突则二次确认后 force 提交
   async function doSaveEdit(force) {
     try {
-      await http.put('/api/orders/' + detail.id, { ...editForm, force: force ? 1 : 0 });
+      // 确保后端收到规范的 phones 数组和 executors 数组
+      const phoneVal = (editForm.customer_phone || '').trim();
+      await http.put('/api/orders/' + detail.id, {
+        ...editForm,
+        phones: phoneVal ? [phoneVal] : [],
+        channel: editForm.channel || '',
+        channel_id: editForm.channel_id || '',
+        force: force ? 1 : 0
+      });
       setDateConflict(null);
       setEdit(false);
       reload();
@@ -332,7 +366,11 @@ export default function OrderDetail() {
   }
   function printOrder() {
     if (!detail) return;
-    window.print();
+    setMoreMenu(false);
+    // 先渲染打印内容，再触发打印
+    setPrintMode(true);
+    // 延迟确保 DOM 渲染完成后再打印
+    setTimeout(() => { window.print(); setPrintMode(false); }, 300);
   }
   async function restoreOrder() {
     if (!confirm('确认恢复该订单？')) return;
@@ -839,10 +877,13 @@ export default function OrderDetail() {
         </div>
 
         <div style={{ padding: '12px 24px 24px' }}>
-          {/* 提示警告条（黄色提示 + 灯泡图标，文案保持业务原样） */}
+          {/* 提示警告条（黄色提示 + 灯泡图标） */}
           <div style={{ background: '#fffbe6', color: '#b58900', fontSize: 13, padding: '9px 16px', display: 'flex', alignItems: 'center', gap: 8, borderRadius: 4 }}>
             <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.3 1 2.3h6c0-1 .4-1.8 1-2.3A7 7 0 0 0 12 2z" /></svg>
-            <span>请先上传完整原片后再通知客户选片；精修片交付前请确认已通过全部精修。</span>
+            <span>原片建议在拍摄后 7 天内完成上传；精修片交付前请确保已通过全部质检。</span>
+            <span style={{ flex: 1 }} />
+            <button type="button" onClick={() => nav('/capacity')}
+              style={{ background: 'none', border: 'none', color: BLUE, fontSize: 13, cursor: 'pointer', fontWeight: 500, whiteSpace: 'nowrap' }}>查看容量</button>
           </div>
 
           {/* 筛选操作栏：左侧 全部相册/底片/推荐；右侧 全选 → 仅下载精修片 → 排序 */}
@@ -1060,35 +1101,126 @@ export default function OrderDetail() {
       {/* 编辑订单弹窗 */}
       {edit && (
         <div className="fixed inset-0 flex items-center justify-center z-[70] p-4" style={{ background: 'rgba(0,0,0,0.45)' }}>
-          <form onClick={(e) => e.stopPropagation()} onSubmit={saveEdit} style={{ width: '100%', maxWidth: 448, background: '#fff', border: '1px solid ' + DIV, borderRadius: 8, padding: 24 }}>
-            <div style={{ color: '#222222', fontWeight: 500, marginBottom: 16 }}>编辑订单 · {detail.order_no}</div>
-            <input value={editForm.order_name} onChange={(e) => setEditForm({ ...editForm, order_name: e.target.value })} placeholder="订单名称"
-              style={modalInputStyle} />
-            <div className="grid grid-cols-2" style={{ gap: 12, marginTop: 12 }}>
-              <input value={editForm.groom_name} onChange={(e) => setEditForm({ ...editForm, groom_name: e.target.value })} placeholder="新郎姓名" style={modalInputStyle} />
-              <input value={editForm.bride_name} onChange={(e) => setEditForm({ ...editForm, bride_name: e.target.value })} placeholder="新娘姓名" style={modalInputStyle} />
+          <form onClick={(e) => e.stopPropagation()} onSubmit={saveEdit} style={{ width: '100%', maxWidth: 520, background: '#fff', border: '1px solid ' + DIV, borderRadius: 8, padding: 24, maxHeight: '90vh', overflow: 'auto' }}>
+            <div style={{ color: '#222222', fontWeight: 600, marginBottom: 16, fontSize: 15 }}>编辑订单 · {detail.order_no}</div>
+
+            {/* 订单名称 */}
+            <div style={{ marginBottom: 12 }}>
+              <div style={{ fontSize: 13, color: '#333333', marginBottom: 4 }}>订单名称</div>
+              <input value={editForm.order_name} onChange={(e) => setEditForm({ ...editForm, order_name: e.target.value })} placeholder="如「张三 & 李四 婚纱照」" style={modalInputStyle} />
             </div>
-            <div className="grid grid-cols-2" style={{ gap: 12, marginTop: 12 }}>
-              <input value={editForm.customer_phone} onChange={(e) => setEditForm({ ...editForm, customer_phone: e.target.value })} placeholder="联系电话" style={modalInputStyle} />
-              <input value={editForm.address} onChange={(e) => setEditForm({ ...editForm, address: e.target.value })} placeholder="拍摄地址" style={modalInputStyle} />
+
+            {/* 客户姓名（必填） */}
+            <div className="grid grid-cols-2" style={{ gap: 12, marginBottom: 12 }}>
+              <div>
+                <div style={{ fontSize: 13, color: '#333333', marginBottom: 4 }}>新郎姓名 <span style={{ color: '#ef4444' }}>*</span></div>
+                <input value={editForm.groom_name} onChange={(e) => setEditForm({ ...editForm, groom_name: e.target.value })} placeholder="新郎姓名" style={{ ...modalInputStyle, borderColor: editErrors.customer_name ? '#ef4444' : DIV }} />
+              </div>
+              <div>
+                <div style={{ fontSize: 13, color: '#333333', marginBottom: 4 }}>新娘姓名</div>
+                <input value={editForm.bride_name} onChange={(e) => setEditForm({ ...editForm, bride_name: e.target.value })} placeholder="新娘姓名" style={modalInputStyle} />
+              </div>
             </div>
-            <input value={editForm.shoot_date} onChange={(e) => setEditForm({ ...editForm, shoot_date: e.target.value })} type="date"
-              style={{ ...modalInputStyle, marginTop: 12 }} />
-            <div style={{ fontSize: 12, color: '#888888', marginTop: 6 }}>
-              修改拍摄日期将自动释放原档期 {detail.shoot_date || '（无）'}，并占用新日期；若新日期已被占用会先提示冲突。
+            {editErrors.customer_name && <div style={{ color: '#ef4444', fontSize: 12, marginBottom: 8, marginTop: -8 }}>{editErrors.customer_name}</div>}
+
+            {/* 联系电话（必填） */}
+            <div style={{ marginBottom: 12 }}>
+              <div style={{ fontSize: 13, color: '#333333', marginBottom: 4 }}>联系电话 <span style={{ color: '#ef4444' }}>*</span></div>
+              <input value={editForm.customer_phone} onChange={(e) => setEditForm({ ...editForm, customer_phone: e.target.value })} placeholder="11 位手机号" style={{ ...modalInputStyle, borderColor: editErrors.customer_phone ? '#ef4444' : DIV }} />
+              {editErrors.customer_phone && <div style={{ color: '#ef4444', fontSize: 12, marginTop: 4 }}>{editErrors.customer_phone}</div>}
             </div>
-            <input value={editForm.executor} onChange={(e) => setEditForm({ ...editForm, executor: e.target.value })} placeholder="执行人"
-              style={{ ...modalInputStyle, marginTop: 12 }} />
-            <select value={editForm.status} onChange={(e) => setEditForm({ ...editForm, status: e.target.value })}
-              style={{ ...modalInputStyle, marginTop: 12 }}>
-              <option value="deposit">已付定金</option><option value="shot">已拍摄</option>
-              <option value="selecting">选片中</option><option value="retouching">精修中</option><option value="delivered">已交付</option>
-              <option value="completed">已完成</option><option value="cancelled">已作废</option>
-            </select>
-            <input value={editForm.remark} onChange={(e) => setEditForm({ ...editForm, remark: e.target.value })} placeholder="备注"
-              style={{ ...modalInputStyle, marginTop: 12 }} />
-            <div className="flex justify-end" style={{ gap: 8, marginTop: 16 }}>
-              <button type="button" onClick={() => setEdit(false)} style={modalCancelStyle}>取消</button>
+
+            {/* 拍摄地址 */}
+            <div style={{ marginBottom: 12 }}>
+              <div style={{ fontSize: 13, color: '#333333', marginBottom: 4 }}>拍摄地址</div>
+              <input value={editForm.address} onChange={(e) => setEditForm({ ...editForm, address: e.target.value })} placeholder="拍摄城市 / 场地" style={modalInputStyle} />
+            </div>
+
+            {/* 拍摄日期 */}
+            <div style={{ marginBottom: 12 }}>
+              <div style={{ fontSize: 13, color: '#333333', marginBottom: 4 }}>拍摄日期</div>
+              <input value={editForm.shoot_date} onChange={(e) => setEditForm({ ...editForm, shoot_date: e.target.value })} type="date" style={modalInputStyle} />
+              <div style={{ fontSize: 12, color: '#888888', marginTop: 4 }}>
+                修改日期将释放旧档期并占用新日期；冲突时会先提示。
+              </div>
+            </div>
+
+            {/* 执行人（多选） */}
+            <div style={{ marginBottom: 12 }}>
+              <div style={{ fontSize: 13, color: '#333333', marginBottom: 4 }}>执行人</div>
+              <div style={{ position: 'relative' }}>
+                <div onClick={() => setExecDropdownOpen((o) => !o)}
+                  style={{ ...modalInputStyle, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', minHeight: 38 }}>
+                  <span style={{ color: (editForm.executors || []).length ? '#222222' : '#999999', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {(editForm.executors || []).length ? (editForm.executors || []).map((x) => x.name).join('、') : '选择执行人'}
+                  </span>
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9l6 6 6-6" /></svg>
+                </div>
+                {execDropdownOpen && (
+                  <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: 4, maxHeight: 200, overflowY: 'auto', background: '#fff', border: '1px solid ' + DIV, borderRadius: 4, boxShadow: '0 6px 20px rgba(0,0,0,0.10)', zIndex: 20, padding: 4 }}>
+                    {personnel.length === 0 && <div style={{ padding: '8px 12px', fontSize: 13, color: '#999999' }}>暂无人员</div>}
+                    {personnel.map((p) => {
+                      const selected = (editForm.executors || []).some((x) => x.id === p.id);
+                      return (
+                        <label key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 12px', cursor: 'pointer', fontSize: 14, color: '#222222' }}>
+                          <input type="checkbox" checked={selected} onChange={() => {
+                            setEditForm((f) => {
+                              const cur = f.executors || [];
+                              if (selected) return { ...f, executors: cur.filter((x) => x.id !== p.id) };
+                              return { ...f, executors: [...cur, { id: p.id, name: p.name, avatar: p.avatar || '' }] };
+                            });
+                          }} />
+                          {p.avatar ? <img src={p.avatar} alt="" style={{ width: 20, height: 20, borderRadius: '50%', objectFit: 'cover' }} /> : <span style={{ width: 20, height: 20, borderRadius: '50%', background: pickAvatarColor(p.name), color: '#fff', fontSize: 11, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{p.name.slice(0, 1)}</span>}
+                          {p.name}
+                        </label>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* 渠道来源（下拉） */}
+            <div style={{ marginBottom: 12 }}>
+              <div style={{ fontSize: 13, color: '#333333', marginBottom: 4 }}>渠道来源</div>
+              <select value={editForm.channel || ''} onChange={(e) => {
+                const name = e.target.value;
+                const ch = channels.find((c) => c.name === name);
+                setEditForm({ ...editForm, channel: name, channel_id: ch ? ch.id : '' });
+              }} style={modalInputStyle}>
+                <option value="">请选择渠道</option>
+                {channels.map((ch) => (
+                  <option key={ch.id} value={ch.name}>{ch.name}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* 状态 */}
+            <div style={{ marginBottom: 12 }}>
+              <div style={{ fontSize: 13, color: '#333333', marginBottom: 4 }}>订单状态</div>
+              <select value={editForm.status} onChange={(e) => setEditForm({ ...editForm, status: e.target.value })} style={modalInputStyle}>
+                <option value="deposit">已付定金</option><option value="shot">已拍摄</option>
+                <option value="selecting">选片中</option><option value="retouching">精修中</option><option value="delivered">已交付</option>
+                <option value="completed">已完成</option><option value="cancelled">已作废</option>
+              </select>
+            </div>
+
+            {/* 备注 */}
+            <div style={{ marginBottom: 12 }}>
+              <div style={{ fontSize: 13, color: '#333333', marginBottom: 4 }}>备注</div>
+              <input value={editForm.remark} onChange={(e) => setEditForm({ ...editForm, remark: e.target.value })} placeholder="选填备注" style={modalInputStyle} />
+            </div>
+
+            {/* 当前套系（只读） */}
+            <div style={{ marginBottom: 16, background: '#f9fafb', borderRadius: 4, padding: '10px 12px', fontSize: 13 }}>
+              <span style={{ color: '#888888' }}>当前套系：</span>
+              <b style={{ color: '#222222' }}>{(pkgInfo && pkgInfo.name) || '—'}</b>
+              <span style={{ color: '#10b981', marginLeft: 8 }}>¥{Number((pkgInfo && pkgInfo.price) || 0).toLocaleString()}</span>
+              <span style={{ color: '#888888', marginLeft: 8, fontSize: 11 }}>（只读，更换套系请在"更多设置"操作）</span>
+            </div>
+
+            <div className="flex justify-end" style={{ gap: 8 }}>
+              <button type="button" onClick={() => { setEdit(false); setEditErrors({}); }} style={modalCancelStyle}>取消</button>
               <button type="submit" style={modalSaveStyle}>保存</button>
             </div>
           </form>
@@ -1308,6 +1440,162 @@ export default function OrderDetail() {
           </div>
         </>
       )}
+
+      {/* 打印单据内容（仅打印时可见，屏幕隐藏） */}
+      <div className="print-order-sheet" style={{ display: 'none' }}>
+        <style>{`
+          @media print {
+            body * { visibility: hidden; }
+            .print-order-sheet, .print-order-sheet * { visibility: visible; }
+            .print-order-sheet { position: absolute; left: 0; top: 0; width: 100%; padding: 20mm 15mm; }
+            @page { size: A4; margin: 0; }
+          }
+        `}</style>
+        <div style={{ maxWidth: 700, margin: '0 auto', fontFamily: 'SimSun, STSong, serif', color: '#000' }}>
+          {/* 标题 */}
+          <div style={{ textAlign: 'center', borderBottom: '2px solid #000', paddingBottom: 16, marginBottom: 20 }}>
+            <div style={{ fontSize: 22, fontWeight: 'bold', letterSpacing: 4 }}>拍摄服务单</div>
+            <div style={{ fontSize: 14, marginTop: 8, color: '#555' }}>订单编号：{detail.order_no}</div>
+          </div>
+
+          {/* 客户信息 */}
+          <div style={{ marginBottom: 20 }}>
+            <div style={{ fontSize: 16, fontWeight: 'bold', borderBottom: '1px solid #ccc', paddingBottom: 6, marginBottom: 10 }}>客户信息</div>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
+              <tbody>
+                <tr>
+                  <td style={{ padding: '4px 8px', width: 100, color: '#555' }}>客户姓名</td>
+                  <td style={{ padding: '4px 8px' }}>{custName}</td>
+                  <td style={{ padding: '4px 8px', width: 80, color: '#555' }}>联系电话</td>
+                  <td style={{ padding: '4px 8px' }}>{phoneList.join(' / ') || '—'}</td>
+                </tr>
+                <tr>
+                  <td style={{ padding: '4px 8px', color: '#555' }}>新郎</td>
+                  <td style={{ padding: '4px 8px' }}>{detail.groom_name || '—'}</td>
+                  <td style={{ padding: '4px 8px', color: '#555' }}>新娘</td>
+                  <td style={{ padding: '4px 8px' }}>{detail.bride_name || '—'}</td>
+                </tr>
+                <tr>
+                  <td style={{ padding: '4px 8px', color: '#555' }}>拍摄地址</td>
+                  <td style={{ padding: '4px 8px' }} colSpan={3}>{detail.address || '—'}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          {/* 订单信息 */}
+          <div style={{ marginBottom: 20 }}>
+            <div style={{ fontSize: 16, fontWeight: 'bold', borderBottom: '1px solid #ccc', paddingBottom: 6, marginBottom: 10 }}>订单信息</div>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
+              <tbody>
+                <tr>
+                  <td style={{ padding: '4px 8px', width: 120, color: '#555' }}>订单名称</td>
+                  <td style={{ padding: '4px 8px' }}>{detail.order_name || '—'}</td>
+                  <td style={{ padding: '4px 8px', width: 100, color: '#555' }}>拍摄日期</td>
+                  <td style={{ padding: '4px 8px' }}>{tbd ? '日期待定' : (detail.shoot_date || '—')}</td>
+                </tr>
+                <tr>
+                  <td style={{ padding: '4px 8px', color: '#555' }}>渠道来源</td>
+                  <td style={{ padding: '4px 8px' }}>{detail.channel || '—'}</td>
+                  <td style={{ padding: '4px 8px', color: '#555' }}>订单状态</td>
+                  <td style={{ padding: '4px 8px' }}>{STATUS_LABEL[detail.status] || detail.status}</td>
+                </tr>
+                <tr>
+                  <td style={{ padding: '4px 8px', color: '#555' }}>执行人</td>
+                  <td style={{ padding: '4px 8px' }} colSpan={3}>{execs.length ? execs.map((x) => x.name).join('、') : (detail.executor || '—')}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          {/* 套系详情 */}
+          {pkgInfo && (
+            <div style={{ marginBottom: 20 }}>
+              <div style={{ fontSize: 16, fontWeight: 'bold', borderBottom: '1px solid #ccc', paddingBottom: 6, marginBottom: 10 }}>套系详情</div>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
+                <tbody>
+                  <tr>
+                    <td style={{ padding: '4px 8px', width: 100, color: '#555' }}>套系名称</td>
+                    <td style={{ padding: '4px 8px' }}>{pkgInfo.name}</td>
+                    <td style={{ padding: '4px 8px', width: 80, color: '#555' }}>价格</td>
+                    <td style={{ padding: '4px 8px' }}>¥{Number(pkgInfo.price || 0).toLocaleString()}</td>
+                  </tr>
+                  <tr>
+                    <td style={{ padding: '4px 8px', color: '#555' }}>定金</td>
+                    <td style={{ padding: '4px 8px' }}>¥{Number(pkgInfo.deposit || 0).toLocaleString()}</td>
+                    <td style={{ padding: '4px 8px', color: '#555' }}>拍摄时长</td>
+                    <td style={{ padding: '4px 8px' }}>{pkgInfo.duration || '—'}</td>
+                  </tr>
+                  <tr>
+                    <td style={{ padding: '4px 8px', color: '#555' }}>精修张数</td>
+                    <td style={{ padding: '4px 8px' }}>{pkgInfo.retouch_count || '—'}</td>
+                    <td style={{ padding: '4px 8px', color: '#555' }}>底片政策</td>
+                    <td style={{ padding: '4px 8px' }}>{pkgInfo.raw_policy || '—'}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {/* 收款信息 */}
+          <div style={{ marginBottom: 20 }}>
+            <div style={{ fontSize: 16, fontWeight: 'bold', borderBottom: '1px solid #ccc', paddingBottom: 6, marginBottom: 10 }}>收款信息</div>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
+              <tbody>
+                <tr>
+                  <td style={{ padding: '4px 8px', width: 100, color: '#555' }}>应收总额</td>
+                  <td style={{ padding: '4px 8px', fontWeight: 'bold' }}>¥{total.toLocaleString()}</td>
+                  <td style={{ padding: '4px 8px', width: 80, color: '#555' }}>已收金额</td>
+                  <td style={{ padding: '4px 8px', color: '#10b981', fontWeight: 'bold' }}>¥{paid.toLocaleString()}</td>
+                </tr>
+                <tr>
+                  <td style={{ padding: '4px 8px', color: '#555' }}>待收余额</td>
+                  <td style={{ padding: '4px 8px', color: remain > 0 ? '#ef4444' : '#10b981' }}>¥{Math.max(0, remain).toLocaleString()}</td>
+                  <td style={{ padding: '4px 8px', color: '#555' }}>付款状态</td>
+                  <td style={{ padding: '4px 8px' }}>{PAY_STATUS_LABEL[payKey] || payKey}</td>
+                </tr>
+              </tbody>
+            </table>
+            {(detail.payments || []).length > 0 && (
+              <div style={{ marginTop: 10 }}>
+                <div style={{ fontSize: 13, color: '#555', marginBottom: 6 }}>收款明细</div>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, border: '1px solid #ddd' }}>
+                  <thead>
+                    <tr style={{ background: '#f5f5f5' }}>
+                      <th style={{ padding: '4px 8px', border: '1px solid #ddd', textAlign: 'left' }}>类型</th>
+                      <th style={{ padding: '4px 8px', border: '1px solid #ddd', textAlign: 'right' }}>金额</th>
+                      <th style={{ padding: '4px 8px', border: '1px solid #ddd', textAlign: 'left' }}>方式</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {detail.payments.map((p) => (
+                      <tr key={p.id}>
+                        <td style={{ padding: '4px 8px', border: '1px solid #ddd' }}>{TYPE_LABEL[p.type] || p.type}</td>
+                        <td style={{ padding: '4px 8px', border: '1px solid #ddd', textAlign: 'right' }}>{p.type === 'refund' ? '-' : '+'}¥{Number(p.amount).toLocaleString()}</td>
+                        <td style={{ padding: '4px 8px', border: '1px solid #ddd' }}>{p.method === 'online' ? '线上' : '线下'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          {/* 备注 */}
+          {detail.remark && (
+            <div style={{ marginBottom: 20 }}>
+              <div style={{ fontSize: 16, fontWeight: 'bold', borderBottom: '1px solid #ccc', paddingBottom: 6, marginBottom: 10 }}>备注</div>
+              <div style={{ fontSize: 14, whiteSpace: 'pre-wrap' }}>{detail.remark}</div>
+            </div>
+          )}
+
+          {/* 页脚 */}
+          <div style={{ textAlign: 'center', marginTop: 40, fontSize: 12, color: '#999', borderTop: '1px solid #ccc', paddingTop: 12 }}>
+            <div>打印时间：{new Date().toLocaleString('zh-CN')}</div>
+            <div style={{ marginTop: 4 }}>本单据仅供内部使用，最终结算以合同为准</div>
+          </div>
+        </div>
+      </div>
 
       <Slideshow photos={slidePhotos} open={slideOpen} onClose={closeSlideSel} title={detail.order_name || '订单相册'} />
     </div>
