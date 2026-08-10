@@ -499,6 +499,10 @@ export default function OrderDetail() {
     };
   }, [detail, pkgs]);
 
+  // 原片/精修片 排序（必须放在提前 return 之前，避免 hooks 数量不一致触发 React #310）
+  const sortedRaw = useMemo(() => sortPhotos(photos.raw, sortKey), [photos.raw, sortKey]);
+  const sortedRetouched = useMemo(() => sortPhotos(photos.retouched, sortKey), [photos.retouched, sortKey]);
+
   if (notFound) {
     return (
       <div className="max-w-3xl mx-auto py-20 text-center">
@@ -571,9 +575,6 @@ export default function OrderDetail() {
     }
     return arr; // 按上传时间 / 按拍摄时间：沿用原始顺序
   };
-  const sortedRaw = useMemo(() => sortPhotos(photos.raw, sortKey), [photos.raw, sortKey]);
-  const sortedRetouched = useMemo(() => sortPhotos(photos.retouched, sortKey), [photos.retouched, sortKey]);
-
   return (
     <div style={{ background: '#f7f9fc', minHeight: '100vh', paddingBottom: 24 }}>
       {/* ============ Module 3：订单状态卡片（青绿顶线 + 左侧操作 + 右侧 11 步进度条） ============ */}
