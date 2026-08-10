@@ -692,7 +692,7 @@ export default function OrderDetail() {
   return (
     <div style={{ background: '#f7f7f7', minHeight: '100vh', padding: '0 16px 24px', maxWidth: 1280, width: '100%', margin: '0 auto' }}>
       {/* ============ Module 3：订单状态卡片（白色卡片 + 左侧操作 + 右侧 4 步进度条，复刻第3张） ============ */}
-      <section style={{ margin: '8px 24px 0', background: '#FFFFFF', border: '1px solid ' + CARD_BORDER, borderTop: '3px solid ' + TEAL, borderRadius: 4, boxShadow: '0 1px 5px rgba(0,0,0,0.04)', overflow: 'hidden' }}>
+      <section style={{ margin: '8px 24px 0', background: '#FFFFFF', border: '1px solid ' + CARD_BORDER, borderTop: '3px solid ' + TEAL, borderRadius: 4, boxShadow: '0 1px 5px rgba(0,0,0,0.04)' }}>
         <div className="flex items-stretch" style={{ minHeight: 132 }}>
           {/* 左侧订单操作区 */}
           <div className="flex flex-col justify-center shrink-0" style={{ width: '26%', minWidth: 240, padding: '16px 28px', gap: 10, position: 'relative' }}>
@@ -757,7 +757,7 @@ export default function OrderDetail() {
       </section>
 
       {/* ============ 客户&订单基础信息卡片（全卡 1:1 复刻，750 设计稿，rpx） ============ */}
-      <section style={{ margin: '8px 24px 0', background: '#FFFFFF', borderRadius: CARD_RADIUS, boxShadow: CARD_SHADOW, overflow: 'hidden' }}>
+      <section style={{ margin: '8px 24px 0', background: '#FFFFFF', borderRadius: CARD_RADIUS, boxShadow: CARD_SHADOW }}>
 
         {/* ——— 1、卡片头部行 ——— */}
         <div style={{ padding: '20px 24px 0' }}>
