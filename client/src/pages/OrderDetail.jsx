@@ -31,33 +31,31 @@ function calcExtraFee(extraCount, unitPrice) {
   return { count: n, unitPrice, discount, fee: Math.round(n * unitPrice * discount) };
 }
 
-// 订单详情 4 步流程进度条（spec）：支付订单→完成拍摄→上传底片→完成
+// 订单详情 11 步流程进度条（新规范）：订单生成→生成合同→沟通确认→拍摄执行→拍摄结束
+// →选片精修→预告片输出→全部精修完成→原片打包→统一交付→订单完结
 const ORDER_STEPS = [
-  { key: 'paid', label: '支付订单' },
-  { key: 'shot', label: '完成拍摄' },
-  { key: 'raw_uploaded', label: '上传底片' },
-  { key: 'completed', label: '完成' }
+  { key: 'created', label: '订单生成' },
+  { key: 'contract_created', label: '生成合同' },
+  { key: 'confirmed', label: '沟通确认' },
+  { key: 'shooting', label: '拍摄执行' },
+  { key: 'shooting_finished', label: '拍摄结束' },
+  { key: 'retouch_selecting', label: '选片精修' },
+  { key: 'trailer_output', label: '预告片输出' },
+  { key: 'retouch_finished', label: '全部精修完成' },
+  { key: 'raw_packed', label: '原片打包' },
+  { key: 'delivered', label: '统一交付' },
+  { key: 'completed', label: '订单完结' }
 ];
-// 由订单 payment_status / status / order_photos 推导 4 步的「当前节点」下标
+// 由后端 status（6 阶段）推导 11 步的「当前节点」下标；
+// 订单一旦存在，订单生成/生成合同/沟通确认 默认已走过的 done 态
 function stepIndexFor(detail) {
   if (!detail) return -1;
-  if (detail.status === 'cancelled') return 1; // 作废时停在完成拍摄
-  // Step 0 支付订单：payment_status 非 unpaid 或已付金额 > 0 视为已完成
-  const hasPaid = detail.payment_status !== 'unpaid' || Number(detail.paid_amount || 0) > 0;
-  if (!hasPaid) return 0;
-  // Step 1 完成拍摄：status 在 shot 及之后
-  const statusIdx = STAGE_SEQ.indexOf(detail.status);
-  const isShotOrBeyond = statusIdx >= 1; // shot / selecting / retouching / delivered / completed
-  if (!isShotOrBeyond) return 1;
-  // Step 2 上传底片：order_photos.raw 有内容
-  const rawArr = detail.order_photos?.raw || (typeof detail.order_photos === 'string' ? asArr(JSON.parse(detail.order_photos || '{}').raw) : []);
-  const hasRaw = Array.isArray(rawArr) && rawArr.length > 0;
-  if (!hasRaw) return 2;
-  // Step 3 完成：status === completed
-  if (detail.status === 'completed') return 4;
-  return 3;
+  if (detail.cancelled) return 3; // 作废停在拍摄执行阶段
+  const map = { deposit: 3, shot: 4, selecting: 5, retouching: 7, delivered: 10, completed: 11 };
+  const idx = map[detail.status];
+  return idx === undefined ? 0 : idx;
 }
-function build4Steps(detail, logs) {
+function build11Steps(detail, logs) {
   if (!detail) return ORDER_STEPS.map((s) => ({ ...s, state: 'pending', time: null }));
   const cur = stepIndexFor(detail);
   return ORDER_STEPS.map((s, i) => {
@@ -65,11 +63,11 @@ function build4Steps(detail, logs) {
     let time = null;
     if (state === 'done') {
       const t = findStepTime(logs, STEP_TIME_KW[s.key]);
-      time = s.key === 'paid' && !t ? fmtStepTime(detail.created_at) : t;
+      time = s.key === 'created' && !t ? fmtStepTime(detail.created_at) : t;
     }
     return { ...s, state, time };
   });
-}        
+}
 function fmtStepTime(t) {
   if (!t) return null;
   const d = new Date(t);
@@ -85,10 +83,17 @@ function findStepTime(logs, kws) {
   return null;
 }
 const STEP_TIME_KW = {
-  paid: ['支付订单', '支付', '定金', '收款', '创建订单', '订单生成'],
-  shot: ['完成拍摄', '拍摄完成', '已拍摄'],
-  raw_uploaded: ['上传底片', '底片上传', '原片上传'],
-  completed: ['订单完成', '完成', '完结']
+  created: ['创建订单', '订单生成'],
+  contract_created: ['合同'],
+  confirmed: ['沟通确认', '确认'],
+  shooting: ['拍摄执行', '开始拍摄'],
+  shooting_finished: ['拍摄结束', '完成拍摄'],
+  retouch_selecting: ['选片', '进入精修'],
+  trailer_output: ['预告片'],
+  retouch_finished: ['全部精修完成', '精修完成'],
+  raw_packed: ['原片打包', '打包'],
+  delivered: ['统一交付', '交付'],
+  completed: ['订单完结', '完结']
 };
 
 // 新规范全局色号（订单详情页 v2：轻量低饱和后台风）
@@ -602,7 +607,7 @@ export default function OrderDetail() {
     ...(sel && sel.photos ? sel.photos.map((p) => ({ url: p.photo_url, kind: '选片' })) : [])
   ];
 
-  const steps = build4Steps(detail, detail.logs);
+  const steps = build11Steps(detail, detail.logs);
   const statusText =
     (detail.payment_status === 'unpaid' ? '未付定金' : (PAY_STATUS_LABEL[payKey] || '')) +
     (detail.status ? '，' + (STATUS_LABEL[detail.status] || '') : '');
@@ -656,16 +661,16 @@ export default function OrderDetail() {
           {/* 竖向分割线 */}
           <div style={{ width: 1, background: DIV, margin: '16px 0' }} />
 
-          {/* 右侧 4 步横向流程进度条（由 payment_status / status / order_photos 驱动） */}
+          {/* 右侧 11 步横向流程进度条（由后端 status/logs 驱动，支持横向滚动） */}
           <div className="flex-1" style={{ minWidth: 0, padding: '14px 28px', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 12 }}>
             <div style={{ fontSize: 13, color: TEXT_SUB, textAlign: 'right' }}>
               {statusText}<span style={{ color: BLUE, marginLeft: 8, cursor: 'pointer' }} onClick={() => setBottomTab('status')}>查看记录</span>
             </div>
             <div style={{ overflowX: 'auto', overflowY: 'hidden' }}>
-              <div className="flex items-start" style={{ gap: 0, minWidth: 480 }}>
+              <div className="flex items-start" style={{ gap: 0, minWidth: 1080 }}>
                 {steps.map((st, i) => (
                   <React.Fragment key={st.key}>
-                    <div className="flex flex-col items-center" style={{ width: 120, flexShrink: 0 }}>
+                    <div className="flex flex-col items-center" style={{ width: 96, flexShrink: 0 }}>
                       <div style={{
                         width: 32, height: 32, borderRadius: '50%',
                         background: st.state === 'current' ? BLUE : '#FFFFFF',
