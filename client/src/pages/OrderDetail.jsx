@@ -553,9 +553,9 @@ export default function OrderDetail() {
     <div style={{ background: '#f7f9fc', minHeight: '100vh', paddingBottom: 24 }}>
       {/* ============ Module 3：订单状态卡片（青绿顶线 + 左侧操作 + 右侧 11 步进度条） ============ */}
       <section style={{ margin: '16px 24px 0', background: '#FFFFFF', border: '1px solid ' + CARD_BORDER, borderTop: '3px solid ' + TEAL, borderRadius: 4, overflow: 'hidden' }}>
-        <div className="flex items-stretch" style={{ minHeight: 176 }}>
+        <div className="flex items-stretch" style={{ minHeight: 150 }}>
           {/* 左侧订单操作区 ~25% */}
-          <div className="flex flex-col justify-center shrink-0" style={{ width: '26%', minWidth: 220, padding: '20px 32px', gap: 12, position: 'relative' }}>
+          <div className="flex flex-col justify-center shrink-0" style={{ width: '26%', minWidth: 220, padding: '14px 32px', gap: 12, position: 'relative' }}>
             <div style={{ fontSize: 14, color: TEXT_MAIN, marginBottom: 4 }}>
               订单编号：<span style={{ fontWeight: 500, color: '#333333' }}>{detail.order_no}</span>
             </div>
@@ -563,18 +563,20 @@ export default function OrderDetail() {
               style={{ width: '100%', height: 40, borderRadius: 2, background: BLUE, color: '#fff', fontSize: 14, border: 'none', opacity: detail.status === 'cancelled' ? 0.4 : 1, cursor: 'pointer' }}>完成拍摄</button>
             <button type="button" onClick={openMiniQr} disabled={miniQrLoading}
               style={{ width: '100%', height: 40, borderRadius: 2, background: BLACK_TAG, color: '#fff', fontSize: 14, border: 'none', cursor: 'pointer', opacity: miniQrLoading ? 0.6 : 1 }}>分享订单</button>
-            <button type="button" onClick={cancel}
-              style={{ background: 'none', border: 'none', color: TEXT_MAIN, fontSize: 14, textAlign: 'left', cursor: 'pointer', padding: 0 }}>关闭订单</button>
-            <button type="button" onClick={() => setMoreMenu((m) => !m)}
-              style={{ background: 'none', border: 'none', color: TEXT_MAIN, fontSize: 14, textAlign: 'left', cursor: 'pointer', padding: 0, position: 'relative' }}>更多设置</button>
+            <div className="flex" style={{ gap: 12 }}>
+              <button type="button" onClick={cancel}
+                style={{ background: 'none', border: 'none', color: TEXT_MAIN, fontSize: 14, textAlign: 'left', cursor: 'pointer', padding: 0 }}>关闭订单</button>
+              <button type="button" onClick={() => setMoreMenu((m) => !m)}
+                style={{ background: 'none', border: 'none', color: TEXT_MAIN, fontSize: 14, textAlign: 'left', cursor: 'pointer', padding: 0, position: 'relative' }}>更多设置</button>
+            </div>
             {moreMenu && renderMoreMenu()}
           </div>
 
           {/* 竖向分割线 */}
-          <div style={{ width: 1, background: DIV, margin: '24px 0' }} />
+          <div style={{ width: 1, background: DIV, margin: '14px 0' }} />
 
-          {/* 右侧 11 步横向流程进度条（由后端 status/logs 驱动，支持横向滚动） */}
-          <div className="flex-1" style={{ minWidth: 0, padding: '20px 32px', overflowX: 'auto', overflowY: 'hidden' }}>
+          {/* 右侧 11 步横向流程进度条（由后端 status/logs 驱动，支持横向滚动，卡片内垂直居中） */}
+          <div className="flex-1" style={{ minWidth: 0, padding: '14px 32px', display: 'flex', alignItems: 'center', overflowX: 'auto', overflowY: 'hidden' }}>
             <div className="flex items-start" style={{ gap: 0, minWidth: 1080 }}>
               {steps.map((st, i) => (
                 <React.Fragment key={st.key}>
