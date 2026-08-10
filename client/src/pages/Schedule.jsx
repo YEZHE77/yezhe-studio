@@ -348,11 +348,6 @@ export default function Schedule() {
 
   return (
     <div className="w-full min-h-screen" style={{ background: G_PAGE_BG, paddingRight: 140 }}>
-      {/* 模块 A：面包屑 */}
-      <div style={{ padding: '12px 12px 8px', fontSize: 12, color: '#666666' }}>
-        工作台 &gt; 档期
-      </div>
-
       {/* 白色日历大卡 */}
       <div className="bg-white" style={{ border: `1px solid ${G_BORDER}`, borderRadius: 6, margin: '0 12px 12px', minHeight: 'calc(100vh - 44px)' }}>
         {/* 模块 B：顶部操作栏 */}
