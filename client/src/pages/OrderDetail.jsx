@@ -169,6 +169,9 @@ export default function OrderDetail() {
   // 套系服务详情弹窗
   const [pkgDetailModal, setPkgDetailModal] = useState(false);
   const [pkgDetailTab, setPkgDetailTab] = useState('service');
+  // 备注行内编辑（需求：备注由纯文本改为可编辑文本域）
+  const [editingRemark, setEditingRemark] = useState(false);
+  const [remarkDraft, setRemarkDraft] = useState('');
 
   const loadSel = useCallback((oid) => {
     http.get('/api/admin/photo-select/' + oid).then((r) => setSel(r.data)).catch(() => setSel(null));
@@ -246,6 +249,18 @@ export default function OrderDetail() {
       const cf = conflictOf(e2);
       if (cf && cf.forcible && !force) { setDateConflict(cf.message); return; }
       alert((e2 && e2.message) || (e2.response && e2.response.data && e2.response.data.error) || '保存失败');
+    }
+  }
+
+  // 保存备注（行内编辑，失焦或点保存即写入）
+  async function saveRemark() {
+    if (!detail) return;
+    try {
+      await http.put('/api/orders/' + detail.id, { remark: remarkDraft });
+      setEditingRemark(false);
+      reload();
+    } catch (e2) {
+      alert((e2 && e2.message) || (e2.response && e2.response.data && e2.response.data.error) || '备注保存失败');
     }
   }
 
@@ -535,7 +550,7 @@ export default function OrderDetail() {
   );
 
   return (
-    <div style={{ background: '#F7F7F7', minHeight: '100vh', paddingBottom: 24 }}>
+    <div style={{ background: '#f7f9fc', minHeight: '100vh', paddingBottom: 24 }}>
       {/* ============ Module 3：订单状态卡片（青绿顶线 + 左侧操作 + 右侧 11 步进度条） ============ */}
       <section style={{ margin: '16px 24px 0', background: '#FFFFFF', border: '1px solid ' + CARD_BORDER, borderTop: '3px solid ' + TEAL, borderRadius: 4, overflow: 'hidden' }}>
         <div className="flex items-stretch" style={{ minHeight: 176 }}>
@@ -588,92 +603,124 @@ export default function OrderDetail() {
         </div>
       </section>
 
-      {/* ============ Module 4：客户与订单信息卡片 ============ */}
-      <section style={{ margin: '18px 24px 0', background: '#FFFFFF', border: '1px solid ' + CARD_BORDER, borderRadius: 4, padding: '32px 38px' }}>
-        {/* 顶部：左客户模块 / 右按钮组 */}
-        <div className="flex items-start justify-between" style={{ gap: 24 }}>
-          <div className="flex items-center" style={{ gap: 12 }}>
-            <div style={{ width: 50, height: 50, borderRadius: '50%', background: pickAvatarColor(custName), display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 20, fontWeight: 500, flexShrink: 0 }}>
-              {custInitial}
+      {/* ============ 合并大白卡：基础信息 + 摘要 + 备注（唯一外层卡片） ============ */}
+      <section style={{ margin: '18px 24px 0', background: '#FFFFFF', borderRadius: 4, boxShadow: '0 1px 5px rgba(0,0,0,0.04)', overflow: 'hidden' }}>
+        {/* 上分区：客户与订单信息 */}
+        <div style={{ padding: '32px 38px' }}>
+          {/* 顶部：左客户模块 / 右按钮组 */}
+          <div className="flex items-start justify-between" style={{ gap: 24 }}>
+            <div className="flex items-center" style={{ gap: 12 }}>
+              <div style={{ width: 50, height: 50, borderRadius: '50%', background: pickAvatarColor(custName), display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 20, fontWeight: 500, flexShrink: 0 }}>
+                {custInitial}
+              </div>
+              <div className="flex items-center" style={{ gap: 10 }}>
+                <span style={{ fontSize: 16, color: TEXT_MAIN }}>{custName}</span>
+                <button type="button" style={{ fontSize: 12, color: '#ef4444', background: '#fff', border: '1px solid #FFB6B6', borderRadius: 2, padding: '2px 8px', cursor: 'pointer' }}>客户信息</button>
+              </div>
             </div>
-            <div className="flex items-center" style={{ gap: 10 }}>
-              <span style={{ fontSize: 16, color: TEXT_MAIN }}>{custName}</span>
-              <button type="button" style={{ fontSize: 12, color: '#ef4444', background: '#fff', border: '1px solid #FFB6B6', borderRadius: 2, padding: '2px 8px', cursor: 'pointer' }}>客户信息</button>
+
+            {/* 右上角按钮组 */}
+            <div className="flex items-center" style={{ gap: 12 }}>
+              <button type="button" onClick={() => setBottomTab('status')}
+                style={{ height: 36, borderRadius: 2, background: BLUE, color: '#fff', fontSize: 14, border: 'none', padding: '0 14px', cursor: 'pointer' }}>调查问卷</button>
+              <button type="button" onClick={openEdit}
+                style={secBtnStyle}>编辑订单</button>
+              <button type="button" onClick={openAddonBox}
+                style={secBtnStyle}>加片设置</button>
+              <button type="button" onClick={() => setMoreMenu((m) => !m)}
+                style={{ ...secBtnStyle, position: 'relative' }}>更多设置</button>
+              {moreMenu && renderMoreMenu()}
             </div>
           </div>
 
-          {/* 右上角按钮组 */}
-          <div className="flex items-center" style={{ gap: 12 }}>
-            <button type="button" onClick={() => setBottomTab('status')}
-              style={{ height: 36, borderRadius: 2, background: BLUE, color: '#fff', fontSize: 14, border: 'none', padding: '0 14px', cursor: 'pointer' }}>调查问卷</button>
-            <button type="button" onClick={openEdit}
-              style={secBtnStyle}>编辑订单</button>
-            <button type="button" onClick={openAddonBox}
-              style={secBtnStyle}>加片设置</button>
-            <button type="button" onClick={() => setMoreMenu((m) => !m)}
-              style={{ ...secBtnStyle, position: 'relative' }}>更多设置</button>
-            {moreMenu && renderMoreMenu()}
+          <div style={{ height: 1, background: '#e5e7eb', margin: '24px 0' }} />
+
+          {/* 中部：左 订单图片(190x138) + 右 双列信息区 */}
+          <div className="flex" style={{ gap: 28, alignItems: 'flex-start' }}>
+            <div style={{ width: 190, height: 138, borderRadius: 4, overflow: 'hidden', background: '#f3f4f6', flexShrink: 0 }}>
+              {pkgInfo && pkgInfo.cover_url
+                ? <img src={img(pkgInfo.cover_url)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#999', fontSize: 12 }}>套系缩略图</div>}
+            </div>
+            <div className="flex-1">
+              <div className="grid grid-cols-2" style={{ gap: '16px 40px' }}>
+                <InfoRow label="套系名称" value={pkgInfo && pkgInfo.name && pkgInfo.name !== '—' ? pkgInfo.name : '—'} />
+                <InfoRow label="定金" value={'¥' + Number(pkgInfo?.deposit || 0).toLocaleString()} />
+                <InfoRow label="已付加片费" value={'¥' + extraSum.toLocaleString()} />
+                <InfoRow label="渠道来源" value={detail.channel || detail.source || '—'} />
+                <InfoRow label="拍摄时间" value={tbd ? '日期待定' : (detail.shoot_date || '—')} extra={slots} />
+                <InfoRow label="尾款" value={'¥' + remain.toLocaleString()} />
+                <InfoRow label="拍摄地址" value={detail.address || '—'} />
+                <InfoRow label="客户" value={custName} />
+                <InfoRow label="联系电话" value={phoneList.length ? phoneList.join(' / ') : '—'} />
+                <InfoRow label="收款状态" value={PAY_STATUS_LABEL[payKey] || payKey}
+                  tags={[
+                    offlinePay ? { t: '线下退款', bg: GREEN, fg: '#fff' } : null,
+                    remain > 0 ? { t: '未结算', bg: BLACK_TAG, fg: '#fff' } : null
+                  ].filter(Boolean)} />
+                <InfoRow label="参与者" value={execs.length ? execs.map((p) => p.name).join('、') : '—'} />
+              </div>
+            </div>
           </div>
         </div>
 
-        <div style={{ height: 1, background: DIV, margin: '24px 0' }} />
+        {/* 实线分割：基础信息 / 摘要 */}
+        <div style={{ height: 1, background: '#e5e7eb' }} />
 
-        {/* 中部：左 订单图片(190x138) + 右 双列信息区 */}
-        <div className="flex" style={{ gap: 28, alignItems: 'flex-start' }}>
-          <div style={{ width: 190, height: 138, borderRadius: 4, overflow: 'hidden', background: '#f3f4f6', flexShrink: 0 }}>
-            {pkgInfo && pkgInfo.cover_url
-              ? <img src={img(pkgInfo.cover_url)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-              : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#999', fontSize: 12 }}>套系缩略图</div>}
-          </div>
-          <div className="flex-1">
-            <div className="grid grid-cols-2" style={{ gap: '16px 40px' }}>
-              <InfoRow label="套系名称" value={pkgInfo && pkgInfo.name && pkgInfo.name !== '—' ? pkgInfo.name : '—'} />
-              <InfoRow label="定金" value={'¥' + Number(pkgInfo?.deposit || 0).toLocaleString()} />
-              <InfoRow label="已付加片费" value={'¥' + extraSum.toLocaleString()} />
-              <InfoRow label="渠道来源" value={detail.channel || detail.source || '—'} />
-              <InfoRow label="拍摄时间" value={tbd ? '日期待定' : (detail.shoot_date || '—')} extra={slots} />
-              <InfoRow label="尾款" value={'¥' + remain.toLocaleString()} />
-              <InfoRow label="拍摄地址" value={detail.address || '—'} />
-              <InfoRow label="客户" value={custName} />
-              <InfoRow label="联系电话" value={phoneList.length ? phoneList.join(' / ') : '—'} />
-              <InfoRow label="收款状态" value={PAY_STATUS_LABEL[payKey] || payKey}
-                tags={[
-                  offlinePay ? { t: '线下退款', bg: GREEN, fg: '#fff' } : null,
-                  remain > 0 ? { t: '未结算', bg: BLACK_TAG, fg: '#fff' } : null
-                ].filter(Boolean)} />
-              <InfoRow label="参与者" value={execs.length ? execs.map((p) => p.name).join('、') : '—'} />
+        {/* 中间分区：套系快照摘要（#fbfbf3 独立子卡，全部读取订单快照） */}
+        <div style={{ margin: '24px 36px', background: '#fbfbf3', border: '1px solid ' + CARD_BORDER, borderRadius: 4, padding: '24px 36px' }}>
+          <div className="grid grid-cols-4" style={{ rowGap: 20 }}>
+            {[
+              { t: '总价', v: '¥' + total.toLocaleString() },
+              { t: '服务详情', v: (sumService && sumService !== '—') ? (String(sumService).length > 16 ? String(sumService).slice(0, 16) + '…' : String(sumService)) : '—' },
+              { t: '底片全送', v: sumRawPolicy },
+              { t: '加片费', v: sumExtraFee },
+              { t: '拍摄时长', v: sumDuration },
+              { t: '拍摄', v: sumRawCount ? String(sumRawCount) + ' 张' : '—' },
+              { t: '精修片', v: sumRetouch }
+            ].map((f, i) => (
+              <div key={f.t} style={{ paddingLeft: i % 4 === 0 ? 0 : 24, borderLeft: i % 4 === 0 ? 'none' : '1px solid ' + DIV }}>
+                <div style={{ fontSize: 14, color: TEXT_SUB }}>{f.t}</div>
+                <div style={{ fontSize: 14, color: '#888888', marginTop: 6, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.v}</div>
+              </div>
+            ))}
+            <div style={{ paddingLeft: 24, borderLeft: '1px solid ' + DIV }}>
+              <button type="button" onClick={() => { setPkgDetailTab('service'); setPkgDetailModal(true); }}
+                style={{ background: 'none', border: 'none', color: GREEN, fontSize: 14, cursor: 'pointer', padding: 0 }}>更多内容</button>
             </div>
           </div>
         </div>
-      </section>
 
-      {/* ============ Module 5：套系快照灰底块（#FAFAFA，4 列 × 2 行，全部读取订单快照） ============ */}
-      <section style={{ margin: '18px 24px 0', background: SUMMARY_BG, border: '1px solid ' + CARD_BORDER, borderRadius: 4, padding: '24px 36px' }}>
-        <div className="grid grid-cols-4" style={{ rowGap: 20 }}>
-          {[
-            { t: '总价', v: '¥' + total.toLocaleString() },
-            { t: '服务详情', v: (sumService && sumService !== '—') ? (String(sumService).length > 16 ? String(sumService).slice(0, 16) + '…' : String(sumService)) : '—' },
-            { t: '底片全送', v: sumRawPolicy },
-            { t: '加片费', v: sumExtraFee },
-            { t: '拍摄时长', v: sumDuration },
-            { t: '拍摄', v: sumRawCount ? String(sumRawCount) + ' 张' : '—' },
-            { t: '精修片', v: sumRetouch }
-          ].map((f, i) => (
-            <div key={f.t} style={{ paddingLeft: i % 4 === 0 ? 0 : 24, borderLeft: i % 4 === 0 ? 'none' : '1px solid ' + DIV }}>
-              <div style={{ fontSize: 14, color: TEXT_SUB }}>{f.t}</div>
-              <div style={{ fontSize: 14, color: '#888888', marginTop: 6, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.v}</div>
-            </div>
-          ))}
-          <div style={{ paddingLeft: 24, borderLeft: '1px solid ' + DIV }}>
-            <button type="button" onClick={() => { setPkgDetailTab('service'); setPkgDetailModal(true); }}
-              style={{ background: 'none', border: 'none', color: GREEN, fontSize: 14, cursor: 'pointer', padding: 0 }}>更多内容</button>
+        {/* 实线分割：摘要 / 备注 */}
+        <div style={{ height: 1, background: '#e5e7eb' }} />
+
+        {/* 底部分区：备注信息（可编辑文本域，带笔形图标） */}
+        <div style={{ padding: '16px 20px' }}>
+          <div className="flex items-center" style={{ gap: 8, marginBottom: 8 }}>
+            <span style={{ fontSize: 14, color: TEXT_SUB }}>备注信息</span>
+            {!editingRemark && (
+              <button type="button" onClick={() => { setRemarkDraft(detail.remark || ''); setEditingRemark(true); }}
+                title="编辑备注" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: TEXT_SUB, display: 'flex', alignItems: 'center' }}>
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9" /><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z" /></svg>
+              </button>
+            )}
           </div>
+          {editingRemark ? (
+            <textarea
+              autoFocus
+              value={remarkDraft}
+              onChange={(e) => setRemarkDraft(e.target.value)}
+              onBlur={saveRemark}
+              placeholder="暂无"
+              rows={3}
+              style={{ width: '100%', resize: 'vertical', fontSize: 14, color: TEXT_MAIN, padding: '8px 10px', border: '1px solid ' + CARD_BORDER, borderRadius: 4, outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box', lineHeight: 1.6 }}
+            />
+          ) : (
+            <div style={{ fontSize: 14, color: TEXT_MAIN, whiteSpace: 'pre-wrap', minHeight: 20 }}>
+              {detail.remark ? detail.remark : <span style={{ color: '#888888' }}>暂无</span>}
+            </div>
+          )}
         </div>
-      </section>
-
-      {/* ============ Module 7：备注信息 ============ */}
-      <section style={{ margin: '18px 24px 0', background: '#FFFFFF', border: '1px solid ' + CARD_BORDER, borderRadius: 4, padding: '16px 20px', fontSize: 14, color: TEXT_MAIN }}>
-        <span style={{ color: TEXT_SUB }}>备注信息：</span>{detail.remark ? detail.remark : <span style={{ color: '#888888' }}>暂无</span>}
       </section>
 
       {/* ============ Module 5：底片上传 Tab 卡片（保留既有上传/选片功能，仅换肤） ============ */}
