@@ -564,11 +564,11 @@ export default function OrderDetail() {
               style={{ width: '100%', height: 40, borderRadius: 2, background: BLUE, color: '#fff', fontSize: 14, border: 'none', opacity: detail.status === 'cancelled' ? 0.4 : 1, cursor: 'pointer' }}>完成拍摄</button>
             <button type="button" onClick={openMiniQr} disabled={miniQrLoading}
               style={{ width: '100%', height: 40, borderRadius: 2, background: BLACK_TAG, color: '#fff', fontSize: 14, border: 'none', cursor: 'pointer', opacity: miniQrLoading ? 0.6 : 1 }}>分享订单</button>
-            <div className="flex" style={{ gap: 12 }}>
+            <div className="flex items-center" style={{ justifyContent: 'space-between' }}>
               <button type="button" onClick={cancel}
                 style={{ background: 'none', border: 'none', color: TEXT_MAIN, fontSize: 14, textAlign: 'left', cursor: 'pointer', padding: 0 }}>关闭订单</button>
               <button type="button" onClick={() => setMoreMenu((m) => !m)}
-                style={{ background: 'none', border: 'none', color: TEXT_MAIN, fontSize: 14, textAlign: 'left', cursor: 'pointer', padding: 0, position: 'relative' }}>更多设置</button>
+                style={{ background: 'none', border: 'none', color: TEXT_MAIN, fontSize: 14, textAlign: 'right', cursor: 'pointer', padding: 0, position: 'relative' }}>更多设置</button>
             </div>
             {moreMenu && renderMoreMenu()}
           </div>
