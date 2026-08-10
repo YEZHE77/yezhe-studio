@@ -88,11 +88,11 @@ const CARD_BORDER = '#EDEDED';   // 卡片边框
 const TEXT_MAIN = '#666666';     // 主文字
 const TEXT_SUB = '#999999';      // 次级文字
 const TEXT_WEAK = '#BFBFBF';     // 弱文字
-const GREEN = '#70C8A7';         // 绿色状态标签 / 更多内容
+const GREEN = '#82C8AE';         // 绿色状态标签（PicBling 实测：线下收取标签底色）
 const BLACK_TAG = '#333333';     // 黑色状态标签 / 分享订单按钮
 const STEP_ACTIVE = '#2DB7F5';   // 进度条激活/已完成圆圈（= 主蓝）
 const INFO_LABEL = '#999999';    // 信息行标签
-const INFO_VALUE = '#666666';    // 信息行值（轻灰，呼应低饱和风）
+const INFO_VALUE = '#6C9295';    // 信息行值（PicBling 实测：#6c9295）
 
 // ===== 订单详情·客户&订单基础信息卡片（spec 1:1 复刻，750 设计稿，单位 rpx） =====
 const CARD_RADIUS = 6;                       // 卡片圆角 12rpx
@@ -100,13 +100,13 @@ const CARD_SHADOW = '0 1px 5px rgba(0,0,0,0.04)'; // 0 2rpx 10rpx rgba(0,0,0,0.0
 const ICON_COLOR = '#888888';                // 通用图标色（spec：40rpx #888）
 const ICON_SIZE = 20;                        // 通用图标尺寸 40rpx
 const HEAD_DIVIDER = '#e8e8e8';              // 头部下方分割线
-const SURVEY_BTN = '#82c8f5';                // 调查问卷按钮底色
-const TAG_OFFLINE = '#94d4a3';               // 线下收取 绿色标签
+const SURVEY_BTN = '#2DB7F5';                // 调查问卷按钮底色（PicBling 实测主蓝）
+const TAG_OFFLINE = '#82C8AE';               // 线下收取 绿色标签（PicBling 实测）
 const TAG_UNSETTLED = '#2c2c2c';             // 未结算 黑色标签
 const SUMMARY_BG = '#fafbf8';                // 套系汇总底栏背景
-const MORE_LINK = '#48b878';                 // 更多内容 链接文字
-const AVATAR_PURPLE = '#A58BE2';             // 客户头像·圆形紫
-const LABEL_COLOR = '#777777';               // 信息行标签浅灰（spec 要求 #777）
+const MORE_LINK = '#82C8AE';                 // 更多内容 链接文字（PicBling 实测青绿）
+const AVATAR_PURPLE = '#AEA2D5';             // 客户头像·圆形紫（PicBling 实测）
+const LABEL_COLOR = '#999999';               // 信息行标签浅灰（PicBling 实测 #999）
 
 function asArr(v) {
   if (Array.isArray(v)) return v;
@@ -664,25 +664,25 @@ export default function OrderDetail() {
   return (
     <div style={{ background: '#f7f7f7', minHeight: '100vh', padding: '0 16px 24px', maxWidth: 1280, width: '100%', margin: '0 auto' }}>
       {/* ============ Module 3：订单状态卡片（白色卡片 + 左侧操作 + 右侧 4 步进度条，复刻第3张） ============ */}
-      <section style={{ margin: '16px 24px 0', background: '#FFFFFF', border: '1px solid ' + CARD_BORDER, borderTop: '3px solid #52c41a', borderRadius: 4, boxShadow: '0 1px 5px rgba(0,0,0,0.04)', overflow: 'hidden' }}>
+      <section style={{ margin: '16px 24px 0', background: '#FFFFFF', border: '1px solid ' + CARD_BORDER, borderTop: '3px solid ' + TEAL, borderRadius: 4, boxShadow: '0 1px 5px rgba(0,0,0,0.04)', overflow: 'hidden' }}>
         <div className="flex items-stretch" style={{ minHeight: 132 }}>
           {/* 左侧订单操作区 */}
           <div className="flex flex-col justify-center shrink-0" style={{ width: '26%', minWidth: 240, padding: '16px 28px', gap: 10, position: 'relative' }}>
-            <div style={{ fontSize: 13, color: TEXT_SUB, marginBottom: 2 }}>
+            <div style={{ fontSize: 12, color: TEXT_SUB, marginBottom: 2 }}>
               订单编号：<span style={{ color: '#333333', fontWeight: 500 }}>{detail.order_no}</span>
             </div>
             <button type="button" onClick={finishShoot} disabled={detail.status === 'cancelled'}
-              style={{ width: '100%', height: 38, borderRadius: 4, background: BLUE, color: '#fff', fontSize: 14, border: 'none', opacity: detail.status === 'cancelled' ? 0.4 : 1, cursor: 'pointer' }}>完成拍摄</button>
+              style={{ width: '100%', height: 38, borderRadius: 2, background: BLUE, color: '#fff', fontSize: 12, fontWeight: 500, border: '1px solid ' + BLUE, opacity: detail.status === 'cancelled' ? 0.4 : 1, cursor: 'pointer' }}>完成拍摄</button>
             <button type="button" onClick={openMiniQr} disabled={miniQrLoading}
-              style={{ width: '100%', height: 38, borderRadius: 4, background: BLACK_TAG, color: '#fff', fontSize: 14, border: 'none', cursor: 'pointer', opacity: miniQrLoading ? 0.6 : 1 }}>分享订单</button>
+              style={{ width: '100%', height: 38, borderRadius: 2, background: BLACK_TAG, color: '#fff', fontSize: 12, fontWeight: 500, border: '1px solid ' + BLACK_TAG, cursor: 'pointer', opacity: miniQrLoading ? 0.6 : 1 }}>分享订单</button>
             <div className="flex items-center" style={{ justifyContent: 'space-between', marginTop: 2 }}>
               <button type="button" onClick={cancel}
-                style={{ background: 'none', border: 'none', color: TEXT_MAIN, fontSize: 13, textAlign: 'left', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', gap: 4 }}>
+                style={{ background: 'none', border: 'none', color: TEXT_MAIN, fontSize: 12, textAlign: 'left', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', gap: 4 }}>
                 <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>
                 关闭订单
               </button>
               <button type="button" onClick={() => setMoreMenu((m) => !m)}
-                style={{ background: 'none', border: 'none', color: TEXT_MAIN, fontSize: 13, textAlign: 'right', cursor: 'pointer', padding: 0, position: 'relative', display: 'flex', alignItems: 'center', gap: 4 }}>
+                style={{ background: 'none', border: 'none', color: TEXT_MAIN, fontSize: 12, textAlign: 'right', cursor: 'pointer', padding: 0, position: 'relative', display: 'flex', alignItems: 'center', gap: 4 }}>
                 <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect x="14" y="14" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" /></svg>
                 更多设置
               </button>
@@ -695,27 +695,27 @@ export default function OrderDetail() {
 
           {/* 右侧 4 步横向流程进度条（由后端 status/logs 驱动，支持横向滚动） */}
           <div className="flex-1" style={{ minWidth: 0, padding: '14px 28px', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 12 }}>
-            <div style={{ fontSize: 13, color: TEXT_SUB, textAlign: 'right' }}>
+            <div style={{ fontSize: 12, color: TEXT_SUB, textAlign: 'right' }}>
               {statusText}<span style={{ color: BLUE, marginLeft: 8, cursor: 'pointer' }} onClick={() => setLogModal(true)}>查看记录</span>
             </div>
             <div style={{ overflowX: 'auto', overflowY: 'hidden' }}>
-              <div className="flex items-start" style={{ gap: 0, minWidth: 1080 }}>
+              <div className="flex items-start" style={{ gap: 0, minWidth: 520 }}>
                 {steps.map((st, i) => (
                   <React.Fragment key={st.key}>
                     <div className="flex flex-col items-center" style={{ width: 96, flexShrink: 0 }}>
                       <div style={{
                         width: 32, height: 32, borderRadius: '50%',
                         background: st.state === 'current' ? BLUE : '#FFFFFF',
-                        border: st.state === 'done' ? ('1px solid ' + BLUE) : st.state === 'current' ? ('1px solid ' + BLUE) : '1px solid #DCDCDC',
+                        border: st.state === 'done' ? ('1px solid ' + BLUE) : st.state === 'current' ? ('1px solid ' + BLUE) : '1px solid rgba(0,0,0,0.25)',
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        color: st.state === 'pending' ? '#CFCFCF' : BLUE
+                        color: st.state === 'pending' ? 'rgba(0,0,0,0.25)' : BLUE
                       }}>
                         {st.state === 'done'
                           ? <CheckIcon />
-                          : <span style={{ fontSize: 13, fontWeight: 600, color: st.state === 'current' ? '#fff' : '#CFCFCF' }}>{i + 1}</span>}
+                          : <span style={{ fontSize: 14, fontWeight: 400, color: st.state === 'current' ? '#fff' : 'rgba(0,0,0,0.25)' }}>{i + 1}</span>}
                       </div>
-                      <span style={{ fontSize: 13, marginTop: 7, textAlign: 'center', whiteSpace: 'nowrap', color: st.state === 'pending' ? TEXT_WEAK : st.state === 'current' ? '#555555' : TEXT_MAIN }}>{st.label}</span>
-                      {st.time ? <span style={{ marginTop: 5, fontSize: 12, textAlign: 'center', color: TEXT_SUB }}>{st.time}</span> : null}
+                      <span style={{ fontSize: 14, marginTop: 7, textAlign: 'center', whiteSpace: 'nowrap', color: st.state === 'pending' ? 'rgba(0,0,0,0.25)' : st.state === 'current' ? '#555555' : 'rgba(0,0,0,0.65)' }}>{st.label}</span>
+                      {st.time ? <span style={{ marginTop: 5, fontSize: 12, textAlign: 'center', color: 'rgba(0,0,0,0.45)' }}>{st.time}</span> : null}
                     </div>
                     {i < steps.length - 1 && (
                       <div style={{ flex: 1, height: 1, minWidth: 28, marginTop: 16, background: st.state === 'done' ? BLUE : '#E5E5E5' }} />
@@ -736,21 +736,21 @@ export default function OrderDetail() {
           <div className="flex items-center justify-between">
             {/* 左：圆形客户头像 / 客户姓名 / 手机号 / 编辑笔 / 红色边框【客户信息】 */}
             <div className="flex items-center" style={{ gap: 8 }}>
-              <div style={{ width: 40, height: 40, borderRadius: '50%', background: AVATAR_PURPLE, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 16, flexShrink: 0 }}>{custInitial}</div>
-              <span style={{ fontSize: 17, color: '#333333' }}>{custName}</span>
-              <span style={{ fontSize: 14, color: '#999999' }}>{phoneList.length ? phoneList.join(' / ') : (detail.customer_phone || '')}</span>
+              <div style={{ width: 40, height: 40, borderRadius: '50%', background: AVATAR_PURPLE, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 20, fontWeight: 400, flexShrink: 0 }}>{custInitial}</div>
+              <span style={{ fontSize: 14, color: '#333333' }}>{custName}</span>
+              <span style={{ fontSize: 12, color: '#999999' }}>{phoneList.length ? phoneList.join(' / ') : (detail.customer_phone || '')}</span>
               <button type="button" onClick={openEdit} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2, color: '#999999', display: 'flex' }} title="编辑订单">
                 <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9" /><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z" /></svg>
               </button>
               <div style={{ position: 'relative' }}>
                 <button type="button" onClick={() => setCustInfoOpen((v) => !v)}
-                  style={{ fontSize: 12, color: '#ef4444', background: '#fff', border: '1px solid #ef4444', borderRadius: 2, padding: '2px 8px', cursor: 'pointer' }}>客户信息</button>
+                  style={{ fontSize: 10, color: '#F47174', background: 'transparent', border: '1px solid #F9E4E3', borderRadius: 2, padding: '2px 8px', cursor: 'pointer' }}>客户信息</button>
                 {custInfoOpen && (
                   <div style={{ position: 'absolute', top: '100%', left: 0, marginTop: 6, zIndex: 65, background: '#FFFFFF', border: '1px solid ' + CARD_BORDER, borderRadius: 6, padding: 18, boxShadow: '0 6px 20px rgba(0,0,0,0.12)', width: 260 }}>
                     <div className="flex items-center" style={{ gap: 10, marginBottom: 14 }}>
-                      <div style={{ width: 42, height: 42, borderRadius: '50%', background: AVATAR_PURPLE, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 18, flexShrink: 0 }}>{custInitial}</div>
+                      <div style={{ width: 42, height: 42, borderRadius: '50%', background: AVATAR_PURPLE, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 18, fontWeight: 400, flexShrink: 0 }}>{custInitial}</div>
                       <div>
-                        <div style={{ fontSize: 17, color: '#333333' }}>{custName}</div>
+                        <div style={{ fontSize: 15, fontWeight: 400, color: '#333333' }}>{custName}</div>
                         <div style={{ fontSize: 12, color: TEXT_SUB, marginTop: 2 }}>{detail.order_no || '—'}</div>
                       </div>
                     </div>
@@ -775,7 +775,7 @@ export default function OrderDetail() {
                       ))}
                     </div>
                     <button type="button" onClick={() => { setCustInfoOpen(false); openEdit(); }}
-                      style={{ marginTop: 14, width: '100%', height: 32, borderRadius: 4, background: BLUE, color: '#fff', fontSize: 13, border: 'none', cursor: 'pointer' }}>编辑资料</button>
+                      style={{ marginTop: 14, width: '100%', height: 32, borderRadius: 2, background: BLUE, color: '#fff', fontSize: 12, border: 'none', cursor: 'pointer' }}>编辑资料</button>
                   </div>
                 )}
               </div>
@@ -784,7 +784,7 @@ export default function OrderDetail() {
             {/* 右：四个功能按钮 */}
             <div className="flex items-center" style={{ gap: 12 }}>
               <button type="button" onClick={() => setQuestionnaireModal(true)}
-                style={{ height: 36, borderRadius: 4, background: SURVEY_BTN, color: '#fff', fontSize: 13, border: 'none', padding: '0 14px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
+                style={{ height: 36, borderRadius: 2, background: SURVEY_BTN, color: '#fff', fontSize: 12, fontWeight: 500, border: '1px solid ' + SURVEY_BTN, padding: '0 14px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
                 <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><path d="M14 2v6h6" /><path d="M9 13h6M9 17h6" /></svg>
                 调查问卷
               </button>
@@ -814,24 +814,24 @@ export default function OrderDetail() {
         <div style={{ padding: '0 24px' }}>
           <div className="flex" style={{ gap: 24, alignItems: 'stretch' }}>
             {/* 左侧：套系封面图 + 基础信息 */}
-            <div style={{ flex: '0 0 46%', display: 'flex', flexDirection: 'column', gap: 18 }}>
-              <div style={{ width: 190, height: 138, borderRadius: 8, overflow: 'hidden', background: '#f3f4f6', flexShrink: 0 }}>
+            <div style={{ flex: '0 0 46%', display: 'flex', alignItems: 'flex-start', gap: 24, minWidth: 0 }}>
+              <div style={{ width: 206, height: 150, borderRadius: 2, overflow: 'hidden', background: '#f3f4f6', flexShrink: 0 }}>
                 {pkgInfo && pkgInfo.cover_url
                   ? <img src={img(pkgInfo.cover_url)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                   : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#999', fontSize: 12 }}>套系缩略图</div>}
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 14, minWidth: 0, flex: 1 }}>
                 <InfoRow label="套系名称" labelColor={LABEL_COLOR}
                   icon={<><rect x="4" y="3" width="16" height="18" rx="2" /><line x1="8" y1="8" x2="16" y2="8" /><line x1="8" y1="12" x2="16" y2="12" /><line x1="8" y1="16" x2="12" y2="16" /></>}
                   value={pkgInfo && pkgInfo.name && pkgInfo.name !== '—' ? pkgInfo.name : '暂无'} />
                 <InfoRow label="定金" labelColor={LABEL_COLOR}
                   icon={<path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />}
-                  value={<span style={{ fontSize: 15 }}>{'¥' + Number(pkgInfo?.deposit || 0).toLocaleString()}</span>}
+                  value={<span style={{ fontSize: 12 }}>{'¥' + Number(pkgInfo?.deposit || 0).toLocaleString()}</span>}
                   tags={detail.pay_method === 'offline' ? [{ t: '线下收取', bg: TAG_OFFLINE, fg: '#fff' }] : []} />
                 <InfoRow label="已付加片费" labelColor={LABEL_COLOR}
                   icon={<><path d="M4 2v20l2-2 2 2 2-2 2 2 2-2 2 2 2-2 2 2V2l-2 2-2-2-2 2-2-2-2 2-2-2-2 2z" /><line x1="8" y1="7" x2="16" y2="7" /><line x1="8" y1="11" x2="16" y2="11" /><line x1="8" y1="15" x2="12" y2="15" /></>}
                   value={
-                    <span style={{ display: 'flex', alignItems: 'center', gap: 6, position: 'relative', fontSize: 15 }}>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 6, position: 'relative', fontSize: 12 }}>
                       <span>{'¥' + extraSum.toLocaleString()}</span>
                       <span
                         onMouseEnter={() => setAddonHelp(true)} onMouseLeave={() => setAddonHelp(false)}
@@ -857,7 +857,7 @@ export default function OrderDetail() {
                           reload();
                         } catch {}
                       }}
-                      style={{ border: '1px solid #d9d9d9', borderRadius: 4, padding: '3px 8px', fontSize: 14, color: '#222222', background: '#fff', outline: 'none', cursor: 'pointer', maxWidth: 160 }}>
+                      style={{ border: '1px solid #d9d9d9', borderRadius: 2, padding: '3px 8px', fontSize: 12, color: '#222222', background: '#fff', outline: 'none', cursor: 'pointer', maxWidth: 160 }}>
                       <option value="">暂无</option>
                       {channels.map((c) => (
                         <option key={c.id} value={c.name}>{c.name}</option>
@@ -876,7 +876,7 @@ export default function OrderDetail() {
                           <button type="button" onClick={() => removeExecutor(i)} title="移除此执行人"
                             style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#444444', padding: 0, fontSize: 18, lineHeight: 1, flexShrink: 0 }}>&times;</button>
                         </div>
-                      )) : <span style={{ color: '#999999', fontSize: 14 }}>暂无</span>}
+                      )) : <span style={{ color: '#999999', fontSize: 12 }}>暂无</span>}
                       <button type="button" onClick={() => { setExecPickerSelections(execs.map((e) => ({ id: e.id, name: e.name, avatar: e.avatar || '' }))); setExecPickerOpen(true); }}
                         title="添加执行人"
                         style={{ width: 32, height: 32, borderRadius: '50%', background: '#21a6ff', color: '#fff', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: 16, padding: 0, flexShrink: 0 }}>+</button>
@@ -889,13 +889,13 @@ export default function OrderDetail() {
             {/* 右侧：灰色小卡片分组 */}
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 16, minWidth: 0 }}>
               {/* 右上卡片：拍摄信息 */}
-              <div style={{ background: '#f7f7f7', borderRadius: 8, padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <div style={{ background: '#FFFFFF', borderRadius: 0, padding: '0 0 8px', display: 'flex', flexDirection: 'column', gap: 16 }}>
                 <InfoRow label="拍摄时间" labelColor={LABEL_COLOR}
                   icon={<><rect x="3" y="4" width="18" height="18" rx="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></>}
                   value={tbd ? '日期待定' : ((detail.shoot_date || '暂无') + (slots.length ? ' ' + slots.join(' ') : ''))} />
                 <InfoRow label="尾款" labelColor={LABEL_COLOR}
                   icon={<><path d="M20 12V8H6a2 2 0 0 1 0-4h14v4" /><path d="M4 6v12a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-4" /><circle cx="16" cy="13" r="1" /></>}
-                  value={<span style={{ fontSize: 15 }}>{'¥' + remain.toLocaleString()}</span>}
+                  value={<span style={{ fontSize: 12 }}>{'¥' + remain.toLocaleString()}</span>}
                   tags={remain > 0 ? [{ t: '未结算', bg: TAG_UNSETTLED, fg: '#fff' }] : []} />
                 <InfoRow label="拍摄地址" labelColor={LABEL_COLOR}
                   icon={<><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" /></>}
@@ -903,7 +903,7 @@ export default function OrderDetail() {
               </div>
 
               {/* 右下卡片：套系摘要 */}
-              <div style={{ background: '#f7f7f7', borderRadius: 8, padding: '20px 24px', flex: 1, display: 'flex', flexDirection: 'column' }}>
+              <div style={{ background: '#fafbf8', borderRadius: 2, padding: '18px 20px', flex: 1, display: 'flex', flexDirection: 'column' }}>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px 12px' }}>
                   {(() => {
                     const SUM_FIELDS = [
@@ -917,18 +917,18 @@ export default function OrderDetail() {
                     ];
                     return SUM_FIELDS.map((f) => (
                       <div key={f.t} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                        <div className="flex items-center" style={{ fontSize: 13, color: LABEL_COLOR, gap: 5 }}>
+                        <div className="flex items-center" style={{ fontSize: 12, color: LABEL_COLOR, gap: 5 }}>
                           <svg viewBox="0 0 24 24" width={14} height={14} fill="none" stroke={ICON_COLOR} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">{f.ic}</svg>
                           {f.t}
                         </div>
-                        <div style={{ fontSize: 15, color: '#222222' }}>{f.v}</div>
+                        <div style={{ fontSize: 12, color: LABEL_COLOR }}>{f.v}</div>
                       </div>
                     ));
                   })()}
                 </div>
                 <div style={{ marginTop: 'auto', paddingTop: 16, display: 'flex', justifyContent: 'flex-end' }}>
                   <button type="button" onClick={() => { setPkgDetailTab('service'); setPkgDetailModal(true); }}
-                    style={{ background: 'none', border: 'none', color: MORE_LINK, fontSize: 14, cursor: 'pointer', padding: 0, whiteSpace: 'nowrap' }}>更多内容</button>
+                    style={{ background: 'none', border: 'none', color: MORE_LINK, fontSize: 12, cursor: 'pointer', padding: 0, whiteSpace: 'nowrap' }}>更多内容</button>
                 </div>
               </div>
             </div>
@@ -947,7 +947,7 @@ export default function OrderDetail() {
             <div>
               <div className="flex items-center" style={{ gap: 6, marginBottom: 8 }}>
                 <svg viewBox="0 0 24 24" width={ICON_SIZE} height={ICON_SIZE} fill="none" stroke={ICON_COLOR} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9" /><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z" /></svg>
-                <span style={{ fontSize: 14, color: LABEL_COLOR, flexShrink: 0 }}>备注信息：</span>
+                <span style={{ fontSize: 12, color: LABEL_COLOR, flexShrink: 0 }}>备注信息：</span>
               </div>
               <textarea
                 autoFocus
@@ -962,7 +962,7 @@ export default function OrderDetail() {
           ) : (
             <div className="flex items-center" style={{ gap: 6, fontSize: 14 }}>
               <svg viewBox="0 0 24 24" width={ICON_SIZE} height={ICON_SIZE} fill="none" stroke={ICON_COLOR} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M12 20h9" /><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z" /></svg>
-              <span style={{ color: LABEL_COLOR, flexShrink: 0 }}>备注信息：</span>
+              <span style={{ fontSize: 12, color: LABEL_COLOR, flexShrink: 0 }}>备注信息：</span>
               <span
                 style={{ position: 'relative', display: 'inline-block', color: detail.remark ? TEXT_MAIN : '#888888', cursor: 'pointer' }}
                 onMouseEnter={() => setHoverRemark(true)}
@@ -993,10 +993,10 @@ export default function OrderDetail() {
             return (
               <button key={tb.k} type="button" onClick={() => setImgTab(tb.k)}
                 style={{
-                  padding: '0 20px', height: 44, background: 'none', border: 'none', cursor: 'pointer', fontSize: 14,
-                  color: active ? BLUE : '#666666',
+                  padding: '0 20px', height: 44, background: 'none', border: 'none', cursor: 'pointer', fontSize: 12,
+                  color: active ? BLUE : 'rgba(0,0,0,0.65)',
                   borderBottom: active ? '2px solid ' + BLUE : '2px solid transparent', fontWeight: active ? 500 : 400
-                }}>{tb.t}（{count}）</button>
+                }}>{tb.t}({count})</button>
             );
           })}
           </div>
@@ -1005,23 +1005,23 @@ export default function OrderDetail() {
 
         <div style={{ padding: '12px 24px 24px' }}>
           {/* 提示警告条（黄色提示 + 灯泡图标） */}
-          <div style={{ background: '#fffbe6', color: '#b58900', fontSize: 13, padding: '9px 16px', display: 'flex', alignItems: 'center', gap: 8, borderRadius: 4 }}>
+          <div style={{ background: '#FAFAEC', color: '#D1B372', fontSize: 11, padding: '9px 16px', display: 'flex', alignItems: 'center', gap: 8, borderRadius: 0 }}>
             <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.3 1 2.3h6c0-1 .4-1.8 1-2.3A7 7 0 0 0 12 2z" /></svg>
             <span>上传小图用于选片和浏览，同时，在网盘中提供原图用于下载，可节省存储和流量成本。</span>
             <span style={{ flex: 1 }} />
             <span onClick={() => nav('/capacity')}
-              style={{ color: BLUE, fontSize: 13, cursor: 'pointer', fontWeight: 500, whiteSpace: 'nowrap' }}>查看容量</span>
+              style={{ color: BLUE, fontSize: 11, cursor: 'pointer', fontWeight: 400, whiteSpace: 'nowrap' }}>查看容量</span>
           </div>
 
           {/* 筛选操作栏：左侧 全部相册/底片/推荐；右侧 全选 → 仅下载精修片 → 排序 */}
-          <div className="flex items-center" style={{ height: 40, marginTop: 12, gap: 12, fontSize: 14, color: '#444444', flexWrap: 'wrap' }}>
-            <select style={filterCtrlStyle}><option>全部相册</option></select>
-            <button type="button" style={{ ...filterBtnStyle, background: BLACK_TAG, color: '#fff', border: '1px solid ' + BLACK_TAG }}>底片（{photos.raw.length}）</button>
-            <button type="button" style={filterBtnStyle}>推荐（0）</button>
+          <div className="flex items-center" style={{ height: 40, marginTop: 12, gap: 12, fontSize: 12, color: '#444B53', flexWrap: 'wrap' }}>
+            <select style={{ ...filterCtrlStyle, color: 'rgba(0,0,0,0.65)' }}><option>全部相册</option></select>
+            <button type="button" style={{ ...filterBtnStyle, background: '#2F2F31', color: '#fff', border: '1px solid #2F2F31' }}>底片 {photos.raw.length}</button>
+            <button type="button" style={filterBtnStyle}>推荐 0</button>
 
             <div style={{ flex: 1 }} />
 
-            <label className="flex items-center" style={{ gap: 6, fontSize: 14, color: '#444444' }}>
+            <label className="flex items-center" style={{ gap: 6, fontSize: 14, color: 'rgba(0,0,0,0.65)' }}>
               <input type="checkbox" /> 全选
             </label>
             <select style={filterCtrlStyle}>
@@ -1032,7 +1032,7 @@ export default function OrderDetail() {
             </select>
 
             <button type="button" onClick={() => nav('/works')} title="更多选片设置"
-              style={{ background: 'none', border: 'none', color: '#666666', fontSize: 13, cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center' }}>
+              style={{ background: 'none', border: 'none', color: '#666666', fontSize: 12, cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center' }}>
               <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="1" /><circle cx="19" cy="12" r="1" /><circle cx="5" cy="12" r="1" /></svg>
             </button>
 
@@ -1107,7 +1107,7 @@ export default function OrderDetail() {
 
           {/* 底部链接 */}
           <button type="button" onClick={() => nav('/works')}
-            style={{ marginTop: 16, background: 'none', border: 'none', color: BLUE, fontSize: 13, cursor: 'pointer' }}>查看选片演示案例 &gt;</button>
+            style={{ marginTop: 16, background: 'none', border: 'none', color: BLUE, fontSize: 12, cursor: 'pointer' }}>查看选片演示案例 &gt;</button>
         </div>
       </section>
 
@@ -1119,8 +1119,8 @@ export default function OrderDetail() {
             return (
               <button key={tb.k} type="button" onClick={() => setLogTab(tb.k)}
                 style={{
-                  padding: '0 16px', height: 46, background: 'none', border: 'none', cursor: 'pointer', fontSize: 14,
-                  color: active ? BLUE : '#666666',
+                  padding: '0 16px', height: 46, background: 'none', border: 'none', cursor: 'pointer', fontSize: 12,
+                  color: active ? BLUE : 'rgba(0,0,0,0.65)',
                   borderBottom: active ? ('2px solid ' + BLUE) : '2px solid transparent', fontWeight: active ? 500 : 400
                 }}>{tb.t}</button>
             );
@@ -1867,15 +1867,15 @@ export default function OrderDetail() {
 
 // —— 复刻 spec 样式片段（模块内复用） ——
 const secBtnStyle = {
-  height: 36, borderRadius: 4, background: '#fff', color: '#444444',
-  border: '1px solid ' + DIV, fontSize: 14, padding: '0 14px', cursor: 'pointer'
+  height: 36, borderRadius: 2, background: '#fff', color: '#666666',
+  border: '1px solid #D9D9D9', fontSize: 12, fontWeight: 500, padding: '0 14px', cursor: 'pointer'
 };
 const moreItemStyle = {
   display: 'block', width: '100%', textAlign: 'left', padding: '8px 14px',
   background: 'none', border: 'none', color: '#222222', cursor: 'pointer', whiteSpace: 'nowrap'
 };
-const filterCtrlStyle = { height: 36, padding: '0 12px', borderRadius: 4, border: '1px solid ' + DIV, color: '#444444', background: '#fff', fontSize: 14 };
-const filterBtnStyle = { height: 36, padding: '0 12px', borderRadius: 4, border: '1px solid ' + DIV, color: '#444444', background: '#fff', fontSize: 14, cursor: 'pointer' };
+const filterCtrlStyle = { height: 32, padding: '0 8px', border: 'none', color: '#16ADF7', background: 'transparent', fontSize: 12, outline: 'none', cursor: 'pointer' };
+const filterBtnStyle = { height: 32, padding: '0 16px', borderRadius: 2, border: '1px solid #D5DBE2', color: '#444B53', background: '#fff', fontSize: 12, cursor: 'pointer' };
 const modalInputStyle = { width: '100%', padding: '8px 12px', borderRadius: 4, border: '1px solid ' + DIV, color: '#222222', fontSize: 14, outline: 'none', background: '#fff' };
 const modalCancelStyle = { padding: '8px 16px', borderRadius: 4, fontSize: 14, color: '#666666', background: '#fff', border: '1px solid ' + DIV, cursor: 'pointer' };
 const modalSaveStyle = { padding: '8px 16px', borderRadius: 4, fontSize: 14, color: '#fff', background: BLUE, border: 'none', cursor: 'pointer' };
@@ -1884,12 +1884,12 @@ const modalSaveStyle = { padding: '8px 16px', borderRadius: 4, fontSize: 14, col
 function InfoRow({ label, value, tags, extra, icon, labelColor }) {
   const lc = labelColor || ICON_COLOR;
   return (
-    <div className="flex" style={{ alignItems: 'center', gap: 0, fontSize: 14, lineHeight: 1.6 }}>
+    <div className="flex" style={{ alignItems: 'center', gap: 0, fontSize: 12, lineHeight: 1.6 }}>
       <span style={{ color: lc, flexShrink: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
         {icon ? <svg viewBox="0 0 24 24" width={ICON_SIZE} height={ICON_SIZE} fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">{icon}</svg> : null}
         {label}：
       </span>
-      <div style={{ color: '#222222', flex: 1 }}>
+      <div style={{ color: INFO_VALUE, flex: 1 }}>
         {value}
         {extra && extra.length > 0 && (
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 4 }}>
@@ -1898,7 +1898,7 @@ function InfoRow({ label, value, tags, extra, icon, labelColor }) {
         )}
         {tags && tags.length > 0 && (
           <span style={{ display: 'inline-flex', flexWrap: 'wrap', gap: 6, marginLeft: 8, verticalAlign: 'middle' }}>
-            {tags.map((t, i) => <span key={i} style={{ padding: '2px 8px', borderRadius: 4, background: t.bg, color: t.fg, fontSize: 12 }}>{t.t}</span>)}
+            {tags.map((t, i) => <span key={i} style={{ padding: '2px 8px', borderRadius: 2, background: t.bg, color: t.fg, fontSize: 12 }}>{t.t}</span>)}
           </span>
         )}
       </div>
@@ -1911,15 +1911,8 @@ function PhotoZone({ kind, title, photos, uploading, onAdd, onRemove }) {
   const inputRef = React.useRef(null);
   return (
     <div>
-      <div className="flex items-center justify-between" style={{ marginBottom: 12 }}>
-        <span style={{ fontSize: 14, color: '#222222', fontWeight: 500 }}>{title}（{photos.length}）</span>
-        <button type="button" onClick={() => inputRef.current?.click()}
-          style={{ padding: '6px 12px', borderRadius: 4, background: BLUE, color: '#fff', fontSize: 12, border: 'none', opacity: uploading ? 0.6 : 1, cursor: 'pointer' }}>
-          {uploading ? '上传中…' : '+ 上传' + title}
-        </button>
-        <input ref={inputRef} type="file" accept="image/*" multiple className="hidden"
-          onChange={(e) => { onAdd(e.target.files); e.target.value = ''; }} />
-      </div>
+      <input ref={inputRef} type="file" accept="image/*" multiple className="hidden"
+        onChange={(e) => { onAdd(e.target.files); e.target.value = ''; }} />
       <div className="flex flex-wrap" style={{ gap: 12, alignItems: 'flex-start' }}>
         {photos.map((u, i) => (
           <div key={i} style={{ position: 'relative' }} className="group">
@@ -1938,7 +1931,7 @@ function PhotoZone({ kind, title, photos, uploading, onAdd, onRemove }) {
             </span>
           </label>
           <button type="button" onClick={() => inputRef.current?.click()}
-            style={{ marginTop: 8, background: 'none', border: 'none', color: '#222222', fontSize: 14, cursor: 'pointer' }}>上传{title}</button>
+            style={{ marginTop: 8, background: 'none', border: 'none', color: '#666666', fontSize: 12, cursor: 'pointer' }}>上传{title}</button>
         </div>
       </div>
     </div>

@@ -13,7 +13,7 @@ const SSTATUS = { free: '空闲', booked: '已约', locked: '锁场', closed: '�
 
 // 弹窗/次级控件沿用色号（主内容区色板见下方 G_* 常量）
 const BLUE = '#2196F3';             // 编辑档期/预约设置等旧弹窗的链接蓝
-const ADV_BG = '#222222';           // 高级选项按钮（白字白图标）
+const ADV_BG = '#333333';           // 高级选项按钮（PicBling 实测 #333）
 const ADD_BTN = '#2998EB';          // 日历选择器选中日蓝
 
 // 新增订单弹窗色号（1:1 复刻 spec）
@@ -47,12 +47,12 @@ const MODAL_DIV = '#EEEEEE';         // 分割线
    主蓝 #2DB7F5 ／ 选中浅蓝 #EAF6FD ／ 已预约粉 #FFD3D3 ／ 今日红 #FF7777
    注：左侧全局导航不在本页范围内，禁止改动。                                */
 const G_PAGE_BG = '#F7F7F7';
-const G_BORDER = '#E8E8E8';
-const G_PANEL = '#3A3A3A';
-const G_YELLOW = '#FFB900';
+const G_BORDER = '#D8D8D8';
+const G_PANEL = '#444444';
+const G_YELLOW = '#FFBB01';
 const G_BLUE = '#2DB7F5';
 const G_SEL = '#EAF6FD';
-const G_BOOKED = '#FFD3D3';
+const G_BOOKED = '#FF949C';
 const G_TODAY = '#FF7777';
 
 // 8 色订单状态（顶部图例 + hover 说明气泡 + 单元格状态点，色号与订单中心阶段机一一对应）
@@ -283,7 +283,9 @@ export default function Schedule() {
 
     let cellBg = '#FFFFFF';
     if (isClosed) cellBg = 'repeating-linear-gradient(-45deg, rgba(150,150,150,0.22) 0px, rgba(150,150,150,0.22) 1px, transparent 1px, transparent 8px), #F7F7F7';
+    else if (st.kind === 'booked') cellBg = '#FF949C';
     else if (selected) cellBg = G_SEL;
+    const booked = st.kind === 'booked';
 
     return (
       <div key={date} onClick={() => setSelDate(date)}
@@ -306,9 +308,9 @@ export default function Schedule() {
           <div className="flex flex-col" style={{ gap: 2 }}>
             <span className="inline-flex items-center justify-center"
               style={isToday
-                ? { width: 22, height: 22, borderRadius: 4, background: G_YELLOW, color: G_TODAY, fontSize: 14, fontWeight: 500 }
-                : { fontSize: 14, color: isToday ? G_TODAY : '#333333' }}>{day}</span>
-            {lunar && <span style={{ fontSize: 11, color: '#999999' }}>{lunar}</span>}
+                ? { width: 24, height: 24, borderRadius: '50%', background: G_YELLOW, color: '#FFFFFF', fontSize: 16, fontWeight: 500 }
+                : { fontSize: 16, color: booked ? '#FFFFFF' : (isToday ? G_TODAY : '#333333') }}>{day}</span>
+            {lunar && <span style={{ fontSize: 10, color: booked ? 'rgba(255,255,255,0.9)' : '#999999' }}>{lunar}</span>}
           </div>
           {pends.length > 0 && <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#F0A020' }} />}
         </div>
@@ -320,13 +322,13 @@ export default function Schedule() {
               return (
                 <div key={r.id} onClick={(e) => { e.stopPropagation(); if (r.order_id) nav('/orders/' + r.order_id); }}
                   className="flex items-center truncate hover:opacity-85"
-                  style={{ background: G_BOOKED, borderRadius: 2, height: 20, padding: '0 5px', gap: 4 }}>
+                  style={{ background: booked ? 'rgba(255,255,255,0.28)' : G_BOOKED, borderRadius: 2, height: 20, padding: '0 5px', gap: 4 }}>
                   {sk && <span style={{ width: 6, height: 6, borderRadius: '50%', background: G_STATUS_MAP[sk].color }} />}
-                  <span className="truncate" style={{ fontSize: 11, color: '#5A2730' }}>{r.order_customer || r.executor_name || r.photographer || '已预约'}</span>
+                  <span className="truncate" style={{ fontSize: 11, color: booked ? '#FFFFFF' : '#5A2730' }}>{r.order_customer || r.executor_name || r.photographer || '已预约'}</span>
                 </div>
               );
             })}
-            {st.orderRows.length > maxRows && <div style={{ fontSize: 11, color: '#888888' }}>+{st.orderRows.length - maxRows} 更多</div>}
+            {st.orderRows.length > maxRows && <div style={{ fontSize: 11, color: booked ? '#FFFFFF' : '#888888' }}>+{st.orderRows.length - maxRows} 更多</div>}
           </div>
         )}
 
@@ -337,7 +339,7 @@ export default function Schedule() {
         ) : (
           <div className="mt-auto flex items-end justify-between gap-1 pt-1">
             <button onClick={(e) => { e.stopPropagation(); openNew(date); }} className="hover:opacity-80" style={{ color: G_BLUE, fontSize: 12 }}>+ 添加</button>
-            {st.orderRows.length > 0 && <span style={{ fontSize: 11, color: '#888888' }}>{st.orderRows.length}单</span>}
+            {st.orderRows.length > 0 && <span style={{ fontSize: 11, color: booked ? '#FFFFFF' : '#888888' }}>{st.orderRows.length}单</span>}
           </div>
         )}
       </div>
@@ -345,7 +347,7 @@ export default function Schedule() {
   };
 
   return (
-    <div className="w-full min-h-screen" style={{ background: G_PAGE_BG, paddingRight: 220 }}>
+    <div className="w-full min-h-screen" style={{ background: G_PAGE_BG, paddingRight: 140 }}>
       {/* 模块 A：面包屑 */}
       <div style={{ padding: '12px 12px 8px', fontSize: 12, color: '#666666' }}>
         工作台 &gt; 档期
@@ -406,7 +408,7 @@ export default function Schedule() {
               <option value="pending">待确认</option>
             </select>
             <div className="relative" ref={accRef}>
-              <button onClick={() => setAccOpen((v) => !v)} className="flex items-center" style={{ gap: 6, height: 28, padding: '0 12px', border: `1px solid ${G_BORDER}`, borderRadius: 4, background: '#FFFFFF', fontSize: 13, color: '#333333' }}>
+              <button onClick={() => setAccOpen((v) => !v)} className="flex items-center" style={{ gap: 6, height: 28, padding: '0 12px', border: `1px solid ${G_BORDER}`, borderRadius: 4, background: '#FFFFFF', fontSize: 12, fontWeight: 500, color: '#666666' }}>
                 <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 6h18M3 12h12M3 18h6" /></svg>
                 筛选账号
               </button>
@@ -421,7 +423,7 @@ export default function Schedule() {
             </div>
 
             <div className="relative" ref={advRef}>
-              <button onClick={() => setAdvOpen((v) => !v)} className="flex items-center" style={{ gap: 6, height: 28, padding: '0 12px', borderRadius: 4, background: ADV_BG, fontSize: 13, color: '#FFFFFF' }}>
+              <button onClick={() => setAdvOpen((v) => !v)} className="flex items-center" style={{ gap: 6, height: 28, padding: '0 12px', borderRadius: 2, border: `1px solid ${ADV_BG}`, background: ADV_BG, fontSize: 12, fontWeight: 500, color: '#FFFFFF' }}>
                 <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" /></svg>
                 高级选项
               </button>
@@ -442,7 +444,7 @@ export default function Schedule() {
             {/* 星期表头 */}
             <div className="grid grid-cols-7">
               {WEEK.map((w) => (
-                <div key={w} className="text-center" style={{ fontSize: 13, color: '#666666', height: 36, lineHeight: '36px', borderBottom: `1px solid ${G_BORDER}` }}>{w}</div>
+                <div key={w} className="text-center" style={{ fontSize: 12, color: '#3D3D3D', height: 36, lineHeight: '36px', borderBottom: `1px solid ${G_BORDER}` }}>{w}</div>
               ))}
             </div>
 
@@ -569,15 +571,15 @@ export default function Schedule() {
       })()}
 
       {/* 模块 D：右侧深色悬浮面板 */}
-      <div className="fixed top-0 right-0 bottom-0 flex flex-col" style={{ width: 220, background: G_PANEL, color: '#FFFFFF', zIndex: 20, padding: '20px 14px' }}>
-        <div className="text-center" style={{ fontSize: 12, color: '#BBBBBB', marginBottom: 16 }}>{selDate ? `${Number(selParts[0])}年${Number(selParts[1])}月` : `${y}年${m}月`}</div>
+      <div className="fixed top-0 right-0 bottom-0 flex flex-col" style={{ width: 140, background: G_PANEL, color: '#FFFFFF', zIndex: 20, padding: '20px 14px' }}>
+        <div className="text-center" style={{ fontSize: 12, color: '#FFFFFF', marginBottom: 16 }}>{selDate ? `${Number(selParts[0])}年${Number(selParts[1])}月` : `${y}年${m}月`}</div>
         <div className="flex justify-center">
-          <div className="flex items-center justify-center" style={{ background: G_YELLOW, width: 96, height: 96, borderRadius: 6, marginBottom: 14 }}>
-            <span style={{ fontSize: 58, fontWeight: 700, lineHeight: 1, color: '#FFFFFF' }}>{selParts[2] ? Number(selParts[2]) : '--'}</span>
+          <div className="flex items-center justify-center" style={{ background: G_YELLOW, width: 80, height: 80, borderRadius: 3, marginBottom: 14 }}>
+            <span style={{ fontSize: 55, fontWeight: 400, lineHeight: 1, color: '#FFFFFF' }}>{selParts[2] ? Number(selParts[2]) : '--'}</span>
           </div>
         </div>
-        <div className="text-center" style={{ fontSize: 13, color: '#CCCCCC', marginBottom: 4 }}>{selDate ? (lunarMap[selDate] || '') : ''}</div>
-        <div className="text-center" style={{ fontSize: 12, color: '#999999', marginBottom: 16 }}>{selDate ? WEEK_FULL[new Date(selDate).getDay()] : ''}{selDate === todayStr ? ' · 今天' : ''}</div>
+        <div className="text-center" style={{ fontSize: 12, color: '#FFFFFF', marginBottom: 4 }}>{selDate ? (lunarMap[selDate] || '') : ''}</div>
+        <div className="text-center" style={{ fontSize: 12, color: '#DCDCDC', marginBottom: 16 }}>{selDate ? WEEK_FULL[new Date(selDate).getDay()] : ''}{selDate === todayStr ? ' · 今天' : ''}</div>
 
         <div style={{ borderTop: '1px solid #555555', margin: '12px 0' }} />
         <div className="text-center" style={{ fontSize: 13, color: '#CCCCCC', padding: '8px 0' }}>{sideStatus}</div>
@@ -674,11 +676,11 @@ function StatusLegend() {
   return (
     <div className="relative" ref={ref}>
       <button onClick={() => setOpen((v) => !v)} className="flex items-center" style={{ gap: 10, height: 28, padding: '0 10px', border: `1px solid ${G_BORDER}`, borderRadius: 4, background: '#FFFFFF' }}>
-        <span className="flex items-center" style={{ gap: 4, fontSize: 12, color: '#666666' }}>
+        <span className="flex items-center" style={{ gap: 4, fontSize: 12, color: '#888888' }}>
           <span style={{ width: 10, height: 10, borderRadius: 2, background: G_STATUS_MAP['unpaid'].color }} />
           未付定金
         </span>
-        <span className="flex items-center" style={{ gap: 4, fontSize: 12, color: '#666666' }}>
+        <span className="flex items-center" style={{ gap: 4, fontSize: 12, color: '#888888' }}>
           <span style={{ width: 10, height: 10, borderRadius: 2, background: G_STATUS_MAP['deposit'].color }} />
           等待拍摄
         </span>
