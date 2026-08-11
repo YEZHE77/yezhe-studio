@@ -34,7 +34,7 @@ const ITEM_STYLE = {
   borderRadius: 6,
   padding: '0 14px',
   gap: 10,
-  fontSize: 14,
+  fontSize: 13,
   fontWeight: 400,
   marginBottom: 2
 };
@@ -105,7 +105,7 @@ function SidebarContent() {
                   to={m.to}
                   end={m.to === '/'}
                   className={({ isActive }) =>
-                    'flex items-center justify-between transition-colors ' +
+                    'flex items-center transition-colors ' +
                     (isActive ? 'bg-[#F0FDFF] text-[#2998EB]' : 'text-[#444444] hover:bg-[#EDF0F3]')
                   }
                   style={ITEM_STYLE}
@@ -115,7 +115,7 @@ function SidebarContent() {
                       <span className="shrink-0 flex items-center" style={{ color: isActive ? '#2998EB' : '#888888' }}>
                         <Icon name={m.icon} className="w-4 h-4" />
                       </span>
-                      <span className="truncate text-right">{m.label}</span>
+                      <span className="truncate">{m.label}</span>
                       {m.expandable && <Caret />}
                     </>
                   )}
@@ -128,13 +128,13 @@ function SidebarContent() {
             <div key={m.label}>
               <div
                 title="敬请期待"
-                className="flex items-center justify-between cursor-default select-none text-[#444444] hover:bg-[#EDF0F3] transition-colors"
+                className="flex items-center cursor-default select-none text-[#444444] hover:bg-[#EDF0F3] transition-colors"
                 style={ITEM_STYLE}
               >
                 <span className="shrink-0 flex items-center" style={{ color: '#888888' }}>
                   <Icon name={m.icon} className="w-4 h-4" />
                 </span>
-                <span className="truncate text-right">{m.label}</span>
+                <span className="truncate">{m.label}</span>
                 {m.expandable && <Caret />}
               </div>
               {m.sep && <div style={{ height: 1, background: '#F0F0F0', margin: '6px 8px' }} />}
