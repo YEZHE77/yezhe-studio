@@ -120,7 +120,7 @@ function SidebarContent() {
                     </>
                   )}
                 </NavLink>
-                {m.sep && <div style={{ height: 1, background: '#F0F0F0', margin: '6px 8px' }} />}
+                {m.sep && <div style={{ height: 1, background: '#E8E8E8', margin: '6px 0 6px auto', width: 48 }} />}
               </div>
             );
           }
@@ -137,7 +137,7 @@ function SidebarContent() {
                 <span className="truncate">{m.label}</span>
                 {m.expandable && <Caret />}
               </div>
-              {m.sep && <div style={{ height: 1, background: '#F0F0F0', margin: '6px 8px' }} />}
+              {m.sep && <div style={{ height: 1, background: '#E8E8E8', margin: '6px 0 6px auto', width: 48 }} />}
             </div>
           );
         })}
