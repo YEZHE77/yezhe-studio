@@ -256,8 +256,8 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* 品牌管理 + 日常管理（合并成一个大卡片，底色纯色优化；内部卡片设计保持不变） */}
-      <div className="bg-white border mt-4" style={{ borderRadius: 8, borderColor: '#E6E9EF', padding: '22px 50px 28px', background: '#F7F8FA' }}>
+      {/* 品牌管理 + 日常管理（合并成一个大卡片，纯白底 + #E6E9EF 边框更清晰；内部卡片设计保持不变） */}
+      <div className="bg-white border mt-4" style={{ borderRadius: 8, borderColor: '#E6E9EF', padding: '22px 50px 28px' }}>
         <div className="text-[16px] font-medium mb-6" style={{ color: '#333333' }}>品牌管理</div>
         <div className="grid grid-cols-5 gap-[10px]">
           {BRAND_CARDS.map((c) => <BigCard key={c.title} {...c} />)}
