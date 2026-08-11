@@ -761,7 +761,7 @@ export default function OrderDetail() {
 
         {/* ——— 1、卡片头部行 ——— */}
         <div style={{ padding: '20px 24px 0' }}>
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between" style={{ position: 'relative' }}>
             {/* 左：圆形客户头像 / 客户姓名 / 手机号 / 编辑笔 / 红色边框【客户信息】 */}
             <div className="flex items-center" style={{ gap: 8 }}>
               <div style={{ width: 40, height: 40, borderRadius: '50%', background: AVATAR_PURPLE, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 20, fontWeight: 400, flexShrink: 0 }}>{custInitial}</div>
@@ -810,7 +810,7 @@ export default function OrderDetail() {
             </div>
 
             {/* 右：四个功能按钮 */}
-            <div className="flex items-center" style={{ gap: 12 }}>
+            <div className="flex items-center" style={{ gap: 12, position: 'absolute', left: '53.6%' }}>
               <button type="button" onClick={() => setQuestionnaireModal(true)}
                 style={{ height: 32, borderRadius: 2, background: SURVEY_BTN, color: '#fff', fontSize: 12, fontWeight: 400, border: '1px solid ' + SURVEY_BTN, padding: '0 10px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
                 <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><path d="M14 2v6h6" /><path d="M9 13h6M9 17h6" /></svg>
