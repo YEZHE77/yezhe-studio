@@ -90,7 +90,7 @@ function SidebarContent() {
         </button>
         <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={onPickAvatar} />
         <div style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
-          <span style={{ fontSize: 16, fontWeight: 600, color: '#111111', lineHeight: 1.3 }}>叶哲 Studio</span>
+          <span style={{ fontSize: 16, fontWeight: 400, color: '#111111', lineHeight: 1.3 }}>叶哲 Studio</span>
           <span style={{ fontSize: 11, color: '#999999', lineHeight: 1.3 }}>商家管理后台</span>
         </div>
       </div>
@@ -110,7 +110,7 @@ function SidebarContent() {
                   {({ isActive }) => (
                     <span
                       className={'inline-flex items-center max-w-full transition-colors ' + (isActive ? 'bg-[#F0FDFF] text-[#2DB7F5]' : 'text-[rgba(0,0,0,0.65)] hover:bg-[#EDF0F3]')}
-                      style={{ gap: 10, padding: '0 12px', height: 32, borderRadius: 6, marginLeft: 140, marginRight: 14 }}
+                      style={{ gap: 10, padding: '0 12px', height: 32, borderRadius: 100, marginLeft: 140, marginRight: 14 }}
                     >
                       <span className="w-6 shrink-0 flex items-center justify-center" style={{ color: isActive ? '#2DB7F5' : '#AAAAAA' }}>
                         <Icon name={m.icon} className="w-[14px] h-[14px]" />
@@ -132,7 +132,7 @@ function SidebarContent() {
               >
                 <span
                   className="inline-flex items-center max-w-full text-[rgba(0,0,0,0.65)] hover:bg-[#EDF0F3] transition-colors"
-                  style={{ gap: 10, padding: '0 12px', height: 32, borderRadius: 6, marginLeft: 140, marginRight: 14 }}
+                  style={{ gap: 10, padding: '0 12px', height: 32, borderRadius: 100, marginLeft: 140, marginRight: 14 }}
                 >
                   <span className="w-6 shrink-0 flex items-center justify-center" style={{ color: '#AAAAAA' }}>
                     <Icon name={m.icon} className="w-[14px] h-[14px]" />
