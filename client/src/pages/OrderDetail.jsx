@@ -840,7 +840,7 @@ export default function OrderDetail() {
 
         {/* ——— 2、订单信息主体：左侧基础信息 + 右侧灰色小卡片分组 ——— */}
         <div style={{ padding: '0 24px' }}>
-          <div className="flex" style={{ gap: 24, alignItems: 'stretch' }}>
+          <div className="flex" style={{ gap: 48, alignItems: 'stretch' }}>
             {/* 左侧：套系封面图 + 基础信息 */}
             <div style={{ flex: '0 0 46%', display: 'flex', alignItems: 'flex-start', gap: 24, minWidth: 0 }}>
               <div style={{ width: 206, height: 150, borderRadius: 2, overflow: 'hidden', background: '#f3f4f6', flexShrink: 0 }}>
@@ -848,7 +848,7 @@ export default function OrderDetail() {
                   ? <img src={img(pkgInfo.cover_url)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                   : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#999', fontSize: 12 }}>套系缩略图</div>}
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 14, minWidth: 0, flex: 1 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, minWidth: 0, flex: 1 }}>
                 <InfoRow label="套系名称" labelColor={LABEL_COLOR}
                   icon={<><rect x="4" y="3" width="16" height="18" rx="2" /><line x1="8" y1="8" x2="16" y2="8" /><line x1="8" y1="12" x2="16" y2="12" /><line x1="8" y1="16" x2="12" y2="16" /></>}
                   value={pkgInfo && pkgInfo.name && pkgInfo.name !== '—' ? pkgInfo.name : '暂无'} />
@@ -938,7 +938,7 @@ export default function OrderDetail() {
           </div>
 
           {/* 套系摘要卡：整行紧接执行人下方（参考图） */}
-          <div style={{ background: '#fafbf8', borderRadius: 2, padding: '18px 20px', marginTop: 16, marginLeft: 48, maxWidth: 760 }}>
+          <div style={{ background: '#fafbf8', borderRadius: 2, padding: '18px 20px', marginTop: 16, maxWidth: 620 }}>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px 12px' }}>
                   {(() => {
                     const SUM_FIELDS = [
@@ -974,7 +974,7 @@ export default function OrderDetail() {
         <div style={{ marginTop: 0 }} />
 
         {/* ——— 5、卡片底部：备注信息 ——— */}
-        <div style={{ padding: '16px 16px 44px 48px' }}>
+        <div style={{ padding: '16px 16px 44px 8px' }}>
           {editingRemark ? (
             <div>
               <div className="flex items-center" style={{ gap: 6, marginBottom: 8 }}>
