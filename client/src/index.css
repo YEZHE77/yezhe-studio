@@ -40,6 +40,9 @@ body {
   .bg-teal-600.text-white,
   .bg-green-600.text-white { color: #fff !important; }
 
+  /* 拾光盒子米色尾款标签：彩色底保留白字 */
+  .pill-payment { background: #CCAD97; color: #fff !important; }
+
   /* 状态/强调文字在白底上加深，保证可读性（原 *-400 在浅底偏淡） */
   .text-emerald-400 { color: #059669 !important; }
   .text-sky-400 { color: #0284c7 !important; }
