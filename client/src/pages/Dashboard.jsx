@@ -52,7 +52,7 @@ function BigCard({ icon, title, desc, btn, to, onClick }) {
   return (
     <div
       onClick={go}
-      className="bg-white border cursor-pointer hover:shadow-sm hover:border-brand/30 transition text-center"
+      className="bg-white border cursor-pointer hover:shadow-sm hover:border-brand/30 transition text-center flex flex-col"
       style={{ borderRadius: 4, borderColor: '#E6E9EF', padding: '38px 15px', height: 259 }}
     >
       <div className="flex items-center justify-center" style={{ color: '#666666' }}>
@@ -60,7 +60,7 @@ function BigCard({ icon, title, desc, btn, to, onClick }) {
       </div>
       <div className="text-[15px] mt-1" style={{ color: '#333333' }}>{title}</div>
       <div className="text-xs mt-[10px] leading-[21px]" style={{ color: '#AAAAAA' }}>{desc}</div>
-      <div className="mt-[25px]">
+      <div className="mt-auto pt-[25px]">
         <span className="inline-flex items-center px-[15px] h-[30px] rounded-full text-xs font-medium" style={{ color: '#2DB7F6', background: '#fff', border: '1px solid #ABE2FB', minWidth: 87, justifyContent: 'center' }}>{btn || '进入'}</span>
       </div>
     </div>
