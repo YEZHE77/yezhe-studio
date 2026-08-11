@@ -369,9 +369,9 @@ export default function Orders() {
         </div>
       )}
 
-      {/* 订单卡片列表 */}
+      {/* 订单卡片列表（大卡片视图：单列流，浅米色底色，参考 picbiling.com 效果图） */}
       {!compact && (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 mt-4">
+        <div className="flex flex-col gap-4 mt-4">
           {list.map((o) => {
             const snap = asObj(o.package_snapshot);
             const pkgName = [snap.name, snap.spec && snap.spec.name].filter(Boolean).join('｜') || '未选套系';
@@ -383,7 +383,7 @@ export default function Orders() {
             const hasSurvey = Array.isArray(snap.questionnaire) && snap.questionnaire.length > 0;
             const surveyDone = !!(o.questionnaire_answers && String(o.questionnaire_answers) !== '{}' && String(o.questionnaire_answers) !== 'null');
             return (
-              <div key={o.id} className="rounded-xl2 border border-line bg-white p-4 flex flex-col">
+              <div key={o.id} className="rounded-xl2 border p-5 flex flex-col" style={{ background: '#faf7f2', borderColor: '#ece5da' }}>
                 {/* 卡片头部：订单名 + 蓝色铅笔 / 订单编号 ｜ 右上灰色状态 */}
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0 flex-1">
@@ -394,82 +394,87 @@ export default function Orders() {
                         className="w-full px-2 py-1 rounded border border-line bg-white text-fg text-sm outline-none" />
                     ) : (
                       <div className="flex items-center gap-1.5 min-w-0">
-                        <span className="text-fg text-sm font-medium truncate">订单：{o.order_name || '未命名订单'}</span>
+                        <span className="text-fg text-[15px] truncate" style={{ color: '#222222' }}>订单：{o.order_name || '未命名订单'}</span>
                         <button onClick={() => startRename(o)} title="编辑订单名称"
                           className="shrink-0" style={{ color: '#2f7cf6' }}><IconPencil /></button>
                       </div>
                     )}
-                    <div className="text-[11px] text-faint mt-1">订单编号：{o.order_no}</div>
+                    <div className="text-[12px] mt-1" style={{ color: '#9ca3af' }}>订单编号：{o.order_no}</div>
                   </div>
-                  <span className="text-xs shrink-0" style={{ color: '#9ca3af' }}>{stageLabel(o)}</span>
+                  <span className="text-[13px] shrink-0" style={{ color: '#9ca3af' }}>{stageLabel(o)}</span>
                 </div>
 
                 {/* 卡片主体：方形封面 + 套系 + 金额 + 尾款标签 + 日期 */}
-                <div className="flex gap-3 mt-3">
-                  <div className="w-[72px] h-[72px] rounded bg-panel2 border border-line overflow-hidden shrink-0 flex items-center justify-center">
+                <div className="flex gap-5 mt-4">
+                  <div className="w-[120px] h-[120px] rounded bg-panel2 border overflow-hidden shrink-0 flex items-center justify-center" style={{ borderColor: '#ece5da' }}>
                     {cover
                       ? <img src={cover} alt="" className="w-full h-full object-cover" />
-                      : <span className="text-[10px] text-faint">无图</span>}
+                      : <span className="text-[11px]" style={{ color: '#b0a89b' }}>无图</span>}
                   </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="text-sm text-fg truncate">{pkgName}</div>
-                    <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                      <span className="font-semibold" style={{ color: '#ff3333' }}>¥{amount.toLocaleString()}</span>
-                      {remain > 0 && (
-                        <span className="px-1.5 py-0.5 rounded text-[11px]"
-                          style={{ background: '#e2d2c2', color: '#6b5744' }}>未结算尾款</span>
-                      )}
+                  <div className="min-w-0 flex-1 flex flex-col justify-between py-1">
+                    <div>
+                      <div className="text-[15px] truncate" style={{ color: '#222222' }}>{pkgName}</div>
+                      <div className="flex items-center gap-3 mt-2 flex-wrap">
+                        <span className="text-[18px]" style={{ color: '#ff3333' }}>¥{amount.toLocaleString()}</span>
+                        {remain > 0 && (
+                          <span className="px-2 py-0.5 rounded text-[12px]"
+                            style={{ background: '#e2d2c2', color: '#6b5744' }}>未结算尾款</span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-1 mt-2 text-[13px]" style={{ color: '#6b7280' }}>
+                        <IconCalendar />
+                        {done
+                          ? <span>默认好评：{fmtDate(o.eval_at || o.created_at) || '—'}</span>
+                          : <span>拍摄日期：{Number(o.date_tbd) === 1 ? '日期待定' : (o.shoot_date || '未排期')}</span>}
+                      </div>
                     </div>
-                    <div className="flex items-center gap-1 mt-1.5 text-[12px]" style={{ color: '#6b7280' }}>
-                      <IconCalendar />
-                      {done
-                        ? <span>默认好评：{fmtDate(o.eval_at || o.created_at) || '—'}</span>
-                        : <span>拍摄日期：{Number(o.date_tbd) === 1 ? '日期待定' : (o.shoot_date || '未排期')}</span>}
+
+                    {/* 备注 */}
+                    <div className="mt-3 px-3 py-2 rounded text-[13px] truncate"
+                      style={{ background: '#ffffff', color: '#8a8378' }}>
+                      {o.remark ? o.remark : '无'}
                     </div>
                   </div>
                 </div>
 
-                {/* 浅米色占位行（备注） */}
-                <div className="mt-3 px-3 py-2 rounded text-xs truncate"
-                  style={{ background: '#faf7f2', color: '#8a8378' }}>
-                  {o.remark ? o.remark : '无'}
-                </div>
+                {/* 卡片底部：删除图标（左） + 参与者 + 按钮组（右） */}
+                <div className="flex items-center justify-between gap-4 mt-4 pt-4" style={{ borderTop: '1px solid #ece5da' }}>
+                  <div className="flex items-center gap-3">
+                    <button onClick={(e) => handleDelete(o, e)}
+                      className="shrink-0 p-1.5 rounded transition"
+                      title="移入回收站"
+                      style={{ color: '#cccccc' }}
+                      onMouseEnter={(e) => e.currentTarget.style.color = '#ff4d4f'}
+                      onMouseLeave={(e) => e.currentTarget.style.color = '#cccccc'}
+                    ><IconTrash /></button>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="text-[13px]" style={{ color: '#6b7280' }}>参与者：</span>
+                      {execs.length === 0 && <span className="text-[13px]" style={{ color: '#b0a89b' }}>—</span>}
+                      {execs.map((p, i) => (
+                        p.avatar
+                          ? <img key={i} src={img(p.avatar)} alt={p.name} title={p.name}
+                            className="w-7 h-7 rounded-full object-cover border" style={{ borderColor: '#ece5da' }} />
+                          : <span key={i} title={p.name}
+                            className="w-7 h-7 rounded-full text-[11px] flex items-center justify-center"
+                            style={{ background: 'rgba(47,124,246,0.1)', color: '#2f7cf6' }}>
+                            {String(p.name || '?').slice(0, 1)}
+                          </span>
+                      ))}
+                    </div>
+                  </div>
 
-                {/* 卡片底部：参与者 + 按钮组 */}
-                <div className="flex items-center gap-1.5 mt-3 flex-wrap">
-                  <span className="text-xs" style={{ color: '#6b7280' }}>参与者：</span>
-                  {execs.length === 0 && <span className="text-xs text-faint">—</span>}
-                  {execs.map((p, i) => (
-                    p.avatar
-                      ? <img key={i} src={img(p.avatar)} alt={p.name} title={p.name}
-                        className="w-6 h-6 rounded-full object-cover border border-line" />
-                      : <span key={i} title={p.name}
-                        className="w-6 h-6 rounded-full bg-brand/15 text-brand text-[10px] flex items-center justify-center">
-                        {String(p.name || '?').slice(0, 1)}
-                      </span>
-                  ))}
-                </div>
-
-                <div className="flex items-center justify-between gap-2 mt-3 pt-3 border-t border-line flex-wrap">
-                  <button onClick={(e) => handleDelete(o, e)}
-                    className="shrink-0 p-1 rounded transition"
-                    title="移入回收站"
-                    style={{ color: '#cccccc' }}
-                    onMouseEnter={(e) => e.currentTarget.style.color = '#ff4d4f'}
-                    onMouseLeave={(e) => e.currentTarget.style.color = '#cccccc'}
-                  ><IconTrash /></button>
                   <div className="flex items-center justify-end gap-2 flex-wrap">
-                  {hasSurvey && !surveyDone && (
-                    <button onClick={() => openShareFor(o, 'survey')} disabled={shareBusy}
-                      className="px-3 py-1.5 rounded text-xs border disabled:opacity-40"
-                      style={{ background: '#ffffff', borderColor: '#e0e0e0', color: '#666666' }}>问卷邀请</button>
-                  )}
-                  <button onClick={() => nav('/orders/' + o.id)}
-                    className="px-3 py-1.5 rounded text-xs border"
-                    style={{ background: '#ffffff', borderColor: '#e0e0e0', color: '#666666' }}>查看订单</button>
-                  <button onClick={(e) => openQrPopover(o, e)} disabled={shareBusy}
-                    className="px-3 py-1.5 rounded text-xs disabled:opacity-40"
-                    style={{ background: '#2f7cf6', color: '#fff' }}>分享订单</button>
+                    {hasSurvey && !surveyDone && (
+                      <button onClick={() => openShareFor(o, 'survey')} disabled={shareBusy}
+                        className="px-4 py-2 rounded text-[13px] border disabled:opacity-40"
+                        style={{ background: '#ffffff', borderColor: '#e0e0e0', color: '#666666' }}>问卷邀请</button>
+                    )}
+                    <button onClick={() => nav('/orders/' + o.id)}
+                      className="px-4 py-2 rounded text-[13px] border"
+                      style={{ background: '#ffffff', borderColor: '#e0e0e0', color: '#666666' }}>查看订单</button>
+                    <button onClick={(e) => openQrPopover(o, e)} disabled={shareBusy}
+                      className="px-4 py-2 rounded text-[13px] disabled:opacity-40"
+                      style={{ background: '#2f7cf6', color: '#fff' }}>分享订单</button>
                   </div>
                 </div>
               </div>
