@@ -31,7 +31,9 @@ router.get('/', authRequired, async (req, res) => {
     const statusRows = await query(`SELECT status, COUNT(*) AS c FROM orders WHERE status != 'cancelled' GROUP BY status`);
     const pending = {};
     for (const r of statusRows) pending[r.status] = r.c;
+    const unpaidRow = await get(`SELECT COUNT(*) AS c FROM orders WHERE cancelled = 0 AND is_deleted = 0 AND payment_status = 'unpaid'`);
     const pendingBlocks = {
+      unpaid: Number(unpaidRow.c) || 0, // 未支付定金
       shoot: pending.shoot || 0,        // 等待拍摄
       selecting: pending.selecting || 0,// 待选片
       retouching: pending.retouching || 0, // 待精修
