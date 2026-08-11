@@ -244,7 +244,7 @@ export default function Packages() {
   const catName = (id) => { const c = categories.find((x) => x.id === id); return c ? c.name : (id ? '分类#' + id : '—'); };
 
   return (
-    <div className="-m-6 p-6 min-h-full" style={{ background: '#ffffff' }}>
+    <div className="p-6 min-h-full" style={{ background: '#ffffff', maxWidth: 1050 }}>
       {/* 标题（左） + 搜索区（右）；面包屑由全局 <Breadcrumb /> 渲染 */}
       <div className="flex items-end justify-between gap-4 flex-wrap mb-4">
         <div>

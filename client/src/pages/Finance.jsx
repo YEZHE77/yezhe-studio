@@ -28,7 +28,7 @@ export default function Finance() {
   const maxMonth = months.reduce((m, x) => Math.max(m, x.net), 0) || 1;
 
   return (
-    <div className="max-w-6xl mx-auto">
+    <div style={{ maxWidth: 1050 }}>
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-xl font-semibold text-white">财务管理</h1>
         <select value={state.year} onChange={(e) => setState((s) => ({ ...s, year: e.target.value }))}

@@ -196,7 +196,7 @@ export default function Works() {
   const pages = Math.max(1, Math.ceil(data.total / data.pageSize));
 
   return (
-    <div className="max-w-6xl mx-auto">
+    <div style={{ maxWidth: 1050 }}>
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-xl font-semibold text-fg">作品管理</h1>
         <div className="flex items-center gap-2">

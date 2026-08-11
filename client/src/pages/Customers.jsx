@@ -28,7 +28,7 @@ export default function Customers() {
   }
 
   return (
-    <div className="max-w-5xl mx-auto">
+    <div style={{ maxWidth: 1050 }}>
       <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
         <div>
           <h1 className="text-xl font-semibold text-fg">客户管理</h1>
