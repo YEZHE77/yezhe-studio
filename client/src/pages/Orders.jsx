@@ -74,6 +74,16 @@ const IconFilter = (p) => (
     <path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3Z" />
   </svg>
 );
+const IconTrash = (p) => (
+  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.8"
+    strokeLinecap="round" strokeLinejoin="round" {...p}>
+    <path d="M3 6h18" />
+    <path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2" />
+    <path d="M19 6l-.867 12.142A2 2 0 0 1 16.138 20H7.862a2 2 0 0 1-1.995-1.858L5 6" />
+    <path d="M10 10v5" />
+    <path d="M14 10v5" />
+  </svg>
+);
 
 export default function Orders() {
   const [params, setParams] = useSearchParams();
@@ -93,7 +103,6 @@ export default function Orders() {
   const [showForm, setShowForm] = useState(false);
   const [qInput, setQInput] = useState(state.q || '');
   const [advancedOpen, setAdvancedOpen] = useState(false);
-  const [advMenu, setAdvMenu] = useState(false); // 高级选项下拉（参考图：订单及选片设置/照片保存设置/导出excel/订单回收站）
   const [compact, setCompact] = useState(false); // 列表视图图标：卡片流 ⇄ 紧凑行列表
   const [trash, setTrash] = useState(false);
 
@@ -195,6 +204,19 @@ export default function Orders() {
     } catch (e) { alert((e.response && e.response.data && e.response.data.error) || '重命名失败'); }
   };
 
+  // 软删除订单（移入回收站）
+  const handleDelete = async (o, e) => {
+    e.stopPropagation();
+    e.preventDefault();
+    if (!window.confirm(`确定将订单「${o.order_name || '未命名订单'}」移入回收站？\n\n移入后可在回收站中恢复或彻底删除。`)) return;
+    try {
+      await http.delete('/api/orders/' + o.id);
+      refreshOrderList({ reset: true });
+    } catch (err) {
+      alert((err.response && err.response.data && err.response.data.error) || '删除失败');
+    }
+  };
+
   // 分享订单 / 问卷邀请：复用同一个订单分享接口，仅弹窗文案不同
   const openShareFor = async (o, kind) => {
     setShareBusy(true); setShareKind(kind); setShare(null); setShareModal(true);
@@ -264,46 +286,18 @@ export default function Orders() {
           <button onClick={doSearch}
             className="px-4 py-2 rounded text-sm whitespace-nowrap"
             style={{ background: '#333333', color: '#fff' }}>搜索</button>
-          <div className="relative">
-            <button onClick={() => setAdvMenu((v) => !v)}
-              className="px-4 py-2 rounded text-sm whitespace-nowrap"
-              style={{ background: '#333333', color: '#fff' }}>高级选项</button>
-            {advMenu && (
-              <div className="absolute right-0 mt-1 bg-white rounded shadow-lg z-40 overflow-hidden"
-                style={{ minWidth: 190, border: '1px solid #EEEEEE' }}>
-                <button onClick={() => { setAdvMenu(false); nav('/settings'); }}
-                  className="w-full text-left px-4 flex items-center gap-2 text-sm hover:bg-[#F3F4F6]"
-                  style={{ height: 34, color: '#333333' }}>
-                  订单及选片设置
-                  <span className="ml-auto text-[10px] text-white px-1 rounded" style={{ background: '#2DB7F5' }}>NEW</span>
-                </button>
-                <button onClick={() => { setAdvMenu(false); nav('/settings'); }}
-                  className="w-full text-left px-4 flex items-center gap-2 text-sm hover:bg-[#F3F4F6]"
-                  style={{ height: 34, color: '#333333' }}>
-                  照片保存设置
-                  <span className="ml-auto text-[10px] text-white px-1 rounded" style={{ background: '#2DB7F5' }}>NEW</span>
-                </button>
-                <button onClick={() => { setAdvMenu(false); doExport(); }}
-                  className="w-full text-left px-4 text-sm hover:bg-[#F3F4F6]"
-                  style={{ height: 34, color: '#333333' }}>导出excel</button>
-                <button onClick={() => { setAdvMenu(false); setTrash(true); setFilter('status', ''); }}
-                  className="w-full text-left px-4 text-sm hover:bg-[#F3F4F6]"
-                  style={{ height: 34, color: '#333333' }}>订单回收站</button>
-              </div>
-            )}
-          </div>
+          <button onClick={() => setAdvancedOpen((v) => !v)}
+            className="px-4 py-2 rounded text-sm whitespace-nowrap"
+            style={{ background: '#333333', color: '#fff' }}>高级选项</button>
         </div>
       </div>
 
-      {/* 深色筛选栏（参考图：+添加新订单靠左，状态/执行者/排序/筛选整组靠右） */}
-      <div className="flex items-center gap-5 px-4 py-2.5 rounded-lg flex-wrap" style={{ background: '#2c2c2c' }}>
+      {/* 深色筛选栏：+添加新订单 → 状态 → 执行者 → 排序 → 列表视图 → 筛选 */}
+      <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg flex-wrap" style={{ background: '#2c2c2c' }}>
         <button onClick={() => setShowForm(true)}
           className="px-4 py-1.5 rounded text-sm whitespace-nowrap"
           style={{ background: '#2DB7F5', color: '#fff', fontSize: 14 }}>+ 添加新订单</button>
 
-        <div className="flex-1" />
-
-        <span className="text-sm" style={{ color: '#FFFFFF' }}>状态</span>
         <select value={trash ? '__trash' : state.status}
           onChange={(e) => {
             const v = e.target.value;
@@ -324,7 +318,6 @@ export default function Orders() {
           <option value="__trash">回收站</option>
         </select>
 
-        <span className="text-sm" style={{ color: '#FFFFFF' }}>执行者</span>
         <select value={state.executor} onChange={(e) => setFilter('executor', e.target.value)}
           className="px-3 py-1.5 rounded text-sm outline-none border-0"
           style={{ background: '#fff', color: '#333' }}>
@@ -332,7 +325,6 @@ export default function Orders() {
           {personnel.map((p) => (<option key={p.id} value={p.id}>{p.name}</option>))}
         </select>
 
-        <span className="text-sm" style={{ color: '#FFFFFF' }}>排序</span>
         <select value={state.sort} onChange={(e) => setFilter('sort', e.target.value)}
           className="px-3 py-1.5 rounded text-sm outline-none border-0"
           style={{ background: '#fff', color: '#333' }}>
@@ -345,10 +337,15 @@ export default function Orders() {
           className="px-3 py-1.5 rounded text-sm whitespace-nowrap"
           style={{ background: '#3a3a3a', color: '#fff', border: '1px solid #555555' }}>导出 Excel</button>
 
+        <div className="flex-1" />
+
+        <button onClick={() => setCompact((v) => !v)} title={compact ? '切换为卡片视图' : '切换为列表视图'}
+          className="p-1.5 rounded" style={{ color: compact ? '#2f7cf6' : '#bbb' }}>
+          <IconList />
+        </button>
         <button onClick={() => setAdvancedOpen((v) => !v)} title="展开 / 收起筛选"
-          className="flex items-center gap-1 px-2 py-1.5 rounded text-sm"
-          style={{ color: advancedOpen ? '#2DB7F5' : '#FFFFFF' }}>
-          <IconFilter />筛选
+          className="p-1.5 rounded" style={{ color: advancedOpen ? '#2f7cf6' : '#bbb' }}>
+          <IconFilter />
         </button>
       </div>
 
@@ -372,11 +369,9 @@ export default function Orders() {
         </div>
       )}
 
-      {/* 订单列表大卡片容器（参考图：白底 #E6E9EF 边框，小卡片不变） */}
-      <div className="bg-white border rounded-lg mt-4" style={{ borderColor: '#E6E9EF', borderRadius: 8, padding: '20px 24px' }}>
       {/* 订单卡片列表 */}
       {!compact && (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 mt-4">
           {list.map((o) => {
             const snap = asObj(o.package_snapshot);
             const pkgName = [snap.name, snap.spec && snap.spec.name].filter(Boolean).join('｜') || '未选套系';
@@ -399,19 +394,19 @@ export default function Orders() {
                         className="w-full px-2 py-1 rounded border border-line bg-white text-fg text-sm outline-none" />
                     ) : (
                       <div className="flex items-center gap-1.5 min-w-0">
-                        <span className="text-fg text-sm truncate">订单：{o.order_name || '未命名订单'}</span>
+                        <span className="text-fg text-sm font-medium truncate">订单：{o.order_name || '未命名订单'}</span>
                         <button onClick={() => startRename(o)} title="编辑订单名称"
-                          className="shrink-0" style={{ color: '#2DB7F5' }}><IconPencil /></button>
+                          className="shrink-0" style={{ color: '#2f7cf6' }}><IconPencil /></button>
                       </div>
                     )}
-                    <div className="text-[11px] text-faint mt-1">订单编号：{o.order_no}{o.channel ? ` · ${o.channel}` : ''}</div>
+                    <div className="text-[11px] text-faint mt-1">订单编号：{o.order_no}</div>
                   </div>
-                  <span className="text-xs shrink-0" style={{ color: '#AAAAAA' }}>{stageLabel(o)}</span>
+                  <span className="text-xs shrink-0" style={{ color: '#9ca3af' }}>{stageLabel(o)}</span>
                 </div>
 
                 {/* 卡片主体：方形封面 + 套系 + 金额 + 尾款标签 + 日期 */}
                 <div className="flex gap-3 mt-3">
-                  <div className="w-[90px] h-[90px] rounded bg-panel2 border border-line overflow-hidden shrink-0 flex items-center justify-center">
+                  <div className="w-[72px] h-[72px] rounded bg-panel2 border border-line overflow-hidden shrink-0 flex items-center justify-center">
                     {cover
                       ? <img src={cover} alt="" className="w-full h-full object-cover" />
                       : <span className="text-[10px] text-faint">无图</span>}
@@ -419,13 +414,13 @@ export default function Orders() {
                   <div className="min-w-0 flex-1">
                     <div className="text-sm text-fg truncate">{pkgName}</div>
                     <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                      <span style={{ color: '#F83C3A' }}>¥{amount.toLocaleString()}</span>
+                      <span className="font-semibold" style={{ color: '#ff3333' }}>¥{amount.toLocaleString()}</span>
                       {remain > 0 && (
-                        <span className="px-1.5 py-0.5 rounded text-[10px]"
-                          style={{ background: '#CCAD97', color: '#fff' }}>未结算尾款</span>
+                        <span className="px-1.5 py-0.5 rounded text-[11px]"
+                          style={{ background: '#e2d2c2', color: '#6b5744' }}>未结算尾款</span>
                       )}
                     </div>
-                    <div className="flex items-center gap-1 mt-1.5 text-[11px]" style={{ color: '#999999' }}>
+                    <div className="flex items-center gap-1 mt-1.5 text-[12px]" style={{ color: '#6b7280' }}>
                       <IconCalendar />
                       {done
                         ? <span>默认好评：{fmtDate(o.eval_at || o.created_at) || '—'}</span>
@@ -435,8 +430,8 @@ export default function Orders() {
                 </div>
 
                 {/* 浅米色占位行（备注） */}
-                <div className="mt-3 px-3 py-2 rounded text-[11px] truncate"
-                  style={{ background: '#FFFBF5', color: '#999999' }}>
+                <div className="mt-3 px-3 py-2 rounded text-xs truncate"
+                  style={{ background: '#faf7f2', color: '#8a8378' }}>
                   {o.remark ? o.remark : '无'}
                 </div>
 
@@ -455,18 +450,27 @@ export default function Orders() {
                   ))}
                 </div>
 
-                <div className="flex items-center justify-end gap-2 mt-3 pt-3 border-t border-line flex-wrap">
+                <div className="flex items-center justify-between gap-2 mt-3 pt-3 border-t border-line flex-wrap">
+                  <button onClick={(e) => handleDelete(o, e)}
+                    className="shrink-0 p-1 rounded transition"
+                    title="移入回收站"
+                    style={{ color: '#cccccc' }}
+                    onMouseEnter={(e) => e.currentTarget.style.color = '#ff4d4f'}
+                    onMouseLeave={(e) => e.currentTarget.style.color = '#cccccc'}
+                  ><IconTrash /></button>
+                  <div className="flex items-center justify-end gap-2 flex-wrap">
                   {hasSurvey && !surveyDone && (
                     <button onClick={() => openShareFor(o, 'survey')} disabled={shareBusy}
-                      className="px-3 py-1.5 rounded text-xs disabled:opacity-40"
-                      style={{ background: '#F7F7F7', color: '#666666', minWidth: 80, height: 30 }}>问卷邀请</button>
+                      className="px-3 py-1.5 rounded text-xs border disabled:opacity-40"
+                      style={{ background: '#ffffff', borderColor: '#e0e0e0', color: '#666666' }}>问卷邀请</button>
                   )}
                   <button onClick={() => nav('/orders/' + o.id)}
-                    className="px-3 py-1.5 rounded text-xs"
-                    style={{ background: '#F7F7F7', color: '#666666', minWidth: 80, height: 30 }}>查看订单</button>
+                    className="px-3 py-1.5 rounded text-xs border"
+                    style={{ background: '#ffffff', borderColor: '#e0e0e0', color: '#666666' }}>查看订单</button>
                   <button onClick={(e) => openQrPopover(o, e)} disabled={shareBusy}
                     className="px-3 py-1.5 rounded text-xs disabled:opacity-40"
-                    style={{ background: '#2DB7F5', color: '#fff', minWidth: 80, height: 30 }}>分享订单</button>
+                    style={{ background: '#2f7cf6', color: '#fff' }}>分享订单</button>
+                  </div>
                 </div>
               </div>
             );
@@ -476,7 +480,7 @@ export default function Orders() {
 
       {/* 紧凑列表视图（筛选栏「列表视图」图标切换） */}
       {compact && list.length > 0 && (
-        <div className="overflow-hidden">
+        <div className="mt-4 border border-line rounded-xl2 overflow-hidden">
           <div className="hidden md:flex items-center gap-3 px-4 py-2 bg-panel2 text-xs text-muted">
             <span className="flex-1">订单 / 编号</span>
             <span className="w-40">套系</span>
@@ -511,7 +515,6 @@ export default function Orders() {
           })}
         </div>
       )}
-      </div>
 
       {list.length === 0 && <div className="text-center text-muted py-16">暂无订单</div>}
 
