@@ -72,8 +72,8 @@ function SidebarContent() {
   };
   return (
     <aside
-      className="w-[410px] bg-white flex flex-col min-h-screen shrink-0"
-      style={{ borderRight: '1px solid #E8E8EB', padding: '20px 12px 12px' }}
+      className="w-[300px] flex flex-col min-h-screen shrink-0"
+      style={{ background: '#F8F8F8', borderRight: '1px solid #E8E8EB', padding: '20px 16px 12px' }}
     >
       {/* 品牌区：可编辑头像 + 工作室名称（位于工作台上方，参考图） */}
       <div className="flex items-center gap-3 px-2 pb-5" style={{ borderBottom: '1px solid #F0F0F0' }}>
@@ -105,17 +105,17 @@ function SidebarContent() {
                   to={m.to}
                   end={m.to === '/'}
                   className={({ isActive }) =>
-                    'flex items-center transition-colors ' +
-                    (isActive ? 'bg-[#E6F7FF] text-[#2998EB]' : 'text-[#444444] hover:bg-[#F4F7FB]')
+                    'flex items-center justify-between transition-colors ' +
+                    (isActive ? 'bg-[#F0FDFF] text-[#2998EB]' : 'text-[#444444] hover:bg-[#EDF0F3]')
                   }
                   style={ITEM_STYLE}
                 >
                   {({ isActive }) => (
                     <>
                       <span className="shrink-0 flex items-center" style={{ color: isActive ? '#2998EB' : '#888888' }}>
-                        <Icon name={m.icon} className="w-[18px] h-[18px]" />
+                        <Icon name={m.icon} className="w-4 h-4" />
                       </span>
-                      <span className="truncate">{m.label}</span>
+                      <span className="truncate text-right">{m.label}</span>
                       {m.expandable && <Caret />}
                     </>
                   )}
@@ -128,13 +128,13 @@ function SidebarContent() {
             <div key={m.label}>
               <div
                 title="敬请期待"
-                className="flex items-center cursor-default select-none text-[#444444] hover:bg-[#F4F7FB] transition-colors"
+                className="flex items-center justify-between cursor-default select-none text-[#444444] hover:bg-[#EDF0F3] transition-colors"
                 style={ITEM_STYLE}
               >
                 <span className="shrink-0 flex items-center" style={{ color: '#888888' }}>
-                  <Icon name={m.icon} className="w-[18px] h-[18px]" />
+                  <Icon name={m.icon} className="w-4 h-4" />
                 </span>
-                <span className="truncate">{m.label}</span>
+                <span className="truncate text-right">{m.label}</span>
                 {m.expandable && <Caret />}
               </div>
               {m.sep && <div style={{ height: 1, background: '#F0F0F0', margin: '6px 8px' }} />}

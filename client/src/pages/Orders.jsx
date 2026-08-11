@@ -340,20 +340,6 @@ export default function Orders() {
         </div>
       )}
 
-      {/* 顶部预警条：数字全部来自后端 /api/orders/stats */}
-      <div className="flex items-center gap-4 mt-3 px-4 py-2.5 rounded-lg text-sm flex-wrap"
-        style={{ background: '#fff3e0' }}>
-        <span className="inline-block w-2 h-2 rounded-full shrink-0" style={{ background: '#ff8822' }} />
-        <span style={{ color: '#7a6a55' }}>
-          图片即将到期(<b style={{ color: '#ff3333' }}>{stats.expiringSoon}</b>)
-        </span>
-        <span style={{ color: '#7a6a55' }}>
-          选片超时(<b style={{ color: '#ff3333' }}>{stats.selectionTimeout}</b>)
-        </span>
-        <div className="flex-1" />
-        <button onClick={() => nav('/settings')} className="text-sm" style={{ color: '#ff8822' }}>设置&gt;</button>
-      </div>
-
       {trash && (
         <div className="text-xs mt-3" style={{ color: '#ff8822' }}>
           回收站：以下订单已软删除，可在订单详情中「恢复」或「彻底删除」。
