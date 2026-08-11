@@ -72,7 +72,7 @@ function SidebarContent() {
   };
   return (
     <aside
-      className="w-[220px] bg-white flex flex-col h-full shrink-0"
+      className="w-[220px] bg-white flex flex-col min-h-screen shrink-0"
       style={{ borderRight: '1px solid #E8E8EB', padding: '20px 12px 12px' }}
     >
       {/* 品牌区：可编辑头像 + 工作室名称（位于工作台上方，参考图） */}
@@ -96,7 +96,7 @@ function SidebarContent() {
       </div>
 
       {/* 菜单 */}
-      <nav className="flex-1 overflow-y-auto">
+      <nav className="flex-1">
         {ITEMS.map((m) => {
           if (m.to) {
             return (
@@ -155,7 +155,7 @@ export default function Sidebar({ open = false, onClose }) {
         <div className="absolute left-0 top-0 bottom-0"><SidebarContent /></div>
       </div>
       {/* 桌面静态侧栏 */}
-      <div className="hidden lg:block h-full"><SidebarContent /></div>
+      <div className="hidden lg:block"><SidebarContent /></div>
     </>
   );
 }

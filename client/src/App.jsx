@@ -51,11 +51,11 @@ function AppShell() {
   // 档期页按 spec 为「侧边栏 + 主内容区」两栏结构，不显示顶部条
   const hideTopbar = location.pathname === '/schedule';
   return (
-    <div className="flex h-screen overflow-hidden">
+    <div className="flex min-h-screen">
       <Sidebar open={navOpen} onClose={() => setNavOpen(false)} />
       <div className="flex-1 flex flex-col min-w-0">
         {!hideTopbar && <Topbar onMenu={() => setNavOpen(true)} />}
-        <main className="flex-1 overflow-auto p-6" style={{ background: '#f7f9fc' }}>
+        <main className="flex-1 p-6" style={{ background: '#f7f9fc' }}>
           <Breadcrumb />
           <ErrorBoundary resetKeys={[location.pathname]}>
             <Suspense fallback={<PageLoader />}>

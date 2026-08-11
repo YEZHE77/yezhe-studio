@@ -3,13 +3,13 @@ import { useNavigate } from 'react-router-dom';
 import http, { formatBytes } from '../api.js';
 import Icon from '../components/Icon.jsx';
 
-// 待处理订单：5 灰块（参考拾光盒子，数字 28px/500，块间无间距）
+// 待处理订单：5 灰块（参考拾光盒子，数字 28px/500，块间无间距，底部彩色线）
 const PENDING = [
-  { key: 'unpaid', label: '未支付定金', bar: 'bg-amber-400' },
-  { key: 'shoot', label: '等待拍摄', bar: 'bg-teal-400' },
-  { key: 'delivered', label: '未交片', bar: 'bg-orange-400' },
-  { key: 'selecting', label: '待选片', bar: 'bg-sky-400' },
-  { key: 'retouching', label: '待精修', bar: 'bg-amber-400' }
+  { key: 'unpaid', label: '未支付定金', bar: 'bg-amber-400', line: '#FA7D77' },
+  { key: 'shoot', label: '等待拍摄', bar: 'bg-teal-400', line: '#49C5AE' },
+  { key: 'delivered', label: '未交片', bar: 'bg-orange-400', line: '#FAC054' },
+  { key: 'selecting', label: '待选片', bar: 'bg-sky-400', line: '#6DB3E2' },
+  { key: 'retouching', label: '待精修', bar: 'bg-amber-400', line: '#FAC054' }
 ];
 
 // 快捷链接（参考图：教程黑 / 资料青 / 作品蓝 / 套系金）
@@ -45,15 +45,15 @@ const OPS_CARDS = [
   { icon: 'dashboard', title: '数据看板', desc: '经营概览与待办分布', to: '/datacharts' }
 ];
 
-// 大卡片（参考图：高 259、图标置顶居中、标题 15px、描述 2 行、底部圆角按钮）
+// 大卡片（参考图：高 259、图标置顶居中、标题 15px、描述 2 行、底部圆角按钮；容器内无边框）
 function BigCard({ icon, title, desc, btn, to, onClick }) {
   const nav = useNavigate();
   const go = () => { if (onClick) onClick(); else if (to) nav(to); };
   return (
     <div
       onClick={go}
-      className="bg-white border cursor-pointer hover:shadow-sm hover:border-brand/30 transition text-center"
-      style={{ borderRadius: 4, borderColor: '#F0F0F0', padding: '38px 15px', height: 259 }}
+      className="cursor-pointer hover:bg-[#F7F7F7] transition text-center"
+      style={{ borderRadius: 4, padding: '38px 15px', height: 259 }}
     >
       <div className="w-12 h-12 rounded-lg mx-auto flex items-center justify-center" style={{ background: '#F5F8FC', color: '#2DB7F6' }}>
         <Icon name={icon} className="w-7 h-7" />
@@ -176,8 +176,18 @@ export default function Dashboard() {
       <div className={'bg-white border mt-8 ' + (loading ? 'opacity-50' : '')} style={{ borderRadius: 4, borderColor: '#F0F0F0', padding: '25px 0 38px' }}>
         <div className="grid grid-cols-4">
           <div className="text-center">
-            <div className="text-[16px] font-medium" style={{ color: '#333333' }}>账户概览</div>
-            <button type="button" className="mt-1 text-xs" style={{ color: '#00BAFB' }} onClick={() => nav('/finance')}>进入</button>
+            <div className="flex items-center justify-center gap-2">
+              <span className="text-[16px] font-medium" style={{ color: '#333333' }}>账户概览</span>
+              <button
+                type="button"
+                onClick={() => setHiddenMoney((h) => !h)}
+                title={hiddenMoney ? '显示金额' : '隐藏金额'}
+                style={{ color: '#999999', cursor: 'pointer', background: 'none', border: 'none', padding: 0, display: 'flex' }}
+              >
+                <EyeIcon off={hiddenMoney} />
+              </button>
+              <button type="button" className="text-xs" style={{ color: '#00BAFB' }} onClick={() => nav('/finance')}>进入</button>
+            </div>
           </div>
           {overview.map((o) => (
             <div key={o.label} className="text-center">
@@ -211,7 +221,7 @@ export default function Dashboard() {
                 type="button"
                 onClick={() => nav('/orders?status=' + (b.key === 'unpaid' ? 'unpaid' : b.key))}
                 className="relative text-center overflow-hidden group cursor-pointer flex flex-col items-center justify-center"
-                style={{ background: '#F6F6F6', height: 110 }}
+                style={{ background: '#F6F6F6', height: 110, borderBottom: `2px solid ${b.line}` }}
               >
                 <div className="text-xs pb-[2px]" style={{ color: '#333333' }}>{b.label}</div>
                 <div className="text-[28px] font-medium leading-none" style={{ color: '#333333' }}>{n}</div>
@@ -222,18 +232,18 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* 品牌管理 */}
-      <div className="mt-12">
-        <div className="text-[16px] font-medium mb-[38px] pl-[51px]" style={{ color: '#333333' }}>品牌管理</div>
-        <div className="grid grid-cols-5 gap-[10px] px-[50px]">
+      {/* 品牌管理（大容器卡片） */}
+      <div className="bg-white border mt-12" style={{ borderRadius: 4, borderColor: '#F0F0F0', padding: '38px 50px' }}>
+        <div className="text-[16px] font-medium mb-[38px]" style={{ color: '#333333' }}>品牌管理</div>
+        <div className="grid grid-cols-5 gap-[10px]">
           {BRAND_CARDS.map((c) => <BigCard key={c.title} {...c} />)}
         </div>
       </div>
 
-      {/* 日常管理 */}
-      <div className="mt-12">
-        <div className="text-[16px] font-medium mb-[38px] pl-[51px]" style={{ color: '#333333' }}>日常管理</div>
-        <div className="grid grid-cols-5 gap-[10px] px-[50px]">
+      {/* 日常管理（大容器卡片） */}
+      <div className="bg-white border mt-6" style={{ borderRadius: 4, borderColor: '#F0F0F0', padding: '38px 50px' }}>
+        <div className="text-[16px] font-medium mb-[38px]" style={{ color: '#333333' }}>日常管理</div>
+        <div className="grid grid-cols-5 gap-[10px]">
           {OPS_CARDS.map((c) => <BigCard key={c.title} {...c} />)}
         </div>
       </div>
