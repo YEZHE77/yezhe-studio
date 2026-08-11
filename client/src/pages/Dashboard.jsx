@@ -52,16 +52,16 @@ function BigCard({ icon, title, desc, btn, to, onClick }) {
   return (
     <div
       onClick={go}
-      className="bg-white border cursor-pointer hover:shadow-sm hover:border-brand/30 transition text-center flex flex-col"
-      style={{ borderRadius: 4, borderColor: '#E6E9EF', padding: '38px 15px', height: 259 }}
+      className="bg-white border cursor-pointer hover:shadow-sm hover:border-brand/30 transition text-center flex flex-col items-center"
+      style={{ borderRadius: 4, borderColor: '#E6E9EF', padding: '24px 12px', height: 'auto', minHeight: 180 }}
     >
       <div className="flex items-center justify-center" style={{ color: '#666666' }}>
-        <Icon name={icon} className="w-8 h-8" strokeWidth={1.4} />
+        <Icon name={icon} className="w-7 h-7 lg:w-8 lg:h-8" strokeWidth={1.4} />
       </div>
-      <div className="text-[15px] mt-1" style={{ color: '#333333' }}>{title}</div>
-      <div className="text-xs mt-[10px] leading-[21px]" style={{ color: '#AAAAAA' }}>{desc}</div>
-      <div className="mt-auto pt-[25px]">
-        <span className="inline-flex items-center px-[15px] h-[30px] rounded-full text-xs font-medium" style={{ color: '#2DB7F6', background: '#fff', border: '1px solid #ABE2FB', minWidth: 87, justifyContent: 'center' }}>{btn || '进入'}</span>
+      <div className="text-[15px] mt-2 whitespace-nowrap" style={{ color: '#333333' }}>{title}</div>
+      <div className="text-xs mt-2 leading-[20px] line-clamp-2 px-1" style={{ color: '#AAAAAA' }}>{desc}</div>
+      <div className="mt-auto pt-5 w-full">
+        <span className="inline-flex items-center px-3 lg:px-[15px] h-[30px] rounded-full text-xs" style={{ color: '#2DB7F6', background: '#fff', border: '1px solid #ABE2FB', minWidth: 72, justifyContent: 'center' }}>{btn || '进入'}</span>
       </div>
     </div>
   );
@@ -139,22 +139,22 @@ export default function Dashboard() {
   return (
     <div style={{ maxWidth: 1050, background: '#F8F8F8' }}>
       {/* ===== 顶部：品牌 + 快捷链接（左） + 信息列（右） ===== */}
-      <div className="flex items-start gap-[61px]">
+      <div className="flex flex-col lg:flex-row lg:items-start gap-6 lg:gap-[61px]">
         <div className="flex-1 min-w-0">
-          <div style={{ paddingLeft: 90 }}>
+          <div className="pl-4 lg:pl-[90px]">
             <div className="text-[20px]" style={{ color: '#222222', lineHeight: 1.4 }}>叶哲 Studio</div>
             <div className="flex flex-wrap items-center text-xs mt-5" style={{ color: 'rgba(34,34,34,0.6)' }}>
               <span>会员专享：独立网站、小程序、档期管理</span>
-              <button type="button" className="ml-2" style={{ color: '#222222', background: '#fff', padding: '3px 5px' }}>查看更多会员权益 &gt;</button>
+              <button type="button" className="ml-2 mt-1 lg:mt-0" style={{ color: '#222222', background: '#fff', padding: '3px 5px' }}>查看更多会员权益 &gt;</button>
             </div>
-            <div className="flex flex-wrap gap-[15px] mt-6">
+            <div className="flex flex-wrap gap-[10px] lg:gap-[15px] mt-6">
               {QUICK.map((q) => (
                 <button
                   key={q.label}
                   type="button"
                   onClick={() => nav(q.to)}
                   className="text-xs text-white leading-none"
-                  style={{ background: q.bg, padding: '0 28px', height: 24, borderRadius: 2 }}
+                  style={{ background: q.bg, padding: '0 20px', height: 24, borderRadius: 2 }}
                 >{q.label} &gt;</button>
               ))}
             </div>
@@ -176,14 +176,14 @@ export default function Dashboard() {
         </div>
 
         {/* 右侧信息列 */}
-        <div className="w-[205px] shrink-0 space-y-[11px]">
+        <div className="w-full lg:w-[205px] shrink-0 space-y-[11px]">
           {INFO_CARDS.map((c) => (
             <button
               key={c.title}
               type="button"
               onClick={() => c.to && nav(c.to)}
               className="w-full text-left bg-white border hover:shadow-sm transition"
-              style={{ borderRadius: 4, borderColor: '#F0F0F0', padding: '30px 15px 30px 20px', height: 100 }}
+              style={{ borderRadius: 4, borderColor: '#F0F0F0', padding: '20px 15px 20px 20px', height: 'auto', minHeight: 80 }}
             >
               <div className="text-[14px]" style={{ color: '#333333' }}>{c.title}</div>
               <div className="text-xs mt-2" style={{ color: '#999999' }}>{c.desc}</div>
@@ -201,8 +201,8 @@ export default function Dashboard() {
       )}
 
       {/* 账户概览（参考图：4 等分居中 + 区间竖线，标题/进入下移到红框位置，标签后跟帮助/编辑图标） */}
-      <div className={'bg-white border mt-8 ' + (loading ? 'opacity-50' : '')} style={{ borderRadius: 4, borderColor: '#F0F0F0', padding: '60px 0 38px' }}>
-        <div className="grid grid-cols-4 divide-x divide-[#F0F0F0]">
+      <div className={'bg-white border mt-8 ' + (loading ? 'opacity-50' : '')} style={{ borderRadius: 4, borderColor: '#F0F0F0', padding: '60px 16px 38px' }}>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 sm:divide-x sm:divide-[#F0F0F0]">
           <div className="text-center">
             <div className="flex items-center justify-center gap-2">
               <span className="text-[16px] font-medium" style={{ color: '#333333' }}>账户概览</span>
@@ -232,9 +232,9 @@ export default function Dashboard() {
       </div>
 
       {/* 待处理订单（参考图：5 灰块紧贴 + 数字 28px） */}
-      <div className="bg-white border mt-4" style={{ borderRadius: 4, borderColor: '#F0F0F0', padding: '38px 50px' }}>
+      <div className="bg-white border mt-4" style={{ borderRadius: 4, borderColor: '#F0F0F0', padding: '24px 16px 32px' }}>
         <div className="text-[16px] font-medium mb-6" style={{ color: '#333333' }}>待处理订单</div>
-        <div className="grid grid-cols-5">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-[1px]">
           {PENDING.map((b) => {
             const n = stats && stats.pendingBlocks ? (stats.pendingBlocks[b.key] || 0) : '—';
             return (
@@ -257,14 +257,14 @@ export default function Dashboard() {
       </div>
 
       {/* 品牌管理 + 日常管理（合并成一个大卡片，纯白底 + #E6E9EF 边框更清晰；内部卡片设计保持不变） */}
-      <div className="bg-white border mt-4" style={{ borderRadius: 8, borderColor: '#E6E9EF', padding: '22px 50px 28px' }}>
+      <div className="bg-white border mt-4" style={{ borderRadius: 8, borderColor: '#E6E9EF', padding: '22px 16px 28px' }}>
         <div className="text-[16px] font-medium mb-6" style={{ color: '#333333' }}>品牌管理</div>
-        <div className="grid grid-cols-5 gap-[10px]">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-[10px]">
           {BRAND_CARDS.map((c) => <BigCard key={c.title} {...c} />)}
         </div>
-        <div style={{ height: 1, background: '#E6E9EF', margin: '16px 0' }} />
+        <div style={{ height: 1, background: '#E6E9EF', margin: '24px 0 16px' }} />
         <div className="text-[16px] font-medium mb-6" style={{ color: '#333333' }}>日常管理</div>
-        <div className="grid grid-cols-5 gap-[10px]">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-[10px]">
           {OPS_CARDS.map((c) => <BigCard key={c.title} {...c} />)}
         </div>
       </div>
