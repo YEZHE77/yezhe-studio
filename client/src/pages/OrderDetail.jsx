@@ -1238,10 +1238,10 @@ export default function OrderDetail() {
         </div>
       )}
 
-      {/* 编辑订单右侧抽屉（参考图：套系/价格/定金/尾款/其他消费/拍摄时间 + 客户信息） */}
+      {/* 编辑订单居中弹窗（参考图：约 40% 页面宽、近全高；套系/价格/定金/尾款/其他消费/拍摄时间 + 客户信息） */}
       {edit && (
-        <div className="fixed inset-0 z-[70]" style={{ background: 'rgba(0,0,0,0.35)' }} onClick={() => { setEdit(false); setEditErrors({}); }}>
-          <form onClick={(e) => e.stopPropagation()} onSubmit={saveEdit} className="fixed top-0 right-0 bottom-0 flex flex-col" style={{ width: 460, maxWidth: '92vw', background: '#fff', boxShadow: '-2px 0 16px rgba(0,0,0,0.14)', zIndex: 71 }}>
+        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.45)' }} onClick={() => { setEdit(false); setEditErrors({}); }}>
+          <form onClick={(e) => e.stopPropagation()} onSubmit={saveEdit} className="relative flex flex-col" style={{ width: '100%', maxWidth: 680, maxHeight: '90vh', background: '#fff', borderRadius: 8, boxShadow: '0 12px 40px rgba(0,0,0,0.18)', overflow: 'hidden', zIndex: 71 }}>
             <div className="flex items-center justify-between shrink-0" style={{ padding: '16px 20px', borderBottom: '1px solid ' + DIV }}>
               <span style={{ fontSize: 15, color: '#222222' }}>编辑订单 · {detail.order_no}</span>
               <button type="button" onClick={() => { setEdit(false); setEditErrors({}); }} style={{ background: 'none', border: 'none', fontSize: 20, lineHeight: 1, color: '#999999', cursor: 'pointer', padding: 2 }}>×</button>
