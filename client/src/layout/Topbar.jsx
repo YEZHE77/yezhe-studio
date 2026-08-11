@@ -49,7 +49,7 @@ export default function Topbar({ onMenu }) {
             borderRadius: 8,
             background: '#2998EB',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            color: '#ffffff', fontSize: 18, fontWeight: 600,
+            color: '#ffffff', fontSize: 18, fontWeight: 400,
             flexShrink: 0
           }}
         >
@@ -57,7 +57,7 @@ export default function Topbar({ onMenu }) {
         </div>
         {/* 标题组 */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-          <span style={{ fontSize: 18, fontWeight: 600, color: '#111111', lineHeight: 1.3 }}>
+          <span style={{ fontSize: 18, fontWeight: 400, color: '#111111', lineHeight: 1.3 }}>
             叶哲 Studio
           </span>
           <span style={{ fontSize: 12, color: '#999999', lineHeight: 1.3 }}>
@@ -66,10 +66,10 @@ export default function Topbar({ onMenu }) {
         </div>
       </div>
 
-      {/* 中间：日期 + 时间段问候语（自动切换） */}
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+      {/* 中间：日期 + 时间段问候语（仅桌面端显示，移动端隐藏省空间） */}
+      <div className="hidden md:flex" style={{ flexDirection: 'column', alignItems: 'center', gap: 4 }}>
         <span style={{ fontSize: 13, color: '#777777' }}>{timeInfo.date}</span>
-        <span style={{ fontSize: 20, fontWeight: 700, color: '#111111' }}>
+        <span style={{ fontSize: 20, fontWeight: 400, color: '#111111' }}>
           {timeInfo.greet}，叶哲
         </span>
       </div>
