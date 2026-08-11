@@ -2,10 +2,11 @@ import axios from 'axios';
 
 // 生产：Netlify 构建时注入 VITE_API_BASE=https://你的render地址.onrender.com
 // 开发：留空，由 vite.config.js 的 proxy 转发到本地 4000
-// 生产：Netlify/Cloudflare Pages 构建时注入 VITE_API_BASE=https://你的render地址.onrender.com
-// 开发：留空，由 vite.config.js 的 proxy 转发到本地 4000
+// 生产：优先读取构建时注入的 VITE_API_BASE；未注入则默认指向 Render 后端。
+// 开发：留空，由 vite.config.js 的 proxy 转发到本地 4000。
 // 注：环境变量末尾若有 / 会导致双斜杠，统一去掉。
-const BASE = (import.meta.env.VITE_API_BASE || '').replace(/\/+$/, '');
+const DEFAULT_BASE = import.meta.env.DEV ? '' : 'https://yezhe-studio-server.onrender.com';
+const BASE = (import.meta.env.VITE_API_BASE || DEFAULT_BASE).replace(/\/+$/, '');
 const TIMEOUT = 15000; // 15 秒超时
 
 const http = axios.create({ baseURL: BASE, timeout: TIMEOUT });
