@@ -104,19 +104,19 @@ function SidebarContent() {
                 <NavLink
                   to={m.to}
                   end={m.to === '/'}
-                  className={({ isActive }) =>
-                    'flex items-center transition-colors ' +
-                    (isActive ? 'bg-[#F0FDFF] text-[#2DB7F5]' : 'text-[rgba(0,0,0,0.65)] hover:bg-[#EDF0F3]')
-                  }
-                  style={ITEM_STYLE}
+                  className="flex items-center"
+                  style={{ height: 40, marginBottom: 2 }}
                 >
                   {({ isActive }) => (
-                    <>
+                    <span
+                      className={'inline-flex items-center max-w-full transition-colors ' + (isActive ? 'bg-[#F0FDFF] text-[#2DB7F5]' : 'text-[rgba(0,0,0,0.65)] hover:bg-[#EDF0F3]')}
+                      style={{ gap: 10, padding: '0 12px', height: 32, borderRadius: 6, marginLeft: 140, marginRight: 14 }}
+                    >
                       <span className="w-6 shrink-0 flex items-center justify-center" style={{ color: isActive ? '#2DB7F5' : '#AAAAAA' }}>
                         <Icon name={m.icon} className="w-[14px] h-[14px]" />
                       </span>
                       <span className="truncate">{m.label}</span>
-                    </>
+                    </span>
                   )}
                 </NavLink>
                 {m.sep && <div style={{ height: 1, background: '#E8E8E8', margin: '6px 14px 6px 140px' }} />}
@@ -127,13 +127,18 @@ function SidebarContent() {
             <div key={m.label}>
               <div
                 title="敬请期待"
-                className="flex items-center cursor-default select-none text-[rgba(0,0,0,0.65)] hover:bg-[#EDF0F3] transition-colors"
-                style={ITEM_STYLE}
+                className="flex items-center cursor-default select-none"
+                style={{ height: 40, marginBottom: 2 }}
               >
-                <span className="w-6 shrink-0 flex items-center justify-center" style={{ color: '#AAAAAA' }}>
-                  <Icon name={m.icon} className="w-[14px] h-[14px]" />
+                <span
+                  className="inline-flex items-center max-w-full text-[rgba(0,0,0,0.65)] hover:bg-[#EDF0F3] transition-colors"
+                  style={{ gap: 10, padding: '0 12px', height: 32, borderRadius: 6, marginLeft: 140, marginRight: 14 }}
+                >
+                  <span className="w-6 shrink-0 flex items-center justify-center" style={{ color: '#AAAAAA' }}>
+                    <Icon name={m.icon} className="w-[14px] h-[14px]" />
+                  </span>
+                  <span className="truncate">{m.label}</span>
                 </span>
-                <span className="truncate">{m.label}</span>
               </div>
               {m.sep && <div style={{ height: 1, background: '#E8E8E8', margin: '6px 14px 6px 140px' }} />}
             </div>
