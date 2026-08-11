@@ -372,9 +372,11 @@ export default function Orders() {
         </div>
       )}
 
+      {/* 订单列表大卡片容器（参考图：白底 #E6E9EF 边框，小卡片不变） */}
+      <div className="bg-white border rounded-lg mt-4" style={{ borderColor: '#E6E9EF', borderRadius: 8, padding: '20px 24px' }}>
       {/* 订单卡片列表 */}
       {!compact && (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 mt-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {list.map((o) => {
             const snap = asObj(o.package_snapshot);
             const pkgName = [snap.name, snap.spec && snap.spec.name].filter(Boolean).join('｜') || '未选套系';
@@ -474,7 +476,7 @@ export default function Orders() {
 
       {/* 紧凑列表视图（筛选栏「列表视图」图标切换） */}
       {compact && list.length > 0 && (
-        <div className="mt-4 border border-line rounded-xl2 overflow-hidden">
+        <div className="overflow-hidden">
           <div className="hidden md:flex items-center gap-3 px-4 py-2 bg-panel2 text-xs text-muted">
             <span className="flex-1">订单 / 编号</span>
             <span className="w-40">套系</span>
@@ -509,6 +511,7 @@ export default function Orders() {
           })}
         </div>
       )}
+      </div>
 
       {list.length === 0 && <div className="text-center text-muted py-16">暂无订单</div>}
 
