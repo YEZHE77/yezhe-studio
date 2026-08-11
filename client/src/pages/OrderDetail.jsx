@@ -853,9 +853,13 @@ export default function OrderDetail() {
                   icon={<><rect x="4" y="3" width="16" height="18" rx="2" /><line x1="8" y1="8" x2="16" y2="8" /><line x1="8" y1="12" x2="16" y2="12" /><line x1="8" y1="16" x2="12" y2="16" /></>}
                   value={pkgInfo && pkgInfo.name && pkgInfo.name !== '—' ? pkgInfo.name : '暂无'} />
                 <InfoRow label="定金" labelColor={LABEL_COLOR}
-                  icon={<path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />}
+                  icon={<><rect x="2" y="6" width="20" height="12" rx="2" /><path d="M12 8v8M9.5 11h5M9.5 13h5" /></>}
                   value={<span style={{ fontSize: 12 }}>{'¥' + Number(pkgInfo?.deposit || 0).toLocaleString()}</span>}
-                  tags={detail.pay_method === 'offline' ? [{ t: '线下收取', bg: TAG_OFFLINE, fg: '#fff' }] : []} />
+                  tags={[
+                    (detail.deposit_method === 'online' || detail.pay_method === 'online')
+                      ? { t: '线上收取', bg: BLUE, fg: '#fff', tip: '定金为线上收取（微信 / 支付宝等）' }
+                      : { t: '线下收取', bg: TAG_OFFLINE, fg: '#fff', tip: '定金为线下收取（现金 / 银行转账等）' }
+                  ]} />
                 <InfoRow label="已付加片费" labelColor={LABEL_COLOR}
                   icon={<><path d="M4 2v20l2-2 2 2 2-2 2 2 2-2 2 2 2-2 2 2V2l-2 2-2-2-2 2-2-2-2 2-2-2-2 2z" /><line x1="8" y1="7" x2="16" y2="7" /><line x1="8" y1="11" x2="16" y2="11" /><line x1="8" y1="15" x2="12" y2="15" /></>}
                   value={
@@ -1963,6 +1967,7 @@ const modalSaveStyle = { padding: '8px 16px', borderRadius: 4, fontSize: 14, col
 // 信息行（标签：内容 + 可选业务标签，复刻截图：标签前小图标 + 值容器 div + 内联标签）
 function InfoRow({ label, value, tags, extra, icon, labelColor }) {
   const lc = labelColor || ICON_COLOR;
+  const [tip, setTip] = useState(null);
   return (
     <div className="flex" style={{ alignItems: 'center', gap: 0, fontSize: 12, lineHeight: 1.6 }}>
       <span style={{ color: lc, flexShrink: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -1978,7 +1983,16 @@ function InfoRow({ label, value, tags, extra, icon, labelColor }) {
         )}
         {tags && tags.length > 0 && (
           <span style={{ display: 'inline-flex', flexWrap: 'wrap', gap: 6, marginLeft: 8, verticalAlign: 'middle' }}>
-            {tags.map((t, i) => <span key={i} style={{ padding: '2px 8px', borderRadius: 2, background: t.bg, color: t.fg, fontSize: 12 }}>{t.t}</span>)}
+            {tags.map((t, i) => (
+              <span key={i} style={{ position: 'relative', display: 'inline-flex' }}
+                onMouseEnter={() => t.tip && setTip(i)}
+                onMouseLeave={() => setTip(null)}>
+                <span style={{ padding: '2px 8px', borderRadius: 2, background: t.bg, color: t.fg, fontSize: 12, cursor: t.tip ? 'help' : 'default' }}>{t.t}</span>
+                {tip === i && t.tip && (
+                  <span style={{ position: 'absolute', bottom: '100%', left: '50%', transform: 'translateX(-50%)', marginBottom: 6, background: '#222222', color: '#fff', fontSize: 12, padding: '6px 10px', borderRadius: 4, whiteSpace: 'nowrap', zIndex: 40, boxShadow: '0 2px 8px rgba(0,0,0,0.15)', pointerEvents: 'none' }}>{t.tip}</span>
+                )}
+              </span>
+            ))}
           </span>
         )}
       </div>
