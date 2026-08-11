@@ -244,13 +244,13 @@ export default function Packages() {
   const catName = (id) => { const c = categories.find((x) => x.id === id); return c ? c.name : (id ? '分类#' + id : '—'); };
 
   return (
-    <div className="p-6 min-h-full" style={{ background: '#F8F8F8', maxWidth: 1050 }}>
+    <div className="p-4 sm:p-6 min-h-full" style={{ background: '#F8F8F8', maxWidth: 1050 }}>
       {/* 标题（左） + 搜索区（右）；面包屑由全局 <Breadcrumb /> 渲染 */}
       <div className="flex items-end justify-between gap-4 flex-wrap mb-4">
         <div>
-          <h1 className="text-2xl font-semibold" style={{ color: '#1f2329' }}>套系</h1>
+          <h1 className="text-2xl" style={{ color: '#1f2329' }}>套系</h1>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <input
             value={qInput}
             onChange={(e) => setQInput(e.target.value)}
@@ -331,12 +331,12 @@ export default function Packages() {
                 const off = p.status === 'off';
                 return (
                   <div key={p.id}
-                    className="flex items-center gap-[18px] px-4 py-[20px] flex-wrap sm:flex-nowrap hover:bg-panel2/40">
+                    className="flex items-center gap-3 sm:gap-[18px] px-4 py-4 sm:py-[20px] flex-wrap sm:flex-nowrap hover:bg-panel2/40">
                   {/* 批量勾选 */}
                   <input type="checkbox" checked={checked.has(p.id)} onChange={() => toggleCheck(p.id)}
                     className="shrink-0" title="勾选后批量上架/下架" />
                   {/* 左侧封面缩略图（参考图：90×90 方形，已下架深色蒙层） */}
-                  <div className="w-[90px] h-[90px] bg-panel2 border border-line overflow-hidden shrink-0 relative">
+                  <div className="w-[72px] h-[72px] sm:w-[90px] sm:h-[90px] bg-panel2 border border-line overflow-hidden shrink-0 relative">
                     {p.cover_url
                       ? <img src={img(p.cover_url)} alt="" className="w-full h-full object-cover" />
                       : null}
@@ -348,7 +348,7 @@ export default function Packages() {
                   {/* 中部内容 */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-fg font-bold text-[15px] truncate">{p.name}</span>
+                      <span className="text-fg text-[15px] truncate">{p.name}</span>
                       {off && (
                         <span className="px-1.5 py-0.5 rounded text-[11px]" style={{ background: '#f5f5f5', color: '#888' }}>已下架</span>
                       )}
@@ -362,9 +362,9 @@ export default function Packages() {
                         {p.description.length > 28 ? p.description.slice(0, 28) + '…' : p.description}
                       </div>
                     ) : null}
-                    <div className="flex items-center gap-2 mt-1 text-sm">
+                    <div className="flex items-center gap-2 mt-1 text-sm flex-wrap">
                       <span className="text-muted">价格：</span>
-                      <span className="font-bold" style={{ color: '#e4393c' }}>¥{fmtPrice(p.price)}</span>
+                      <span style={{ color: '#e4393c' }}>¥{fmtPrice(p.price)}</span>
                       <span className="text-muted">｜定金：</span>
                       <span style={{ color: '#555' }}>¥{fmtDeposit(p.deposit)}</span>
                     </div>
@@ -376,7 +376,7 @@ export default function Packages() {
                   </div>
 
                   {/* 右侧操作按钮组：分享 → 编辑 → 下架 → 删除（图标 + 文字） */}
-                  <div className="flex items-center gap-8 ml-auto shrink-0 self-center">
+                  <div className="flex items-center gap-4 sm:gap-8 ml-auto shrink-0 self-center">
                     <ActionBtn title="分享" onClick={() => openShareQr(p)}><IconShare /></ActionBtn>
                     <ActionBtn title="编辑" onClick={() => nav('/packages/' + p.id + '/edit')}><IconEdit /></ActionBtn>
                     <ActionBtn title={off ? '上架' : '下架'} onClick={() => toggleStatus(p)}>
@@ -396,7 +396,7 @@ export default function Packages() {
       {trace && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" onClick={() => setTrace(null)}>
           <div onClick={(e) => e.stopPropagation()} className="w-full max-w-lg bg-panel border border-line rounded-xl2 p-6">
-            <div className="text-white font-medium mb-4">订单溯源（套系 #{trace.id}）</div>
+            <div className="text-white mb-4">订单溯源（套系 #{trace.id}）</div>
             <div className="max-h-80 overflow-auto">
               {trace.rows.length === 0 && <div className="text-muted text-sm py-6 text-center">暂无订单引用该套系</div>}
               {trace.rows.map((o) => (
@@ -469,7 +469,7 @@ function PackageShareModal({ pkg, tab, setTab, qr, url, loading, err, copyTip, o
           </svg>
         </button>
 
-        <div className="text-center text-fg font-medium mb-4">套系分享</div>
+        <div className="text-center text-fg mb-4">套系分享</div>
 
         {/* Tab 切换栏 */}
         <div className="flex border-b border-line mb-5">
@@ -508,7 +508,7 @@ function PackageShareModal({ pkg, tab, setTab, qr, url, loading, err, copyTip, o
 
         {/* 复制链接 */}
         <div className="text-center mt-2">
-          <button onClick={onCopy} className="text-sm font-medium hover:underline" style={{ color: '#2f7cf6' }}>复制链接</button>
+          <button onClick={onCopy} className="text-sm hover:underline" style={{ color: '#2f7cf6' }}>复制链接</button>
           {copyTip && <span className="ml-2 text-xs" style={{ color: '#16a34a' }}>{copyTip}</span>}
         </div>
       </div>

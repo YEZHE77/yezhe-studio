@@ -137,7 +137,7 @@ function Dropdown({ value, placeholder, options, onSelect, renderValue, renderOp
                     'w-full text-left px-3 py-2 text-sm flex items-center gap-2 ' +
                     (String(o.value) === String(value) ? '' : 'hover:bg-[#f5f7fa]')
                   }
-                  style={String(o.value) === String(value) ? { background: 'rgba(40,144,240,0.1)', color: BLUE, fontWeight: 500 } : { color: TEXT_BODY }}
+                  style={String(o.value) === String(value) ? { background: 'rgba(40,144,240,0.1)', color: BLUE } : { color: TEXT_BODY }}
                 >
                   {renderOption ? renderOption(o) : o.label}
                   {String(o.value) === String(value) && <IconCheck className="w-4 h-4 ml-auto" style={{ color: BLUE }} />}
@@ -349,7 +349,7 @@ export default function OrderCreateModal({ visible, packages, initialPackageId, 
       >
         {/* 标题栏：居中标题 + 右上角 × 关闭 */}
         <div className="relative flex items-center justify-center px-5 py-4 border-b shrink-0" style={{ borderColor: '#EEEEEE' }}>
-          <div className="text-base font-semibold" style={{ color: TEXT_BODY }}>新增订单</div>
+          <div className="text-base" style={{ color: TEXT_BODY }}>新增订单</div>
           <button type="button" onClick={onClose} aria-label="关闭"
             className="absolute right-4 top-1/2 -translate-y-1/2 w-8 h-8 rounded-md flex items-center justify-center hover:bg-[#f5f7fa]"
             style={{ color: TEXT_MUTED }}>
@@ -572,7 +572,7 @@ export default function OrderCreateModal({ visible, packages, initialPackageId, 
                 if (!p) return null;
                 return (
                   <span key={id} title={p.name}
-                    className="w-10 h-10 rounded-full overflow-hidden flex items-center justify-center text-sm font-medium border"
+                    className="w-10 h-10 rounded-full overflow-hidden flex items-center justify-center text-sm border"
                     style={{ background: 'rgba(40,144,240,0.12)', color: BLUE, borderColor: '#DDDDDD' }}>
                     {p.avatar ? <img src={img(p.avatar)} alt={p.name} className="w-full h-full object-cover" /> : (p.name || '?').slice(0, 1)}
                   </span>
@@ -592,7 +592,7 @@ export default function OrderCreateModal({ visible, packages, initialPackageId, 
         <div className="px-5 py-4 flex flex-col items-center shrink-0 border-t" style={{ borderColor: '#EEEEEE' }}>
           {err && <div className="mb-3 w-full px-3 py-2 rounded-md text-center text-sm" style={{ background: '#FDECEC', color: '#E4393C' }}>{err}</div>}
           <button type="submit" disabled={saving}
-            className="min-w-[160px] py-2.5 rounded-md text-white text-sm font-medium disabled:opacity-50 hover:opacity-90"
+            className="min-w-[160px] py-2.5 rounded-md text-white text-sm disabled:opacity-50 hover:opacity-90"
             style={{ background: BLUE }}>
             {saving ? '保存中…' : '保存'}
           </button>
@@ -604,7 +604,7 @@ export default function OrderCreateModal({ visible, packages, initialPackageId, 
         <div className="fixed inset-0 flex items-center justify-center z-[70] p-4" style={{ background: 'rgba(0,0,0,0.45)' }} onClick={() => setExecOpen(false)}>
           <div onClick={(e) => e.stopPropagation()} className="w-full max-w-sm bg-white shadow-xl overflow-hidden flex flex-col" style={{ borderRadius: 12 }}>
             <div className="relative flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: '#EEEEEE' }}>
-              <div className="text-base font-semibold" style={{ color: TEXT_BODY }}>选择执行人</div>
+              <div className="text-base" style={{ color: TEXT_BODY }}>选择执行人</div>
               <button type="button" onClick={() => setExecOpen(false)} aria-label="关闭"
                 className="w-8 h-8 rounded-md flex items-center justify-center hover:bg-[#f5f7fa]" style={{ color: TEXT_MUTED }}>
                 <IconClose className="w-4 h-4" />
@@ -621,7 +621,7 @@ export default function OrderCreateModal({ visible, packages, initialPackageId, 
                       className={'w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-left ' + (on ? '' : 'hover:bg-[#f5f7fa]')}
                       style={on ? { background: 'rgba(40,144,240,0.1)' } : {}}
                     >
-                      <span className="w-9 h-9 rounded-full overflow-hidden flex items-center justify-center text-sm font-medium border" style={{ background: 'rgba(40,144,240,0.12)', color: BLUE, borderColor: '#DDDDDD' }}>
+                      <span className="w-9 h-9 rounded-full overflow-hidden flex items-center justify-center text-sm border" style={{ background: 'rgba(40,144,240,0.12)', color: BLUE, borderColor: '#DDDDDD' }}>
                         {p.avatar ? <img src={img(p.avatar)} alt={p.name} className="w-full h-full object-cover" /> : (p.name || '?').slice(0, 1)}
                       </span>
                       <span className="flex-1 text-sm" style={{ color: TEXT_BODY }}>{p.name}</span>
@@ -634,7 +634,7 @@ export default function OrderCreateModal({ visible, packages, initialPackageId, 
               )}
             </div>
             <div className="px-5 py-3 border-t flex justify-end" style={{ borderColor: '#EEEEEE' }}>
-              <button type="button" onClick={() => setExecOpen(false)} className="px-5 py-2 rounded-md text-white text-sm font-medium hover:opacity-90" style={{ background: BLUE }}>确定</button>
+              <button type="button" onClick={() => setExecOpen(false)} className="px-5 py-2 rounded-md text-white text-sm hover:opacity-90" style={{ background: BLUE }}>确定</button>
             </div>
           </div>
         </div>
@@ -645,8 +645,8 @@ export default function OrderCreateModal({ visible, packages, initialPackageId, 
         <div className="fixed inset-0 flex items-center justify-center z-[80] p-4" style={{ background: 'rgba(0,0,0,0.45)' }} onClick={(e) => e.stopPropagation()}>
           <div onClick={(e) => e.stopPropagation()} className="w-full max-w-sm bg-white shadow-xl overflow-hidden" style={{ borderRadius: 12 }}>
             <div className="px-5 py-4 border-b flex items-center gap-2" style={{ borderColor: '#EEEEEE' }}>
-              <span className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white" style={{ background: '#FF8A34' }}>!</span>
-              <div className="text-base font-semibold" style={{ color: TEXT_BODY }}>档期冲突</div>
+              <span className="w-6 h-6 rounded-full flex items-center justify-center text-xs text-white" style={{ background: '#FF8A34' }}>!</span>
+              <div className="text-base" style={{ color: TEXT_BODY }}>档期冲突</div>
             </div>
             <div className="px-5 py-4 text-sm leading-6" style={{ color: TEXT_BODY }}>
               {conflict.message}
@@ -660,7 +660,7 @@ export default function OrderCreateModal({ visible, packages, initialPackageId, 
                 换个日期
               </button>
               <button type="button" disabled={saving} onClick={() => doCreate(conflict.payload, true)}
-                className="px-4 py-2 rounded-md text-white text-sm font-medium hover:opacity-90 disabled:opacity-50" style={{ background: '#FF8A34' }}>
+                className="px-4 py-2 rounded-md text-white text-sm hover:opacity-90 disabled:opacity-50" style={{ background: '#FF8A34' }}>
                 {saving ? '保存中…' : '仍要占用'}
               </button>
             </div>

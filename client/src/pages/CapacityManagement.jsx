@@ -69,24 +69,24 @@ function StorageTab({ reloadKey }) {
     <div className="space-y-5">
       {/* 概览进度条 */}
       <div className={'bg-panel border rounded-xl2 p-5 ' + (level === 'critical' ? 'border-red-300' : 'border-line')}>
-        <div className="flex items-center justify-between mb-1">
-          <div className="text-[15px] font-semibold text-fg">存储空间概览</div>
-          <span className={'text-xs font-medium px-2 py-0.5 rounded-full ' + LEVEL_BG[level] + ' ' + LEVEL_TX[level]}>
+        <div className="flex items-center justify-between flex-wrap gap-2 mb-1">
+          <div className="text-[15px] text-fg">存储空间概览</div>
+          <span className={'text-xs px-2 py-0.5 rounded-full ' + LEVEL_BG[level] + ' ' + LEVEL_TX[level]}>
             {level === 'critical' ? '严重' : level === 'warning' ? '警示' : '正常'}
           </span>
         </div>
         {data.cloudEnabled ? (
           <>
-            <div className="flex items-end justify-between mt-3 mb-2">
-              <div className="text-3xl font-bold text-fg">{formatBytes(data.totalUsedBytes)}</div>
+            <div className="flex items-end justify-between flex-wrap gap-2 mt-3 mb-2">
+              <div className="text-3xl text-fg">{formatBytes(data.totalUsedBytes)}</div>
               <div className="text-xs text-muted">
                 额度 {data.limitBytes ? formatBytes(data.limitBytes) : '不限'}{data.totalEstimated ? '（估算）' : ''} · 剩余 {remaining != null ? formatBytes(remaining) : '—'}
                 {data.objectCount != null ? ` · ${data.objectCount} 个对象` : ''}
               </div>
             </div>
             <UsageBar pct={pct} level={level} />
-            <div className={'flex items-center justify-between mt-2 text-xs ' + LEVEL_TX[level]}>
-              <span className="font-medium">{pct}% 已用</span>
+            <div className={'flex items-center justify-between flex-wrap gap-2 mt-2 text-xs ' + LEVEL_TX[level]}>
+              <span>{pct}% 已用</span>
               <span className="text-faint">{data.delayNote}</span>
             </div>
             {level === 'critical' && (
@@ -105,7 +105,7 @@ function StorageTab({ reloadKey }) {
 
       {/* 按业务分类统计 */}
       <div className="bg-panel border border-line rounded-xl2 p-5">
-        <div className="text-[15px] font-semibold text-fg mb-1">按业务分类统计</div>
+        <div className="text-[15px] text-fg mb-1">按业务分类统计</div>
         <div className="text-xs text-muted mb-4">分类基于上传时登记的业务类型（Worker / 后端强制前缀），无需遍历存储桶。</div>
         {cats.length === 0 ? (
           <div className="text-sm text-muted py-4">暂无已登记图片（新上传将自动归类）。</div>
@@ -114,17 +114,17 @@ function StorageTab({ reloadKey }) {
             {cats.filter(Boolean).map((c) => {
               const cp = Math.round((safeNum(c.bytes) / Math.max(1, catSum)) * 100);
               return (
-                <div key={c.category} className="flex items-center gap-3">
+                <div key={c.category} className="flex items-center gap-3 flex-wrap">
                   <div className="w-28 shrink-0 text-sm text-fg flex items-center gap-1.5">
                     {c.label || '未分类'}
                     {c.isPublic && <span className="text-[10px] px-1.5 py-0.5 rounded bg-sky-50 text-sky-600">公开</span>}
                   </div>
-                  <div className="flex-1">
+                  <div className="flex-1 min-w-[80px]">
                     <div className="h-2 rounded-full bg-ink overflow-hidden">
                       <div className="h-full bg-brand/70" style={{ width: cp + '%' }} />
                     </div>
                   </div>
-                  <div className="w-40 shrink-0 text-right text-xs text-muted">
+                  <div className="w-full sm:w-40 shrink-0 text-right text-xs text-muted">
                     {formatBytes(c.bytes)} · {c.count} 张 · {cp}%
                   </div>
                 </div>
@@ -144,7 +144,7 @@ function StorageTab({ reloadKey }) {
 
       {/* 对象存储免费额度说明 */}
       <div className="bg-panel border border-line rounded-xl2 p-5">
-        <div className="text-[15px] font-semibold text-fg mb-3">对象存储免费额度说明</div>
+        <div className="text-[15px] text-fg mb-3">对象存储免费额度说明</div>
         <ul className="space-y-2 text-sm text-muted list-disc pl-5">
           <li><span className="text-fg">主用存储：</span>腾讯云 COS（国内 CDN，访问无需代理）；Cloudflare R2 作为兜底后端仍可配置。</li>
           <li><span className="text-fg">额度：</span>COS 无固定免费额度（按量计费，单价极低）；R2 为永久免费 10GB 存储 + 每月 100GB 出流量。可在后端环境变量配置 COS_STORAGE_LIMIT 自定义告警阈值。</li>
@@ -221,7 +221,7 @@ function CleanupCard({ onCleaned }) {
 
   return (
     <div className="bg-panel border border-line rounded-xl2 p-5 flex flex-col">
-      <div className="text-[15px] font-semibold text-fg mb-1">快速清理空间</div>
+      <div className="text-[15px] text-fg mb-1">快速清理空间</div>
       <div className="text-xs text-muted mb-4">仅列举未被任何封面 / 相册引用的废弃图片，手动勾选删除；系统绝不自动后台删除原图。</div>
 
       {!list && !loading && (
@@ -248,7 +248,7 @@ function CleanupCard({ onCleaned }) {
                     onChange={(e) => setSelectAll(e.target.checked)}
                     className="accent-brand"
                   />
-                  <span className="font-medium text-fg">
+                  <span className="text-fg">
                     {allSelected ? '已全选' : someSelected ? `已选 ${selected.size} 张` : '全选'}
                   </span>
                   <span className="ml-auto">
@@ -292,11 +292,11 @@ function CleanupCard({ onCleaned }) {
       {showConfirm && (
         <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4" onClick={() => setShowConfirm(false)}>
           <div className="bg-panel rounded-xl2 border border-line max-w-md w-full p-6" onClick={(e) => e.stopPropagation()}>
-            <div className="text-base font-semibold text-fg mb-2 flex items-center gap-2">
+            <div className="text-base text-fg mb-2 flex items-center gap-2">
               <Icon name="storage" className="w-5 h-5 text-red-500" /> 确认删除 {selected.size} 张图片？
             </div>
             <p className="text-sm text-muted mb-3">
-              确认后将永久删除，建议先做好本地备份，确定继续？此操作将<span className="text-red-600 font-medium">永久删除</span>选中的底层图片及其元数据，不可恢复。系统不会自动删除任何原图，本次仅删除你勾选的废弃图片。
+              确认后将永久删除，建议先做好本地备份，确定继续？此操作将<span className="text-red-600">永久删除</span>选中的底层图片及其元数据，不可恢复。系统不会自动删除任何原图，本次仅删除你勾选的废弃图片。
               {hasPublic && <span className="block mt-2 text-amber-700">⚠ 含公开图片，删除后对外展示将缺失。</span>}
             </p>
             <DeleteConfirmBox onConfirm={doDelete} onCancel={() => setShowConfirm(false)} busy={busy} />
@@ -345,14 +345,14 @@ function ArchiveGuideCard() {
   ];
   return (
     <div className="bg-panel border border-line rounded-xl2 p-5">
-      <div className="text-[15px] font-semibold text-fg mb-1">图片归档策略指引</div>
+      <div className="text-[15px] text-fg mb-1">图片归档策略指引</div>
       <div className="text-xs text-muted mb-4">合理归档可长期维持免费额度内运行。</div>
       <div className="space-y-3">
         {items.map((it) => (
           <div key={it.t} className="flex gap-2">
             <span className="w-1.5 h-1.5 rounded-full bg-brand mt-2 shrink-0" />
             <div>
-              <div className="text-sm font-medium text-fg">{it.t}</div>
+              <div className="text-sm text-fg">{it.t}</div>
               <div className="text-xs text-muted">{it.d}</div>
             </div>
           </div>
@@ -381,7 +381,7 @@ function TrafficTab() {
   if (!data.cfConfigured) {
     return (
       <div className="bg-panel border border-line rounded-xl2 p-6 text-sm text-muted space-y-2">
-        <div className="font-medium text-fg">图片流量（CDN 出流量）</div>
+        <div className="text-fg">图片流量（CDN 出流量）</div>
         <p>未配置 Cloudflare API 密钥（CF_API_TOKEN / CF_ACCOUNT_ID），无法读取真实出流量。配置后本页将自动显示当月累计用量与免费额度（100GB / 月）。</p>
         <p className="text-faint">提示：密钥仅存后端环境变量，前端绝不接触。</p>
       </div>
@@ -396,21 +396,21 @@ function TrafficTab() {
   return (
     <div className="space-y-5">
       <div className="bg-panel border border-line rounded-xl2 p-5">
-        <div className="flex items-center justify-between mb-1">
-          <div className="text-[15px] font-semibold text-fg">图片流量（CDN 出流量 · 本月累计）</div>
-          <span className={'text-xs font-medium px-2 py-0.5 rounded-full ' + LEVEL_BG[level] + ' ' + LEVEL_TX[level]}>
+        <div className="flex items-center justify-between flex-wrap gap-2 mb-1">
+          <div className="text-[15px] text-fg">图片流量（CDN 出流量 · 本月累计）</div>
+          <span className={'text-xs px-2 py-0.5 rounded-full ' + LEVEL_BG[level] + ' ' + LEVEL_TX[level]}>
             {level === 'critical' ? '严重' : level === 'warning' ? '警示' : '正常'}
           </span>
         </div>
         {data.usedBytes != null ? (
           <>
-            <div className="flex items-end justify-between mt-3 mb-2">
-              <div className="text-3xl font-bold text-fg">{formatBytes(data.usedBytes)}</div>
+            <div className="flex items-end justify-between flex-wrap gap-2 mt-3 mb-2">
+              <div className="text-3xl text-fg">{formatBytes(data.usedBytes)}</div>
               <div className="text-xs text-muted">额度 {formatBytes(data.limitBytes)} · 剩余 {formatBytes(remaining)}</div>
             </div>
             <UsageBar pct={pct} level={level} />
-            <div className={'flex items-center justify-between mt-2 text-xs ' + LEVEL_TX[level]}>
-              <span className="font-medium">{pct}% 已用</span>
+            <div className={'flex items-center justify-between flex-wrap gap-2 mt-2 text-xs ' + LEVEL_TX[level]}>
+              <span>{pct}% 已用</span>
               <span className="text-faint">{data.delayNote}</span>
             </div>
           </>
@@ -419,7 +419,7 @@ function TrafficTab() {
         )}
       </div>
       <div className="bg-panel border border-line rounded-xl2 p-5 text-sm text-muted space-y-2">
-        <div className="font-medium text-fg">Cloudflare R2 流量规则</div>
+        <div className="text-fg">Cloudflare R2 流量规则</div>
         <ul className="list-disc pl-5 space-y-1">
           <li>每月 CDN 出流量免费 100GB；超出约 $0.01 / GB。</li>
           <li>上传入流量永久免费。</li>
@@ -437,7 +437,7 @@ function VideoPlaceholder() {
       <div className="w-12 h-12 rounded-full bg-panel2 flex items-center justify-center mx-auto mb-3 text-muted">
         <Icon name="storage" className="w-6 h-6" />
       </div>
-      <div className="text-[15px] font-semibold text-fg mb-1">视频流量</div>
+      <div className="text-[15px] text-fg mb-1">视频流量</div>
       <div className="text-sm text-muted max-w-sm mx-auto">
         本模块为预留占位，当前版本暂不启用。系统暂不托管视频文件，故无视频流量统计。后续若上线视频交付，将在此展示 CDN 出流量使用情况（同样基于 Cloudflare 免费额度，无任何付费 / VIP 逻辑）。
       </div>
@@ -454,7 +454,7 @@ export default function CapacityManagement() {
   return (
     <div className="space-y-5" style={{ maxWidth: 1050 }}>
       <div>
-        <h1 className="text-xl font-semibold text-fg">容量管理</h1>
+        <h1 className="text-xl text-fg">容量管理</h1>
         <p className="text-muted text-xs mt-0.5">Cloudflare R2 免费额度下的存储与流量监控 · 无任何付费 / VIP / 扩容购买逻辑</p>
       </div>
 
@@ -465,7 +465,7 @@ export default function CapacityManagement() {
             key={t.key}
             onClick={() => setTab(t.key)}
             className={'px-4 py-2.5 text-sm border-b-2 -mb-px transition ' +
-              (tab === t.key ? 'border-brand text-brand font-medium' : 'border-transparent text-muted hover:text-fg')}
+              (tab === t.key ? 'border-brand text-brand' : 'border-transparent text-muted hover:text-fg')}
           >
             {t.label}
           </button>

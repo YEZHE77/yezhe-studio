@@ -5,6 +5,20 @@ import Sidebar from './layout/Sidebar.jsx';
 import Topbar from './layout/Topbar.jsx';
 import ErrorBoundary from './components/ErrorBoundary.jsx';
 import Breadcrumb from './components/Breadcrumb.jsx';
+import MobileShell from './layout/MobileShell.jsx';
+
+// 移动端判定：视口宽度 < 768 视为手机；监听 resize 实时切换，不改动桌面端任何逻辑
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(
+    typeof window !== 'undefined' ? window.innerWidth < 768 : false
+  );
+  useEffect(() => {
+    const onResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+  return isMobile;
+}
 
 // 首屏必须同步加载（Login + Dashboard + Sidebar）
 import Login from './pages/Login.jsx';
@@ -92,6 +106,7 @@ function AppShell() {
 
 export default function App() {
   const { user, ready } = useAuth();
+  const isMobile = useIsMobile();
   if (!ready) return <div className="p-10 text-muted">加载中…</div>;
   return (
     <Routes>
@@ -109,7 +124,9 @@ export default function App() {
           <Route path="*" element={<Navigate to="/login" replace />} />
         </>
       )}
-      {user && <Route path="/*" element={<AppShell />} />}
+      {user && (isMobile
+        ? <Route path="/*" element={<MobileShell />} />
+        : <Route path="/*" element={<AppShell />} />)}
     </Routes>
   );
 }

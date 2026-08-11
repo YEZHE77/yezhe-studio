@@ -760,7 +760,7 @@ export default function OrderDetail() {
   );
 
   return (
-    <div style={{ background: '#f7f7f7', minHeight: '100vh', padding: '0 16px 24px', maxWidth: 1280, width: '100%', margin: '0 auto' }}>
+    <div style={{ background: '#f7f7f7', minHeight: '100vh', padding: isMobile ? '0 0 24px' : '0 16px 24px', maxWidth: 1280, width: '100%', margin: '0 auto', boxSizing: 'border-box' }}>
       {/* ============ Module 3：订单状态卡片（白色卡片 + 左侧操作 + 右侧 4 步进度条，复刻第3张） ============ */}
       <section style={{ margin: isMobile ? '8px 12px 0' : '8px 24px 0', background: '#FFFFFF', border: '1px solid ' + CARD_BORDER, borderTop: '3px solid ' + TEAL, borderRadius: 4, boxShadow: '0 1px 5px rgba(0,0,0,0.04)' }}>
         <div className="flex items-stretch" style={{ minHeight: 132, flexWrap: isMobile ? 'wrap' : 'nowrap' }}>
@@ -1364,8 +1364,8 @@ export default function OrderDetail() {
               </div>
               <div style={{ marginBottom: 16 }}>
                 <div style={{ fontSize: 13, color: '#666666', marginBottom: 8 }}>拍摄时间</div>
-                <div className="flex items-center" style={{ gap: 10, marginBottom: 8 }}>
-                  <input value={editForm.shoot_date} onChange={(e) => setEditForm({ ...editForm, shoot_date: e.target.value })} type="date" style={{ ...modalInputStyle, fontSize: 13 }} />
+                <div className="flex items-center" style={{ gap: 10, marginBottom: 8, flexWrap: 'wrap' }}>
+                  <input value={editForm.shoot_date} onChange={(e) => setEditForm({ ...editForm, shoot_date: e.target.value })} type="date" style={{ ...modalInputStyle, fontSize: 13, maxWidth: '100%' }} />
                   <span style={{ fontSize: 11, color: '#999999' }}>修改日期将释放旧档期并占用新日期；冲突时会先提示。</span>
                 </div>
                 <div style={{ position: 'relative' }}>
@@ -2142,7 +2142,7 @@ function AddScheduleModal({ initialDate = '', initialSlots = [], packageName = '
   };
   return (
     <div className="fixed inset-0 z-[95] flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.45)' }}>
-      <div onClick={(e) => e.stopPropagation()} style={{ width: 560, maxHeight: '88vh', background: '#F7F7F7', borderRadius: 6, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      <div onClick={(e) => e.stopPropagation()} style={{ width: '100%', maxWidth: 560, maxHeight: '88vh', background: '#F7F7F7', borderRadius: 6, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         <div className="flex items-center justify-between shrink-0" style={{ padding: '18px 20px', borderBottom: '1px solid #EEEEEE' }}>
           <span style={{ fontSize: 15, color: '#333333' }}>添加档期</span>
           <button type="button" onClick={onClose} style={{ background: 'none', border: 'none', fontSize: 18, lineHeight: 1, color: '#999999', cursor: 'pointer', padding: 2 }}>×</button>
@@ -2151,7 +2151,7 @@ function AddScheduleModal({ initialDate = '', initialSlots = [], packageName = '
           {/* 拍摄日期 */}
           <div style={{ background: '#fff', border: '1px solid #EEEEEE', borderRadius: 6, padding: 16, marginBottom: 12 }}>
             <div style={{ fontSize: 13, color: '#666666', marginBottom: 8 }}>拍摄日期</div>
-            <input type="date" value={tbd ? '' : date} disabled={tbd} onChange={(e) => setDate(e.target.value)} style={{ ...modalInputStyle, fontSize: 13 }} />
+            <input type="date" value={tbd ? '' : date} disabled={tbd} onChange={(e) => setDate(e.target.value)} style={{ ...modalInputStyle, fontSize: 13, maxWidth: '100%' }} />
           </div>
           {/* 选择场次 */}
           <div style={{ background: '#fff', border: '1px solid #EEEEEE', borderRadius: 6, padding: 16, marginBottom: 12 }}>
@@ -2162,7 +2162,8 @@ function AddScheduleModal({ initialDate = '', initialSlots = [], packageName = '
                 选择场次
               </label>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(8, 50px)', gap: '8px 5px' }}>
+            <div style={{ overflowX: 'auto', paddingBottom: 4 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(8, 50px)', gap: '8px 5px', minWidth: 435 }}>
               {HOURS.map((h) => {
                 const on = slots.includes(h);
                 return (
@@ -2172,6 +2173,7 @@ function AddScheduleModal({ initialDate = '', initialSlots = [], packageName = '
                   </button>
                 );
               })}
+              </div>
             </div>
           </div>
           {/* 日期待定 */}

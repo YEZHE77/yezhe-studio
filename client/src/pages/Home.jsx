@@ -99,7 +99,7 @@ export default function Home() {
               <img src={img(studio.logo, 'thumb')} alt="" className="h-full w-full object-cover" />
             )}
           </div>
-          <span className="truncate text-[18px] font-medium tracking-[1px]">{studio.name || '叶哲 STUDIO'}</span>
+          <span className="truncate text-[18px] tracking-[1px]">{studio.name || '叶哲 STUDIO'}</span>
         </div>
         <button onClick={() => setDrawerOpen(true)} className="flex h-[22px] w-[22px] items-center justify-center" aria-label="菜单">
           <div className="flex items-center gap-[5px]">
@@ -128,13 +128,13 @@ export default function Home() {
       </div>
 
       {/* 品牌简介（扁平流式：间距全部用 margin，禁止容器 padding 制造空白） */}
-      <div className="mt-[25px] px-8 text-center">
+      <div className="mt-[25px] px-5 sm:px-8 text-center">
         {studio.logo && (
           <div className="mx-auto h-[120px] w-[120px] overflow-hidden rounded-full border border-gray-200 bg-gray-100">
             <img src={img(studio.logo, 'thumb')} alt="" className="h-full w-full object-cover" />
           </div>
         )}
-        <div className="mt-4 text-2xl font-semibold tracking-[4px]">{studio.name || '叶哲 STUDIO'}</div>
+        <div className="mt-4 text-2xl tracking-[4px]">{studio.name || '叶哲 STUDIO'}</div>
         {studio.address && (
           <div className="mt-2 flex items-center justify-center text-xs text-gray-400">
             <span className="mr-1">📍</span>{studio.address}
@@ -160,19 +160,19 @@ export default function Home() {
       <div className="h-1 w-full bg-gray-100" />
 
       {/* 作品展示 —— 与上方分割线之间固定 100rpx(50px) 垂直外边距，仅露底色 */}
-      <div id="gallery-section" className="mt-[50px] px-8">
-        <div className="text-center text-2xl font-semibold tracking-[4px]">作品展示</div>
+      <div id="gallery-section" className="mt-[50px] px-5 sm:px-8">
+        <div className="text-center text-2xl tracking-[4px]">作品展示</div>
         <div className="mt-1 text-center text-xs tracking-[2px] text-gray-400">Works Exhibition</div>
 
         {/* 分类标签横滑 */}
         <div className="mt-4 overflow-x-auto whitespace-nowrap">
           <div className="inline-flex gap-6 pb-4">
-            <button onClick={() => selectCat(0)} className={'relative pb-2 text-base ' + (activeCat === 0 ? 'font-semibold text-[#2c2c2c]' : 'text-gray-400')}>
+            <button onClick={() => selectCat(0)} className={'relative pb-2 text-base ' + (activeCat === 0 ? 'text-[#2c2c2c]' : 'text-gray-400')}>
               全部
               {activeCat === 0 && <span className="absolute -bottom-0.5 left-0 right-0 h-1 rounded bg-[var(--brand-green)]" />}
             </button>
             {categories.filter(Boolean).map((c) => (
-              <button key={c.id} onClick={() => selectCat(c.id)} className={'relative pb-2 text-base ' + (activeCat === c.id ? 'font-semibold text-[#2c2c2c]' : 'text-gray-400')}>
+              <button key={c.id} onClick={() => selectCat(c.id)} className={'relative pb-2 text-base ' + (activeCat === c.id ? 'text-[#2c2c2c]' : 'text-gray-400')}>
                 {c.name || '未命名'}
                 {activeCat === c.id && <span className="absolute -bottom-0.5 left-0 right-0 h-1 rounded bg-[var(--brand-green)]" />}
               </button>
@@ -204,26 +204,26 @@ export default function Home() {
       </div>
 
       {/* 底部联系 */}
-      <div id="footer-section" className="m-8 mt-[70px] rounded-3xl p-10 text-white" style={{ background: '#2c2c2c' }}>
-        <div className="mb-6 text-center text-lg font-semibold tracking-[4px]">联系我们</div>
+      <div id="footer-section" className="m-4 mt-[70px] rounded-2xl p-6 text-white sm:m-8 sm:rounded-3xl sm:p-10" style={{ background: '#2c2c2c' }}>
+        <div className="mb-6 text-center text-lg tracking-[4px]">联系我们</div>
         {studio.contact && studio.contact.wechat && (
           <div className="mb-3 flex items-center text-sm">
-            <span className="w-16 text-gray-400">微信</span>
-            <span className="flex-1">{studio.contact.wechat}</span>
-            <span className="cursor-pointer text-xs" style={{ color: TEAL }} onClick={copyWechat}>复制</span>
+            <span className="w-16 shrink-0 text-gray-400">微信</span>
+            <span className="flex-1 truncate">{studio.contact.wechat}</span>
+            <span className="cursor-pointer text-xs shrink-0" style={{ color: TEAL }} onClick={copyWechat}>复制</span>
           </div>
         )}
         {studio.contact && studio.contact.phone && (
           <div className="mb-3 flex items-center text-sm">
-            <span className="w-16 text-gray-400">电话</span>
-            <span className="flex-1">{studio.contact.phone}</span>
-            <span className="cursor-pointer text-xs" style={{ color: TEAL }} onClick={callPhone}>拨打</span>
+            <span className="w-16 shrink-0 text-gray-400">电话</span>
+            <span className="flex-1 truncate">{studio.contact.phone}</span>
+            <span className="cursor-pointer text-xs shrink-0" style={{ color: TEAL }} onClick={callPhone}>拨打</span>
           </div>
         )}
         {studio.contact && studio.contact.address && (
           <div className="mb-3 flex items-center text-sm">
-            <span className="w-16 text-gray-400">地址</span>
-            <span className="flex-1">{studio.contact.address}</span>
+            <span className="w-16 shrink-0 text-gray-400">地址</span>
+            <span className="flex-1 truncate">{studio.contact.address}</span>
           </div>
         )}
         <div className="mt-6 text-center text-[11px] text-gray-500">叶哲 STUDIO · 用影像记录时光</div>
@@ -270,7 +270,7 @@ export default function Home() {
       {contactOpen && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40" onClick={() => setContactOpen(false)}>
           <div className="max-w-md w-full rounded-t-2xl bg-white p-6 text-[#2c2c2c]" onClick={(e) => e.stopPropagation()}>
-            <div className="mb-4 text-center text-lg font-medium">预约咨询</div>
+            <div className="mb-4 text-center text-lg">预约咨询</div>
             {studio.contact && studio.contact.wechat && (
               <div className="flex items-center justify-between border-b py-3">
                 <span className="text-gray-500">微信</span><span>{studio.contact.wechat}</span>
@@ -291,7 +291,7 @@ export default function Home() {
       {storyOpen && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40" onClick={() => setStoryOpen(false)}>
           <div className="max-h-[70vh] max-w-md w-full overflow-auto rounded-t-2xl bg-white p-6 text-[#2c2c2c]" onClick={(e) => e.stopPropagation()}>
-            <div className="mb-4 text-center text-lg font-medium">品牌故事</div>
+            <div className="mb-4 text-center text-lg">品牌故事</div>
             <div className="whitespace-pre-line text-sm leading-relaxed text-gray-600">{studio.intro || '叶哲 STUDIO — 用影像记录时光。'}</div>
             <button onClick={() => setStoryOpen(false)} className="mt-4 w-full rounded-lg py-3 text-sm text-white" style={{ background: TEAL }}>关闭</button>
           </div>
@@ -307,7 +307,7 @@ export default function Home() {
         />
         <div className={'absolute top-0 right-0 bottom-0 w-[280px] bg-[#1a1a1a] text-white flex flex-col transition-transform duration-300 ' + (drawerOpen ? 'translate-x-0' : 'translate-x-full')}>
           <div className="px-6 py-6 border-b border-white/10 flex items-center">
-            <span className="text-base font-medium truncate">{studio.name || '叶哲 STUDIO'}</span>
+            <span className="text-base truncate">{studio.name || '叶哲 STUDIO'}</span>
           </div>
           <nav className="flex-1">
             <button onClick={() => { setDrawerOpen(false); nav('/'); }} className="w-full text-left px-6 py-4 border-b border-white/5">主页</button>

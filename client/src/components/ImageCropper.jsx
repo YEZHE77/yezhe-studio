@@ -3,8 +3,17 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 // aspectRatio: 数字=固定比例（宽/高）；null 或 0=自由构图（可任意拖拽裁剪框比例）
 export default function ImageCropper({ file, aspectRatio = 1, outputWidth = 1200, outputHeight = 1200, onCancel, onConfirm, title = '裁剪图片' }) {
   const free = !aspectRatio || aspectRatio <= 0;
-  const STAGE_W = 320;
-  const STAGE_H = free ? 320 : Math.round(STAGE_W / aspectRatio);
+  // 舞台宽度随视口自适应，避免窄屏（≈320px）溢出面板
+  const [stageW, setStageW] = useState(() =>
+    typeof window === 'undefined' ? 320 : Math.min(320, Math.max(240, window.innerWidth - 72))
+  );
+  useEffect(() => {
+    const onResize = () => setStageW(Math.min(320, Math.max(240, window.innerWidth - 72)));
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+  const STAGE_W = stageW;
+  const STAGE_H = free ? stageW : Math.round(stageW / aspectRatio);
 
   const [src, setSrc] = useState('');
   const [imgSize, setImgSize] = useState({ w: 0, h: 0 });
@@ -170,8 +179,8 @@ export default function ImageCropper({ file, aspectRatio = 1, outputWidth = 1200
 
   return (
     <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[100]" onClick={onCancel}>
-      <div className="bg-panel border border-line rounded-xl2 p-5 w-[360px] max-w-[90vw]" onClick={(e) => e.stopPropagation()}>
-        <div className="text-fg font-medium mb-4">{free ? `${title}（自由构图）` : title}</div>
+      <div className="bg-panel border border-line rounded-xl2 p-5 max-w-[92vw]" style={{ width: STAGE_W + 40 }} onClick={(e) => e.stopPropagation()}>
+        <div className="text-fg mb-4">{free ? `${title}（自由构图）` : title}</div>
         <div
           className="relative mx-auto overflow-hidden bg-ink cursor-move select-none"
           style={{ width: STAGE_W, height: STAGE_H }}

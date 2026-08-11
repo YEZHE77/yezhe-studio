@@ -102,6 +102,13 @@ export default function Orders() {
 
   const [showForm, setShowForm] = useState(false);
   const [qInput, setQInput] = useState(state.q || '');
+  // 移动端响应式：宽度 < 768px 视为手机，内联样式按 isMobile 降级
+  const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' ? window.innerWidth < 768 : false);
+  useEffect(() => {
+    const onResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [compact, setCompact] = useState(false); // 列表视图图标：卡片流 ⇄ 紧凑行列表
   const [trash, setTrash] = useState(false);
@@ -269,21 +276,21 @@ export default function Orders() {
   /* ------------------------------ 渲染 ------------------------------ */
   // 页面底色为纯白 #ffffff（AppShell 外层是 #f4f6f9，这里用负外边距铺满）
   return (
-    <div className="p-6 min-h-full" style={{ background: '#F8F8F8', maxWidth: 1050 }}>
+    <div className="p-4 sm:p-6 min-h-full" style={{ background: '#F8F8F8', maxWidth: 1050 }}>
       {/* 大卡片容器（包含顶部区域：标题+搜索+筛选栏+订单列表） */}
-      <div className="bg-white border rounded-lg" style={{ borderColor: '#E6E9EF', borderRadius: 8, padding: '16px 20px' }}>
+      <div className="bg-white border rounded-lg" style={{ borderColor: '#E6E9EF', borderRadius: 8, padding: isMobile ? '12px' : '16px 20px' }}>
       {/* 大标题（左） / 搜索区（右）；面包屑由全局 <Breadcrumb /> 渲染 */}
       <div className="flex items-start justify-between gap-4 flex-wrap mb-4">
         <div>
           <h1 style={{ fontSize: 16, fontWeight: 400, color: '#000000' }}>订单中心</h1>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <input
             value={qInput}
             onChange={(e) => setQInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && doSearch()}
             placeholder="姓名、套系名称、备注..."
-            className="w-56 md:w-72 px-3 py-2 rounded border border-line bg-white text-fg text-sm outline-none focus:border-brand"
+            className="w-36 sm:w-56 md:w-72 px-3 py-2 rounded border border-line bg-white text-fg text-sm outline-none focus:border-brand"
           />
           <button onClick={doSearch}
             className="px-4 py-2 rounded text-sm whitespace-nowrap"
@@ -300,7 +307,7 @@ export default function Orders() {
           className="px-4 py-1.5 rounded text-sm whitespace-nowrap"
           style={{ background: '#2DB7F5', color: '#fff', fontSize: 14 }}>+ 添加新订单</button>
 
-        <div className="flex-1" />
+        <div className="hidden sm:block flex-1" />
 
         <span className="text-xs whitespace-nowrap" style={{ color: '#fff' }}>状态</span>
         <select value={trash ? '__trash' : state.status}
@@ -397,7 +404,7 @@ export default function Orders() {
                         className="w-full px-2 py-1 rounded border border-line bg-white text-fg text-sm outline-none" />
                     ) : (
                       <div className="flex items-center gap-1.5 min-w-0">
-                        <span className="text-fg text-sm font-medium truncate">订单：{o.order_name || '未命名订单'}</span>
+                        <span className="text-fg text-sm truncate">订单：{o.order_name || '未命名订单'}</span>
                         <button onClick={() => startRename(o)} title="编辑订单名称"
                           className="shrink-0" style={{ color: '#2f7cf6' }}><IconPencil /></button>
                       </div>
@@ -417,7 +424,7 @@ export default function Orders() {
                   <div className="min-w-0 flex-1">
                     <div className="text-sm text-fg truncate">{pkgName}</div>
                     <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                      <span className="font-semibold" style={{ color: '#ff3333' }}>¥{amount.toLocaleString()}</span>
+                      <span style={{ color: '#ff3333' }}>¥{amount.toLocaleString()}</span>
                       {remain > 0 && (
                         <span className="px-1.5 py-0.5 rounded text-[11px]"
                           style={{ background: '#e2d2c2', color: '#6b5744' }}>未结算尾款</span>
@@ -502,7 +509,7 @@ export default function Orders() {
                   <span className="text-[11px] text-faint">订单编号：{o.order_no}</span>
                 </span>
                 <span className="w-40 text-muted truncate hidden md:block">{pkgName}</span>
-                <span className="w-24 text-right font-medium" style={{ color: '#ff3333' }}>¥{Number(o.total_amount || 0).toLocaleString()}</span>
+                <span className="w-24 text-right" style={{ color: '#ff3333' }}>¥{Number(o.total_amount || 0).toLocaleString()}</span>
                 <span className="w-28 text-muted text-xs hidden md:block">{Number(o.date_tbd) === 1 ? '日期待定' : (o.shoot_date || '未排期')}</span>
                 <span className="w-20 text-xs" style={{ color: '#9ca3af' }}>{stageLabel(o)}</span>
                 <span className="w-44 flex justify-end gap-2">
@@ -545,7 +552,7 @@ export default function Orders() {
       {shareModal && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[80] p-4" onClick={() => setShareModal(false)}>
           <div onClick={(e) => e.stopPropagation()} className="w-full max-w-sm bg-white border border-line rounded-xl2 p-6 text-center">
-            <div className="text-fg font-medium mb-1">{shareKind === 'survey' ? '问卷邀请' : '分享订单'}</div>
+            <div className="text-fg mb-1">{shareKind === 'survey' ? '问卷邀请' : '分享订单'}</div>
             <div className="text-xs text-muted mb-4">
               {shareKind === 'survey'
                 ? '把二维码或链接发给客户，客户在手机上即可填写拍摄问卷'
@@ -589,7 +596,7 @@ export default function Orders() {
                   boxShadow: '0 12px 40px rgba(0,0,0,0.16)',
                 }}
               >
-                <div className="text-sm font-medium mb-3" style={{ color: '#1f2329' }}>订单二维码</div>
+                <div className="text-sm mb-3" style={{ color: '#1f2329' }}>订单二维码</div>
                 <div className="flex items-center justify-center" style={{ minHeight: 200 }}>
                   {qrPopover.loading ? (
                     <div className="text-xs" style={{ color: '#9ca3af' }}>二维码生成中…</div>

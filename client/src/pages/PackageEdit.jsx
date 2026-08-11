@@ -191,6 +191,14 @@ export default function PackageEdit() {
   const { id } = useParams();
   const isEdit = !!id;
 
+  // 移动端响应式：<768px 时收缩内边距/列数/固定宽度
+  const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' ? window.innerWidth < 768 : false);
+  useEffect(() => {
+    const onResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+
   const [form, setForm] = useState(emptyForm());
   const [tab, setTab] = useState(0);
   const [categories, setCategories] = useState([]);
@@ -372,8 +380,8 @@ export default function PackageEdit() {
   return (
     <div className="-mx-6 -my-6 min-h-screen flex flex-col" style={{ background: PAGE_BG }}>
       {/* 白色卡片容器：Tab 栏 + 全部 Tab 内容；底边距 0 留出底部按钮栏 */}
-      <form onSubmit={submit} className="m-6 mb-0 max-w-[840px] mx-auto w-full"
-        style={{ zoom: 0.8, borderRadius: 6, boxShadow: '0 1px 4px rgba(0,0,0,0.06)', padding: '40px 48px', background: '#ffffff' }}>
+      <form onSubmit={submit} className="m-4 sm:m-6 mb-0 max-w-[840px] mx-auto w-full"
+        style={{ zoom: 0.8, borderRadius: 6, boxShadow: '0 1px 4px rgba(0,0,0,0.06)', padding: isMobile ? '20px 16px' : '40px 48px', background: '#ffffff' }}>
 
         {/* Tab 栏：选中=方框高亮（黑边白底黑字），未选=灰字灰边透明底；无下划线 */}
         <div className="flex gap-1 overflow-x-auto" style={{ marginBottom: 28 }}>
@@ -383,8 +391,7 @@ export default function PackageEdit() {
               style={{
                 background: tab === i ? '#FFFFFF' : 'transparent',
                 color: tab === i ? '#111111' : '#666666',
-                borderColor: tab === i ? TAB_ACTIVE_BORDER : TAB_BORDER,
-                fontWeight: tab === i ? 600 : 400
+                borderColor: tab === i ? TAB_ACTIVE_BORDER : TAB_BORDER
               }}>
               {t}
             </button>
@@ -404,10 +411,10 @@ export default function PackageEdit() {
             <div>
               {/* 套系封面：虚线框上传区；选图唤起裁切弹窗，裁切后回显预览；保存时才上传 */}
               <Field label="套系封面" required>
-                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-4 flex-wrap">
                   {coverPending || form.cover_url ? (
                     <div className="relative w-60 h-[180px] rounded border overflow-hidden shrink-0 group"
-                      style={{ borderColor: INPUT_BORDER, background: '#fff' }}>
+                      style={{ borderColor: INPUT_BORDER, background: '#fff', maxWidth: '100%', width: isMobile ? '100%' : undefined }}>
                       <img src={coverPending || img(form.cover_url)} alt="" className="w-full h-full object-cover" />
                       {/* 悬浮：重新上传 / 重新裁切 */}
                       <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
@@ -422,7 +429,7 @@ export default function PackageEdit() {
                     </div>
                   ) : (
                     <label className="relative w-60 h-[180px] rounded border border-dashed flex items-center justify-center cursor-pointer overflow-hidden shrink-0"
-                      style={{ borderColor: INPUT_BORDER, background: '#fff' }}
+                      style={{ borderColor: INPUT_BORDER, background: '#fff', maxWidth: '100%', width: isMobile ? '100%' : undefined }}
                       onClick={() => coverInputRef.current && coverInputRef.current.click()}>
                       <span className="w-12 h-12 rounded-full flex items-center justify-center" style={{ background: '#f0f2f5', color: '#9aa0a8' }}><IconPlus width={24} height={24} /></span>
                     </label>
@@ -447,7 +454,7 @@ export default function PackageEdit() {
 
               {/* 套系分类 + 管理分类（占满整行，下拉自适应 + 管理分类按钮同行） */}
               <Field label="套系分类" required>
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 flex-wrap">
                   <select className={selFull} value={form.category_id}
                     onChange={(e) => setF({ category_id: e.target.value })}>
                     <option value="">请选择分类</option>
@@ -587,7 +594,7 @@ export default function PackageEdit() {
               </Field>
 
               {/* 客户问卷区域（价格及问卷 Tab 虚线块：内底 #fbfbf3 / 边框 #dcdcdc，仅本 Tab 生效） */}
-              <div className="mt-3 rounded border border-dashed" style={{ background: '#fbfbf3', borderColor: '#dcdcdc', padding: '20px 24px' }}>
+              <div className="mt-3 rounded border border-dashed" style={{ background: '#fbfbf3', borderColor: '#dcdcdc', padding: isMobile ? '16px' : '20px 24px' }}>
                 <div className="mb-3">
                   <RadioGroup value={d.questionnaire_visibility} onChange={(v) => setD({ questionnaire_visibility: v })}
                     options={[{ v: 'none', t: '不显示' }, { v: 'after_pay', t: '支付后显示' }, { v: 'after_book', t: '预约后显示' }]} />
@@ -619,7 +626,7 @@ export default function PackageEdit() {
                 </div>
 
                 {/* 服务参数横版分组：拍摄时长 / 底片数量 */}
-                <div className="grid grid-cols-2 gap-x-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
                   {/* 拍摄时长 */}
                   <Field label="拍摄时长" required>
                     <select className={selSm} value={d.duration}
@@ -640,7 +647,7 @@ export default function PackageEdit() {
                 </div>
 
                 {/* 精修片 / 加片费 */}
-                <div className="grid grid-cols-2 gap-x-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
                   {/* 精修片 */}
                   <Field label="精修片" required>
                     <input type="number" className={inputSm} value={d.retouch_count}
@@ -655,7 +662,7 @@ export default function PackageEdit() {
                 </div>
 
                 {/* 加片优惠 / 服务地点 */}
-                <div className="grid grid-cols-2 gap-x-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
                   {/* 加片优惠 */}
                   <Field label="加片优惠">
                     <div className="flex items-center gap-2">
@@ -681,7 +688,7 @@ export default function PackageEdit() {
                 </div>
 
                 {/* 服装 / 化妆 / 相册：同一行三列均分（重点修改，原纵向堆叠→横向并排） */}
-                <div className="grid grid-cols-3 gap-x-4">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-x-4">
                   {/* 服装 */}
                   <div className="flex items-center gap-3">
                     <span className="text-sm" style={{ color: '#333333', whiteSpace: 'nowrap' }}>服装</span>
@@ -794,7 +801,7 @@ export default function PackageEdit() {
           {tab < 3 && (
             <div className="mt-8 mb-10">
               <button type="button" onClick={goNext}
-                className="text-[13px] font-medium" style={{ color: LINK }}>下一步 &gt;</button>
+                className="text-[13px]" style={{ color: LINK }}>下一步 &gt;</button>
             </div>
           )}
         </div>
@@ -816,7 +823,7 @@ export default function PackageEdit() {
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.4)' }} onClick={() => setCatOpen(false)}>
           <div onClick={(e) => e.stopPropagation()} className="w-full max-w-sm bg-white rounded-2xl p-5" style={{ boxShadow: '0 20px 60px rgba(0,0,0,0.18)' }}>
             <div className="flex items-center justify-between mb-3">
-              <div className="font-medium" style={{ color: '#333333' }}>管理分类</div>
+              <div style={{ color: '#333333' }}>管理分类</div>
               <button onClick={() => setCatOpen(false)} className="p-1 rounded hover:bg-panel2" style={{ color: '#6b7280' }}><IconClose /></button>
             </div>
             <div className="max-h-60 overflow-auto mb-3">
@@ -830,7 +837,7 @@ export default function PackageEdit() {
                 </button>
               ))}
             </div>
-            <div className="flex items-center gap-2 border-t border-line pt-3">
+            <div className="flex items-center gap-2 border-t border-line pt-3 flex-wrap">
               <input className={inputCls} value={catName} onChange={(e) => setCatName(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && addCategory()} placeholder="新建分类名称" />
               <button type="button" onClick={addCategory}

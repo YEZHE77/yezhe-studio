@@ -51,6 +51,13 @@ export default function WorkDetail() {
   const isNew = id === 'new'; // 页面式新建：直接进入编辑页，空白表单创建作品
   const fileRef = useRef(null);
   const uploadAreaRef = useRef(null);
+  // 移动端响应式：宽度 < 768px 视为手机，内联样式按 isMobile 降级，避免固定宽度溢出
+  const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' ? window.innerWidth < 768 : false);
+  useEffect(() => {
+    const onResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
 
   // 初始表单：非新建且有本地草稿时，优先用草稿恢复（防止重挂载/刷新后标题被清空）
   const initialDraft = !isNew ? readDraft(id) : null;
@@ -682,13 +689,13 @@ export default function WorkDetail() {
   return (
     <div className="max-w-7xl mx-auto">
       {/* 顶部导航：返回 + 标题 + 删除 */}
-      <div className="flex items-center justify-between mb-5">
-        <div className="flex items-center gap-3">
-          <button onClick={() => navigate('/works')} className="px-3 py-1.5 rounded border border-line text-sm text-muted hover:text-brand hover:border-brand">← 返回作品列表</button>
-          <h1 className="text-xl font-semibold text-fg">{isNew ? '新建作品' : (work?.title || '未命名作品')}</h1>
-          {!isNew && <span className="text-xs px-2 py-0.5 rounded bg-panel border border-line text-muted">{work.is_public ? '公开' : '私密'}</span>}
+      <div className="flex items-center justify-between flex-wrap gap-3 mb-5">
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+          <button onClick={() => navigate('/works')} className="px-3 py-1.5 rounded border border-line text-sm text-muted hover:text-brand hover:border-brand shrink-0">← 返回作品列表</button>
+          <h1 className="text-lg sm:text-xl text-fg truncate min-w-0">{isNew ? '新建作品' : (work?.title || '未命名作品')}</h1>
+          {!isNew && <span className="text-xs px-2 py-0.5 rounded bg-panel border border-line text-muted shrink-0">{work.is_public ? '公开' : '私密'}</span>}
         </div>
-        {!isNew && <button onClick={removeWork} className="px-3 py-1.5 rounded border border-red-200 text-red-500 text-sm hover:bg-red-50">删除作品</button>}
+        {!isNew && <button onClick={removeWork} className="px-3 py-1.5 rounded border border-red-200 text-red-500 text-sm hover:bg-red-50 shrink-0">删除作品</button>}
       </div>
 
       <div className="grid lg:grid-cols-5 gap-5">
@@ -707,7 +714,7 @@ export default function WorkDetail() {
             </div>
 
             {/* 手机外壳 */}
-            <div className="mx-auto rounded-[28px] border-8 border-[#222] bg-white overflow-hidden" style={{ maxWidth: 300, aspectRatio: '9/18' }}>
+            <div className="mx-auto rounded-[28px] border-8 border-[#222] bg-white overflow-hidden" style={{ maxWidth: 300, width: isMobile ? '82%' : undefined, aspectRatio: '9/18' }}>
               {/* 顶部状态栏 */}
               <div className="flex items-center justify-center pt-2 pb-1">
                 <div className="w-20 h-4 rounded-full bg-[#222]" />
@@ -720,7 +727,7 @@ export default function WorkDetail() {
               </div>
               {/* 标题 + 创建时间（点击编辑标题） */}
               <div className="px-4 pt-3">
-                <div className="text-base font-semibold text-fg truncate cursor-pointer" title="点击编辑标题" onClick={() => setPanelTab('basic')}>
+                <div className="text-base text-fg truncate cursor-pointer" title="点击编辑标题" onClick={() => setPanelTab('basic')}>
                   {form.title || '点击编辑标题'}
                 </div>
                 <div className="text-[11px] text-muted mt-0.5">创建于 {(work && work.created_at ? new Date(work.created_at).toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric' }) : new Date().toLocaleDateString('zh-CN'))}</div>
@@ -766,7 +773,7 @@ export default function WorkDetail() {
           {panelTab === 'basic' && (
         <div className="space-y-5">
           <form onSubmit={saveBasic} className="bg-panel border border-line rounded-xl2 p-5">
-            <h2 className="text-base font-semibold text-fg mb-4">基本信息</h2>
+            <h2 className="text-base text-fg mb-4">基本信息</h2>
             <div className="space-y-3">
               <div>
                 <label className="block text-xs text-muted mb-1">作品标题</label>
@@ -811,7 +818,7 @@ export default function WorkDetail() {
               </label>
 
               <div className="pt-3 mt-1 border-t border-line">
-                <div className="text-xs font-medium text-fg mb-3">相册交付设置（客户访问相册）</div>
+                <div className="text-xs text-fg mb-3">相册交付设置（客户访问相册）</div>
                 <label className="flex items-center gap-2 text-sm text-fg cursor-pointer select-none">
                   <input type="checkbox" checked={form.album_password_enabled} onChange={(e) => setForm({ ...form, album_password_enabled: e.target.checked })} /> 启用相册密码保护
                 </label>
@@ -838,7 +845,7 @@ export default function WorkDetail() {
           {work?.cover_url && (
             <div className="bg-panel border border-line rounded-xl2 p-5">
               <div className="flex items-center justify-between mb-3">
-                <h2 className="text-base font-semibold text-fg">当前封面</h2>
+                <h2 className="text-base text-fg">当前封面</h2>
                 <button onClick={openCoverCrop} className="text-xs text-brand hover:underline">点击自定义裁剪</button>
               </div>
               <div className="relative cursor-pointer group" onClick={openCoverCrop}>
@@ -856,7 +863,7 @@ export default function WorkDetail() {
           <div ref={uploadAreaRef} className="bg-panel border border-line rounded-xl2 p-5 min-h-[500px]">
             <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
               <div>
-                <h2 className="text-base font-semibold text-fg">相册管理</h2>
+                <h2 className="text-base text-fg">相册管理</h2>
                 <p className="text-xs text-muted mt-0.5">共 {albums.length} 张照片 · 当前分区 {zoneAlbums.length} 张</p>
               </div>
               <div className="flex items-center gap-2">
@@ -881,7 +888,7 @@ export default function WorkDetail() {
             <div className="flex gap-2 mb-4 border-b border-line pb-3">
               {ZONES.map((z) => (
                 <button key={z.key} onClick={() => { setZone(z.key); setSelected(new Set()); }}
-                  className={'px-4 py-2 rounded-t text-sm ' + (zone === z.key ? 'text-brand border-b-2 border-brand font-medium' : 'text-muted hover:text-fg')}>
+                  className={'px-4 py-2 rounded-t text-sm ' + (zone === z.key ? 'text-brand border-b-2 border-brand' : 'text-muted hover:text-fg')}>
                   {z.label}
                   <span className="ml-1 text-xs text-muted">({albums.filter((a) => a.zone === z.key).length})</span>
                 </button>
@@ -914,7 +921,7 @@ export default function WorkDetail() {
               </div>
             ) : (
               <div className={`grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3 ${reordering ? 'opacity-60' : ''}`}>
-                {zoneAlbums.map((a) => {
+                {zoneAlbums.map((a, index) => {
                   const src = img(a.photo_url); // falsy → 空字符串，下面走占位兜底
                   const broken = brokenSet.has(a.id);
                   const noUrl = !a.photo_url; // url 为空 → 异常 UI
@@ -926,7 +933,7 @@ export default function WorkDetail() {
                     onDragOver={(e) => handleDragOver(e, a.id)}
                     onDrop={(e) => handleDrop(e, a.id)}
                     onDragEnd={handleDragEnd}
-                    onClick={() => openPreview(idx)}
+                    onClick={() => openPreview(index)}
                     className={`group relative border rounded-xl2 overflow-hidden bg-ink cursor-grab active:cursor-grabbing select-none
                       ${selected.has(a.id) ? 'border-brand ring-1 ring-brand' : dragOverId === a.id ? 'border-brand ring-2 ring-brand' : 'border-line'}
                       ${draggedId === a.id ? 'opacity-40' : ''}`}
@@ -992,7 +999,7 @@ export default function WorkDetail() {
           <div className="bg-panel border border-line rounded-xl2 w-full max-w-3xl max-h-[85vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between p-4 border-b border-line">
               <div>
-                <h3 className="text-base font-semibold text-fg">上传到「{ZONES.find((z) => z.key === zone).label}」相册</h3>
+                <h3 className="text-base text-fg">上传到「{ZONES.find((z) => z.key === zone).label}」相册</h3>
                 <p className="text-xs text-muted mt-0.5">
                   待上传 {toUpload.length} 张{errCount ? ` · 读取失败 ${errCount} 张` : ''}{overCount ? ` · 超过3M ${overCount} 张（已过滤）` : ''}
                 </p>
@@ -1002,7 +1009,7 @@ export default function WorkDetail() {
             {weakNet && (
               <div className="mx-4 mt-3 px-3 py-2 rounded bg-amber-50 border border-amber-300 text-amber-700 text-xs flex items-center justify-between gap-2">
                 <span>⚠️ 检测到弱网，已自动重试；若持续失败请检查网络后单张重试。</span>
-                <button onClick={() => setWeakNet(false)} className="text-amber-700 font-medium shrink-0">知道了</button>
+                <button onClick={() => setWeakNet(false)} className="text-amber-700 shrink-0">知道了</button>
               </div>
             )}
             {warming && (
@@ -1075,7 +1082,7 @@ export default function WorkDetail() {
                 </div>
               </div>
             )}
-            <div className="p-4 border-t border-line flex items-center justify-between gap-3">
+            <div className="p-4 border-t border-line flex items-center justify-between flex-wrap gap-3">
               <span className="text-xs text-muted">
                 {failCount ? `失败 ${failCount} 张可单张重试 · ` : ''}{overCount ? `超过3M ${overCount} 张已过滤 · ` : ''}所有照片均可上传
               </span>
@@ -1116,7 +1123,7 @@ export default function WorkDetail() {
         <div className="fixed inset-0 z-[120] bg-black/70 flex items-center justify-center p-4" onClick={() => !coverCrop.uploading && setCoverCrop((c) => ({ ...c, open: false }))}>
           <div className="bg-panel border border-line rounded-xl2 p-5 w-[420px] max-w-[94vw] max-h-[88vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-1">
-              <div className="text-fg font-medium">设置作品封面</div>
+              <div className="text-fg">设置作品封面</div>
               <button onClick={() => setCoverCrop((c) => ({ ...c, open: false }))} className="text-muted hover:text-fg text-xl leading-none px-1">×</button>
             </div>
             <p className="text-xs text-muted mb-3">可从已上传照片中直接选用（复用已有图片，不重新上传），或上传新图片裁剪</p>
