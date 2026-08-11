@@ -300,7 +300,6 @@ export default function Orders() {
           className="px-4 py-1.5 rounded text-sm whitespace-nowrap"
           style={{ background: '#2DB7F5', color: '#fff', fontSize: 14 }}>+ 添加新订单</button>
 
-        <span className="text-xs whitespace-nowrap" style={{ color: '#fff' }}>状态</span>
         <select value={trash ? '__trash' : state.status}
           onChange={(e) => {
             const v = e.target.value;
@@ -321,7 +320,6 @@ export default function Orders() {
           <option value="__trash">回收站</option>
         </select>
 
-        <span className="text-xs whitespace-nowrap" style={{ color: '#fff' }}>执行者</span>
         <select value={state.executor} onChange={(e) => setFilter('executor', e.target.value)}
           className="px-3 py-1.5 rounded text-sm outline-none border-0"
           style={{ background: '#fff', color: '#333' }}>
@@ -329,7 +327,6 @@ export default function Orders() {
           {personnel.map((p) => (<option key={p.id} value={p.id}>{p.name}</option>))}
         </select>
 
-        <span className="text-xs whitespace-nowrap" style={{ color: '#fff' }}>排序</span>
         <select value={state.sort} onChange={(e) => setFilter('sort', e.target.value)}
           className="px-3 py-1.5 rounded text-sm outline-none border-0"
           style={{ background: '#fff', color: '#333' }}>
@@ -381,76 +378,100 @@ export default function Orders() {
             const snap = asObj(o.package_snapshot);
             const pkgName = [snap.name, snap.spec && snap.spec.name].filter(Boolean).join('｜') || '未选套系';
             const execs = asArr(o.executors);
+            const cover = snap.cover_url ? img(snap.cover_url) : '';
             const amount = Number(o.total_amount || 0);
             const remain = amount - Number(o.paid_amount || 0);
             const done = o.status === 'completed';
             const hasSurvey = Array.isArray(snap.questionnaire) && snap.questionnaire.length > 0;
             const surveyDone = !!(o.questionnaire_answers && String(o.questionnaire_answers) !== '{}' && String(o.questionnaire_answers) !== 'null');
             return (
-              <div key={o.id} className="rounded-xl2 border border-line bg-white overflow-hidden transition-all duration-200 hover:shadow-md hover:-translate-y-0.5">
-                {/* 灰条头：订单名（左）｜ 订单编号 + 渠道（右），参考 order_table_head #F7F7F7 */}
-                <div className="flex items-center justify-between gap-2 h-10 px-5"
-                  style={{ background: '#F7F7F7', paddingTop: 5 }}>
-                  <span className="text-xs truncate min-w-0" style={{ color: '#333', fontSize: 12 }}>
-                    订单：{o.order_name || '未命名订单'}
-                  </span>
-                  <span className="text-xs shrink-0 truncate" style={{ color: '#aaa', fontSize: 12 }}>
-                    订单编号：{o.order_no}
-                    {o.channel ? <span> {o.channel}</span> : null}
-                  </span>
+              <div key={o.id} className="rounded-xl2 border border-line bg-white p-4 flex flex-col transition-all duration-200 hover:shadow-md hover:border-[#c9d8e8] hover:-translate-y-0.5">
+                {/* 卡片头部：订单名 + 蓝色铅笔 / 订单编号 ｜ 右上灰色状态 */}
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0 flex-1">
+                    {renamingId === o.id ? (
+                      <input autoFocus value={renameVal} onChange={(e) => setRenameVal(e.target.value)}
+                        onBlur={commitRename}
+                        onKeyDown={(e) => { if (e.key === 'Enter') commitRename(); if (e.key === 'Escape') setRenamingId(null); }}
+                        className="w-full px-2 py-1 rounded border border-line bg-white text-fg text-sm outline-none" />
+                    ) : (
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <span className="text-fg text-sm font-medium truncate">订单：{o.order_name || '未命名订单'}</span>
+                        <button onClick={() => startRename(o)} title="编辑订单名称"
+                          className="shrink-0" style={{ color: '#2f7cf6' }}><IconPencil /></button>
+                      </div>
+                    )}
+                    <div className="text-[11px] text-faint mt-1">订单编号：{o.order_no}</div>
+                  </div>
+                  <span className="text-xs shrink-0" style={{ color: '#9ca3af' }}>{stageLabel(o)}</span>
                 </div>
 
-                {/* 白底主体：套系名+状态 / 价格+尾款标签 / 拍摄日期 / 备注条 */}
-                <div className="px-5 pt-3.5">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="text-sm truncate min-w-0" style={{ color: '#333', fontSize: 14 }}>{pkgName}</div>
-                    <div className="text-xs shrink-0" style={{ color: '#aaa', fontSize: 12 }}>{stageLabel(o)}</div>
+                {/* 卡片主体：方形封面 + 套系 + 金额 + 尾款标签 + 日期 */}
+                <div className="flex gap-3 mt-3">
+                  <div className="w-[72px] h-[72px] rounded bg-panel2 border border-line overflow-hidden shrink-0 flex items-center justify-center">
+                    {cover
+                      ? <img src={cover} alt="" className="w-full h-full object-cover" />
+                      : <span className="text-[10px] text-faint">无图</span>}
                   </div>
-                  <div className="flex items-center gap-2 mt-2">
-                    <span style={{ color: '#F83C3A', fontSize: 12 }}>￥{amount.toFixed(2)}</span>
-                    {remain > 0 && (
-                      <span className="pill-payment"
-                        style={{ fontSize: 10, lineHeight: '20px', borderRadius: 20, padding: '4px 6px' }}>未结算尾款</span>
-                    )}
-                  </div>
-                  <div className="mt-6 text-[11px]" style={{ color: '#999' }}>
-                    {done
-                      ? <>默认好评：{fmtDate(o.eval_at || o.created_at) || '—'}</>
-                      : <>拍摄日期：{Number(o.date_tbd) === 1 ? '日期待定' : (o.shoot_date || '未排期')}</>}
-                  </div>
-                  <div className="mt-3.5 h-8 flex items-center px-[15px] text-[11px] truncate"
-                    style={{ background: '#FFFBF5', color: '#999' }}>
-                    {o.remark ? o.remark : '无'}
+                  <div className="min-w-0 flex-1">
+                    <div className="text-sm text-fg truncate">{pkgName}</div>
+                    <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                      <span className="font-semibold" style={{ color: '#ff3333' }}>¥{amount.toLocaleString()}</span>
+                      {remain > 0 && (
+                        <span className="px-1.5 py-0.5 rounded text-[11px]"
+                          style={{ background: '#e2d2c2', color: '#6b5744' }}>未结算尾款</span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1 mt-1.5 text-[12px]" style={{ color: '#6b7280' }}>
+                      <IconCalendar />
+                      {done
+                        ? <span>默认好评：{fmtDate(o.eval_at || o.created_at) || '—'}</span>
+                        : <span>拍摄日期：{Number(o.date_tbd) === 1 ? '日期待定' : (o.shoot_date || '未排期')}</span>}
+                    </div>
                   </div>
                 </div>
 
-                {/* 底部：参与者（左）+ 按钮组（右），参考 order_info_buttom 虚线分隔 */}
-                <div className="flex items-center justify-between gap-2 px-5 pt-3.5 pb-3 mt-3.5 flex-wrap"
-                  style={{ borderTop: '1px dotted #EEEEEE' }}>
-                  <div className="flex items-center gap-1.5 min-w-0">
-                    <span className="text-xs shrink-0" style={{ color: '#999', fontSize: 12 }}>参与者：</span>
-                    {execs.map((p, i) => (
-                      p.avatar
-                        ? <img key={i} src={img(p.avatar)} alt={p.name} title={p.name}
-                          className="w-5 h-5 rounded-full object-cover border border-line" />
-                        : <span key={i} title={p.name}
-                          className="w-5 h-5 rounded-full bg-brand/15 text-brand text-[10px] flex items-center justify-center">
-                          {String(p.name || '?').slice(0, 1)}
-                        </span>
-                    ))}
-                  </div>
-                  <div className="flex items-center justify-end gap-2">
-                    {hasSurvey && !surveyDone && (
-                      <button onClick={() => openShareFor(o, 'survey')} disabled={shareBusy}
-                        className="px-3 rounded text-xs disabled:opacity-40"
-                        style={{ background: '#F7F7F7', border: '1px solid #E5E5E5', borderRadius: 3, color: '#666', height: 30 }}>问卷邀请</button>
-                    )}
-                    <button onClick={() => nav('/orders/' + o.id)}
-                      className="px-3 rounded text-xs"
-                      style={{ background: '#F7F7F7', border: '1px solid #E5E5E5', borderRadius: 3, color: '#666', height: 30 }}>查看订单</button>
-                    <button onClick={(e) => openQrPopover(o, e)} disabled={shareBusy}
-                      className="px-3 rounded text-xs disabled:opacity-40"
-                      style={{ background: '#2DB7F5', border: '1px solid #2FB7F7', borderRadius: 3, color: '#fff', height: 30 }}>分享订单</button>
+                {/* 浅米色占位行（备注） */}
+                <div className="mt-3 px-3 py-2 rounded text-xs truncate"
+                  style={{ background: '#faf7f2', color: '#8a8378' }}>
+                  {o.remark ? o.remark : '无'}
+                </div>
+
+                {/* 卡片底部：参与者 + 按钮组 */}
+                <div className="flex items-center gap-1.5 mt-3 flex-wrap">
+                  <span className="text-xs" style={{ color: '#6b7280' }}>参与者：</span>
+                  {execs.length === 0 && <span className="text-xs text-faint">—</span>}
+                  {execs.map((p, i) => (
+                    p.avatar
+                      ? <img key={i} src={img(p.avatar)} alt={p.name} title={p.name}
+                        className="w-6 h-6 rounded-full object-cover border border-line" />
+                      : <span key={i} title={p.name}
+                        className="w-6 h-6 rounded-full bg-brand/15 text-brand text-[10px] flex items-center justify-center">
+                        {String(p.name || '?').slice(0, 1)}
+                      </span>
+                  ))}
+                </div>
+
+                <div className="flex items-center justify-between gap-2 mt-3 pt-3 border-t border-line flex-wrap">
+                  <button onClick={(e) => handleDelete(o, e)}
+                    className="shrink-0 p-1 rounded transition"
+                    title="移入回收站"
+                    style={{ color: '#cccccc' }}
+                    onMouseEnter={(e) => e.currentTarget.style.color = '#ff4d4f'}
+                    onMouseLeave={(e) => e.currentTarget.style.color = '#cccccc'}
+                  ><IconTrash /></button>
+                  <div className="flex items-center justify-end gap-2 flex-wrap">
+                  {hasSurvey && !surveyDone && (
+                    <button onClick={() => openShareFor(o, 'survey')} disabled={shareBusy}
+                      className="px-3 py-1.5 rounded text-xs border disabled:opacity-40"
+                      style={{ background: '#ffffff', borderColor: '#e0e0e0', color: '#666666' }}>问卷邀请</button>
+                  )}
+                  <button onClick={() => nav('/orders/' + o.id)}
+                    className="px-3 py-1.5 rounded text-xs border"
+                    style={{ background: '#ffffff', borderColor: '#e0e0e0', color: '#666666' }}>查看订单</button>
+                  <button onClick={(e) => openQrPopover(o, e)} disabled={shareBusy}
+                    className="px-3 py-1.5 rounded text-xs disabled:opacity-40"
+                    style={{ background: '#2f7cf6', color: '#fff' }}>分享订单</button>
                   </div>
                 </div>
               </div>
