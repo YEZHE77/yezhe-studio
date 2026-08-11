@@ -269,12 +269,13 @@ export default function Orders() {
         </div>
       </div>
 
-      {/* 深色筛选栏：+添加新订单 → 状态 → 执行者 → 排序 → 列表视图 → 筛选 */}
+      {/* 深色筛选栏（参考图：+添加新订单 → 状态 → 执行者 → 排序 → 筛选） */}
       <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg flex-wrap" style={{ background: '#2c2c2c' }}>
         <button onClick={() => setShowForm(true)}
           className="px-4 py-1.5 rounded text-sm whitespace-nowrap"
           style={{ background: '#2DB7F5', color: '#fff', fontSize: 14 }}>+ 添加新订单</button>
 
+        <span className="text-sm" style={{ color: '#FFFFFF' }}>状态</span>
         <select value={trash ? '__trash' : state.status}
           onChange={(e) => {
             const v = e.target.value;
@@ -295,6 +296,7 @@ export default function Orders() {
           <option value="__trash">回收站</option>
         </select>
 
+        <span className="text-sm" style={{ color: '#FFFFFF' }}>执行者</span>
         <select value={state.executor} onChange={(e) => setFilter('executor', e.target.value)}
           className="px-3 py-1.5 rounded text-sm outline-none border-0"
           style={{ background: '#fff', color: '#333' }}>
@@ -302,6 +304,7 @@ export default function Orders() {
           {personnel.map((p) => (<option key={p.id} value={p.id}>{p.name}</option>))}
         </select>
 
+        <span className="text-sm" style={{ color: '#FFFFFF' }}>排序</span>
         <select value={state.sort} onChange={(e) => setFilter('sort', e.target.value)}
           className="px-3 py-1.5 rounded text-sm outline-none border-0"
           style={{ background: '#fff', color: '#333' }}>
@@ -321,8 +324,9 @@ export default function Orders() {
           <IconList />
         </button>
         <button onClick={() => setAdvancedOpen((v) => !v)} title="展开 / 收起筛选"
-          className="p-1.5 rounded" style={{ color: advancedOpen ? '#2f7cf6' : '#bbb' }}>
-          <IconFilter />
+          className="flex items-center gap-1 px-2 py-1.5 rounded text-sm"
+          style={{ color: advancedOpen ? '#2DB7F5' : '#FFFFFF' }}>
+          <IconFilter />筛选
         </button>
       </div>
 
