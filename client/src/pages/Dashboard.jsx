@@ -205,7 +205,7 @@ export default function Dashboard() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 sm:divide-x sm:divide-[#F0F0F0]">
           <div className="text-center">
             <div className="flex items-center justify-center gap-2">
-              <span className="text-[16px] font-medium" style={{ color: '#333333' }}>账户概览</span>
+              <span className="text-[16px]" style={{ color: '#333333', fontWeight: 400 }}>账户概览</span>
               <button
                 type="button"
                 onClick={() => setHiddenMoney((h) => !h)}
@@ -233,7 +233,7 @@ export default function Dashboard() {
 
       {/* 待处理订单（参考图：5 灰块紧贴 + 数字 28px） */}
       <div className="bg-white border mt-4" style={{ borderRadius: 4, borderColor: '#F0F0F0', padding: '24px 16px 32px' }}>
-        <div className="text-[16px] font-medium mb-6" style={{ color: '#333333' }}>待处理订单</div>
+        <div className="text-[16px] mb-6" style={{ color: '#333333', fontWeight: 400 }}>待处理订单</div>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-[1px]">
           {PENDING.map((b) => {
             const n = stats && stats.pendingBlocks ? (stats.pendingBlocks[b.key] || 0) : '—';
@@ -248,7 +248,7 @@ export default function Dashboard() {
                 <div className="absolute left-0 right-0 bottom-0 h-[5px] group-hover:h-full transition-all duration-300 pointer-events-none" style={{ background: b.line }} />
                 <div className="relative z-10 flex flex-col items-center justify-center">
                   <div className="text-xs pb-[2px] transition-colors text-[#333333] group-hover:text-[#ffffff]">{b.label}</div>
-                  <div className="text-[28px] font-medium leading-none transition-colors text-[#333333] group-hover:text-[#ffffff]">{n}</div>
+                  <div className="text-[28px] leading-none transition-colors text-[#333333] group-hover:text-[#ffffff]" style={{ fontWeight: 400 }}>{n}</div>
                 </div>
               </button>
             );
@@ -258,12 +258,12 @@ export default function Dashboard() {
 
       {/* 品牌管理 + 日常管理（合并成一个大卡片，纯白底 + #E6E9EF 边框更清晰；内部卡片设计保持不变） */}
       <div className="bg-white border mt-4" style={{ borderRadius: 8, borderColor: '#E6E9EF', padding: '22px 16px 28px' }}>
-        <div className="text-[16px] font-medium mb-6" style={{ color: '#333333' }}>品牌管理</div>
+        <div className="text-[16px] mb-6" style={{ color: '#333333', fontWeight: 400 }}>品牌管理</div>
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-[10px]">
           {BRAND_CARDS.map((c) => <BigCard key={c.title} {...c} />)}
         </div>
         <div style={{ height: 1, background: '#E6E9EF', margin: '24px 0 16px' }} />
-        <div className="text-[16px] font-medium mb-6" style={{ color: '#333333' }}>日常管理</div>
+        <div className="text-[16px] mb-6" style={{ color: '#333333', fontWeight: 400 }}>日常管理</div>
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-[10px]">
           {OPS_CARDS.map((c) => <BigCard key={c.title} {...c} />)}
         </div>

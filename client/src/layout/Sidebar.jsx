@@ -49,7 +49,7 @@ function Caret() {
   );
 }
 
-function SidebarContent() {
+function SidebarContent({ mobile = false }) {
   const [studio, setStudio] = useState(null);
   const fileRef = useRef(null);
   useEffect(() => {
@@ -70,13 +70,19 @@ function SidebarContent() {
       setStudio((s) => ({ ...(s || {}), avatar: r.data.url }));
     } catch (err) { alert('头像上传失败'); }
   };
+
+  // 移动端抽屉：更窄宽度、左对齐菜单；桌面端保持原设计
+  const widthClass = mobile ? 'w-[260px]' : 'w-[300px]';
+  const menuMargin = mobile ? 0 : 140;
+  const brandJustify = mobile ? 'justify-start' : 'justify-end';
+
   return (
     <aside
-      className="w-[300px] flex flex-col min-h-screen shrink-0"
+      className={widthClass + ' flex flex-col min-h-screen shrink-0'}
       style={{ background: '#F8F8F8', borderRight: '1px solid #E8E8EB', padding: '20px 16px 12px' }}
     >
       {/* 品牌区：可编辑头像 + 工作室名称（位于工作台上方，参考图） */}
-      <div className="flex items-center justify-end gap-3 px-2 pb-5" style={{ borderBottom: '1px solid #F0F0F0' }}>
+      <div className={'flex items-center gap-3 px-2 pb-5 ' + brandJustify} style={{ borderBottom: '1px solid #F0F0F0' }}>
         <button
           type="button"
           onClick={() => fileRef.current && fileRef.current.click()}
@@ -110,7 +116,7 @@ function SidebarContent() {
                   {({ isActive }) => (
                     <span
                       className={'inline-flex items-center max-w-full transition-colors ' + (isActive ? 'bg-[#F0FDFF] text-[#2DB7F5]' : 'text-[rgba(0,0,0,0.65)] hover:bg-[#EDF0F3]')}
-                      style={{ gap: 10, padding: '0 12px', height: 32, borderRadius: 100, marginLeft: 140, marginRight: 14 }}
+                      style={{ gap: 10, padding: '0 12px', height: 32, borderRadius: 100, marginLeft: menuMargin, marginRight: 14 }}
                     >
                       <span className="w-6 shrink-0 flex items-center justify-center" style={{ color: isActive ? '#2DB7F5' : '#AAAAAA' }}>
                         <Icon name={m.icon} className="w-[14px] h-[14px]" />
@@ -119,7 +125,7 @@ function SidebarContent() {
                     </span>
                   )}
                 </NavLink>
-                {m.sep && <div style={{ height: 1, background: '#E8E8E8', margin: '6px 14px 6px 140px' }} />}
+                {m.sep && <div style={{ height: 1, background: '#E8E8E8', margin: '6px 14px 6px ' + menuMargin }} />}
               </div>
             );
           }
@@ -132,7 +138,7 @@ function SidebarContent() {
               >
                 <span
                   className="inline-flex items-center max-w-full text-[rgba(0,0,0,0.65)] hover:bg-[#EDF0F3] transition-colors"
-                  style={{ gap: 10, padding: '0 12px', height: 32, borderRadius: 100, marginLeft: 140, marginRight: 14 }}
+                  style={{ gap: 10, padding: '0 12px', height: 32, borderRadius: 100, marginLeft: menuMargin, marginRight: 14 }}
                 >
                   <span className="w-6 shrink-0 flex items-center justify-center" style={{ color: '#AAAAAA' }}>
                     <Icon name={m.icon} className="w-[14px] h-[14px]" />
@@ -140,7 +146,7 @@ function SidebarContent() {
                   <span className="truncate">{m.label}</span>
                 </span>
               </div>
-              {m.sep && <div style={{ height: 1, background: '#E8E8E8', margin: '6px 14px 6px 140px' }} />}
+              {m.sep && <div style={{ height: 1, background: '#E8E8E8', margin: '6px 14px 6px ' + menuMargin }} />}
             </div>
           );
         })}
@@ -155,7 +161,7 @@ export default function Sidebar({ open = false, onClose }) {
       {/* 移动端抽屉浮层 */}
       <div className={'lg:hidden fixed inset-0 z-50 ' + (open ? '' : 'hidden')}>
         <div className="absolute inset-0" style={{ background: 'rgba(0,0,0,0.4)' }} onClick={onClose} />
-        <div className="absolute left-0 top-0 bottom-0"><SidebarContent /></div>
+        <div className="absolute left-0 top-0 bottom-0"><SidebarContent mobile /></div>
       </div>
       {/* 桌面静态侧栏 */}
       <div className="hidden lg:block"><SidebarContent /></div>
