@@ -43,7 +43,7 @@ const ITEM_STYLE = {
 function Caret() {
   return (
     <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#999999"
-      strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="ml-auto shrink-0">
+      strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
       <path d="m9 18 6-6-6-6" />
     </svg>
   );
@@ -76,7 +76,7 @@ function SidebarContent() {
       style={{ background: '#F8F8F8', borderRight: '1px solid #E8E8EB', padding: '20px 16px 12px' }}
     >
       {/* 品牌区：可编辑头像 + 工作室名称（位于工作台上方，参考图） */}
-      <div className="flex items-center gap-3 px-2 pb-5" style={{ borderBottom: '1px solid #F0F0F0' }}>
+      <div className="flex items-center justify-end gap-3 px-2 pb-5" style={{ borderBottom: '1px solid #F0F0F0' }}>
         <button
           type="button"
           onClick={() => fileRef.current && fileRef.current.click()}
@@ -105,7 +105,7 @@ function SidebarContent() {
                   to={m.to}
                   end={m.to === '/'}
                   className={({ isActive }) =>
-                    'flex items-center transition-colors ' +
+                    'flex items-center justify-end transition-colors ' +
                     (isActive ? 'bg-[#F0FDFF] text-[#2998EB]' : 'text-[#444444] hover:bg-[#EDF0F3]')
                   }
                   style={ITEM_STYLE}
@@ -128,7 +128,7 @@ function SidebarContent() {
             <div key={m.label}>
               <div
                 title="敬请期待"
-                className="flex items-center cursor-default select-none text-[#444444] hover:bg-[#EDF0F3] transition-colors"
+                className="flex items-center justify-end cursor-default select-none text-[#444444] hover:bg-[#EDF0F3] transition-colors"
                 style={ITEM_STYLE}
               >
                 <span className="shrink-0 flex items-center" style={{ color: '#888888' }}>
