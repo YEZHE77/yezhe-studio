@@ -270,6 +270,8 @@ export default function Orders() {
   // 页面底色为纯白 #ffffff（AppShell 外层是 #f4f6f9，这里用负外边距铺满）
   return (
     <div className="p-6 min-h-full" style={{ background: '#F8F8F8', maxWidth: 1050 }}>
+      {/* 大卡片容器（包含顶部区域：标题+搜索+筛选栏+订单列表） */}
+      <div className="bg-white border rounded-lg" style={{ borderColor: '#E6E9EF', borderRadius: 8, padding: '16px 20px' }}>
       {/* 大标题（左） / 搜索区（右）；面包屑由全局 <Breadcrumb /> 渲染 */}
       <div className="flex items-start justify-between gap-4 flex-wrap mb-4">
         <div>
@@ -369,8 +371,6 @@ export default function Orders() {
         </div>
       )}
 
-      {/* 订单列表大卡片容器（白底 #FFFFFF + #E6E9EF 边框，小卡片不变） */}
-      <div className="bg-white border rounded-lg mt-4" style={{ borderColor: '#E6E9EF', borderRadius: 8, padding: '16px 20px' }}>
       {/* 订单卡片列表 */}
       {!compact && (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
