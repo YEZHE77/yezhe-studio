@@ -695,7 +695,7 @@ export default function OrderDetail() {
       <section style={{ margin: '8px 24px 0', background: '#FFFFFF', border: '1px solid ' + CARD_BORDER, borderTop: '3px solid ' + TEAL, borderRadius: 4, boxShadow: '0 1px 5px rgba(0,0,0,0.04)' }}>
         <div className="flex items-stretch" style={{ minHeight: 132 }}>
           {/* 左侧订单操作区 */}
-          <div className="flex flex-col justify-center shrink-0" style={{ width: '26%', minWidth: 240, padding: '16px 28px', gap: 10, position: 'relative' }}>
+          <div className="flex flex-col justify-center shrink-0" style={{ width: '23%', minWidth: 240, padding: '16px 28px', gap: 10, position: 'relative' }}>
             <div style={{ fontSize: 12, color: TEXT_SUB, marginBottom: 2 }}>
               订单编号：<span style={{ color: '#333333', fontWeight: 400 }}>{detail.order_no}</span>
             </div>
