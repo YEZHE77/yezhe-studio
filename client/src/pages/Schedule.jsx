@@ -46,7 +46,7 @@ const MODAL_DIV = '#EEEEEE';         // 分割线
    浅灰底 #F7F7F7 ／ 边框 #E8E8E8 ／ 深灰侧栏 #3A3A3A ／ 日期黄块 #FFB900
    主蓝 #2DB7F5 ／ 选中浅蓝 #EAF6FD ／ 已预约粉 #FFD3D3 ／ 今日红 #FF7777
    注：左侧全局导航不在本页范围内，禁止改动。                                */
-const G_PAGE_BG = '#F7F7F7';
+const G_PAGE_BG = '#F8F8F8';
 const G_BORDER = '#D8D8D8';
 const G_PANEL = '#444444';
 const G_YELLOW = '#FFBB01';
