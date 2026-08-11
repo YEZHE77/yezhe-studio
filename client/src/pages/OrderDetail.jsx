@@ -812,7 +812,7 @@ export default function OrderDetail() {
             {/* 右：四个功能按钮 */}
             <div className="flex items-center" style={{ gap: 12 }}>
               <button type="button" onClick={() => setQuestionnaireModal(true)}
-                style={{ height: 36, borderRadius: 2, background: SURVEY_BTN, color: '#fff', fontSize: 12, fontWeight: 400, border: '1px solid ' + SURVEY_BTN, padding: '0 14px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
+                style={{ height: 32, borderRadius: 2, background: SURVEY_BTN, color: '#fff', fontSize: 12, fontWeight: 400, border: '1px solid ' + SURVEY_BTN, padding: '0 10px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
                 <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><path d="M14 2v6h6" /><path d="M9 13h6M9 17h6" /></svg>
                 调查问卷
               </button>
@@ -842,7 +842,7 @@ export default function OrderDetail() {
         <div style={{ padding: '0 24px' }}>
           <div className="flex" style={{ gap: 48, alignItems: 'stretch' }}>
             {/* 左侧：套系封面图 + 基础信息 */}
-            <div style={{ flex: '0 0 46%', display: 'flex', alignItems: 'flex-start', gap: 24, minWidth: 0 }}>
+            <div style={{ flex: '0 0 46%', display: 'flex', alignItems: 'flex-start', gap: 63, minWidth: 0 }}>
               <div style={{ width: 206, height: 150, borderRadius: 2, overflow: 'hidden', background: '#f3f4f6', flexShrink: 0 }}>
                 {pkgInfo && pkgInfo.cover_url
                   ? <img src={img(pkgInfo.cover_url)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
@@ -938,7 +938,7 @@ export default function OrderDetail() {
           </div>
 
           {/* 套系摘要卡：整行紧接执行人下方（参考图） */}
-          <div style={{ background: '#fafbf8', borderRadius: 2, padding: '18px 20px', marginTop: 16, marginLeft: 230, maxWidth: 620 }}>
+          <div style={{ background: '#fafbf8', borderRadius: 2, padding: '18px 20px', marginTop: 16, marginLeft: 269, maxWidth: 620 }}>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px 12px' }}>
                   {(() => {
                     const SUM_FIELDS = [
@@ -974,7 +974,7 @@ export default function OrderDetail() {
         <div style={{ marginTop: 0 }} />
 
         {/* ——— 5、卡片底部：备注信息 ——— */}
-        <div style={{ padding: '16px 16px 44px 278px' }}>
+        <div style={{ padding: '16px 16px 44px 317px' }}>
           {editingRemark ? (
             <div>
               <div className="flex items-center" style={{ gap: 6, marginBottom: 8 }}>
@@ -1951,8 +1951,8 @@ export default function OrderDetail() {
 
 // —— 复刻 spec 样式片段（模块内复用） ——
 const secBtnStyle = {
-  height: 36, borderRadius: 2, background: '#fff', color: '#666666',
-  border: '1px solid #D9D9D9', fontSize: 12, fontWeight: 400, padding: '0 14px', cursor: 'pointer'
+  height: 32, borderRadius: 2, background: '#fff', color: '#666666',
+  border: '1px solid #D9D9D9', fontSize: 12, fontWeight: 400, padding: '0 10px', cursor: 'pointer'
 };
 const moreItemStyle = {
   display: 'block', width: '100%', textAlign: 'left', padding: '8px 14px',
