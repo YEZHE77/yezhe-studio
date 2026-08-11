@@ -59,7 +59,7 @@ export default function Breadcrumb() {
 
   return (
     <nav aria-label="breadcrumb"
-      className="relative z-10 flex items-center flex-wrap gap-x-1.5 gap-y-1 text-[14px] leading-5 mb-4 select-none">
+      className="relative z-10 flex items-center flex-wrap gap-x-1.5 gap-y-1 text-xs leading-5 mb-2 select-none">
       {ret && (
         <a href={ret.to}
           onClick={(e) => { e.preventDefault(); navigate(ret.to); }}
@@ -77,14 +77,15 @@ export default function Breadcrumb() {
               <a
                 href={it.to}
                 onClick={(e) => { e.preventDefault(); navigate(it.to); }}
-                className="text-[#666666] hover:text-[#2998EB] cursor-pointer transition-colors"
+                className="hover:text-[#2998EB] cursor-pointer transition-colors"
+                style={{ color: 'rgba(0,0,0,0.45)' }}
               >
                 {it.label}
               </a>
             ) : (
-              <span className={isLast ? 'text-[#222222]' : 'text-[#666666]'}>{it.label}</span>
+              <span style={{ color: isLast ? 'rgba(0,0,0,0.7)' : 'rgba(0,0,0,0.45)' }}>{it.label}</span>
             )}
-            {!isLast && <span className="text-[#BBBBBB]"> &gt; </span>}
+            {!isLast && <span style={{ color: 'rgba(0,0,0,0.3)' }}> &gt; </span>}
           </span>
         );
       })}

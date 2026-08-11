@@ -63,6 +63,19 @@ router.get('/availability', async (req, res) => {
       .filter((s) => s.status === 'closed')
       .map((s) => ({ date: s.date, period: s.period }));
 
+    // 单日接单上限：booked 数量 >= daily 上限的日期视为「已约满」，C 端预约禁用（与 locked/closed 同等不可约）
+    const capCfg = await getCapacityCfg();
+    const full = [];
+    if (capCfg.daily > 0) {
+      const bookedCounts = {};
+      for (const s of schedules) {
+        if (s.status === 'booked') bookedCounts[s.date] = (bookedCounts[s.date] || 0) + 1;
+      }
+      for (const [date, c] of Object.entries(bookedCounts)) {
+        if (c >= capCfg.daily) full.push({ date, period: 'full', count: c, limit: capCfg.daily });
+      }
+    }
+
     // 每周开放日 → 非开放日整日置灰（period=full 表示整日）
     // yy / mm 已由上方解析（mm 为 1-12，与入参一致）
     const daysInMonth = new Date(yy, mm, 0).getDate();
@@ -84,7 +97,25 @@ router.get('/availability', async (req, res) => {
       .filter((p) => p.hope_date)
       .map((p) => ({ date: p.hope_date, period: p.period || 'full' }));
 
-    res.json({ month, booking: bookingCfg, occupied, closed, pending });
+    res.json({ month, booking: bookingCfg, occupied, closed, full, pending });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// 单日接单上限：读取 / 保存（仅管理员可改；必须放在 GET / 与 /:id 之前避免被吞路由）
+router.get('/capacity', authRequired, requireRole(['admin', 'photographer']), async (req, res) => {
+  try {
+    res.json(await getCapacityCfg());
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+router.put('/capacity', authRequired, requireRole(['admin']), async (req, res) => {
+  try {
+    const daily = Math.max(0, parseInt(req.body.daily, 10) || 0);
+    const perPhotographer = !!req.body.perPhotographer;
+    const value = JSON.stringify({ daily, perPhotographer });
+    const exists = await get("SELECT key FROM settings WHERE key = 'schedule_capacity'");
+    if (exists) await run("UPDATE settings SET value = ? WHERE key = 'schedule_capacity'", [value]);
+    else await insert("INSERT INTO settings (key, value) VALUES (?, ?)", ['schedule_capacity', value]);
+    res.json({ ok: true, capacity: { daily, perPhotographer } });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -92,7 +123,7 @@ router.get('/availability', async (req, res) => {
 // 关联 orders 返回 order_customer / order_pay_status / order_status 用于日历着色（未付定/等待拍）
 router.get('/', authRequired, async (req, res) => {
   try {
-    const { month, executor, from, to } = req.query;
+    const { month, executor, from, to, package_id, status } = req.query;
     const where = [];
     const params = [];
     if (month) { where.push('s.date LIKE ?'); params.push(month + '%'); }
@@ -100,6 +131,24 @@ router.get('/', authRequired, async (req, res) => {
     if (executor) {
       where.push('(s.executor_id = ? OR s.executor_name = (SELECT name FROM users WHERE id = ?))');
       params.push(Number(executor), Number(executor));
+    }
+    // 套系筛选：档期行通过订单关联套系（套系不直接占用档期，通过订单间接关联）
+    if (package_id) {
+      where.push('o.package_id = ?');
+      params.push(Number(package_id));
+    }
+    // 档期状态筛选：free / booked / locked / closed / shoot / pending
+    if (status && status !== 'all') {
+      where.push('s.status = ?');
+      params.push(status);
+    }
+    // 子账号权限（验收：摄影师仅看到分配给自己的档期与订单；管理员全部可见）
+    if (req.user && req.user.role === 'photographer') {
+      const me = await get('SELECT name FROM users WHERE id = ?', [req.user.uid]);
+      if (me && me.name) {
+        where.push('(s.executor_name = ? OR s.executor_id IN (SELECT id FROM users WHERE name = ?))');
+        params.push(me.name, me.name);
+      }
     }
     const w = where.length ? 'WHERE ' + where.join(' AND ') : '';
     const rows = await query(
@@ -244,6 +293,40 @@ export async function releaseSchedule(orderNo) {
   return 1;
 }
 
+// ===== 单日接单上限（容量）：订单 ↔ 档期 联动核心规则之一 =====
+// settings['schedule_capacity'] = { daily: 单日最大接单数(0=不限), perPhotographer: 是否按摄影师维度隔离 }
+export async function getCapacityCfg() {
+  const row = await get("SELECT value FROM settings WHERE key = 'schedule_capacity'");
+  let cfg = { daily: 0, perPhotographer: false };
+  if (row && row.value) {
+    try {
+      const p = JSON.parse(row.value);
+      cfg = { daily: Math.max(0, Number(p.daily) || 0), perPhotographer: !!p.perPhotographer };
+    } catch { /* 用默认 */ }
+  }
+  return cfg;
+}
+
+// 容量冲突检测：返回 { count, limit } | null。
+// excludeOrderNo：本订单自身占用的档期不计入（编辑订单时用）；
+// executorId：perPhotographer=true 时按该摄影师当日已占数量计数（A摄影师约满不影响B摄影师）。
+export async function capacityConflict(date, excludeOrderNo, executorId) {
+  if (!date) return null;
+  const cfg = await getCapacityCfg();
+  if (!cfg.daily || cfg.daily <= 0) return null;
+  const rows = await query("SELECT * FROM schedules WHERE date = ? AND status = 'booked'", [date]);
+  let booked = rows;
+  if (cfg.perPhotographer && executorId != null && executorId !== '') {
+    booked = rows.filter((r) => r.executor_id != null && String(r.executor_id) === String(executorId));
+  }
+  let count = booked.length;
+  if (excludeOrderNo) {
+    count = booked.filter((r) => !(r.order_no && String(r.order_no) === String(excludeOrderNo))).length;
+  }
+  if (count >= cfg.daily) return { count, limit: cfg.daily, perPhotographer: cfg.perPhotographer };
+  return null;
+}
+
 // 创建（支持 时间段数组 periods / 日期待定 date_tbd / 绑定执行人 executor）
 // 手动锁档/新增档期时做冲突拦截：已被订单占用或已锁场的日期不允许覆盖（验收⑩）
 router.post('/', authRequired, requireRole(['admin', 'photographer']), async (req, res) => {
@@ -279,6 +362,14 @@ router.post('/close', authRequired, requireRole(['admin', 'photographer']), asyn
   try {
     const { date } = req.body;
     if (!date) return res.status(400).json({ error: '日期必填' });
+    // 手动锁档不能覆盖已有订单/已锁场日期（验收⑨：弹窗提示冲突，需先处理订单）
+    const hit = await scheduleConflict(date, null);
+    if (hit) {
+      return res.status(409).json({
+        error: conflictText(hit), code: 'CONFLICT',
+        conflict: { id: hit.id, date: hit.date, status: hit.status, order_no: hit.order_no || '' }
+      });
+    }
     await run('DELETE FROM schedules WHERE date = ? AND status = ?', [date, 'closed']);
     const id = await insert("INSERT INTO schedules (date, period, status, lunar_date, note) VALUES (?,?,?,?,?)", [date, 'full', 'closed', lunarOf(date), '档期已关闭']);
     res.json({ id, closed: true });

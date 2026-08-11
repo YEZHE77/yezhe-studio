@@ -7,7 +7,7 @@ import { shareBaseUrl } from '../shareUtil.js';
 import { generateMiniProgramQr } from '../miniQr.js';
 import { authRequired, requireRole } from '../auth.js';
 import { parseRow } from '../schema.js';
-import { scheduleConflict, occupySchedule, releaseSchedule, conflictText } from './schedules.js';
+import { scheduleConflict, occupySchedule, releaseSchedule, conflictText, capacityConflict } from './schedules.js';
 
 const router = Router();
 const JSON_COLS = ['package_snapshot', 'addons_snapshot', 'logs', 'phones', 'time_slots', 'extra_items', 'executors', 'order_photos'];
@@ -70,6 +70,15 @@ router.get('/', authRequired, async (req, res) => {
       where.push('executors LIKE ?');
       params.push('%"id":' + Number(executor) + ',"name"%');
     }
+    // 子账号权限：摄影师仅看到分配给自己的订单（executors JSON 按 name 匹配）；管理员全部可见
+    if (req.user && req.user.role === 'photographer') {
+      const me = await get('SELECT name FROM users WHERE id = ?', [req.user.uid]);
+      if (me && me.name) {
+        const esc = String(me.name).replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+        where.push('executors LIKE ?');
+        params.push('%"name":"' + esc + '"%');
+      }
+    }
     if (shootFrom) { where.push('shoot_date >= ?'); params.push(shootFrom); }
     if (shootTo) { where.push('shoot_date <= ?'); params.push(shootTo); }
     const whereSql = where.join(' AND ');
@@ -129,6 +138,64 @@ router.get('/recycle', authRequired, requireRole(['admin']), async (req, res) =>
   try {
     const rows = await query('SELECT * FROM orders WHERE is_deleted = 1 ORDER BY deleted_at DESC');
     res.json(rows.map((r) => parseRow(r, JSON_COLS)));
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// 导出 Excel 兼容 CSV（UTF-8 BOM，Excel 中文正常；字段对齐 spec 订单列表列）
+router.get('/export', authRequired, async (req, res) => {
+  try {
+    const { status, q, executor, shootFrom, shootTo } = req.query;
+    const where = ['cancelled = 0', 'is_deleted = 0'];
+    const params = [];
+    if (status) {
+      if (status === 'unpaid') { where.push('payment_status = ?'); params.push('unpaid'); }
+      else { where.push('status = ?'); params.push(status); }
+    }
+    if (q) {
+      where.push('(customer_name LIKE ? OR order_no LIKE ? OR COALESCE(order_name, \'\') LIKE ? OR COALESCE(package_snapshot, \'\') LIKE ?)');
+      params.push('%' + q + '%', '%' + q + '%', '%' + q + '%', '%' + q + '%');
+    }
+    if (executor) { where.push('executors LIKE ?'); params.push('%"id":' + Number(executor) + ',"name"%'); }
+    if (req.user && req.user.role === 'photographer') {
+      const me = await get('SELECT name FROM users WHERE id = ?', [req.user.uid]);
+      if (me && me.name) {
+        const esc = String(me.name).replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+        where.push('executors LIKE ?');
+        params.push('%"name":"' + esc + '"%');
+      }
+    }
+    if (shootFrom) { where.push('shoot_date >= ?'); params.push(shootFrom); }
+    if (shootTo) { where.push('shoot_date <= ?'); params.push(shootTo); }
+    const rows = await query(
+      'SELECT * FROM orders WHERE ' + where.join(' AND ') + ' ORDER BY id DESC',
+      params
+    );
+    const STATUS_LABEL = { deposit: '已付定金', shot: '已拍摄', selecting: '选片中', retouching: '精修中', delivered: '已交付', completed: '已完成', cancelled: '已作废' };
+    const PAY_LABEL = { unpaid: '未付定金', deposit: '已付定金', paid: '全款已付' };
+    const safeParse = (v) => { try { return v ? JSON.parse(v) : null; } catch { return null; } };
+    const esc = (v) => {
+      const s = v == null ? '' : String(v);
+      return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+    };
+    const header = ['订单编号', '客户姓名', '联系电话', '套系（规格）', '拍摄日期', '摄影师', '订单状态', '支付状态', '实付金额', '创建时间'];
+    const lines = [header.map(esc).join(',')];
+    for (const r of rows) {
+      const snap = safeParse(r.package_snapshot);
+      const pkgName = snap
+        ? [snap.name, snap.spec_name || (snap.spec && snap.spec.name) || ''].filter(Boolean).join('｜')
+        : '';
+      const statusLabel = STATUS_LABEL[r.status] || r.status || '';
+      const payLabel = (Number(r.refund_amount) > 0 ? '已退款' : (PAY_LABEL[r.payment_status] || r.payment_status || ''));
+      lines.push([
+        r.order_no, r.customer_name || r.order_name || '', r.customer_phone || '',
+        pkgName, r.shoot_date || '待定', r.executor || '',
+        statusLabel, payLabel, r.paid_amount != null ? Number(r.paid_amount).toFixed(2) : '0.00',
+        (r.created_at || '').toString().slice(0, 10)
+      ].map(esc).join(','));
+    }
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', 'attachment; filename="orders.csv"');
+    res.send('\ufeff' + lines.join('\r\n'));
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -215,6 +282,14 @@ router.post('/', authRequired, requireRole(['admin', 'photographer', 'finance'])
           conflict: { id: hit.id, date: hit.date, status: hit.status, order_no: hit.order_no || '' }
         });
       }
+      // 单日接单上限：已约满的日期同样返回 409，前端弹窗提示（可 force 强行占用）
+      const capHit = await capacityConflict(shoot_date, order_no, executors[0] && executors[0].id);
+      if (capHit) {
+        return res.status(409).json({
+          error: `${shoot_date} 当日已约满（${capHit.count}/${capHit.limit}${capHit.perPhotographer ? '，按摄影师隔离' : ''}），无法继续预约`,
+          code: 'CAPACITY_FULL', forcible: true, capacity: capHit
+        });
+      }
     }
     const id = await insert(
       `INSERT INTO orders (order_no, customer_name, customer_phone, package_id, package_snapshot, addons_snapshot, status,
@@ -269,6 +344,34 @@ router.post('/', authRequired, requireRole(['admin', 'photographer', 'finance'])
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// —— 进度条控制：追加订单操作日志（下一步·日志步；日志文本与 11 步关键词对应） ——
+router.post('/:id/logs', authRequired, requireRole(['admin', 'photographer', 'finance']), async (req, res) => {
+  try {
+    const text = String((req.body && req.body.text) || '').trim();
+    if (!text) return res.status(400).json({ error: '日志内容不能为空' });
+    const cur = await get('SELECT id FROM orders WHERE id = ?', [req.params.id]);
+    if (!cur) return res.status(404).json({ error: '订单不存在' });
+    await appendLog(req.params.id, text);
+    const updated = await get('SELECT logs FROM orders WHERE id = ?', [req.params.id]);
+    let logs = [];
+    if (updated && updated.logs) { try { logs = JSON.parse(updated.logs); } catch { logs = []; } }
+    res.json({ logs });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// —— 进度条控制：撤销最后一条日志（上一步·日志步） ——
+router.post('/:id/logs/undo', authRequired, requireRole(['admin', 'photographer', 'finance']), async (req, res) => {
+  try {
+    const cur = await get('SELECT logs FROM orders WHERE id = ?', [req.params.id]);
+    if (!cur) return res.status(404).json({ error: '订单不存在' });
+    let logs = [];
+    if (cur.logs) { try { logs = JSON.parse(cur.logs); } catch { logs = []; } }
+    logs.pop();
+    await run('UPDATE orders SET logs = ? WHERE id = ?', [JSON.stringify(logs), req.params.id]);
+    res.json({ logs });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // 更新字段（推进阶段 / 改派 / 备注）
 router.put('/:id', authRequired, requireRole(['admin', 'photographer', 'finance']), async (req, res) => {
   try {
@@ -308,6 +411,18 @@ router.put('/:id', authRequired, requireRole(['admin', 'photographer', 'finance'
         return res.status(409).json({
           error: conflictText(hit), code: 'CONFLICT', forcible: true,
           conflict: { id: hit.id, date: hit.date, status: hit.status, order_no: hit.order_no || '' }
+        });
+      }
+      let firstExecId = null;
+      try {
+        const execArr = JSON.parse(execsText || '[]');
+        if (Array.isArray(execArr) && execArr[0]) firstExecId = execArr[0].id ?? null;
+      } catch { /* 无执行人 */ }
+      const capHit = await capacityConflict(newDate, cur.order_no, firstExecId);
+      if (capHit) {
+        return res.status(409).json({
+          error: `${newDate} 当日已约满（${capHit.count}/${capHit.limit}${capHit.perPhotographer ? '，按摄影师隔离' : ''}），无法继续预约`,
+          code: 'CAPACITY_FULL', forcible: true, capacity: capHit
         });
       }
     }

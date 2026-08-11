@@ -130,6 +130,26 @@ export default function Packages() {
   // 顶部搜索框本地输入（点击【搜索】才提交过滤）
   const [qInput, setQInput] = useState(state.q || '');
   const [advOpen, setAdvOpen] = useState(false); // 高级设置面板
+  // 批量上下架：勾选集合（Set 存 id）
+  const [checked, setChecked] = useState(new Set());
+  const checkAll = list.length > 0 && list.every((p) => checked.has(p.id));
+  const toggleCheck = (id) => setChecked((prev) => {
+    const next = new Set(prev);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    return next;
+  });
+  const toggleCheckAll = () => setChecked(checkAll ? new Set() : new Set(list.map((p) => p.id)));
+  // 批量上架 / 下架（spec：支持批量上下架；下架后 C 端隐藏、后台录单仍可选）
+  const batchStatus = async (next) => {
+    const ids = [...checked];
+    if (!ids.length) return;
+    if (!confirm(`确认批量${next === 'on' ? '上架' : '下架'}选中的 ${ids.length} 个套系？`)) return;
+    try {
+      await http.post('/api/packages/batch-status', { ids, status: next });
+      setChecked(new Set());
+      load();
+    } catch (e) { alert((e.response && e.response.data && e.response.data.error) || '批量操作失败'); }
+  };
 
     const loadCategories = () => http.get('/api/categories').then((r) => setCategories(r.data || [])).catch(() => {});
   const load = () => {
@@ -287,17 +307,42 @@ export default function Packages() {
         {list.length === 0 ? (
           <div className="text-center text-muted py-16">暂无套系，点击右上角「+ 新建套系」开始添加。</div>
         ) : (
-          <div className="divide-y divide-line border border-line rounded-lg overflow-hidden bg-white">
-            {list.map((p) => {
-              const off = p.status === 'off';
-              return (
-                <div key={p.id}
-                  className="flex items-center gap-3 px-4 py-2.5 flex-wrap sm:flex-nowrap hover:bg-panel2/40">
-                  {/* 左侧封面缩略图（方形占位，无文字） */}
-                  <div className="w-16 h-16 rounded-lg bg-panel2 border border-line overflow-hidden shrink-0 flex items-center justify-center">
+          <>
+            {/* 批量操作栏（勾选后出现）：全选 + 批量上架 / 下架 */}
+            <div className="flex items-center gap-3 px-4 py-2 mb-2 rounded-lg border border-line bg-panel2 text-xs">
+              <label className="flex items-center gap-2 cursor-pointer" style={{ color: '#1f2329' }}>
+                <input type="checkbox" checked={checkAll} onChange={toggleCheckAll} />
+                全选
+              </label>
+              <span className="text-muted">{checked.size > 0 ? `已选 ${checked.size} 项` : '勾选套系后可批量上架 / 下架'}</span>
+              {checked.size > 0 && (
+                <div className="flex gap-2 ml-auto">
+                  <button onClick={() => batchStatus('on')}
+                    className="px-3 py-1 rounded text-xs border border-line bg-white text-fg hover:border-brand">批量上架</button>
+                  <button onClick={() => batchStatus('off')}
+                    className="px-3 py-1 rounded text-xs border border-line bg-white text-fg hover:border-brand">批量下架</button>
+                  <button onClick={() => setChecked(new Set())}
+                    className="px-3 py-1 rounded text-xs text-muted hover:text-fg">取消选择</button>
+                </div>
+              )}
+            </div>
+            <div className="divide-y divide-line border border-line rounded-lg overflow-hidden bg-white">
+              {list.map((p) => {
+                const off = p.status === 'off';
+                return (
+                  <div key={p.id}
+                    className="flex items-center gap-[18px] px-4 py-[20px] flex-wrap sm:flex-nowrap hover:bg-panel2/40">
+                  {/* 批量勾选 */}
+                  <input type="checkbox" checked={checked.has(p.id)} onChange={() => toggleCheck(p.id)}
+                    className="shrink-0" title="勾选后批量上架/下架" />
+                  {/* 左侧封面缩略图（参考图：90×90 方形，已下架深色蒙层） */}
+                  <div className="w-[90px] h-[90px] bg-panel2 border border-line overflow-hidden shrink-0 relative">
                     {p.cover_url
                       ? <img src={img(p.cover_url)} alt="" className="w-full h-full object-cover" />
                       : null}
+                    {off && (
+                      <div className="absolute inset-0 flex items-center justify-center text-white text-xs" style={{ background: 'rgba(51,51,51,0.53)' }}>已下架</div>
+                    )}
                   </div>
 
                   {/* 中部内容 */}
@@ -339,10 +384,11 @@ export default function Packages() {
                     </ActionBtn>
                     <ActionBtn title="删除" onClick={() => del(p)}><IconTrash /></ActionBtn>
                   </div>
-                </div>
-              );
-            })}
-          </div>
+                  </div>
+                );
+              })}
+            </div>
+          </>
         )}
       </div>
 

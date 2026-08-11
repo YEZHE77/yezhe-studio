@@ -1,4 +1,6 @@
+import { useEffect, useRef, useState } from 'react';
 import { NavLink } from 'react-router-dom';
+import http, { img } from '../api.js';
 import Icon from '../components/Icon.jsx';
 
 /* ==========================================================================
@@ -10,25 +12,21 @@ import Icon from '../components/Icon.jsx';
    ========================================================================== */
 
 // 有 to 的可点击跳转；无 to 的为占位项（暂未开放）。expandable 为可折叠项（右侧箭头）。
+// sep: 该项后插入分组分隔线
 const ITEMS = [
-  { label: '工作台', to: '/', icon: 'dashboard' },
+  { label: '工作台', to: '/', icon: 'dashboard', sep: true },
   { label: '小程序', icon: 'miniapp', expandable: true },
   { label: '网站', icon: 'website', expandable: true },
-  { label: '资料设置', to: '/settings', icon: 'settings', expandable: true },
+  { label: '资料设置', to: '/settings', icon: 'settings', expandable: true, sep: true },
   { label: '套系', to: '/packages', icon: 'package' },
   { label: '客片', to: '/works', icon: 'photo' },
   { label: '档期', to: '/schedule', icon: 'calendar' },
-  { label: '订单中心', to: '/orders', icon: 'order' },
-  { label: '营销工具', icon: 'marketing' },
+  { label: '订单中心', to: '/orders', icon: 'order', sep: true },
   { label: '在线选片', to: '/selections', icon: 'select' },
-  { label: '图片直播', icon: 'live' },
-  { label: 'AI修图', icon: 'ai' },
-  { label: '客户管理', to: '/customers', icon: 'customer' },
+  { label: '客户管理', to: '/customers', icon: 'customer', sep: true },
   { label: '团队管理', icon: 'team' },
-  { label: '评论管理', to: '/reviews', icon: 'review' },
   { label: '容量管理', to: '/capacity', icon: 'storage', expandable: true },
-  { label: '数据统计', to: '/datacharts', icon: 'finance' },
-  { label: '相册印刷', icon: 'album' }
+  { label: '数据统计', to: '/datacharts', icon: 'finance', sep: true }
 ];
 
 const ITEM_STYLE = {
@@ -52,50 +50,94 @@ function Caret() {
 }
 
 function SidebarContent() {
+  const [studio, setStudio] = useState(null);
+  const fileRef = useRef(null);
+  useEffect(() => {
+    http.get('/api/settings/studio').then((r) => setStudio(r.data || null)).catch(() => {});
+  }, []);
+  // 头像：点击上传更换（/api/upload → 存入 settings.studio.avatar）
+  const onPickAvatar = async (e) => {
+    const f = e.target.files && e.target.files[0];
+    e.target.value = '';
+    if (!f) return;
+    try {
+      const fd = new FormData();
+      fd.append('file', f);
+      fd.append('category', 'avatar');
+      fd.append('isPublic', '1');
+      const r = await http.post('/api/upload', fd);
+      await http.put('/api/settings/studio', { avatar: r.data.url });
+      setStudio((s) => ({ ...(s || {}), avatar: r.data.url }));
+    } catch (err) { alert('头像上传失败'); }
+  };
   return (
     <aside
-      className="w-[220px] bg-white flex flex-col h-full shrink-0"
-      style={{ borderRight: '1px solid #E8E8EB', padding: '32px 12px' }}
+      className="w-[410px] bg-white flex flex-col min-h-screen shrink-0"
+      style={{ borderRight: '1px solid #E8E8EB', padding: '20px 12px 12px' }}
     >
+      {/* 品牌区：可编辑头像 + 工作室名称（位于工作台上方，参考图） */}
+      <div className="flex items-center gap-3 px-2 pb-5" style={{ borderBottom: '1px solid #F0F0F0' }}>
+        <button
+          type="button"
+          onClick={() => fileRef.current && fileRef.current.click()}
+          title="点击更换头像"
+          className="shrink-0 overflow-hidden"
+          style={{ width: 44, height: 44, borderRadius: '50%', background: '#2998EB', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 18, cursor: 'pointer', border: 'none', padding: 0 }}
+        >
+          {studio && studio.avatar
+            ? <img src={img(studio.avatar)} alt="头像" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            : '叶'}
+        </button>
+        <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={onPickAvatar} />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
+          <span style={{ fontSize: 16, fontWeight: 600, color: '#111111', lineHeight: 1.3 }}>叶哲 Studio</span>
+          <span style={{ fontSize: 11, color: '#999999', lineHeight: 1.3 }}>商家管理后台</span>
+        </div>
+      </div>
+
       {/* 菜单 */}
-      <nav className="flex-1 overflow-y-auto">
+      <nav className="flex-1">
         {ITEMS.map((m) => {
           if (m.to) {
             return (
-              <NavLink
-                key={m.label}
-                to={m.to}
-                end={m.to === '/'}
-                className={({ isActive }) =>
-                  'flex items-center transition-colors ' +
-                  (isActive ? 'bg-[#E6F7FF] text-[#2998EB]' : 'text-[#444444] hover:bg-[#F4F7FB]')
-                }
-                style={ITEM_STYLE}
-              >
-                {({ isActive }) => (
-                  <>
-                    <span className="shrink-0 flex items-center" style={{ color: isActive ? '#2998EB' : '#888888' }}>
-                      <Icon name={m.icon} className="w-[18px] h-[18px]" />
-                    </span>
-                    <span className="truncate">{m.label}</span>
-                    {m.expandable && <Caret />}
-                  </>
-                )}
-              </NavLink>
+              <div key={m.label}>
+                <NavLink
+                  to={m.to}
+                  end={m.to === '/'}
+                  className={({ isActive }) =>
+                    'flex items-center transition-colors ' +
+                    (isActive ? 'bg-[#E6F7FF] text-[#2998EB]' : 'text-[#444444] hover:bg-[#F4F7FB]')
+                  }
+                  style={ITEM_STYLE}
+                >
+                  {({ isActive }) => (
+                    <>
+                      <span className="shrink-0 flex items-center" style={{ color: isActive ? '#2998EB' : '#888888' }}>
+                        <Icon name={m.icon} className="w-[18px] h-[18px]" />
+                      </span>
+                      <span className="truncate">{m.label}</span>
+                      {m.expandable && <Caret />}
+                    </>
+                  )}
+                </NavLink>
+                {m.sep && <div style={{ height: 1, background: '#F0F0F0', margin: '6px 8px' }} />}
+              </div>
             );
           }
           return (
-            <div
-              key={m.label}
-              title="敬请期待"
-              className="flex items-center cursor-default select-none text-[#444444] hover:bg-[#F4F7FB] transition-colors"
-              style={ITEM_STYLE}
-            >
-              <span className="shrink-0 flex items-center" style={{ color: '#888888' }}>
-                <Icon name={m.icon} className="w-[18px] h-[18px]" />
-              </span>
-              <span className="truncate">{m.label}</span>
-              {m.expandable && <Caret />}
+            <div key={m.label}>
+              <div
+                title="敬请期待"
+                className="flex items-center cursor-default select-none text-[#444444] hover:bg-[#F4F7FB] transition-colors"
+                style={ITEM_STYLE}
+              >
+                <span className="shrink-0 flex items-center" style={{ color: '#888888' }}>
+                  <Icon name={m.icon} className="w-[18px] h-[18px]" />
+                </span>
+                <span className="truncate">{m.label}</span>
+                {m.expandable && <Caret />}
+              </div>
+              {m.sep && <div style={{ height: 1, background: '#F0F0F0', margin: '6px 8px' }} />}
             </div>
           );
         })}
@@ -113,7 +155,7 @@ export default function Sidebar({ open = false, onClose }) {
         <div className="absolute left-0 top-0 bottom-0"><SidebarContent /></div>
       </div>
       {/* 桌面静态侧栏 */}
-      <div className="hidden lg:block h-full"><SidebarContent /></div>
+      <div className="hidden lg:block"><SidebarContent /></div>
     </>
   );
 }
