@@ -819,8 +819,8 @@ export default function OrderDetail() {
               </div>
             </div>
 
-            {/* 右：四个功能按钮 */}
-            <div className="flex items-center" style={{ gap: 12, position: 'absolute', left: '53.6%' }}>
+            {/* 右：四个功能按钮（整体右移，左缘对齐红线 x=1115 / 64.32%） */}
+            <div className="flex items-center" style={{ gap: 12, position: 'absolute', left: '64.32%' }}>
               <button type="button" onClick={() => setQuestionnaireModal(true)}
                 style={{ height: 32, borderRadius: 2, background: SURVEY_BTN, color: '#fff', fontSize: 12, fontWeight: 400, border: '1px solid ' + SURVEY_BTN, padding: '0 10px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
                 <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><path d="M14 2v6h6" /><path d="M9 13h6M9 17h6" /></svg>
