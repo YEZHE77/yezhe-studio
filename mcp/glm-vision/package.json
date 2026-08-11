@@ -1,0 +1,13 @@
+{
+  "name": "glm-vision-mcp",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "零依赖 MCP 服务：底层调用智谱免费视觉模型 GLM-4.6V-Flash",
+  "bin": {
+    "glm-vision-mcp": "server.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
