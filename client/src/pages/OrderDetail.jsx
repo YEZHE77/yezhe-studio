@@ -49,6 +49,22 @@ const ORDER_STEPS_11 = [
 ];
 // 后端 status（6 阶段）→ 已完成的最后一步（1 起）
 const STATUS_BOUNDARY_11 = { deposit: 1, shot: 5, selecting: 6, retouching: 6, delivered: 10, completed: 11 };
+// 进度条 上一步/下一步：每步的推进动作（状态步走 PUT 状态；日志步走追加操作日志）
+const STEP_ACTIONS = [
+  null,                    // 0 订单生成（建单即完成）
+  { log: '生成合同' },      // 1
+  { log: '沟通确认' },      // 2
+  { log: '拍摄执行' },      // 3
+  { status: 'shot' },      // 4 拍摄结束
+  { status: 'selecting' }, // 5 选片精修
+  { log: '预告片' },        // 6
+  { log: '精修完成' },      // 7
+  { log: '原片打包' },      // 8
+  { status: 'delivered' }, // 9 统一交付
+  { status: 'completed' }  // 10 订单完结
+];
+// 状态步回退映射（上一步）
+const STATUS_REVERT = { shot: 'deposit', selecting: 'shot', delivered: 'selecting', completed: 'delivered' };
 // 作废订单：按日志倒推已推进到哪一步（禁止写死）
 function boundaryFromLogs(logs) {
   const has = (kw) => (logs || []).some((l) => (l.text || '').includes(kw));
@@ -64,18 +80,21 @@ function build11Steps(detail, logs, rawCount = 0) {
   const boundary = detail.cancelled
     ? boundaryFromLogs(logs)
     : (STATUS_BOUNDARY_11[detail.status] || 1);
+  // 日志命中（排除「阶段推进」自动日志，避免回退状态时误判已完成；供 上一步/下一步 逐格控制）
+  const logHas = (s) => (logs || []).some((l) => !/阶段推进/.test(l.text || '') && s.kws.some((kw) => (l.text || '').includes(kw)));
   let currentIdx = 0;
   for (let i = 0; i < ORDER_STEPS_11.length; i++) {
     const s = ORDER_STEPS_11[i];
     const within = (i + 1) <= boundary;
-    const rawDone = !!s.raw && rawCount > 0 && boundary >= 4; // 原片已上传且拍摄已执行
-    if (!within && !rawDone) { currentIdx = i; break; }
+    const rawDone = !!s.raw && (rawCount > 0 || logHas(s)) && boundary >= 4; // 原片已上传/已登记且拍摄已执行
+    const done = within || (!s.raw && logHas(s)) || rawDone;
+    if (!done) { currentIdx = i; break; }
     if (i === ORDER_STEPS_11.length - 1) currentIdx = ORDER_STEPS_11.length;
   }
   return ORDER_STEPS_11.map((s, i) => {
     const within = (i + 1) <= boundary;
-    const rawDone = !!s.raw && rawCount > 0 && boundary >= 4;
-    const done = within || rawDone;
+    const rawDone = !!s.raw && (rawCount > 0 || logHas(s)) && boundary >= 4;
+    const done = within || (!s.raw && logHas(s)) || rawDone;
     const state = done ? 'done' : (i === currentIdx ? 'current' : 'pending');
     let time = null;
     if (done) {
@@ -467,6 +486,39 @@ export default function OrderDetail() {
     try { await http.put('/api/orders/' + detail.id, { status: 'shot' }); reload(); }
     catch (e2) { alert((e2.response && e2.response.data && e2.response.data.error) || '操作失败'); }
   }
+  // 进度条：下一步（状态步走状态机；日志步追加操作日志，逐格点亮）
+  async function stepNext() {
+    if (!detail || detail.cancelled) return;
+    const firstPending = steps.findIndex((s) => s.state !== 'done');
+    const cur = firstPending === -1 ? ORDER_STEPS_11.length : firstPending;
+    if (cur >= ORDER_STEPS_11.length) return;
+    const act = STEP_ACTIONS[cur];
+    if (!act) return;
+    try {
+      if (act.status) await http.put('/api/orders/' + detail.id, { status: act.status });
+      else await http.post('/api/orders/' + detail.id + '/logs', { text: act.log });
+      reload();
+    } catch (e2) { alert((e2.response && e2.response.data && e2.response.data.error) || '操作失败'); }
+  }
+  // 进度条：上一步（撤销最后完成的节点；状态步回退状态机，日志步撤销最后一条日志）
+  async function stepPrev() {
+    if (!detail || detail.cancelled) return;
+    const firstPending = steps.findIndex((s) => s.state !== 'done');
+    const cur = firstPending === -1 ? ORDER_STEPS_11.length : firstPending;
+    if (cur <= 1) return;
+    const j = cur - 1;
+    try {
+      const act = STEP_ACTIONS[j];
+      if (act && act.status) {
+        const rev = STATUS_REVERT[act.status];
+        if (!rev) return;
+        await http.put('/api/orders/' + detail.id, { status: rev });
+      } else {
+        await http.post('/api/orders/' + detail.id + '/logs/undo');
+      }
+      reload();
+    } catch (e2) { alert((e2.response && e2.response.data && e2.response.data.error) || '操作失败'); }
+  }
   async function cancel() {
     if (!detail) return;
     const tip = detail.shoot_date && !detail.date_tbd
@@ -675,6 +727,7 @@ export default function OrderDetail() {
   ];
 
   const steps = build11Steps(detail, detail.logs, photos.raw.length);
+  const curStep = steps.findIndex((s) => s.state !== 'done') === -1 ? ORDER_STEPS_11.length : steps.findIndex((s) => s.state !== 'done');
   const statusText =
     (detail.payment_status === 'unpaid' ? '未付定金' : (PAY_STATUS_LABEL[payKey] || '')) +
     (detail.status ? '，' + (STATUS_LABEL[detail.status] || '') : '');
@@ -733,8 +786,12 @@ export default function OrderDetail() {
 
           {/* 右侧 11 步横向流程进度条（spec：完成=蓝色圆圈+蓝色对勾 / 当前=蓝色实心 / 未达=灰色空心；连接线蓝/灰；支持横向滚动） */}
           <div className="flex-1" style={{ minWidth: 0, padding: '14px 28px', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 12 }}>
-            <div style={{ fontSize: 12, color: TEXT_SUB, textAlign: 'center' }}>
-              {statusText}<span style={{ color: BLUE, marginLeft: 8, cursor: 'pointer' }} onClick={() => setLogModal(true)}>查看记录</span>
+            <div className="flex items-center justify-center" style={{ gap: 14, fontSize: 12, color: TEXT_SUB }}>
+              <button type="button" onClick={stepPrev} disabled={detail.cancelled || curStep <= 1}
+                style={{ height: 24, padding: '0 12px', borderRadius: 3, border: '1px solid #D8D8D8', background: '#fff', color: detail.cancelled || curStep <= 1 ? '#CCCCCC' : TEXT_MAIN, fontSize: 12, cursor: detail.cancelled || curStep <= 1 ? 'not-allowed' : 'pointer' }}>‹ 上一步</button>
+              <span>{statusText}<span style={{ color: BLUE, marginLeft: 8, cursor: 'pointer' }} onClick={() => setLogModal(true)}>查看记录</span></span>
+              <button type="button" onClick={stepNext} disabled={detail.cancelled || curStep >= ORDER_STEPS_11.length}
+                style={{ height: 24, padding: '0 12px', borderRadius: 3, border: '1px solid ' + BLUE, background: BLUE, color: '#fff', fontSize: 12, cursor: detail.cancelled || curStep >= ORDER_STEPS_11.length ? 'not-allowed' : 'pointer', opacity: detail.cancelled || curStep >= ORDER_STEPS_11.length ? 0.4 : 1 }}>下一步 ›</button>
             </div>
             <div style={{ overflowX: 'auto', overflowY: 'hidden' }}>
               <div className="flex items-start" style={{ gap: 0, minWidth: steps.length * 78 + (steps.length - 1) * 22 }}>

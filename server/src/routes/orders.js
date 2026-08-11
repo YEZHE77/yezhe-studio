@@ -344,6 +344,34 @@ router.post('/', authRequired, requireRole(['admin', 'photographer', 'finance'])
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// —— 进度条控制：追加订单操作日志（下一步·日志步；日志文本与 11 步关键词对应） ——
+router.post('/:id/logs', authRequired, requireRole(['admin', 'photographer', 'finance']), async (req, res) => {
+  try {
+    const text = String((req.body && req.body.text) || '').trim();
+    if (!text) return res.status(400).json({ error: '日志内容不能为空' });
+    const cur = await get('SELECT id FROM orders WHERE id = ?', [req.params.id]);
+    if (!cur) return res.status(404).json({ error: '订单不存在' });
+    await appendLog(req.params.id, text);
+    const updated = await get('SELECT logs FROM orders WHERE id = ?', [req.params.id]);
+    let logs = [];
+    if (updated && updated.logs) { try { logs = JSON.parse(updated.logs); } catch { logs = []; } }
+    res.json({ logs });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// —— 进度条控制：撤销最后一条日志（上一步·日志步） ——
+router.post('/:id/logs/undo', authRequired, requireRole(['admin', 'photographer', 'finance']), async (req, res) => {
+  try {
+    const cur = await get('SELECT logs FROM orders WHERE id = ?', [req.params.id]);
+    if (!cur) return res.status(404).json({ error: '订单不存在' });
+    let logs = [];
+    if (cur.logs) { try { logs = JSON.parse(cur.logs); } catch { logs = []; } }
+    logs.pop();
+    await run('UPDATE orders SET logs = ? WHERE id = ?', [JSON.stringify(logs), req.params.id]);
+    res.json({ logs });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // 更新字段（推进阶段 / 改派 / 备注）
 router.put('/:id', authRequired, requireRole(['admin', 'photographer', 'finance']), async (req, res) => {
   try {
