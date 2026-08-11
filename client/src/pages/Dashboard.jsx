@@ -51,9 +51,9 @@ export default function Dashboard() {
   const [storage, setStorage] = useState(null);
   const [showAlert, setShowAlert] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [hiddenMoney, setHiddenMoney] = useState({}); // 账户概览：眼睛图标切换金额显隐
   const nav = useNavigate();
   const now = new Date();
-  const greet = now.getHours() < 12 ? '早上好' : now.getHours() < 18 ? '下午好' : '晚上好';
   const date = now.toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' });
 
   useEffect(() => {
@@ -84,8 +84,7 @@ export default function Dashboard() {
   return (
     <div className="max-w-6xl mx-auto space-y-5">
       <div>
-        <h1 className="text-xl font-semibold text-fg">{greet}，叶哲</h1>
-        <p className="text-muted text-xs mt-0.5">{date} · 今日经营概览</p>
+        <h1 className="text-xl font-semibold text-fg">{date} · 今日经营概览</h1>
       </div>
 
       {/* 品牌头部卡片 */}
@@ -135,14 +134,27 @@ export default function Dashboard() {
       <div className={'grid grid-cols-1 sm:grid-cols-3 gap-4 ' + (loading ? 'opacity-50' : '')}>
         {overview.map((o) => (
           <div key={o.label} className="bg-panel border border-line rounded-xl2 p-5 flex flex-col">
-            <div className="text-xs text-muted">{o.label}</div>
-            <div className="text-2xl font-bold text-fg mt-2">¥{o.value}</div>
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-xs text-muted">{o.label}</span>
+              <button type="button"
+                onClick={() => setHiddenMoney((h) => ({ ...h, [o.label]: !h[o.label] }))}
+                title={hiddenMoney[o.label] ? '显示金额' : '隐藏金额'}
+                style={{ color: '#999999', cursor: 'pointer', background: 'none', border: 'none', padding: 0, display: 'flex' }}>
+                <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  {hiddenMoney[o.label]
+                    ? <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
+                    : <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />}
+                  <line x1="1" y1="1" x2="23" y2="23" />
+                </svg>
+              </button>
+            </div>
+            <div className="text-2xl font-bold text-fg mt-2">{hiddenMoney[o.label] ? '¥••••' : '¥' + o.value}</div>
             <button onClick={() => nav('/finance')} className="mt-auto pt-3 text-xs text-brand hover:underline self-start">明细 →</button>
           </div>
         ))}
       </div>
 
-      {/* 待处理订单：白底等宽卡片 + 底部彩色线 + hover 高亮 */}
+      {/* 待处理订单：白底等宽卡片 + 底部彩色线 + hover 色块上滑 */}
       <div className="bg-panel border border-line rounded-xl2 p-5">
         <div className="text-[15px] font-semibold text-fg mb-4">待处理订单</div>
         <div className="grid grid-cols-5 gap-3">
@@ -157,7 +169,7 @@ export default function Dashboard() {
                 <div className={'text-2xl font-bold ' + b.tx}>{n}</div>
                 <div className="text-xs text-fg/80 mt-1.5">{b.label}</div>
                 <div className={'absolute bottom-0 left-0 right-0 h-1 ' + b.bar} />
-                <div className={'absolute inset-0 opacity-0 group-hover:opacity-10 transition pointer-events-none ' + b.bar.replace('bg-', 'bg-')} />
+                <div className={'absolute inset-0 pointer-events-none -translate-y-full group-hover:translate-y-0 transition-transform duration-300 ' + b.bar + '/10'} />
               </button>
             );
           })}
