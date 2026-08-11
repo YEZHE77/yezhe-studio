@@ -69,9 +69,18 @@ function BigCard({ icon, title, desc, btn, to, onClick }) {
 
 function EyeIcon({ off }) {
   return (
-    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      {off ? <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" /> : <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />}
-      <line x1="1" y1="1" x2="23" y2="23" />
+    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      {off ? (
+        <>
+          <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
+          <line x1="1" y1="1" x2="23" y2="23" />
+        </>
+      ) : (
+        <>
+          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+          <circle cx="12" cy="12" r="3" />
+        </>
+      )}
     </svg>
   );
 }
@@ -128,7 +137,7 @@ export default function Dashboard() {
   const alertStyle = { background: 'rgba(244,113,117,0.08)', color: '#999999' };
 
   return (
-    <div style={{ maxWidth: 1050, marginLeft: 36 }}>
+    <div className="mx-auto" style={{ maxWidth: 1050 }}>
       {/* ===== 顶部：品牌 + 快捷链接（左） + 信息列（右） ===== */}
       <div className="flex items-start gap-[61px]">
         <div className="flex-1 min-w-0">
@@ -247,16 +256,13 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* 品牌管理（参考图：独立卡片 1px #E6E9EF 边框 + 灰色大图标） */}
-      <div className="mt-12">
+      {/* 品牌管理 + 日常管理（合并成一个大卡片，底色渐变优化；内部卡片设计保持不变） */}
+      <div className="bg-white border mt-12" style={{ borderRadius: 8, borderColor: '#E6E9EF', padding: '38px 50px 44px', background: 'linear-gradient(180deg, #FFFFFF 0%, #F5F8FC 100%)' }}>
         <div className="text-[16px] font-medium mb-[38px]" style={{ color: '#333333' }}>品牌管理</div>
         <div className="grid grid-cols-5 gap-[10px]">
           {BRAND_CARDS.map((c) => <BigCard key={c.title} {...c} />)}
         </div>
-      </div>
-
-      {/* 日常管理（参考图：独立卡片） */}
-      <div className="mt-12">
+        <div style={{ height: 1, background: '#E6E9EF', margin: '40px 0' }} />
         <div className="text-[16px] font-medium mb-[38px]" style={{ color: '#333333' }}>日常管理</div>
         <div className="grid grid-cols-5 gap-[10px]">
           {OPS_CARDS.map((c) => <BigCard key={c.title} {...c} />)}

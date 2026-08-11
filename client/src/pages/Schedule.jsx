@@ -907,11 +907,11 @@ function OrderDialog({ orderDlg, personnel, onClose, onSaved }) {
     <div className="fixed inset-0" style={{ background: 'rgba(0,0,0,0.45)', zIndex: 999, overflowY: 'auto' }}>
       <div
         onClick={(e) => e.stopPropagation()}
-        className="bg-white"
         style={{
-          width: 700, minHeight: 1080, margin: '40px auto',
-          borderRadius: 4, boxShadow: '0 4px 18px rgba(0,0,0,0.18)',
-          padding: '38px 42px', position: 'relative', zIndex: 1000
+          width: 560, maxHeight: '88vh', margin: '40px auto',
+          borderRadius: 6, boxShadow: '0 4px 18px rgba(0,0,0,0.18)',
+          padding: '20px 20px 28px', position: 'relative', zIndex: 1000,
+          background: '#F7F7F7', overflowY: 'auto'
         }}
       >
         {/* ===== 头部：居中标题 + 右上角关闭 ===== */}
@@ -1345,72 +1345,91 @@ function ScheduleDialog({ dlg, personnel, onClose, onSaved }) {
 
   return (
     <div className="fixed inset-0 flex items-center justify-center z-50 p-4" style={{ background: 'rgba(0,0,0,0.4)' }}>
-      <div onClick={(e) => e.stopPropagation()} className="w-full max-w-md bg-white rounded-lg p-6 max-h-[88vh] overflow-auto">
-        <div className="flex items-center justify-between mb-4">
-          <div className="font-medium" style={{ color: '#1f2329' }}>{dlg.id ? '编辑档期' : '添加档期'}</div>
-          <button onClick={onClose} className="text-muted text-sm hover:text-fg">✕</button>
+      <div onClick={(e) => e.stopPropagation()} style={{ width: 560, maxHeight: '88vh', background: '#F7F7F7', borderRadius: 6, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        <div className="flex items-center justify-between shrink-0" style={{ padding: '18px 20px', borderBottom: '1px solid #EEEEEE' }}>
+          <div style={{ fontSize: 15, color: '#333333' }}>{dlg.id ? '编辑档期' : '添加档期'}</div>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: 18, lineHeight: 1, color: '#999999', cursor: 'pointer', padding: 2 }}>×</button>
         </div>
 
-        <label className="text-xs text-muted">拍摄日期</label>
-        <input type="date" value={date} disabled={dateTbd} onChange={(e) => setDate(e.target.value)}
-          className="w-full mb-3 px-2 py-2 rounded bg-panel2 border border-[#E5E5E5] text-sm outline-none disabled:opacity-50" style={{ color: '#1f2329' }} />
-
-        {/* 档期状态：订单占用的档期由订单驱动不可手改；空档可手动锁场 */}
-        <label className="text-xs text-muted">档期状态</label>
-        <select value={fromOrder ? 'booked' : status} disabled={fromOrder} onChange={(e) => setStatus(e.target.value)}
-          className="w-full mb-1 px-2 py-2 rounded bg-panel2 border border-[#E5E5E5] text-sm outline-none disabled:opacity-50" style={{ color: '#1f2329' }}>
-          {fromOrder ? <option value="booked">已约（订单 {dlg.order_no} 占用）</option> : (
-            <>
-              <option value="free">空闲（仅登记，不占用）</option>
-              <option value="locked">锁场（手动锁档，占用该日期）</option>
-              <option value="closed">关闭（C 端不可预约）</option>
-            </>
-          )}
-        </select>
-        <div className="text-[11px] mb-3" style={{ color: '#999999' }}>
-          {fromOrder ? '该档期由订单自动占用，改期 / 作废 / 删除订单会自动同步释放。' : '手动锁场不能覆盖已被订单占用或已锁场的日期。'}
-        </div>
-
-        <label className="flex items-center gap-2 text-sm cursor-pointer mb-2" style={{ color: '#1f2329' }}>
-          <input type="checkbox" checked={chooseSession} onChange={(e) => onChooseSession(e.target.checked)} />
-          选择场次（可多选小时时间段）
-        </label>
-        {chooseSession && (
-          <div className="flex flex-wrap gap-2 mb-3">
-            {HOURS.map((h) => {
-              const on = periods.includes(h);
-              return (
-                <button key={h} onClick={() => togglePeriod(h)}
-                  className={'px-2.5 py-1 rounded-lg text-xs border transition ' + (on ? 'bg-[#2e7d32] text-white border-[#2e7d32]' : 'bg-[#d5e8d4] text-[#2e7d32] border-[#bcdcbe]')}>
-                  {h}
-                </button>
-              );
-            })}
+        <div style={{ flex: 1, overflowY: 'auto', padding: 16 }}>
+          {/* 拍摄日期 */}
+          <div style={{ background: '#fff', border: '1px solid #EEEEEE', borderRadius: 6, padding: 16, marginBottom: 12 }}>
+            <label style={{ display: 'block', fontSize: 13, color: '#666666', marginBottom: 8 }}>拍摄日期</label>
+            <input type="date" value={date} disabled={dateTbd} onChange={(e) => setDate(e.target.value)}
+              className="w-full px-2 py-2 rounded border outline-none disabled:opacity-50" style={{ borderColor: '#D8D8D8', color: '#1f2329', fontSize: 13 }} />
           </div>
-        )}
 
-        <label className="flex items-center gap-2 text-sm cursor-pointer mb-2" style={{ color: '#1f2329' }}>
-          <input type="checkbox" checked={dateTbd} onChange={(e) => onDateTbd(e.target.checked)} />
-          日期待定（不占具体日历日，仅作意向登记）
-        </label>
-        {dateTbd && <div className="text-[11px] mb-3 rounded px-2 py-1.5" style={{ background: '#fff9e6', color: '#b9742a' }}>该档期标记为日期待定，日期与场次已置灰，仅记录意向。</div>}
+          {/* 档期状态：订单占用的档期由订单驱动不可手改；空档可手动锁场 */}
+          <div style={{ background: '#fff', border: '1px solid #EEEEEE', borderRadius: 6, padding: 16, marginBottom: 12 }}>
+            <label style={{ display: 'block', fontSize: 13, color: '#666666', marginBottom: 8 }}>档期状态</label>
+            <select value={fromOrder ? 'booked' : status} disabled={fromOrder} onChange={(e) => setStatus(e.target.value)}
+              className="w-full px-2 py-2 rounded border outline-none disabled:opacity-50" style={{ borderColor: '#D8D8D8', color: '#1f2329', fontSize: 13 }}>
+              {fromOrder ? <option value="booked">已约（订单 {dlg.order_no} 占用）</option> : (
+                <>
+                  <option value="free">空闲（仅登记，不占用）</option>
+                  <option value="locked">锁场（手动锁档，占用该日期）</option>
+                  <option value="closed">关闭（C 端不可预约）</option>
+                </>
+              )}
+            </select>
+            <div style={{ fontSize: 11, color: '#999999', marginTop: 8 }}>
+              {fromOrder ? '该档期由订单自动占用，改期 / 作废 / 删除订单会自动同步释放。' : '手动锁场不能覆盖已被订单占用或已锁场的日期。'}
+            </div>
+          </div>
 
-        <label className="text-xs text-muted">绑定执行人</label>
-        <select value={executorId} onChange={(e) => { setExecutorId(e.target.value); const p = personnel.find((x) => String(x.id) === e.target.value); setExecutorName(p ? p.name : ''); }}
-          className="w-full mb-3 px-2 py-2 rounded bg-panel2 border border-[#E5E5E5] text-sm outline-none" style={{ color: '#1f2329' }}>
-          <option value="">未指派</option>
-          {personnel.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-        </select>
+          {/* 选择场次 */}
+          <div style={{ background: '#fff', border: '1px solid #EEEEEE', borderRadius: 6, padding: 16, marginBottom: 12 }}>
+            <label className="flex items-center" style={{ gap: 8, fontSize: 13, color: '#1f2329', cursor: 'pointer', marginBottom: 10 }}>
+              <input type="checkbox" checked={chooseSession} onChange={(e) => onChooseSession(e.target.checked)} />
+              选择场次（可多选小时时间段）
+            </label>
+            {chooseSession && (
+              <div className="flex flex-wrap" style={{ gap: 6 }}>
+                {HOURS.map((h) => {
+                  const on = periods.includes(h);
+                  return (
+                    <button key={h} onClick={() => togglePeriod(h)}
+                      style={{ width: 50, height: 25, fontSize: 12, lineHeight: '25px', padding: 0, border: 'none', borderRadius: 3, cursor: 'pointer', background: on ? '#333333' : '#8DDBB3', color: '#FFFFFF' }}>
+                      {h}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
 
-        <label className="text-xs text-muted">备注</label>
-        <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="如 婚礼跟拍 / 备注"
-          className="w-full mb-3 px-2 py-2 rounded bg-panel2 border border-[#E5E5E5] text-sm outline-none" style={{ color: '#1f2329' }} />
+          {/* 日期待定 */}
+          <div style={{ background: '#fff', border: '1px solid #EEEEEE', borderRadius: 6, padding: 16, marginBottom: 12 }}>
+            <label className="flex items-center" style={{ gap: 8, fontSize: 13, color: '#1f2329', cursor: 'pointer' }}>
+              <input type="checkbox" checked={dateTbd} onChange={(e) => onDateTbd(e.target.checked)} />
+              日期待定（不占具体日历日，仅作意向登记）
+            </label>
+            {dateTbd && <div style={{ fontSize: 12, color: '#C2A773', background: '#FFF9EB', borderRadius: 4, padding: '8px 10px', marginTop: 10 }}>该档期标记为日期待定，日期与场次已置灰，仅记录意向。</div>}
+          </div>
 
-        {localErr && <div className="text-xs text-red-500 mb-2">{localErr}</div>}
+          {/* 绑定执行人 */}
+          <div style={{ background: '#fff', border: '1px solid #EEEEEE', borderRadius: 6, padding: 16, marginBottom: 12 }}>
+            <label style={{ display: 'block', fontSize: 13, color: '#666666', marginBottom: 8 }}>绑定执行人</label>
+            <select value={executorId} onChange={(e) => { setExecutorId(e.target.value); const p = personnel.find((x) => String(x.id) === e.target.value); setExecutorName(p ? p.name : ''); }}
+              className="w-full px-2 py-2 rounded border outline-none" style={{ borderColor: '#D8D8D8', color: '#1f2329', fontSize: 13 }}>
+              <option value="">未指派</option>
+              {personnel.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+            </select>
+          </div>
 
-        <div className="flex gap-2 justify-end mt-2">
-          <button onClick={onClose} className="px-4 py-2 rounded border border-[#E5E5E5] text-muted text-sm hover:bg-panel2">取消</button>
-          <button onClick={save} className="px-4 py-2 rounded text-white text-sm hover:opacity-90" style={{ background: BLUE }}>确认</button>
+          {/* 备注 */}
+          <div style={{ background: '#fff', border: '1px solid #EEEEEE', borderRadius: 6, padding: 16 }}>
+            <label style={{ display: 'block', fontSize: 13, color: '#666666', marginBottom: 8 }}>备注</label>
+            <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="如 婚礼跟拍 / 备注"
+              className="w-full px-2 py-2 rounded border outline-none" style={{ borderColor: '#D8D8D8', color: '#1f2329', fontSize: 13 }} />
+          </div>
+
+          {localErr && <div style={{ fontSize: 12, color: '#F53F3F', marginTop: 8 }}>{localErr}</div>}
+        </div>
+
+        <div className="flex justify-end shrink-0" style={{ gap: 10, padding: '14px 20px', borderTop: '1px solid #EEEEEE' }}>
+          <button onClick={onClose} style={{ padding: '8px 20px', borderRadius: 4, border: '1px solid #D8D8D8', background: '#fff', color: '#666666', fontSize: 13, cursor: 'pointer' }}>取消</button>
+          <button onClick={save} style={{ padding: '8px 20px', borderRadius: 4, border: 'none', background: BLUE, color: '#fff', fontSize: 13, cursor: 'pointer' }}>确认</button>
         </div>
       </div>
     </div>
