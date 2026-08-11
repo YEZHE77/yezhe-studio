@@ -250,7 +250,7 @@ export default function Orders() {
       {/* 大标题（左） / 搜索区（右）；面包屑由全局 <Breadcrumb /> 渲染 */}
       <div className="flex items-start justify-between gap-4 flex-wrap mb-4">
         <div>
-          <h1 className="text-2xl font-semibold" style={{ color: '#1f2329' }}>订单中心</h1>
+          <h1 style={{ fontSize: 16, fontWeight: 400, color: '#000000' }}>订单中心</h1>
         </div>
         <div className="flex items-center gap-2">
           <input
@@ -262,10 +262,10 @@ export default function Orders() {
           />
           <button onClick={doSearch}
             className="px-4 py-2 rounded text-sm whitespace-nowrap"
-            style={{ background: '#2c2c2c', color: '#fff' }}>搜索</button>
+            style={{ background: '#333333', color: '#fff' }}>搜索</button>
           <button onClick={() => setAdvancedOpen((v) => !v)}
             className="px-4 py-2 rounded text-sm whitespace-nowrap"
-            style={{ background: '#2c2c2c', color: '#fff' }}>高级选项</button>
+            style={{ background: '#333333', color: '#fff' }}>高级选项</button>
         </div>
       </div>
 
@@ -273,7 +273,7 @@ export default function Orders() {
       <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg flex-wrap" style={{ background: '#2c2c2c' }}>
         <button onClick={() => setShowForm(true)}
           className="px-4 py-1.5 rounded text-sm whitespace-nowrap"
-          style={{ background: '#2f7cf6', color: '#fff' }}>+ 添加新订单</button>
+          style={{ background: '#2DB7F5', color: '#fff', fontSize: 14 }}>+ 添加新订单</button>
 
         <select value={trash ? '__trash' : state.status}
           onChange={(e) => {
@@ -282,7 +282,7 @@ export default function Orders() {
             setTrash(false); setFilter('status', v);
           }}
           className="px-3 py-1.5 rounded text-sm outline-none border-0"
-          style={{ background: '#3a3a3a', color: '#fff' }}>
+          style={{ background: '#fff', color: '#333' }}>
           <option value="">所有订单 ({stats.total})</option>
           <option value="unpaid">未付定金</option>
           <option value="deposit">已付定金</option>
@@ -297,14 +297,14 @@ export default function Orders() {
 
         <select value={state.executor} onChange={(e) => setFilter('executor', e.target.value)}
           className="px-3 py-1.5 rounded text-sm outline-none border-0"
-          style={{ background: '#3a3a3a', color: '#fff' }}>
+          style={{ background: '#fff', color: '#333' }}>
           <option value="">所有人</option>
           {personnel.map((p) => (<option key={p.id} value={p.id}>{p.name}</option>))}
         </select>
 
         <select value={state.sort} onChange={(e) => setFilter('sort', e.target.value)}
           className="px-3 py-1.5 rounded text-sm outline-none border-0"
-          style={{ background: '#3a3a3a', color: '#fff' }}>
+          style={{ background: '#fff', color: '#333' }}>
           <option value="recent">最近操作</option>
           <option value="shoot_date">拍摄时间</option>
           <option value="amount">订单金额</option>
