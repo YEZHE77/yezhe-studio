@@ -369,8 +369,8 @@ export default function Orders() {
         </div>
       )}
 
-      {/* 订单列表大卡片容器（参考图：浅米色底 #FEF6ED + #E6E9EF 边框，小卡片不变） */}
-      <div className="border rounded-lg mt-4" style={{ background: '#FEF6ED', borderColor: '#E6E9EF', borderRadius: 8, padding: '20px 24px' }}>
+      {/* 订单列表大卡片容器（白底 #FFFFFF + #E6E9EF 边框，小卡片不变） */}
+      <div className="bg-white border rounded-lg mt-4" style={{ borderColor: '#E6E9EF', borderRadius: 8, padding: '16px 20px' }}>
       {/* 订单卡片列表 */}
       {!compact && (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
@@ -385,7 +385,7 @@ export default function Orders() {
             const hasSurvey = Array.isArray(snap.questionnaire) && snap.questionnaire.length > 0;
             const surveyDone = !!(o.questionnaire_answers && String(o.questionnaire_answers) !== '{}' && String(o.questionnaire_answers) !== 'null');
             return (
-              <div key={o.id} className="rounded-xl2 border border-line bg-white p-4 flex flex-col">
+              <div key={o.id} className="rounded-xl2 border border-line bg-white p-4 flex flex-col transition-all duration-200 hover:shadow-md hover:border-[#c9d8e8] hover:-translate-y-0.5">
                 {/* 卡片头部：订单名 + 蓝色铅笔 / 订单编号 ｜ 右上灰色状态 */}
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0 flex-1">
