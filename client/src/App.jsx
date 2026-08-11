@@ -102,7 +102,7 @@ export default function App() {
       {!user && (
         <>
           <Route path="/login" element={<Login />} />
-          <Route path="/" element={<Suspense fallback={<PageLoader />}><Home /></Suspense>} />
+          <Route path="/" element={<Navigate to="/login" replace />} />
           <Route path="/home" element={<Suspense fallback={<PageLoader />}><Home /></Suspense>} />
           <Route path="/my" element={<Suspense fallback={<PageLoader />}><My /></Suspense>} />
           <Route path="/w/:id" element={<Suspense fallback={<PageLoader />}><WorkPublic /></Suspense>} />
