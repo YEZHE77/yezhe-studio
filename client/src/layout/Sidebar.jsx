@@ -32,7 +32,7 @@ const ITEMS = [
 const ITEM_STYLE = {
   height: 40,
   borderRadius: 6,
-  padding: '0 14px 0 151px',
+  padding: '0 14px 0 140px',
   gap: 10,
   fontSize: 13,
   fontWeight: 400,
@@ -119,7 +119,7 @@ function SidebarContent() {
                     </>
                   )}
                 </NavLink>
-                {m.sep && <div style={{ height: 1, background: '#E8E8E8', margin: '6px 14px 6px 156px' }} />}
+                {m.sep && <div style={{ height: 1, background: '#E8E8E8', margin: '6px 14px 6px 140px' }} />}
               </div>
             );
           }
@@ -135,7 +135,7 @@ function SidebarContent() {
                 </span>
                 <span className="truncate">{m.label}</span>
               </div>
-              {m.sep && <div style={{ height: 1, background: '#E8E8E8', margin: '6px 14px 6px 156px' }} />}
+              {m.sep && <div style={{ height: 1, background: '#E8E8E8', margin: '6px 14px 6px 140px' }} />}
             </div>
           );
         })}
