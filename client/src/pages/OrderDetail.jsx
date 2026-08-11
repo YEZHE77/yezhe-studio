@@ -840,7 +840,7 @@ export default function OrderDetail() {
 
         {/* ——— 2、订单信息主体：左侧基础信息 + 右侧灰色小卡片分组 ——— */}
         <div style={{ padding: '0 24px' }}>
-          <div className="flex" style={{ gap: 95, alignItems: 'stretch' }}>
+          <div className="flex" style={{ gap: 208, alignItems: 'stretch' }}>
             {/* 左侧：套系封面图 + 基础信息 */}
             <div style={{ flex: '0 0 46%', display: 'flex', alignItems: 'flex-start', gap: 63, minWidth: 0 }}>
               <div style={{ width: 206, height: 150, borderRadius: 2, overflow: 'hidden', background: '#f3f4f6', flexShrink: 0 }}>
@@ -938,7 +938,7 @@ export default function OrderDetail() {
           </div>
 
           {/* 套系摘要卡：整行紧接执行人下方（参考图） */}
-          <div style={{ background: '#fafbf8', borderRadius: 2, padding: '18px 20px', marginTop: 16, marginLeft: 269, maxWidth: 620 }}>
+          <div style={{ background: '#fafbf8', borderRadius: 2, padding: '18px 20px', marginTop: 16, marginLeft: 269, maxWidth: 763 }}>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px 12px' }}>
                   {(() => {
                     const SUM_FIELDS = [
@@ -978,7 +978,7 @@ export default function OrderDetail() {
           {editingRemark ? (
             <div>
               <div className="flex items-center" style={{ gap: 6, marginBottom: 8 }}>
-                <svg viewBox="0 0 24 24" width={ICON_SIZE} height={ICON_SIZE} fill="none" stroke={ICON_COLOR} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9" /><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z" /></svg>
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke={ICON_COLOR} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><path d="M14 2v6h6" /><path d="M9 13h6M9 17h6" /></svg>
                 <span style={{ fontSize: 12, color: LABEL_COLOR, flexShrink: 0 }}>备注信息：</span>
               </div>
               <textarea
@@ -993,7 +993,7 @@ export default function OrderDetail() {
             </div>
           ) : (
             <div className="flex items-center" style={{ gap: 6, fontSize: 14 }}>
-              <svg viewBox="0 0 24 24" width={ICON_SIZE} height={ICON_SIZE} fill="none" stroke={ICON_COLOR} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M12 20h9" /><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z" /></svg>
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke={ICON_COLOR} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><path d="M14 2v6h6" /><path d="M9 13h6M9 17h6" /></svg>
               <span style={{ fontSize: 12, color: LABEL_COLOR, flexShrink: 0 }}>备注信息：</span>
               <span
                 style={{ position: 'relative', display: 'inline-block', color: detail.remark ? TEXT_MAIN : '#888888', cursor: 'pointer' }}
