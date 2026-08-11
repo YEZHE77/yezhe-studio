@@ -700,9 +700,9 @@ export default function OrderDetail() {
               订单编号：<span style={{ color: '#333333', fontWeight: 400 }}>{detail.order_no}</span>
             </div>
             <button type="button" onClick={finishShoot} disabled={detail.status === 'cancelled'}
-              style={{ alignSelf: 'flex-start', height: 36, padding: '0 15px', borderRadius: 2, background: BLUE, color: '#fff', fontSize: 12, fontWeight: 400, border: '1px solid ' + BLUE, opacity: detail.status === 'cancelled' ? 0.4 : 1, cursor: 'pointer' }}>完成拍摄</button>
+              style={{ alignSelf: 'center', width: 160, height: 36, borderRadius: 2, background: BLUE, color: '#fff', fontSize: 12, fontWeight: 400, border: '1px solid ' + BLUE, opacity: detail.status === 'cancelled' ? 0.4 : 1, cursor: 'pointer' }}>完成拍摄</button>
             <button type="button" onClick={openMiniQr} disabled={miniQrLoading}
-              style={{ alignSelf: 'flex-start', height: 36, padding: '0 15px', borderRadius: 2, background: BLACK_TAG, color: '#fff', fontSize: 12, fontWeight: 400, border: '1px solid ' + BLACK_TAG, cursor: 'pointer', opacity: miniQrLoading ? 0.6 : 1 }}>分享订单</button>
+              style={{ alignSelf: 'center', width: 160, height: 36, borderRadius: 2, background: BLACK_TAG, color: '#fff', fontSize: 12, fontWeight: 400, border: '1px solid ' + BLACK_TAG, cursor: 'pointer', opacity: miniQrLoading ? 0.6 : 1 }}>分享订单</button>
             <div className="flex items-center" style={{ justifyContent: 'space-between', marginTop: 2 }}>
               <button type="button" onClick={cancel}
                 style={{ background: 'none', border: 'none', color: TEXT_MAIN, fontSize: 12, textAlign: 'left', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', gap: 4 }}>
