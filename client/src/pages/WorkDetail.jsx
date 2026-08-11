@@ -61,6 +61,7 @@ export default function WorkDetail() {
   const [brokenSet, setBrokenSet] = useState(new Set());
   const brokenSetRef = useRef(new Set());
   const [zone, setZone] = useState('sample');
+  const [panelTab, setPanelTab] = useState('basic'); // 右侧面板 Tab：basic 基本信息 / album 相册管理
   const [loading, setLoading] = useState(id === 'new' ? false : true);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -670,11 +671,11 @@ export default function WorkDetail() {
                 {Array.from({ length: 10 }).map((_, i) => (
                   <div key={i} className="aspect-square rounded-xl2 bg-ink" />
                 ))}
-              </div>
             </div>
           </div>
         </div>
       </div>
+    </div>
     );
   }
 
@@ -690,9 +691,80 @@ export default function WorkDetail() {
         {!isNew && <button onClick={removeWork} className="px-3 py-1.5 rounded border border-red-200 text-red-500 text-sm hover:bg-red-50">删除作品</button>}
       </div>
 
-      <div className="grid lg:grid-cols-3 gap-5">
-        {/* 左侧：基本信息 */}
-        <div className="lg:col-span-1 space-y-5">
+      <div className="grid lg:grid-cols-5 gap-5">
+        {/* 左侧：手机真机预览（参考图：与真机预览一致） */}
+        <div className="lg:col-span-2">
+          <div className="bg-panel border border-line rounded-xl2 p-5">
+            <div className="flex items-center justify-between flex-wrap gap-2 mb-4">
+              <div className="flex items-center gap-2">
+                <button onClick={onUploadClick} disabled={uploading || preparing} className="px-3 py-1.5 rounded bg-brand text-white text-xs hover:opacity-90 disabled:opacity-50">+ 添加照片</button>
+                <span className="text-xs text-muted">{albums.length}/{albums.length}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <button onClick={openSlide} disabled={!zoneAlbums.length} className="px-3 py-1.5 rounded border border-line text-xs text-muted hover:text-brand disabled:opacity-40">排序</button>
+                <button className="px-3 py-1.5 rounded border border-line text-xs text-muted hover:text-brand">水印设置</button>
+              </div>
+            </div>
+
+            {/* 手机外壳 */}
+            <div className="mx-auto rounded-[28px] border-8 border-[#222] bg-white overflow-hidden" style={{ maxWidth: 300, aspectRatio: '9/18' }}>
+              {/* 顶部状态栏 */}
+              <div className="flex items-center justify-center pt-2 pb-1">
+                <div className="w-20 h-4 rounded-full bg-[#222]" />
+              </div>
+              {/* 封面 / 首图 */}
+              <div className="relative h-40 bg-black">
+                {zoneAlbums[0]
+                  ? <img src={img(zoneAlbums[0].photo_url)} alt="" className="w-full h-full object-cover" />
+                  : <div className="w-full h-full flex items-center justify-center text-white/60 text-xs">暂无照片</div>}
+              </div>
+              {/* 标题 + 创建时间（点击编辑标题） */}
+              <div className="px-4 pt-3">
+                <div className="text-base font-semibold text-fg truncate cursor-pointer" title="点击编辑标题" onClick={() => setPanelTab('basic')}>
+                  {form.title || '点击编辑标题'}
+                </div>
+                <div className="text-[11px] text-muted mt-0.5">创建于 {(work && work.created_at ? new Date(work.created_at).toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric' }) : new Date().toLocaleDateString('zh-CN'))}</div>
+              </div>
+              {/* 描述 + 清除/自动生成 */}
+              <div className="px-4 py-3">
+                <div className="text-xs text-muted leading-relaxed line-clamp-4 min-h-[56px]">{form.album_copy || '和你一起旅行拍照。这句话里，有我最想做的三件事…'}</div>
+                <div className="flex items-center gap-2 mt-2">
+                  <button type="button" onClick={() => setForm({ ...form, album_copy: '' })} className="text-[11px] text-muted hover:text-brand">清除</button>
+                  <button type="button" onClick={() => setForm({ ...form, album_copy: '和你一起旅行拍照。这句话里，有我最想做的三件事…' })} className="text-[11px] text-brand">自动生成</button>
+                </div>
+              </div>
+              {/* 照片九宫格 */}
+              <div className="px-4 grid grid-cols-3 gap-1">
+                {zoneAlbums.slice(0, 6).map((p) => (
+                  <div key={p.id} className="aspect-square bg-panel overflow-hidden">
+                    <img src={img(p.photo_url)} alt="" className="w-full h-full object-cover" />
+                  </div>
+                ))}
+                {zoneAlbums.length === 0 && (
+                  <div className="col-span-3 h-24 border border-dashed border-line rounded flex items-center justify-center text-xs text-muted">添加照片后在此预览</div>
+                )}
+              </div>
+              {/* 添加视频 */}
+              <button className="mx-4 mt-3 mb-4 w-[calc(100%-32px)] py-2 rounded-lg border border-dashed border-line text-xs text-muted hover:text-brand">+ 添加视频</button>
+              {/* 底部绑定/客服（参考图悬浮按钮） */}
+              <div className="flex items-center justify-center gap-3 pb-4">
+                <span className="text-[10px] text-muted">绑定</span>
+                <span className="text-[10px] text-muted">客服</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* 右侧：Tab 编辑面板 */}
+        <div className="lg:col-span-3">
+          <div className="flex items-center gap-1 mb-4" style={{ borderBottom: '1px solid #eee' }}>
+            <button onClick={() => setPanelTab('basic')}
+              style={{ padding: '10px 18px', fontSize: 14, border: 'none', background: 'none', cursor: 'pointer', color: panelTab === 'basic' ? '#2998EB' : '#666666', borderBottom: panelTab === 'basic' ? '2px solid #2998EB' : '2px solid transparent' }}>基本信息</button>
+            <button onClick={() => setPanelTab('album')}
+              style={{ padding: '10px 18px', fontSize: 14, border: 'none', background: 'none', cursor: 'pointer', color: panelTab === 'album' ? '#2998EB' : '#666666', borderBottom: panelTab === 'album' ? '2px solid #2998EB' : '2px solid transparent' }}>相册管理</button>
+          </div>
+          {panelTab === 'basic' && (
+        <div className="space-y-5">
           <form onSubmit={saveBasic} className="bg-panel border border-line rounded-xl2 p-5">
             <h2 className="text-base font-semibold text-fg mb-4">基本信息</h2>
             <div className="space-y-3">
@@ -778,9 +850,9 @@ export default function WorkDetail() {
             </div>
           )}
         </div>
-
-        {/* 右侧：相册管理 */}
-        <div className="lg:col-span-2">
+          )}
+          {panelTab === 'album' && (
+        <div>
           <div ref={uploadAreaRef} className="bg-panel border border-line rounded-xl2 p-5 min-h-[500px]">
             <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
               <div>
@@ -898,6 +970,8 @@ export default function WorkDetail() {
               <div className="text-xs text-muted mt-3">💡 提示：可用鼠标拖动照片自定义排序，也可在照片底部输入排序号。</div>
             )}
           </div>
+        </div>
+        )}
         </div>
       </div>
       {/* 上传预览弹窗：选图后展示缩略图，所有照片（含重复）均可上传 */}
