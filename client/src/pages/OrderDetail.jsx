@@ -1337,7 +1337,7 @@ export default function OrderDetail() {
                   <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#999999" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><path d="m6 9 6 6 6-6" /></svg>
                 </button>
               </div>
-              <div className="grid grid-cols-3" style={{ gap: 12, marginBottom: 16 }}>
+              <div className="grid grid-cols-1 md:grid-cols-3" style={{ gap: 12, marginBottom: 16 }}>
                 <div>
                   <div style={{ fontSize: 13, color: '#666666', marginBottom: 4 }}>订单价格</div>
                   <div style={{ background: '#FAFAFA', border: '1px solid ' + DIV, borderRadius: 4, padding: '8px 12px', fontSize: 13, color: '#333333' }}>¥{total.toLocaleString()}</div>
@@ -1407,7 +1407,7 @@ export default function OrderDetail() {
                   <div style={{ fontSize: 13, color: '#666666', marginBottom: 4 }}>订单名称</div>
                   <input value={editForm.order_name} onChange={(e) => setEditForm({ ...editForm, order_name: e.target.value })} placeholder="如「张三 & 李四 婚纱照」" style={{ ...modalInputStyle, fontSize: 13 }} />
                 </div>
-                <div className="grid grid-cols-2" style={{ gap: 12, marginBottom: 14 }}>
+                <div className="grid grid-cols-1 sm:grid-cols-2" style={{ gap: 12, marginBottom: 14 }}>
                   <div>
                     <div style={{ fontSize: 13, color: '#666666', marginBottom: 4 }}>新郎姓名 <span style={{ color: '#ef4444' }}>*</span></div>
                     <input value={editForm.groom_name} onChange={(e) => setEditForm({ ...editForm, groom_name: e.target.value })} placeholder="新郎姓名" style={{ ...modalInputStyle, borderColor: editErrors.customer_name ? '#ef4444' : DIV, fontSize: 13 }} />
@@ -1426,7 +1426,7 @@ export default function OrderDetail() {
               </div>
 
               {/* 卡片 2：订单详情 */}
-              <div style={{ flex: '1 1 50%', minWidth: 0, background: '#FAFAFA', border: '1px solid ' + DIV, borderRadius: 6, padding: 18 }}>
+              <div style={{ flex: '1 1 260px', minWidth: 0, background: '#FAFAFA', border: '1px solid ' + DIV, borderRadius: 6, padding: 18 }}>
                 <div style={{ fontSize: 14, fontWeight: 400, color: '#333333', marginBottom: 16, paddingBottom: 10, borderBottom: '1px solid ' + DIV }}>
                   <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 6, verticalAlign: -2 }}>
                     <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><path d="M14 2v6h6" />
@@ -1676,7 +1676,7 @@ export default function OrderDetail() {
                   ? '加片单价与含修张数取自本订单下单时的套系快照，之后修改套系不会影响本单核算。'
                   : '该订单无套系快照（历史数据），已按当前套系配置核算。'}
               </div>
-              <div className="grid grid-cols-2" style={{ gap: '8px 16px', fontSize: 13, color: '#333333' }}>
+              <div className="grid grid-cols-1 sm:grid-cols-2" style={{ gap: '8px 16px', fontSize: 13, color: '#333333' }}>
                 <div>套系含修张数：<b>{addonBox.included}</b> 张</div>
                 <div>客户已选：<b>{addonBox.picked}</b> 张</div>
                 <div>快照加片费：<b>{addonBox.feeText || ('¥' + addonBox.unit + '/张')}</b></div>
@@ -1723,7 +1723,7 @@ export default function OrderDetail() {
                 style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#999999', fontSize: 22, lineHeight: 1 }} aria-label="关闭">×</button>
             </div>
             {/* 顶部 6 字段 2 列网格 */}
-            <div className="grid grid-cols-2" style={{ gap: '12px 24px', padding: '20px 24px' }}>
+            <div className="grid grid-cols-1 sm:grid-cols-2" style={{ gap: '12px 24px', padding: '20px 24px' }}>
               <div style={{ fontSize: 14 }}><span style={{ color: '#777777' }}>订单总价：</span><b style={{ color: '#222222' }}>¥{total.toLocaleString()}</b></div>
               <div style={{ fontSize: 14 }}><span style={{ color: '#777777' }}>加片费：</span><b style={{ color: '#222222' }}>{sumExtraFee}</b></div>
               <div style={{ fontSize: 14 }}><span style={{ color: '#777777' }}>拍摄时长：</span><b style={{ color: '#222222' }}>{sumDuration}</b></div>
@@ -1770,8 +1770,8 @@ export default function OrderDetail() {
 
       {/* 执行人选择弹窗（芯片标签区域的蓝色 + 按钮唤起；支持多选勾选，确认后直接提交后端） */}
       {execPickerOpen && (
-        <div onClick={() => setExecPickerOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 96, background: 'rgba(0,0,0,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div onClick={(e) => e.stopPropagation()} style={{ background: '#fff', borderRadius: 8, padding: 24, width: 360, maxHeight: '70vh', overflow: 'auto', boxShadow: '0 8px 32px rgba(0,0,0,0.18)' }}>
+        <div onClick={() => setExecPickerOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 96, background: 'rgba(0,0,0,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: isMobile ? 16 : 0 }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ background: '#fff', borderRadius: 8, padding: 24, width: isMobile ? '100%' : 360, maxWidth: isMobile ? '100%' : 360, maxHeight: '70vh', overflow: 'auto', boxShadow: '0 8px 32px rgba(0,0,0,0.18)' }}>
             <div style={{ fontSize: 16, fontWeight: 400, color: '#222222', marginBottom: 16 }}>选择执行人</div>
             {personnel.length === 0 && <div style={{ padding: '12px 0', fontSize: 14, color: '#999999' }}>暂无人员（请先在设置中配置执行人）</div>}
             {personnel.map((p) => {
