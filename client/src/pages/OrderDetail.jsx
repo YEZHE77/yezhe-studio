@@ -840,7 +840,7 @@ export default function OrderDetail() {
 
         {/* ——— 2、订单信息主体：左侧基础信息 + 右侧灰色小卡片分组 ——— */}
         <div style={{ padding: '0 24px' }}>
-          <div className="flex" style={{ gap: 48, alignItems: 'stretch' }}>
+          <div className="flex" style={{ gap: 95, alignItems: 'stretch' }}>
             {/* 左侧：套系封面图 + 基础信息 */}
             <div style={{ flex: '0 0 46%', display: 'flex', alignItems: 'flex-start', gap: 63, minWidth: 0 }}>
               <div style={{ width: 206, height: 150, borderRadius: 2, overflow: 'hidden', background: '#f3f4f6', flexShrink: 0 }}>
