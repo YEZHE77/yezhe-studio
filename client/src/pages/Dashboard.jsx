@@ -128,7 +128,7 @@ export default function Dashboard() {
   const alertStyle = { background: 'rgba(244,113,117,0.08)', color: '#999999' };
 
   return (
-    <div className="mx-auto" style={{ maxWidth: 1050 }}>
+    <div style={{ maxWidth: 1050, marginLeft: 36 }}>
       {/* ===== 顶部：品牌 + 快捷链接（左） + 信息列（右） ===== */}
       <div className="flex items-start gap-[61px]">
         <div className="flex-1 min-w-0">

@@ -347,9 +347,9 @@ export default function Schedule() {
   };
 
   return (
-    <div className="w-full min-h-screen" style={{ background: G_PAGE_BG, paddingRight: 116 }}>
+    <div className="w-full min-h-screen flex items-stretch" style={{ background: G_PAGE_BG }}>
       {/* 白色日历大卡 */}
-      <div className="bg-white" style={{ border: `1px solid ${G_BORDER}`, borderRadius: 6, margin: '0 0 12px 12px', minHeight: 'calc(100vh - 44px)' }}>
+      <div className="bg-white shrink-0" style={{ border: `1px solid ${G_BORDER}`, borderRadius: 6, width: 890, minHeight: 'calc(100vh - 44px)' }}>
         {/* 模块 B：顶部操作栏 */}
         <div className="flex items-center justify-between relative" style={{ padding: '14px 16px', borderBottom: `1px solid ${G_BORDER}` }}>
           {/* 状态图例下拉 */}
@@ -565,8 +565,8 @@ export default function Schedule() {
         );
       })()}
 
-      {/* 模块 D：右侧深色悬浮面板 */}
-      <div className="fixed top-0 right-0 bottom-0 flex flex-col" style={{ width: 140, background: G_PANEL, color: '#FFFFFF', zIndex: 20, padding: '20px 14px' }}>
+      {/* 模块 D：右侧档期详情面板（流式布局，与日历主体紧挨着，参考图比例 w=150） */}
+      <div className="flex flex-col shrink-0" style={{ width: 150, background: G_PANEL, color: '#FFFFFF', padding: '20px 14px', minHeight: 'calc(100vh - 44px)' }}>
         <div className="text-center" style={{ fontSize: 12, color: '#FFFFFF', marginBottom: 16 }}>{selDate ? `${Number(selParts[0])}年${Number(selParts[1])}月` : `${y}年${m}月`}</div>
         <div className="flex justify-center">
           <div className="flex items-center justify-center" style={{ background: G_YELLOW, width: 80, height: 80, borderRadius: 3, marginBottom: 14 }}>

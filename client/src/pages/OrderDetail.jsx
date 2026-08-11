@@ -182,6 +182,7 @@ export default function OrderDetail() {
   const [pkgPickerCat, setPkgPickerCat] = useState('');
   const [chOpen, setChOpen] = useState(false);       // 编辑弹窗：渠道来源下拉
   const [slotOpen, setSlotOpen] = useState(false);   // 编辑弹窗：拍摄时间下拉
+  const [addSched, setAddSched] = useState(false);   // 编辑弹窗：添加档期弹窗（参考拾光盒子新增订单弹窗）
   // 改拍摄日期档期冲突二次确认（验收④）
   const [dateConflict, setDateConflict] = useState(null);
   // 更换套系弹窗（验收⑥）
@@ -1324,6 +1325,8 @@ export default function OrderDetail() {
                     </div>
                   )}
                 </div>
+                <button type="button" onClick={() => setAddSched(true)}
+                  style={{ marginTop: 8, background: BLUE, color: '#fff', border: 'none', borderRadius: 3, fontSize: 12, padding: '6px 14px', cursor: 'pointer' }}>＋ 添加档期</button>
               </div>
 
             {/* 双卡片横向布局 */}
@@ -1462,6 +1465,17 @@ export default function OrderDetail() {
             </div>
           </form>
         </div>
+      )}
+
+      {/* 添加档期弹窗（复制拾光盒子「新增订单」弹窗；确认后写回拍摄日期/时段） */}
+      {addSched && (
+        <AddScheduleModal
+          initialDate={editForm.shoot_date}
+          initialSlots={editForm.time_slots}
+          packageName={(pkgInfo && pkgInfo.name) || detail.order_package || ''}
+          onClose={() => setAddSched(false)}
+          onConfirm={(date, slots) => { setEditForm((f) => ({ ...f, shoot_date: date, time_slots: slots })); setSlotOpen(false); setAddSched(false); }}
+        />
       )}
 
       {/* 选取已有套系（编辑弹窗：点击套系名称弹窗，参考图：分类+搜索+列表） */}
@@ -2050,6 +2064,75 @@ const moreItemStyle = {
 const filterCtrlStyle = { height: 32, padding: '0 8px', border: 'none', color: '#16ADF7', background: 'transparent', fontSize: 12, outline: 'none', cursor: 'pointer' };
 const filterBtnStyle = { height: 32, padding: '0 16px', borderRadius: 2, border: '1px solid #D5DBE2', color: '#444B53', background: '#fff', fontSize: 12, cursor: 'pointer' };
 const modalInputStyle = { width: '100%', padding: '8px 12px', borderRadius: 4, border: '1px solid ' + DIV, color: '#222222', fontSize: 14, outline: 'none', background: '#fff' };
+
+/* 添加档期弹窗（1:1 复刻拾光盒子「新增订单」弹窗：选择场次 24 时段 + 日期待定 + 套系名称） */
+function AddScheduleModal({ initialDate = '', initialSlots = [], packageName = '', onClose, onConfirm }) {
+  const [date, setDate] = useState(initialDate || '');
+  const [slots, setSlots] = useState(Array.isArray(initialSlots) ? initialSlots : []);
+  const [tbd, setTbd] = useState(false);
+  const [err, setErr] = useState('');
+  const toggle = (h) => setSlots((s) => s.includes(h) ? s.filter((x) => x !== h) : [...s, h]);
+  const confirm = () => {
+    if (!tbd && !date) return setErr('请选择拍摄日期');
+    onConfirm(date, slots);
+  };
+  return (
+    <div className="fixed inset-0 z-[95] flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.45)' }}>
+      <div onClick={(e) => e.stopPropagation()} style={{ width: 560, maxHeight: '88vh', background: '#F7F7F7', borderRadius: 6, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        <div className="flex items-center justify-between shrink-0" style={{ padding: '18px 20px', borderBottom: '1px solid #EEEEEE' }}>
+          <span style={{ fontSize: 15, color: '#333333' }}>添加档期</span>
+          <button type="button" onClick={onClose} style={{ background: 'none', border: 'none', fontSize: 18, lineHeight: 1, color: '#999999', cursor: 'pointer', padding: 2 }}>×</button>
+        </div>
+        <div style={{ flex: 1, overflowY: 'auto', padding: 16 }}>
+          {/* 拍摄日期 */}
+          <div style={{ background: '#fff', border: '1px solid #EEEEEE', borderRadius: 6, padding: 16, marginBottom: 12 }}>
+            <div style={{ fontSize: 13, color: '#666666', marginBottom: 8 }}>拍摄日期</div>
+            <input type="date" value={tbd ? '' : date} disabled={tbd} onChange={(e) => setDate(e.target.value)} style={{ ...modalInputStyle, fontSize: 13 }} />
+          </div>
+          {/* 选择场次 */}
+          <div style={{ background: '#fff', border: '1px solid #EEEEEE', borderRadius: 6, padding: 16, marginBottom: 12 }}>
+            <div className="flex items-center justify-between" style={{ marginBottom: 12 }}>
+              <span style={{ fontSize: 13, color: '#666666' }}>选择场次</span>
+              <label className="flex items-center" style={{ gap: 6, fontSize: 12, color: '#AAAAAA', cursor: 'pointer' }}>
+                <input type="checkbox" checked={slots.length > 0} onChange={(e) => setSlots(e.target.checked ? HOURS.slice(0, 1) : [])} />
+                选择场次
+              </label>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(8, 50px)', gap: '8px 5px' }}>
+              {HOURS.map((h) => {
+                const on = slots.includes(h);
+                return (
+                  <button key={h} type="button" onClick={() => toggle(h)}
+                    style={{ width: 50, height: 25, fontSize: 12, lineHeight: '25px', padding: 0, border: 'none', borderRadius: 3, cursor: 'pointer', background: on ? '#333333' : '#8DDBB3', color: '#FFFFFF' }}>
+                    {h}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+          {/* 日期待定 */}
+          <div style={{ background: '#fff', border: '1px solid #EEEEEE', borderRadius: 6, padding: 16, marginBottom: 12 }}>
+            <label className="flex items-center" style={{ gap: 8, fontSize: 13, color: '#333333', cursor: 'pointer' }}>
+              <input type="checkbox" checked={tbd} onChange={(e) => setTbd(e.target.checked)} />
+              日期待定
+            </label>
+            {tbd && <div style={{ fontSize: 12, color: '#C2A773', background: '#FFF9EB', borderRadius: 4, padding: '8px 10px', marginTop: 10 }}>该档期标记为日期待定，日期与场次已置灰，仅记录意向。</div>}
+          </div>
+          {/* 套系名称（只读展示） */}
+          <div style={{ background: '#fff', border: '1px solid #EEEEEE', borderRadius: 6, padding: 16 }}>
+            <div style={{ fontSize: 13, color: '#666666', marginBottom: 8 }}>套系名称</div>
+            <div style={{ ...modalInputStyle, fontSize: 13, color: '#333333', background: '#FAFAFA' }}>{packageName || '—'}</div>
+          </div>
+          {err && <div style={{ fontSize: 12, color: '#F53F3F', marginTop: 8 }}>{err}</div>}
+        </div>
+        <div className="flex justify-end shrink-0" style={{ gap: 10, padding: '14px 20px', borderTop: '1px solid #EEEEEE' }}>
+          <button type="button" onClick={onClose} style={modalCancelStyle}>取消</button>
+          <button type="button" onClick={confirm} style={modalSaveStyle}>确认</button>
+        </div>
+      </div>
+    </div>
+  );
+}
 const modalCancelStyle = { padding: '8px 16px', borderRadius: 4, fontSize: 14, color: '#666666', background: '#fff', border: '1px solid ' + DIV, cursor: 'pointer' };
 const modalSaveStyle = { padding: '8px 16px', borderRadius: 4, fontSize: 14, color: '#fff', background: BLUE, border: 'none', cursor: 'pointer' };
 
