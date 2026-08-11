@@ -295,7 +295,7 @@ export default function Orders() {
       </div>
 
       {/* 深色筛选栏：+添加新订单 → 状态 → 执行者 → 排序 → 列表视图 → 筛选 */}
-      <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg flex-wrap" style={{ background: '#2c2c2c' }}>
+      <div className="flex items-center gap-3 px-3 py-5 rounded-lg flex-wrap" style={{ background: '#2c2c2c' }}>
         <button onClick={() => setShowForm(true)}
           className="px-4 py-1.5 rounded text-sm whitespace-nowrap"
           style={{ background: '#2DB7F5', color: '#fff', fontSize: 14 }}>+ 添加新订单</button>
