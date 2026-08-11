@@ -202,7 +202,7 @@ export default function Dashboard() {
 
       {/* 账户概览（参考图：4 等分居中 + 区间竖线，标题/进入下移到红框位置，标签后跟帮助/编辑图标） */}
       <div className={'bg-white border mt-8 ' + (loading ? 'opacity-50' : '')} style={{ borderRadius: 4, borderColor: '#F0F0F0', padding: '60px 16px 38px' }}>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 sm:divide-x sm:divide-[#F0F0F0]">
+        <div className="grid grid-cols-2 lg:grid-cols-4 sm:divide-x sm:divide-[#F0F0F0]">
           <div className="text-center">
             <div className="flex items-center justify-center gap-2">
               <span className="text-[16px]" style={{ color: '#333333', fontWeight: 400 }}>账户概览</span>
