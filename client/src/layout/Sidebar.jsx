@@ -106,14 +106,14 @@ function SidebarContent() {
                   end={m.to === '/'}
                   className={({ isActive }) =>
                     'flex items-center justify-end transition-colors ' +
-                    (isActive ? 'bg-[#F0FDFF] text-[#2998EB]' : 'text-[#444444] hover:bg-[#EDF0F3]')
+                    (isActive ? 'bg-[#F0FDFF] text-[#2DB7F5]' : 'text-[rgba(0,0,0,0.65)] hover:bg-[#EDF0F3]')
                   }
                   style={ITEM_STYLE}
                 >
                   {({ isActive }) => (
                     <>
-                      <span className="shrink-0 flex items-center" style={{ color: isActive ? '#2998EB' : '#888888' }}>
-                        <Icon name={m.icon} className="w-4 h-4" />
+                      <span className="shrink-0 flex items-center" style={{ color: isActive ? '#2DB7F5' : '#AAAAAA' }}>
+                        <Icon name={m.icon} className="w-[14px] h-[14px]" />
                       </span>
                       <span className="truncate">{m.label}</span>
                       {m.expandable && <Caret />}
@@ -128,11 +128,11 @@ function SidebarContent() {
             <div key={m.label}>
               <div
                 title="敬请期待"
-                className="flex items-center justify-end cursor-default select-none text-[#444444] hover:bg-[#EDF0F3] transition-colors"
+                className="flex items-center justify-end cursor-default select-none text-[rgba(0,0,0,0.65)] hover:bg-[#EDF0F3] transition-colors"
                 style={ITEM_STYLE}
               >
-                <span className="shrink-0 flex items-center" style={{ color: '#888888' }}>
-                  <Icon name={m.icon} className="w-4 h-4" />
+                <span className="shrink-0 flex items-center" style={{ color: '#AAAAAA' }}>
+                  <Icon name={m.icon} className="w-[14px] h-[14px]" />
                 </span>
                 <span className="truncate">{m.label}</span>
                 {m.expandable && <Caret />}
