@@ -3,9 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import http, { formatBytes } from '../api.js';
 import Icon from '../components/Icon.jsx';
 
-// 待处理订单：5 灰块（参考拾光盒子，数字 28px/500，块间无间距，底部 5px 彩色线，悬停色块上扩填满+文字变白）
+// 待处理订单：5 灰块（参考拾光盒子，数字 28px/500，块间无间距，底部 5px 彩色线，悬停色块上扩填满+文字变白；首块=已支付定金并跳转已付定金订单）
 const PENDING = [
-  { key: 'unpaid', label: '未支付定金', line: '#FA7D77' },
+  { key: 'deposit', label: '已支付定金', line: '#FA7D77' },
   { key: 'shoot', label: '等待拍摄', line: '#49C5AE' },
   { key: 'delivered', label: '未交片', line: '#FAC054' },
   { key: 'selecting', label: '待选片', line: '#6DB3E2' },
@@ -200,8 +200,8 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* 账户概览（参考图：4 等分居中 + 区间竖线，标签后跟帮助/编辑图标，金额眼睛已删除） */}
-      <div className={'bg-white border mt-8 ' + (loading ? 'opacity-50' : '')} style={{ borderRadius: 4, borderColor: '#F0F0F0', padding: '25px 0 38px' }}>
+      {/* 账户概览（参考图：4 等分居中 + 区间竖线，标题/进入下移到红框位置，标签后跟帮助/编辑图标） */}
+      <div className={'bg-white border mt-8 ' + (loading ? 'opacity-50' : '')} style={{ borderRadius: 4, borderColor: '#F0F0F0', padding: '51px 0 38px' }}>
         <div className="grid grid-cols-4 divide-x divide-[#F0F0F0]">
           <div className="text-center">
             <div className="flex items-center justify-center gap-2">
