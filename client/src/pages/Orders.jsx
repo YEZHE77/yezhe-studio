@@ -300,6 +300,9 @@ export default function Orders() {
           className="px-4 py-1.5 rounded text-sm whitespace-nowrap"
           style={{ background: '#2DB7F5', color: '#fff', fontSize: 14 }}>+ 添加新订单</button>
 
+        <div className="flex-1" />
+
+        <span className="text-xs whitespace-nowrap" style={{ color: '#fff' }}>状态</span>
         <select value={trash ? '__trash' : state.status}
           onChange={(e) => {
             const v = e.target.value;
@@ -320,6 +323,7 @@ export default function Orders() {
           <option value="__trash">回收站</option>
         </select>
 
+        <span className="text-xs whitespace-nowrap" style={{ color: '#fff' }}>执行者</span>
         <select value={state.executor} onChange={(e) => setFilter('executor', e.target.value)}
           className="px-3 py-1.5 rounded text-sm outline-none border-0"
           style={{ background: '#fff', color: '#333' }}>
@@ -327,6 +331,7 @@ export default function Orders() {
           {personnel.map((p) => (<option key={p.id} value={p.id}>{p.name}</option>))}
         </select>
 
+        <span className="text-xs whitespace-nowrap" style={{ color: '#fff' }}>排序</span>
         <select value={state.sort} onChange={(e) => setFilter('sort', e.target.value)}
           className="px-3 py-1.5 rounded text-sm outline-none border-0"
           style={{ background: '#fff', color: '#333' }}>
@@ -335,19 +340,15 @@ export default function Orders() {
           <option value="amount">订单金额</option>
         </select>
 
-        <button onClick={doExport}
-          className="px-3 py-1.5 rounded text-sm whitespace-nowrap"
-          style={{ background: '#3a3a3a', color: '#fff', border: '1px solid #555555' }}>导出 Excel</button>
-
-        <div className="flex-1" />
-
         <button onClick={() => setCompact((v) => !v)} title={compact ? '切换为卡片视图' : '切换为列表视图'}
           className="p-1.5 rounded" style={{ color: compact ? '#2f7cf6' : '#bbb' }}>
           <IconList />
         </button>
         <button onClick={() => setAdvancedOpen((v) => !v)} title="展开 / 收起筛选"
-          className="p-1.5 rounded" style={{ color: advancedOpen ? '#2f7cf6' : '#bbb' }}>
+          className="flex items-center gap-1 p-1.5 rounded text-xs whitespace-nowrap"
+          style={{ color: advancedOpen ? '#2f7cf6' : '#fff' }}>
           <IconFilter />
+          <span>筛选</span>
         </button>
       </div>
 
