@@ -108,8 +108,8 @@ export default function Appointments() {
 
   return (
     <div className="max-w-6xl mx-auto">
-      <div className="flex items-center justify-between mb-4">
-        <h1 className="text-xl font-semibold text-white">预约管理</h1>
+      <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
+        <h1 className="text-xl text-white">预约管理</h1>
         <span className="text-xs text-muted">来自 C 端小程序客户提交的预约 · 接受后自动生成订单并锁定档期</span>
       </div>
 
@@ -121,20 +121,21 @@ export default function Appointments() {
         <button onClick={() => setState((s) => ({ ...s, status: 'rejected' }))} className={btn(state.status === 'rejected', '已拒绝')}>已拒绝</button>
         <button onClick={() => setState((s) => ({ ...s, status: 'cancelled' }))} className={btn(state.status === 'cancelled', '已取消')}>已取消</button>
         <input value={state.q} onChange={(e) => setState((s) => ({ ...s, q: e.target.value }))} placeholder="搜索称呼 / 电话"
-          className="ml-auto w-56 px-3 py-2 rounded bg-panel border border-line text-white text-sm outline-none" />
+          className="ml-auto w-full sm:w-56 px-3 py-2 rounded bg-panel border border-line text-white text-sm outline-none" />
       </div>
 
       <div className="bg-panel border border-line rounded-xl2 overflow-hidden">
-        <table className="w-full text-sm">
+        <div className="overflow-x-auto">
+        <table className="w-full min-w-[800px] text-sm">
           <thead>
             <tr className="text-muted text-left border-b border-line">
-              <th className="p-3 font-medium">称呼</th>
-              <th className="p-3 font-medium">联系电话</th>
-              <th className="p-3 font-medium">意向套系</th>
-              <th className="p-3 font-medium">期望日期 / 时段</th>
-              <th className="p-3 font-medium">备注</th>
-              <th className="p-3 font-medium">状态</th>
-              <th className="p-3 font-medium text-right">操作</th>
+              <th className="p-3">称呼</th>
+              <th className="p-3">联系电话</th>
+              <th className="p-3">意向套系</th>
+              <th className="p-3">期望日期 / 时段</th>
+              <th className="p-3">备注</th>
+              <th className="p-3">状态</th>
+              <th className="p-3 text-right">操作</th>
             </tr>
           </thead>
           <tbody>
@@ -161,6 +162,7 @@ export default function Appointments() {
             {list.length === 0 && <tr><td colSpan="7" className="p-8 text-center text-muted">暂无预约</td></tr>}
           </tbody>
         </table>
+        </div>
       </div>
 
       {/* 详情弹窗 */}
@@ -168,7 +170,7 @@ export default function Appointments() {
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" onClick={() => setDetail(null)}>
           <div onClick={(e) => e.stopPropagation()} className="w-full max-w-md bg-panel border border-line rounded-xl2 p-6">
             <div className="flex items-center justify-between mb-4">
-              <div className="text-white font-medium">预约详情</div>
+              <div className="text-white">预约详情</div>
               <button onClick={() => setDetail(null)} className="text-muted text-sm">✕</button>
             </div>
             <div className="space-y-2 text-sm mb-4">
@@ -202,7 +204,7 @@ export default function Appointments() {
       {confirming && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[60] p-4" onClick={() => setConfirming(null)}>
           <div onClick={(e) => e.stopPropagation()} className="w-full max-w-md bg-panel border border-line rounded-xl2 p-6">
-            <div className="text-white font-medium mb-1">接受预约并生成订单</div>
+            <div className="text-white mb-1">接受预约并生成订单</div>
             <div className="text-xs text-muted mb-4">客户「{confirming.a.name}」· {confirming.a.package_name || '未选套系'} · 接受后将自动占用档期并创建订单绑定其小程序账号</div>
             <label className="text-xs text-muted">拍摄日期</label>
             <input value={confirming.date} onChange={(e) => setConfirming({ ...confirming, date: e.target.value })} type="date"
@@ -237,7 +239,7 @@ export default function Appointments() {
       {rejecting && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[60] p-4" onClick={() => setRejecting(null)}>
           <div onClick={(e) => e.stopPropagation()} className="w-full max-w-md bg-panel border border-line rounded-xl2 p-6">
-            <div className="text-white font-medium mb-1">拒绝预约</div>
+            <div className="text-white mb-1">拒绝预约</div>
             <div className="text-xs text-muted mb-4">客户「{rejecting.a.name}」</div>
             <label className="text-xs text-muted">拒绝原因（将同步给客户）</label>
             <textarea value={rejecting.reason} onChange={(e) => setRejecting({ ...rejecting, reason: e.target.value })} placeholder="如 该日期已排满，建议改期…"
@@ -254,7 +256,7 @@ export default function Appointments() {
       {editing && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[60] p-4" onClick={() => setEditing(null)}>
           <form onClick={(e) => e.stopPropagation()} onSubmit={saveEdit} className="w-full max-w-md bg-panel border border-line rounded-xl2 p-6">
-            <div className="text-white font-medium mb-4">编辑预约</div>
+            <div className="text-white mb-4">编辑预约</div>
             <input required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="称呼"
               className="w-full mb-3 px-3 py-2 rounded bg-panel2 border border-line text-white text-sm outline-none" />
             <input required value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="联系电话"
@@ -297,7 +299,7 @@ export default function Appointments() {
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[60] p-4" onClick={() => setConv(null)}>
           <div onClick={(e) => e.stopPropagation()} className="w-full max-w-sm bg-panel border border-line rounded-xl2 p-6 text-center">
             <div className="text-emerald-400 text-2xl mb-2">✓</div>
-            <div className="text-white font-medium mb-1">已接受并生成订单</div>
+            <div className="text-white mb-1">已接受并生成订单</div>
             <div className="text-sm text-muted mb-4">客户「{conv.name}」的订单已创建并锁定档期，已绑定其小程序账号</div>
             <div className="flex gap-2 justify-center">
               <button onClick={() => { setConv(null); nav('/orders'); }} className="px-4 py-2 rounded bg-panel2 border border-line text-white text-sm">去订单中心</button>

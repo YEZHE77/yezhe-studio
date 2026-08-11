@@ -167,6 +167,13 @@ function pickAvatarColor(name) {
 export default function OrderDetail() {
   const { id } = useParams();
   const nav = useNavigate();
+  // 移动端适配：<768px 视为手机，内联样式按 isMobile 降级（堆叠 / 去固定像素 / 减小留白）
+  const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' ? window.innerWidth < 768 : false);
+  useEffect(() => {
+    const onResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
   const [detail, setDetail] = useState(null);
   const [pkgs, setPkgs] = useState([]);
   const [catList, setCatList] = useState([]);
@@ -755,10 +762,10 @@ export default function OrderDetail() {
   return (
     <div style={{ background: '#f7f7f7', minHeight: '100vh', padding: '0 16px 24px', maxWidth: 1280, width: '100%', margin: '0 auto' }}>
       {/* ============ Module 3：订单状态卡片（白色卡片 + 左侧操作 + 右侧 4 步进度条，复刻第3张） ============ */}
-      <section style={{ margin: '8px 24px 0', background: '#FFFFFF', border: '1px solid ' + CARD_BORDER, borderTop: '3px solid ' + TEAL, borderRadius: 4, boxShadow: '0 1px 5px rgba(0,0,0,0.04)' }}>
-        <div className="flex items-stretch" style={{ minHeight: 132 }}>
+      <section style={{ margin: isMobile ? '8px 12px 0' : '8px 24px 0', background: '#FFFFFF', border: '1px solid ' + CARD_BORDER, borderTop: '3px solid ' + TEAL, borderRadius: 4, boxShadow: '0 1px 5px rgba(0,0,0,0.04)' }}>
+        <div className="flex items-stretch" style={{ minHeight: 132, flexWrap: isMobile ? 'wrap' : 'nowrap' }}>
           {/* 左侧订单操作区 */}
-          <div className="flex flex-col justify-center shrink-0" style={{ width: '23%', minWidth: 240, padding: '16px 28px', gap: 10, position: 'relative' }}>
+          <div className="flex flex-col justify-center shrink-0" style={{ width: isMobile ? '100%' : '23%', minWidth: isMobile ? 0 : 240, padding: isMobile ? '16px 20px' : '16px 28px', gap: 10, position: 'relative' }}>
             <div style={{ fontSize: 12, color: TEXT_SUB, marginBottom: 2 }}>
               订单编号：<span style={{ color: '#333333', fontWeight: 400 }}>{detail.order_no}</span>
             </div>
@@ -782,11 +789,11 @@ export default function OrderDetail() {
           </div>
 
           {/* 竖向分割线 */}
-          <div style={{ width: 1, background: DIV, margin: '16px 0' }} />
+          <div style={{ width: 1, background: DIV, margin: '16px 0', flexShrink: 0, display: isMobile ? 'none' : 'block' }} />
 
           {/* 右侧 11 步横向流程进度条（spec：完成=蓝色圆圈+蓝色对勾 / 当前=蓝色实心 / 未达=灰色空心；连接线蓝/灰；支持横向滚动） */}
-          <div className="flex-1" style={{ minWidth: 0, padding: '14px 28px', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 12 }}>
-            <div className="flex items-center justify-center" style={{ gap: 14, fontSize: 12, color: TEXT_SUB }}>
+          <div className="flex-1" style={{ minWidth: 0, flex: isMobile ? '1 1 100%' : undefined, padding: isMobile ? '14px 16px' : '14px 28px', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 12 }}>
+            <div className="flex items-center justify-center" style={{ gap: 14, fontSize: 12, color: TEXT_SUB, flexWrap: 'wrap', rowGap: 8 }}>
               <button type="button" onClick={stepPrev} disabled={detail.cancelled || curStep <= 1}
                 style={{ height: 24, padding: '0 12px', borderRadius: 3, border: '1px solid #D8D8D8', background: '#fff', color: detail.cancelled || curStep <= 1 ? '#CCCCCC' : TEXT_MAIN, fontSize: 12, cursor: detail.cancelled || curStep <= 1 ? 'not-allowed' : 'pointer' }}>‹ 上一步</button>
               <span>{statusText}<span style={{ color: BLUE, marginLeft: 8, cursor: 'pointer' }} onClick={() => setLogModal(true)}>查看记录</span></span>
@@ -824,13 +831,13 @@ export default function OrderDetail() {
       </section>
 
       {/* ============ 客户&订单基础信息卡片（全卡 1:1 复刻，750 设计稿，rpx） ============ */}
-      <section style={{ margin: '8px 24px 0', background: '#FFFFFF', borderRadius: CARD_RADIUS, boxShadow: CARD_SHADOW }}>
+      <section style={{ margin: isMobile ? '8px 12px 0' : '8px 24px 0', background: '#FFFFFF', borderRadius: CARD_RADIUS, boxShadow: CARD_SHADOW }}>
 
         {/* ——— 1、卡片头部行 ——— */}
-        <div style={{ padding: '20px 24px 0' }}>
-          <div className="flex items-center justify-between" style={{ position: 'relative' }}>
+        <div style={{ padding: isMobile ? '16px 16px 0' : '20px 24px 0' }}>
+          <div className="flex items-center justify-between" style={{ position: 'relative', flexWrap: 'wrap', gap: isMobile ? 10 : 0 }}>
             {/* 左：圆形客户头像 / 客户姓名 / 手机号 / 编辑笔 / 红色边框【客户信息】 */}
-            <div className="flex items-center" style={{ gap: 8 }}>
+            <div className="flex items-center" style={{ gap: 8, flexWrap: 'wrap' }}>
               <div style={{ width: 40, height: 40, borderRadius: '50%', background: AVATAR_PURPLE, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 20, fontWeight: 400, flexShrink: 0 }}>{custInitial}</div>
               <span style={{ fontSize: 14, color: '#333333' }}>{custName}</span>
               <span style={{ fontSize: 12, color: '#999999' }}>{phoneList.length ? phoneList.join(' / ') : (detail.customer_phone || '')}</span>
@@ -876,25 +883,25 @@ export default function OrderDetail() {
               </div>
             </div>
 
-            {/* 右：四个功能按钮（整体右移，左缘对齐红线 x=1115 / 64.32%） */}
-            <div className="flex items-center" style={{ gap: 12, position: 'absolute', left: '64.32%' }}>
+            {/* 右：四个功能按钮（整体右移，左缘对齐红线 x=1115 / 64.32%；移动端改为常规流式换行） */}
+            <div className="flex items-center flex-wrap" style={{ gap: isMobile ? 8 : 12, position: isMobile ? 'static' : 'absolute', left: isMobile ? undefined : '64.32%' }}>
               <button type="button" onClick={() => setQuestionnaireModal(true)}
-                style={{ height: 32, minWidth: 96, justifyContent: 'center', borderRadius: 2, background: SURVEY_BTN, color: '#fff', fontSize: 12, fontWeight: 400, border: '1px solid ' + SURVEY_BTN, padding: '0 10px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
+                style={{ height: 32, minWidth: 96, justifyContent: 'center', borderRadius: 2, background: SURVEY_BTN, color: '#fff', fontSize: 12, fontWeight: 400, border: '1px solid ' + SURVEY_BTN, padding: '0 10px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, flex: isMobile ? '1 1 45%' : undefined }}>
                 <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><path d="M14 2v6h6" /><path d="M9 13h6M9 17h6" /></svg>
                 调查问卷
               </button>
               <button type="button" onClick={openEdit}
-                style={{ ...secBtnStyle, minWidth: 96, justifyContent: 'center', display: 'flex', alignItems: 'center', gap: 6 }}>
+                style={{ ...secBtnStyle, minWidth: 96, justifyContent: 'center', display: 'flex', alignItems: 'center', gap: 6, flex: isMobile ? '1 1 45%' : undefined }}>
                 <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>
                 编辑订单
               </button>
               <button type="button" onClick={openAddonBox}
-                style={{ ...secBtnStyle, minWidth: 96, justifyContent: 'center', display: 'flex', alignItems: 'center', gap: 6 }}>
+                style={{ ...secBtnStyle, minWidth: 96, justifyContent: 'center', display: 'flex', alignItems: 'center', gap: 6, flex: isMobile ? '1 1 45%' : undefined }}>
                 <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="4" y1="21" x2="4" y2="14" /><line x1="4" y1="10" x2="4" y2="3" /><line x1="12" y1="21" x2="12" y2="12" /><line x1="12" y1="8" x2="12" y2="3" /><line x1="20" y1="21" x2="20" y2="16" /><line x1="20" y1="12" x2="20" y2="3" /><line x1="1" y1="14" x2="7" y2="14" /><line x1="9" y1="8" x2="15" y2="8" /><line x1="17" y1="16" x2="23" y2="16" /></svg>
                 加片设置
               </button>
               <button type="button" onClick={() => { setCustMoreMenu((m) => !m); setMoreMenu(false); }}
-                style={{ ...secBtnStyle, minWidth: 96, justifyContent: 'center', display: 'flex', alignItems: 'center', gap: 6, position: 'relative' }}>
+                style={{ ...secBtnStyle, minWidth: 96, justifyContent: 'center', display: 'flex', alignItems: 'center', gap: 6, position: 'relative', flex: isMobile ? '1 1 45%' : undefined }}>
                 <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="5" cy="12" r="1" /><circle cx="12" cy="12" r="1" /><circle cx="19" cy="12" r="1" /></svg>
                 更多设置
                 {custMoreMenu && renderMoreMenu(() => setCustMoreMenu(false), 'right')}
@@ -906,16 +913,16 @@ export default function OrderDetail() {
         </div>
 
         {/* ——— 2、订单信息主体：左侧基础信息 + 右侧灰色小卡片分组 ——— */}
-        <div style={{ padding: '0 24px' }}>
-          <div className="flex" style={{ gap: 208, alignItems: 'stretch' }}>
+        <div style={{ padding: isMobile ? '0 16px' : '0 24px' }}>
+          <div className="flex flex-wrap" style={{ gap: isMobile ? 16 : 208, alignItems: 'stretch' }}>
             {/* 左侧：套系封面图 + 基础信息 */}
-            <div style={{ flex: '0 0 46%', display: 'flex', alignItems: 'flex-start', gap: 63, minWidth: 0 }}>
-              <div style={{ width: 206, height: 150, borderRadius: 2, overflow: 'hidden', background: '#f3f4f6', flexShrink: 0 }}>
+            <div style={{ flex: isMobile ? '1 1 100%' : '0 0 46%', display: 'flex', alignItems: 'flex-start', flexWrap: 'wrap', gap: isMobile ? 16 : 63, minWidth: 0 }}>
+              <div style={{ width: isMobile ? '100%' : 206, height: isMobile ? 200 : 150, borderRadius: 2, overflow: 'hidden', background: '#f3f4f6', flexShrink: 0 }}>
                 {pkgInfo && pkgInfo.cover_url
                   ? <img src={img(pkgInfo.cover_url)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                   : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#999', fontSize: 12 }}>套系缩略图</div>}
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, minWidth: 0, flex: 1 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, minWidth: 0, flex: 1, flexBasis: isMobile ? '100%' : undefined }}>
                 <InfoRow label="套系名称" labelColor={LABEL_COLOR}
                   icon={<><rect x="4" y="3" width="16" height="18" rx="2" /><line x1="8" y1="8" x2="16" y2="8" /><line x1="8" y1="12" x2="16" y2="12" /><line x1="8" y1="16" x2="12" y2="16" /></>}
                   value={pkgInfo && pkgInfo.name && pkgInfo.name !== '—' ? pkgInfo.name : '暂无'} />
@@ -1005,8 +1012,8 @@ export default function OrderDetail() {
           </div>
 
           {/* 套系摘要卡：整行紧接执行人下方（参考图） */}
-          <div style={{ background: '#fafbf8', borderRadius: 2, padding: '18px 20px', marginTop: 16, marginLeft: 269, maxWidth: 763 }}>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px 12px' }}>
+          <div style={{ background: '#fafbf8', borderRadius: 2, padding: '18px 20px', marginTop: 16, marginLeft: isMobile ? 0 : 269, maxWidth: isMobile ? '100%' : 763 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)', gap: '16px 12px' }}>
                   {(() => {
                     const SUM_FIELDS = [
                       { t: '总价', v: '¥' + total.toLocaleString(), ic: <path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" /> },
@@ -1041,7 +1048,7 @@ export default function OrderDetail() {
         <div style={{ marginTop: 0 }} />
 
         {/* ——— 5、卡片底部：备注信息 ——— */}
-        <div style={{ padding: '16px 16px 44px 317px' }}>
+        <div style={{ padding: isMobile ? '16px 16px 24px' : '16px 16px 44px 317px' }}>
           {editingRemark ? (
             <div>
               <div className="flex items-center" style={{ gap: 6, marginBottom: 8 }}>
@@ -1082,7 +1089,7 @@ export default function OrderDetail() {
       </section>
 
       {/* ============ Module 5：底片上传 Tab 卡片（保留既有上传/选片功能，仅换肤） ============ */}
-      <section style={{ margin: '8px 24px 0', background: '#FFFFFF', border: '1px solid ' + CARD_BORDER, borderRadius: 4 }}>
+      <section style={{ margin: isMobile ? '8px 12px 0' : '8px 24px 0', background: '#FFFFFF', border: '1px solid ' + CARD_BORDER, borderRadius: 4 }}>
         {/* Tab 头部 */}
         <div className="flex items-center" style={{ height: 44, borderBottom: '1px solid ' + DIV }}>
           <div className="flex">
@@ -1092,7 +1099,7 @@ export default function OrderDetail() {
             return (
               <button key={tb.k} type="button" onClick={() => setImgTab(tb.k)}
                 style={{
-                  padding: '0 20px', height: 44, background: 'none', border: 'none', cursor: 'pointer', fontSize: 12,
+                  padding: '0 14px', height: 44, background: 'none', border: 'none', cursor: 'pointer', fontSize: 12,
                   color: active ? BLUE : 'rgba(0,0,0,0.65)',
                   borderBottom: active ? '2px solid ' + BLUE : '2px solid transparent', fontWeight: 400
                 }}>{tb.t}({count})</button>
@@ -1102,7 +1109,7 @@ export default function OrderDetail() {
           <div style={{ flex: 1 }} />
         </div>
 
-        <div style={{ padding: '12px 24px 24px' }}>
+        <div style={{ padding: isMobile ? '12px 16px 16px' : '12px 24px 24px' }}>
           {/* 提示警告条（黄色提示 + 灯泡图标） */}
           <div style={{ background: '#FAFAEC', color: '#D1B372', fontSize: 11, padding: '9px 16px', display: 'flex', alignItems: 'center', gap: 8, borderRadius: 0 }}>
             <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.3 1 2.3h6c0-1 .4-1.8 1-2.3A7 7 0 0 0 12 2z" /></svg>
@@ -1211,7 +1218,7 @@ export default function OrderDetail() {
       </section>
 
       {/* ============ Module 6：底部记录卡片（订单状态详情 / 交易记录 / 下载记录），与顶部【查看记录】弹窗并存 ============ */}
-      <section style={{ margin: '8px 24px 24px', background: '#FFFFFF', border: '1px solid ' + CARD_BORDER, borderRadius: CARD_RADIUS, boxShadow: CARD_SHADOW, overflow: 'hidden' }}>
+      <section style={{ margin: isMobile ? '8px 12px 24px' : '8px 24px 24px', background: '#FFFFFF', border: '1px solid ' + CARD_BORDER, borderRadius: CARD_RADIUS, boxShadow: CARD_SHADOW, overflow: 'hidden' }}>
         <div className="flex" style={{ height: 46, borderBottom: '1px solid ' + DIV, padding: '0 8px' }}>
           {[{ k: 'status', t: '订单状态详情' }, { k: 'trade', t: '交易记录' }, { k: 'download', t: '下载记录' }].map((tb) => {
             const active = logTab === tb.k;
@@ -1225,7 +1232,7 @@ export default function OrderDetail() {
             );
           })}
         </div>
-        <div style={{ padding: '20px 24px' }}>
+        <div style={{ padding: isMobile ? '16px' : '20px 24px' }}>
           {logTab === 'status' && (
             <>
               <div style={{ color: '#222222', marginBottom: 8 }}>操作日志</div>
@@ -1387,9 +1394,9 @@ export default function OrderDetail() {
               </div>
 
             {/* 双卡片横向布局 */}
-            <div style={{ display: 'flex', gap: 20, marginBottom: 20 }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 20, marginBottom: 20 }}>
               {/* 卡片 1：基本信息 */}
-              <div style={{ flex: '1 1 50%', minWidth: 0, background: '#FAFAFA', border: '1px solid ' + DIV, borderRadius: 6, padding: 18 }}>
+              <div style={{ flex: '1 1 260px', minWidth: 0, background: '#FAFAFA', border: '1px solid ' + DIV, borderRadius: 6, padding: 18 }}>
                 <div style={{ fontSize: 14, fontWeight: 400, color: '#333333', marginBottom: 16, paddingBottom: 10, borderBottom: '1px solid ' + DIV }}>
                   <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 6, verticalAlign: -2 }}>
                     <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" />

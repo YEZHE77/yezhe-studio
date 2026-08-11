@@ -37,7 +37,7 @@ export default function DataCharts() {
     <div className="space-y-5" style={{ maxWidth: 1050 }}>
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-xl font-semibold text-fg">数据统计</h1>
+          <h1 className="text-xl text-fg">数据统计</h1>
           <p className="text-xs text-muted mt-0.5">经营数据可视化 · 实时取自收款流水与订单</p>
         </div>
         <div className="flex items-center gap-2">
@@ -54,7 +54,7 @@ export default function DataCharts() {
         {sumCards.map((c) => (
           <div key={c.label} className="bg-panel border border-line rounded-xl2 p-4 relative overflow-hidden">
             <div className="text-xs text-muted">{c.label}</div>
-            <div className="text-xl font-bold text-fg mt-2">{c.value}</div>
+            <div className="text-xl text-fg mt-2">{c.value}</div>
             <div className={'absolute bottom-0 left-0 right-0 h-1 ' + c.bar} />
           </div>
         ))}
@@ -62,7 +62,7 @@ export default function DataCharts() {
 
       {/* 月度净收入折线 */}
       <div className="bg-panel border border-line rounded-xl2 p-5">
-        <div className="text-[15px] font-semibold text-fg mb-1">月度净收入趋势</div>
+        <div className="text-[15px] text-fg mb-1">月度净收入趋势</div>
         <div className="text-xs text-muted mb-3">{year} 年 · 实收减去退款</div>
         {byMonth.length
           ? <LineChart labels={months} series={netSeries} valueFormat={(v) => '¥' + (v >= 1000 ? (v / 1000).toFixed(1) + 'k' : v)} />
@@ -71,7 +71,7 @@ export default function DataCharts() {
 
       {/* 实收 / 退款对比 */}
       <div className="bg-panel border border-line rounded-xl2 p-5">
-        <div className="text-[15px] font-semibold text-fg mb-1">月度实收 / 退款</div>
+        <div className="text-[15px] text-fg mb-1">月度实收 / 退款</div>
         <div className="text-xs text-muted mb-3">{year} 年</div>
         {byMonth.length
           ? <LineChart labels={months} series={recvSeries} valueFormat={(v) => '¥' + (v >= 1000 ? (v / 1000).toFixed(1) + 'k' : v)} />
@@ -81,14 +81,14 @@ export default function DataCharts() {
       {/* 套系销量 */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div className="bg-panel border border-line rounded-xl2 p-5">
-          <div className="text-[15px] font-semibold text-fg mb-1">套系销量（单）</div>
+          <div className="text-[15px] text-fg mb-1">套系销量（单）</div>
           <div className="text-xs text-muted mb-3">按订单数排序</div>
           {packages.length
             ? <BarChart data={packages.map((p) => ({ label: p.name, value: p.sold }))} color="#2f7cf6" />
             : <Empty />}
         </div>
         <div className="bg-panel border border-line rounded-xl2 p-5">
-          <div className="text-[15px] font-semibold text-fg mb-1">套系营收（¥）</div>
+          <div className="text-[15px] text-fg mb-1">套系营收（¥）</div>
           <div className="text-xs text-muted mb-3">实收金额</div>
           {packages.length
             ? <BarChart data={packages.map((p) => ({ label: p.name, value: p.revenue }))} color="#16a34a" valueFormat={(v) => v >= 1000 ? (v / 1000).toFixed(1) + 'k' : v} />
@@ -99,8 +99,8 @@ export default function DataCharts() {
       {/* 待处理分布 */}
       {stats && (
         <div className="bg-panel border border-line rounded-xl2 p-5">
-          <div className="text-[15px] font-semibold text-fg mb-3">待处理订单分布</div>
-          <div className="grid grid-cols-5 gap-3">
+          <div className="text-[15px] text-fg mb-3">待处理订单分布</div>
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
             {[
               { k: 'shoot', label: '等待拍摄', c: 'text-teal-500', b: 'bg-teal-400' },
               { k: 'selecting', label: '待选片', c: 'text-sky-500', b: 'bg-sky-400' },
@@ -108,7 +108,7 @@ export default function DataCharts() {
               { k: 'delivered', label: '未交片', c: 'text-orange-500', b: 'bg-orange-400' }
             ].map((x) => (
               <div key={x.k} className="relative bg-panel border border-line rounded-xl2 pt-5 pb-4 text-center">
-                <div className={'text-2xl font-bold ' + x.c}>{stats.pendingBlocks[x.k] || 0}</div>
+                <div className={'text-2xl ' + x.c}>{stats.pendingBlocks[x.k] || 0}</div>
                 <div className="text-xs text-fg/80 mt-1.5">{x.label}</div>
                 <div className={'absolute bottom-0 left-0 right-0 h-1 ' + x.b} />
               </div>

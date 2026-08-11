@@ -347,7 +347,7 @@ export default function Schedule() {
   };
 
   return (
-    <div className="w-full min-h-screen flex items-stretch" style={{ background: G_PAGE_BG }}>
+    <div className="w-full min-h-screen flex items-stretch overflow-x-auto" style={{ background: G_PAGE_BG }}>
       {/* 白色日历大卡 */}
       <div className="bg-white shrink-0" style={{ border: `1px solid ${G_BORDER}`, borderRadius: 6, width: 890, minHeight: 'calc(100vh - 44px)' }}>
         {/* 模块 B：顶部操作栏 */}
@@ -453,7 +453,7 @@ export default function Schedule() {
         const sk = statusKeyOf(r);
         const stColor = sk ? G_STATUS_MAP[sk].color : '#B1E89C';
         const rect = hoverTooltip.rect;
-        const W = 310; // 620rpx
+        const W = Math.min(310, (window.innerWidth || 375) - 24); // 620rpx，窄屏收缩
         const ARROW = 12; // 24rpx
         const GAP = 8;
 
@@ -885,7 +885,7 @@ function OrderDialog({ orderDlg, personnel, onClose, onSaved }) {
       <div
         onClick={(e) => e.stopPropagation()}
         style={{
-          width: 560, maxHeight: '88vh', margin: '40px auto',
+          width: '100%', maxWidth: 560, maxHeight: '88vh', margin: '40px auto',
           borderRadius: 6, boxShadow: '0 4px 18px rgba(0,0,0,0.18)',
           padding: '20px 20px 28px', position: 'relative', zIndex: 1000,
           background: '#F7F7F7', overflowY: 'auto'
@@ -1256,7 +1256,7 @@ function PackagePicker({ pkgList, value, onPick }) {
           style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform .15s' }}><path d="m6 9 6 6 6-6" /></svg>
       </button>
       {open && (
-        <div className="absolute left-0 bg-white z-30" style={{ top: 44, width: 320, maxHeight: 320, overflowY: 'auto', borderRadius: 4, border: `1px solid ${MODAL_BORDER}`, boxShadow: '0 2px 10px rgba(0,0,0,0.12)' }}>
+        <div className="absolute left-0 bg-white z-30" style={{ top: 44, width: 320, maxWidth: '100%', maxHeight: 320, overflowY: 'auto', borderRadius: 4, border: `1px solid ${MODAL_BORDER}`, boxShadow: '0 2px 10px rgba(0,0,0,0.12)' }}>
           {pkgList.length === 0 && <div style={{ padding: '12px', fontSize: 14, color: '#999999' }}>暂无套系</div>}
           {pkgList.map((p) => {
             const on = String(p.id) === String(value);
@@ -1322,7 +1322,7 @@ function ScheduleDialog({ dlg, personnel, onClose, onSaved }) {
 
   return (
     <div className="fixed inset-0 flex items-center justify-center z-50 p-4" style={{ background: 'rgba(0,0,0,0.4)' }}>
-      <div onClick={(e) => e.stopPropagation()} style={{ width: 560, maxHeight: '88vh', background: '#F7F7F7', borderRadius: 6, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      <div onClick={(e) => e.stopPropagation()} style={{ width: '100%', maxWidth: 560, maxHeight: '88vh', background: '#F7F7F7', borderRadius: 6, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         <div className="flex items-center justify-between shrink-0" style={{ padding: '18px 20px', borderBottom: '1px solid #EEEEEE' }}>
           <div style={{ fontSize: 15, color: '#333333' }}>{dlg.id ? '编辑档期' : '添加档期'}</div>
           <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: 18, lineHeight: 1, color: '#999999', cursor: 'pointer', padding: 2 }}>×</button>
