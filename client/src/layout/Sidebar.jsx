@@ -43,7 +43,7 @@ const ITEM_STYLE = {
 function Caret() {
   return (
     <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#999999"
-      strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
+      strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="ml-auto shrink-0">
       <path d="m9 18 6-6-6-6" />
     </svg>
   );
@@ -105,14 +105,14 @@ function SidebarContent() {
                   to={m.to}
                   end={m.to === '/'}
                   className={({ isActive }) =>
-                    'flex items-center justify-end transition-colors ' +
+                    'flex items-center transition-colors ' +
                     (isActive ? 'bg-[#F0FDFF] text-[#2DB7F5]' : 'text-[rgba(0,0,0,0.65)] hover:bg-[#EDF0F3]')
                   }
                   style={ITEM_STYLE}
                 >
                   {({ isActive }) => (
                     <>
-                      <span className="shrink-0 flex items-center" style={{ color: isActive ? '#2DB7F5' : '#AAAAAA' }}>
+                      <span className="w-6 shrink-0 flex items-center justify-center" style={{ color: isActive ? '#2DB7F5' : '#AAAAAA' }}>
                         <Icon name={m.icon} className="w-[14px] h-[14px]" />
                       </span>
                       <span className="truncate">{m.label}</span>
@@ -128,10 +128,10 @@ function SidebarContent() {
             <div key={m.label}>
               <div
                 title="敬请期待"
-                className="flex items-center justify-end cursor-default select-none text-[rgba(0,0,0,0.65)] hover:bg-[#EDF0F3] transition-colors"
+                className="flex items-center cursor-default select-none text-[rgba(0,0,0,0.65)] hover:bg-[#EDF0F3] transition-colors"
                 style={ITEM_STYLE}
               >
-                <span className="shrink-0 flex items-center" style={{ color: '#AAAAAA' }}>
+                <span className="w-6 shrink-0 flex items-center justify-center" style={{ color: '#AAAAAA' }}>
                   <Icon name={m.icon} className="w-[14px] h-[14px]" />
                 </span>
                 <span className="truncate">{m.label}</span>
