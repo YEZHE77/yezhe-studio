@@ -72,7 +72,7 @@ function SidebarContent() {
   };
   return (
     <aside
-      className="w-[220px] bg-white flex flex-col min-h-screen shrink-0"
+      className="w-[410px] bg-white flex flex-col min-h-screen shrink-0"
       style={{ borderRight: '1px solid #E8E8EB', padding: '20px 12px 12px' }}
     >
       {/* 品牌区：可编辑头像 + 工作室名称（位于工作台上方，参考图） */}

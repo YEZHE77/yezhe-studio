@@ -61,7 +61,7 @@ function BigCard({ icon, title, desc, btn, to, onClick }) {
       <div className="text-[15px] mt-1" style={{ color: '#333333' }}>{title}</div>
       <div className="text-xs mt-[10px] leading-[21px]" style={{ color: '#AAAAAA' }}>{desc}</div>
       <div className="mt-[25px]">
-        <span className="inline-flex items-center px-[15px] h-[30px] rounded-full text-xs font-medium" style={{ color: '#2DB7F6', background: '#fff', border: '1px solid #ABE2FB' }}>{btn || '进入'}</span>
+        <span className="inline-flex items-center px-[15px] h-[30px] rounded-full text-xs font-medium" style={{ color: '#2DB7F6', background: '#fff', border: '1px solid #ABE2FB', minWidth: 87, justifyContent: 'center' }}>{btn || '进入'}</span>
       </div>
     </div>
   );
@@ -137,7 +137,7 @@ export default function Dashboard() {
   const alertStyle = { background: 'rgba(244,113,117,0.08)', color: '#999999' };
 
   return (
-    <div className="mx-auto" style={{ maxWidth: 1050 }}>
+    <div style={{ maxWidth: 1050 }}>
       {/* ===== 顶部：品牌 + 快捷链接（左） + 信息列（右） ===== */}
       <div className="flex items-start gap-[61px]">
         <div className="flex-1 min-w-0">
