@@ -269,11 +269,13 @@ export default function Orders() {
         </div>
       </div>
 
-      {/* 深色筛选栏（参考图：+添加新订单 → 状态 → 执行者 → 排序 → 筛选） */}
-      <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg flex-wrap" style={{ background: '#2c2c2c' }}>
+      {/* 深色筛选栏（参考图：+添加新订单靠左，状态/执行者/排序/筛选整组靠右） */}
+      <div className="flex items-center gap-5 px-4 py-2.5 rounded-lg flex-wrap" style={{ background: '#2c2c2c' }}>
         <button onClick={() => setShowForm(true)}
           className="px-4 py-1.5 rounded text-sm whitespace-nowrap"
           style={{ background: '#2DB7F5', color: '#fff', fontSize: 14 }}>+ 添加新订单</button>
+
+        <div className="flex-1" />
 
         <span className="text-sm" style={{ color: '#FFFFFF' }}>状态</span>
         <select value={trash ? '__trash' : state.status}
@@ -317,12 +319,6 @@ export default function Orders() {
           className="px-3 py-1.5 rounded text-sm whitespace-nowrap"
           style={{ background: '#3a3a3a', color: '#fff', border: '1px solid #555555' }}>导出 Excel</button>
 
-        <div className="flex-1" />
-
-        <button onClick={() => setCompact((v) => !v)} title={compact ? '切换为卡片视图' : '切换为列表视图'}
-          className="p-1.5 rounded" style={{ color: compact ? '#2f7cf6' : '#bbb' }}>
-          <IconList />
-        </button>
         <button onClick={() => setAdvancedOpen((v) => !v)} title="展开 / 收起筛选"
           className="flex items-center gap-1 px-2 py-1.5 rounded text-sm"
           style={{ color: advancedOpen ? '#2DB7F5' : '#FFFFFF' }}>
