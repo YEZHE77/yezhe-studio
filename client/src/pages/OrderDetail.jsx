@@ -150,6 +150,7 @@ export default function OrderDetail() {
   const nav = useNavigate();
   const [detail, setDetail] = useState(null);
   const [pkgs, setPkgs] = useState([]);
+  const [catList, setCatList] = useState([]);
   const [sel, setSel] = useState(null);
   const [selSaving, setSelSaving] = useState(false);
   const [pay, setPay] = useState(null);
@@ -176,6 +177,11 @@ export default function OrderDetail() {
   const [miniQrLoading, setMiniQrLoading] = useState(false);
   const [moreMenu, setMoreMenu] = useState(false);
   const [custMoreMenu, setCustMoreMenu] = useState(false);
+  const [pkgPicker, setPkgPicker] = useState(false); // 编辑弹窗：选取已有套系
+  const [pkgPickerQ, setPkgPickerQ] = useState('');
+  const [pkgPickerCat, setPkgPickerCat] = useState('');
+  const [chOpen, setChOpen] = useState(false);       // 编辑弹窗：渠道来源下拉
+  const [slotOpen, setSlotOpen] = useState(false);   // 编辑弹窗：拍摄时间下拉
   // 改拍摄日期档期冲突二次确认（验收④）
   const [dateConflict, setDateConflict] = useState(null);
   // 更换套系弹窗（验收⑥）
@@ -236,21 +242,24 @@ export default function OrderDetail() {
   useEffect(() => {
     const ctrl = new AbortController();
     http.get('/api/packages?status=all', { signal: ctrl.signal }).then((r) => setPkgs(r.data)).catch(() => {});
+    http.get('/api/categories').then((r) => setCatList(r.data || [])).catch(() => {});
     return () => ctrl.abort();
   }, []);
   useEffect(() => () => { bgm.pause(); }, []);
   // 点击空白收起下拉（客户信息 / 更多设置 / 执行人下拉）
   useEffect(() => {
-    if (!custInfoOpen && !moreMenu && !custMoreMenu && !execDropdownOpen) return;
+    if (!custInfoOpen && !moreMenu && !custMoreMenu && !execDropdownOpen && !chOpen && !slotOpen) return;
     const handler = (e) => {
       if (custInfoOpen) setCustInfoOpen(false);
       if (moreMenu) setMoreMenu(false);
       if (custMoreMenu) setCustMoreMenu(false);
       if (execDropdownOpen) setExecDropdownOpen(false);
+      if (chOpen) setChOpen(false);
+      if (slotOpen) setSlotOpen(false);
     };
     const id = setTimeout(() => document.addEventListener('click', handler), 0);
     return () => { clearTimeout(id); document.removeEventListener('click', handler); };
-  }, [custInfoOpen, moreMenu, custMoreMenu, execDropdownOpen]);
+  }, [custInfoOpen, moreMenu, custMoreMenu, execDropdownOpen, chOpen, slotOpen]);
   // 订单图片（原片/精修片）随订单初始化一次（同 id 不覆盖本地编辑）
   useEffect(() => {
     if (detail && detail.order_photos) {
@@ -1244,7 +1253,7 @@ export default function OrderDetail() {
           <form onClick={(e) => e.stopPropagation()} onSubmit={saveEdit} className="relative flex flex-col" style={{ width: '100%', maxWidth: 680, maxHeight: '90vh', background: '#fff', borderRadius: 8, boxShadow: '0 12px 40px rgba(0,0,0,0.18)', overflow: 'hidden', zIndex: 71 }}>
             <div className="flex items-center justify-between shrink-0" style={{ padding: '16px 20px', borderBottom: '1px solid ' + DIV }}>
               <span style={{ fontSize: 15, color: '#222222' }}>编辑订单 · {detail.order_no}</span>
-              <button type="button" onClick={() => { setEdit(false); setEditErrors({}); }} style={{ background: 'none', border: 'none', fontSize: 20, lineHeight: 1, color: '#999999', cursor: 'pointer', padding: 2 }}>×</button>
+              <button type="button" onClick={() => { setEdit(false); setPkgPicker(false); setEditErrors({}); }} style={{ background: 'none', border: 'none', fontSize: 20, lineHeight: 1, color: '#999999', cursor: 'pointer', padding: 2 }}>×</button>
             </div>
             <div style={{ flex: 1, overflowY: 'auto', padding: '18px 20px' }}>
 
@@ -1252,12 +1261,16 @@ export default function OrderDetail() {
               <div style={{ marginBottom: 16 }}>
                 <div className="flex items-center justify-between" style={{ marginBottom: 8 }}>
                   <span style={{ fontSize: 13, color: '#666666' }}>套系名称</span>
-                  <button type="button" onClick={openPkgSwitch} style={{ background: 'none', border: 'none', color: BLUE, fontSize: 12, cursor: 'pointer', padding: 0 }}>更换套系</button>
+                  <button type="button" onClick={() => setPkgPicker(true)} style={{ background: 'none', border: 'none', color: BLUE, fontSize: 12, cursor: 'pointer', padding: 0 }}>更换套系</button>
                 </div>
-                <div style={{ background: '#FAFAFA', border: '1px solid ' + DIV, borderRadius: 4, padding: '8px 12px', fontSize: 14, color: '#222222' }}>
-                  {[pkgInfo && pkgInfo.name, pkgInfo && pkgInfo.spec && pkgInfo.spec.name].filter(Boolean).join('｜') || '—'}
-                  <span style={{ color: '#999999', marginLeft: 8, fontSize: 12 }}>¥{Number((pkgInfo && pkgInfo.price) || 0).toLocaleString()}</span>
-                </div>
+                <button type="button" onClick={() => setPkgPicker(true)}
+                  style={{ width: '100%', textAlign: 'left', background: '#FAFAFA', border: '1px solid ' + DIV, borderRadius: 4, padding: '8px 12px', fontSize: 14, color: '#222222', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                  <span className="truncate">
+                    {[pkgInfo && pkgInfo.name, pkgInfo && pkgInfo.spec && pkgInfo.spec.name].filter(Boolean).join('｜') || '—'}
+                    <span style={{ color: '#999999', marginLeft: 8, fontSize: 12 }}>¥{Number((pkgInfo && pkgInfo.price) || 0).toLocaleString()}</span>
+                  </span>
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#999999" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><path d="m6 9 6 6 6-6" /></svg>
+                </button>
               </div>
               <div className="grid grid-cols-3" style={{ gap: 12, marginBottom: 16 }}>
                 <div>
@@ -1290,14 +1303,26 @@ export default function OrderDetail() {
                   <input value={editForm.shoot_date} onChange={(e) => setEditForm({ ...editForm, shoot_date: e.target.value })} type="date" style={{ ...modalInputStyle, fontSize: 13 }} />
                   <span style={{ fontSize: 11, color: '#999999' }}>修改日期将释放旧档期并占用新日期；冲突时会先提示。</span>
                 </div>
-                <div className="flex flex-wrap" style={{ gap: 6 }}>
-                  {HOURS.map((h) => {
-                    const on = (editForm.time_slots || []).includes(h);
-                    return (
-                      <button key={h} type="button" onClick={() => setEditForm((f) => ({ ...f, time_slots: on ? f.time_slots.filter((x) => x !== h) : [...(f.time_slots || []), h] }))}
-                        style={{ padding: '3px 9px', borderRadius: 3, fontSize: 12, border: on ? ('1px solid ' + BLUE) : '1px solid #D8D8D8', background: on ? '#EAF6FD' : '#fff', color: on ? BLUE : '#666666', cursor: 'pointer' }}>{h}</button>
-                    );
-                  })}
+                <div style={{ position: 'relative' }}>
+                  <button type="button" onClick={() => setSlotOpen((v) => !v)}
+                    style={{ ...modalInputStyle, fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, cursor: 'pointer', color: (editForm.time_slots || []).length ? '#222222' : '#999999' }}>
+                    <span className="truncate">{(editForm.time_slots || []).length ? (editForm.time_slots || []).join('、') : '点击选择拍摄时段'}</span>
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#999999" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><path d="m6 9 6 6 6-6" /></svg>
+                  </button>
+                  {slotOpen && (
+                    <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: 4, maxHeight: 200, overflowY: 'auto', background: '#fff', border: '1px solid ' + DIV, borderRadius: 4, boxShadow: '0 6px 20px rgba(0,0,0,0.10)', zIndex: 30, padding: 4 }}>
+                      {HOURS.map((h) => {
+                        const on = (editForm.time_slots || []).includes(h);
+                        return (
+                          <div key={h} onClick={() => setEditForm((f) => ({ ...f, time_slots: on ? f.time_slots.filter((x) => x !== h) : [...(f.time_slots || []), h] }))}
+                            style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '7px 12px', fontSize: 13, cursor: 'pointer', borderRadius: 3, color: on ? BLUE : '#333333', background: on ? '#EAF6FD' : 'transparent' }}>
+                            <span>{h}</span>
+                            {on && <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m5 13 4 4 10-10" /></svg>}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -1385,16 +1410,29 @@ export default function OrderDetail() {
                 </div>
                 <div>
                   <div style={{ fontSize: 13, color: '#666666', marginBottom: 4 }}>渠道来源</div>
-                  <select value={editForm.channel || ''} onChange={(e) => {
-                    const name = e.target.value;
-                    const ch = channels.find((c) => c.name === name);
-                    setEditForm({ ...editForm, channel: name, channel_id: ch ? ch.id : '' });
-                  }} style={{ ...modalInputStyle, fontSize: 13 }}>
-                    <option value="">请选择渠道</option>
-                    {channels.map((ch) => (
-                      <option key={ch.id} value={ch.name}>{ch.name}</option>
-                    ))}
-                  </select>
+                  <div style={{ position: 'relative' }}>
+                    <button type="button" onClick={() => setChOpen((v) => !v)}
+                      style={{ ...modalInputStyle, fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, cursor: 'pointer', color: editForm.channel ? '#222222' : '#999999' }}>
+                      <span className="truncate">{editForm.channel || '请选择渠道'}</span>
+                      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#999999" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><path d="m6 9 6 6 6-6" /></svg>
+                    </button>
+                    {chOpen && (
+                      <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: 4, maxHeight: 220, overflowY: 'auto', background: '#fff', border: '1px solid ' + DIV, borderRadius: 4, boxShadow: '0 6px 20px rgba(0,0,0,0.10)', zIndex: 30, padding: 4 }}>
+                        <div onClick={() => { setEditForm({ ...editForm, channel: '', channel_id: '' }); setChOpen(false); }}
+                          style={{ padding: '7px 12px', fontSize: 13, cursor: 'pointer', borderRadius: 3, color: editForm.channel ? '#333333' : BLUE, background: !editForm.channel ? '#EAF6FD' : 'transparent' }}>请选择渠道</div>
+                        {channels.map((ch) => {
+                          const on = editForm.channel === ch.name;
+                          return (
+                            <div key={ch.id} onClick={() => { setEditForm({ ...editForm, channel: ch.name, channel_id: ch.id }); setChOpen(false); }}
+                              style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '7px 12px', fontSize: 13, cursor: 'pointer', borderRadius: 3, color: on ? BLUE : '#333333', background: on ? '#EAF6FD' : 'transparent' }}>
+                              <span>{ch.name}</span>
+                              {on && <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m5 13 4 4 10-10" /></svg>}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
@@ -1419,12 +1457,63 @@ export default function OrderDetail() {
 
             </div>
             <div className="flex justify-end shrink-0" style={{ gap: 10, padding: '14px 20px', borderTop: '1px solid ' + DIV }}>
-              <button type="button" onClick={() => { setEdit(false); setEditErrors({}); }} style={modalCancelStyle}>取消</button>
+              <button type="button" onClick={() => { setEdit(false); setPkgPicker(false); setEditErrors({}); }} style={modalCancelStyle}>取消</button>
               <button type="submit" style={modalSaveStyle}>保存</button>
             </div>
           </form>
         </div>
       )}
+
+      {/* 选取已有套系（编辑弹窗：点击套系名称弹窗，参考图：分类+搜索+列表） */}
+      {pkgPicker && (() => {
+        const q = pkgPickerQ.trim().toLowerCase();
+        const list = (pkgs || []).filter((p) => {
+          if (pkgPickerCat && String(p.category_id) !== String(pkgPickerCat)) return false;
+          if (q && !String(p.name || '').toLowerCase().includes(q)) return false;
+          return true;
+        });
+        const pick = (p) => {
+          setPkgPicker(false);
+          setPkgSwitch({ package_id: String(p.id), spec_id: '', package_price: '', reason: '', step: 'pick' });
+        };
+        return (
+          <div className="fixed inset-0 z-[92] flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.45)' }} onClick={() => setPkgPicker(false)}>
+            <div onClick={(e) => e.stopPropagation()} style={{ width: '100%', maxWidth: 580, maxHeight: '78vh', background: '#fff', borderRadius: 8, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+              <div className="flex items-center justify-between shrink-0" style={{ padding: '14px 18px', borderBottom: '1px solid ' + DIV }}>
+                <span style={{ fontSize: 15, color: '#222222' }}>选取已有套系</span>
+                <button type="button" onClick={() => setPkgPicker(false)} style={{ background: 'none', border: 'none', fontSize: 20, lineHeight: 1, color: '#999999', cursor: 'pointer', padding: 2 }}>×</button>
+              </div>
+              <div className="flex items-center gap-2 shrink-0" style={{ padding: '12px 18px', borderBottom: '1px solid #F0F0F0' }}>
+                <select value={pkgPickerCat} onChange={(e) => setPkgPickerCat(e.target.value)} style={{ ...modalInputStyle, fontSize: 13, width: 110 }}>
+                  <option value="">全部分类</option>
+                  {catList.filter((c) => !c.deleted).map((c) => <option key={c.id} value={String(c.id)}>{c.name}</option>)}
+                </select>
+                <input value={pkgPickerQ} onChange={(e) => setPkgPickerQ(e.target.value)} placeholder="搜索套系名称" style={{ ...modalInputStyle, fontSize: 13, flex: 1 }} />
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#999999" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" /></svg>
+              </div>
+              <div style={{ flex: 1, overflowY: 'auto', padding: '6px 10px' }}>
+                {list.length === 0 && <div style={{ padding: '24px', textAlign: 'center', color: '#999999', fontSize: 13 }}>暂无匹配套系</div>}
+                {list.map((p) => {
+                  const off = p.status === 'off';
+                  const specs = Array.isArray(p.specs) ? p.specs : [];
+                  return (
+                    <button key={p.id} type="button" onClick={() => pick(p)}
+                      style={{ width: '100%', textAlign: 'left', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '9px 12px', borderRadius: 6, border: 'none', background: 'transparent', cursor: 'pointer', fontSize: 13 }}
+                      className="hover:bg-[#F5F7FA]">
+                      <span style={{ color: '#222222' }}>
+                        {p.name}
+                        {specs.length > 0 && <span style={{ color: '#999999', marginLeft: 6, fontSize: 12 }}>{specs.length} 规格</span>}
+                        {off && <span style={{ marginLeft: 6, fontSize: 11, color: '#999999', border: '1px solid #DDD', borderRadius: 2, padding: '0 4px' }}>已下架</span>}
+                      </span>
+                      <span style={{ color: '#e4393c', fontWeight: 400 }}>¥{Number(p.price || 0).toLocaleString()}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* 改拍摄日期档期冲突警告（验收④） */}
       {dateConflict && (
