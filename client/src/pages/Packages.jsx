@@ -331,15 +331,18 @@ export default function Packages() {
                 const off = p.status === 'off';
                 return (
                   <div key={p.id}
-                    className="flex items-center gap-3 px-4 py-2.5 flex-wrap sm:flex-nowrap hover:bg-panel2/40">
+                    className="flex items-center gap-[18px] px-4 py-[20px] flex-wrap sm:flex-nowrap hover:bg-panel2/40">
                   {/* 批量勾选 */}
                   <input type="checkbox" checked={checked.has(p.id)} onChange={() => toggleCheck(p.id)}
                     className="shrink-0" title="勾选后批量上架/下架" />
-                  {/* 左侧封面缩略图（方形占位，无文字） */}
-                  <div className="w-16 h-16 rounded-lg bg-panel2 border border-line overflow-hidden shrink-0 flex items-center justify-center">
+                  {/* 左侧封面缩略图（参考图：90×90 方形，已下架深色蒙层） */}
+                  <div className="w-[90px] h-[90px] bg-panel2 border border-line overflow-hidden shrink-0 relative">
                     {p.cover_url
                       ? <img src={img(p.cover_url)} alt="" className="w-full h-full object-cover" />
                       : null}
+                    {off && (
+                      <div className="absolute inset-0 flex items-center justify-center text-white text-xs" style={{ background: 'rgba(51,51,51,0.53)' }}>已下架</div>
+                    )}
                   </div>
 
                   {/* 中部内容 */}
