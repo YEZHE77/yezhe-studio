@@ -74,6 +74,7 @@ function SidebarContent({ mobile = false }) {
   // 移动端抽屉：更窄宽度、左对齐菜单；桌面端保持原设计
   const widthClass = mobile ? 'w-[260px]' : 'w-[300px]';
   const menuMargin = mobile ? 0 : 140;
+  const sepMargin = mobile ? 0 : 156;
   const brandJustify = mobile ? 'justify-start' : 'justify-end';
 
   return (
@@ -125,7 +126,7 @@ function SidebarContent({ mobile = false }) {
                     </span>
                   )}
                 </NavLink>
-                {m.sep && <div style={{ height: 1, background: '#E8E8E8', margin: '6px 14px 6px ' + menuMargin }} />}
+                {m.sep && <div style={{ height: 1, background: '#E8E8E8', margin: '6px 15px 6px ' + sepMargin + 'px' }} />}
               </div>
             );
           }
@@ -146,7 +147,7 @@ function SidebarContent({ mobile = false }) {
                   <span className="truncate">{m.label}</span>
                 </span>
               </div>
-              {m.sep && <div style={{ height: 1, background: '#E8E8E8', margin: '6px 14px 6px ' + menuMargin }} />}
+              {m.sep && <div style={{ height: 1, background: '#E8E8E8', margin: '6px 15px 6px ' + sepMargin + 'px' }} />}
             </div>
           );
         })}
