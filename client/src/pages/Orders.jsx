@@ -93,6 +93,7 @@ export default function Orders() {
   const [showForm, setShowForm] = useState(false);
   const [qInput, setQInput] = useState(state.q || '');
   const [advancedOpen, setAdvancedOpen] = useState(false);
+  const [advMenu, setAdvMenu] = useState(false); // 高级选项下拉（参考图：订单及选片设置/照片保存设置/导出excel/订单回收站）
   const [compact, setCompact] = useState(false); // 列表视图图标：卡片流 ⇄ 紧凑行列表
   const [trash, setTrash] = useState(false);
 
@@ -263,9 +264,34 @@ export default function Orders() {
           <button onClick={doSearch}
             className="px-4 py-2 rounded text-sm whitespace-nowrap"
             style={{ background: '#333333', color: '#fff' }}>搜索</button>
-          <button onClick={() => setAdvancedOpen((v) => !v)}
-            className="px-4 py-2 rounded text-sm whitespace-nowrap"
-            style={{ background: '#333333', color: '#fff' }}>高级选项</button>
+          <div className="relative">
+            <button onClick={() => setAdvMenu((v) => !v)}
+              className="px-4 py-2 rounded text-sm whitespace-nowrap"
+              style={{ background: '#333333', color: '#fff' }}>高级选项</button>
+            {advMenu && (
+              <div className="absolute right-0 mt-1 bg-white rounded shadow-lg z-40 overflow-hidden"
+                style={{ minWidth: 190, border: '1px solid #EEEEEE' }}>
+                <button onClick={() => { setAdvMenu(false); nav('/settings'); }}
+                  className="w-full text-left px-4 flex items-center gap-2 text-sm hover:bg-[#F3F4F6]"
+                  style={{ height: 34, color: '#333333' }}>
+                  订单及选片设置
+                  <span className="ml-auto text-[10px] text-white px-1 rounded" style={{ background: '#2DB7F5' }}>NEW</span>
+                </button>
+                <button onClick={() => { setAdvMenu(false); nav('/settings'); }}
+                  className="w-full text-left px-4 flex items-center gap-2 text-sm hover:bg-[#F3F4F6]"
+                  style={{ height: 34, color: '#333333' }}>
+                  照片保存设置
+                  <span className="ml-auto text-[10px] text-white px-1 rounded" style={{ background: '#2DB7F5' }}>NEW</span>
+                </button>
+                <button onClick={() => { setAdvMenu(false); doExport(); }}
+                  className="w-full text-left px-4 text-sm hover:bg-[#F3F4F6]"
+                  style={{ height: 34, color: '#333333' }}>导出excel</button>
+                <button onClick={() => { setAdvMenu(false); setTrash(true); setFilter('status', ''); }}
+                  className="w-full text-left px-4 text-sm hover:bg-[#F3F4F6]"
+                  style={{ height: 34, color: '#333333' }}>订单回收站</button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
