@@ -399,19 +399,19 @@ export default function Orders() {
                         className="w-full px-2 py-1 rounded border border-line bg-white text-fg text-sm outline-none" />
                     ) : (
                       <div className="flex items-center gap-1.5 min-w-0">
-                        <span className="text-fg text-sm font-medium truncate">订单：{o.order_name || '未命名订单'}</span>
+                        <span className="text-fg text-sm truncate">订单：{o.order_name || '未命名订单'}</span>
                         <button onClick={() => startRename(o)} title="编辑订单名称"
-                          className="shrink-0" style={{ color: '#2f7cf6' }}><IconPencil /></button>
+                          className="shrink-0" style={{ color: '#2DB7F5' }}><IconPencil /></button>
                       </div>
                     )}
-                    <div className="text-[11px] text-faint mt-1">订单编号：{o.order_no}</div>
+                    <div className="text-[11px] text-faint mt-1">订单编号：{o.order_no}{o.channel ? ` · ${o.channel}` : ''}</div>
                   </div>
-                  <span className="text-xs shrink-0" style={{ color: '#9ca3af' }}>{stageLabel(o)}</span>
+                  <span className="text-xs shrink-0" style={{ color: '#AAAAAA' }}>{stageLabel(o)}</span>
                 </div>
 
                 {/* 卡片主体：方形封面 + 套系 + 金额 + 尾款标签 + 日期 */}
                 <div className="flex gap-3 mt-3">
-                  <div className="w-[72px] h-[72px] rounded bg-panel2 border border-line overflow-hidden shrink-0 flex items-center justify-center">
+                  <div className="w-[90px] h-[90px] rounded bg-panel2 border border-line overflow-hidden shrink-0 flex items-center justify-center">
                     {cover
                       ? <img src={cover} alt="" className="w-full h-full object-cover" />
                       : <span className="text-[10px] text-faint">无图</span>}
@@ -419,13 +419,13 @@ export default function Orders() {
                   <div className="min-w-0 flex-1">
                     <div className="text-sm text-fg truncate">{pkgName}</div>
                     <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                      <span className="font-semibold" style={{ color: '#ff3333' }}>¥{amount.toLocaleString()}</span>
+                      <span style={{ color: '#F83C3A' }}>¥{amount.toLocaleString()}</span>
                       {remain > 0 && (
-                        <span className="px-1.5 py-0.5 rounded text-[11px]"
-                          style={{ background: '#e2d2c2', color: '#6b5744' }}>未结算尾款</span>
+                        <span className="px-1.5 py-0.5 rounded text-[10px]"
+                          style={{ background: '#CCAD97', color: '#fff' }}>未结算尾款</span>
                       )}
                     </div>
-                    <div className="flex items-center gap-1 mt-1.5 text-[12px]" style={{ color: '#6b7280' }}>
+                    <div className="flex items-center gap-1 mt-1.5 text-[11px]" style={{ color: '#999999' }}>
                       <IconCalendar />
                       {done
                         ? <span>默认好评：{fmtDate(o.eval_at || o.created_at) || '—'}</span>
@@ -435,8 +435,8 @@ export default function Orders() {
                 </div>
 
                 {/* 浅米色占位行（备注） */}
-                <div className="mt-3 px-3 py-2 rounded text-xs truncate"
-                  style={{ background: '#faf7f2', color: '#8a8378' }}>
+                <div className="mt-3 px-3 py-2 rounded text-[11px] truncate"
+                  style={{ background: '#FFFBF5', color: '#999999' }}>
                   {o.remark ? o.remark : '无'}
                 </div>
 
@@ -458,15 +458,15 @@ export default function Orders() {
                 <div className="flex items-center justify-end gap-2 mt-3 pt-3 border-t border-line flex-wrap">
                   {hasSurvey && !surveyDone && (
                     <button onClick={() => openShareFor(o, 'survey')} disabled={shareBusy}
-                      className="px-3 py-1.5 rounded text-xs border disabled:opacity-40"
-                      style={{ background: '#ffffff', borderColor: '#e0e0e0', color: '#666666' }}>问卷邀请</button>
+                      className="px-3 py-1.5 rounded text-xs disabled:opacity-40"
+                      style={{ background: '#F7F7F7', color: '#666666', minWidth: 80, height: 30 }}>问卷邀请</button>
                   )}
                   <button onClick={() => nav('/orders/' + o.id)}
-                    className="px-3 py-1.5 rounded text-xs border"
-                    style={{ background: '#ffffff', borderColor: '#e0e0e0', color: '#666666' }}>查看订单</button>
+                    className="px-3 py-1.5 rounded text-xs"
+                    style={{ background: '#F7F7F7', color: '#666666', minWidth: 80, height: 30 }}>查看订单</button>
                   <button onClick={(e) => openQrPopover(o, e)} disabled={shareBusy}
                     className="px-3 py-1.5 rounded text-xs disabled:opacity-40"
-                    style={{ background: '#2f7cf6', color: '#fff' }}>分享订单</button>
+                    style={{ background: '#2DB7F5', color: '#fff', minWidth: 80, height: 30 }}>分享订单</button>
                 </div>
               </div>
             );
