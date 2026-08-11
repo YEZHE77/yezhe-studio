@@ -116,7 +116,6 @@ function SidebarContent() {
                         <Icon name={m.icon} className="w-[14px] h-[14px]" />
                       </span>
                       <span className="truncate">{m.label}</span>
-                      {m.expandable && <Caret />}
                     </>
                   )}
                 </NavLink>
@@ -135,7 +134,6 @@ function SidebarContent() {
                   <Icon name={m.icon} className="w-[14px] h-[14px]" />
                 </span>
                 <span className="truncate">{m.label}</span>
-                {m.expandable && <Caret />}
               </div>
               {m.sep && <div style={{ height: 1, background: '#E8E8E8', margin: '6px 14px 6px 156px' }} />}
             </div>
