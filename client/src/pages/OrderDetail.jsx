@@ -938,7 +938,7 @@ export default function OrderDetail() {
           </div>
 
           {/* 套系摘要卡：整行紧接执行人下方（参考图） */}
-          <div style={{ background: '#fafbf8', borderRadius: 2, padding: '18px 20px', marginTop: 16, maxWidth: 620 }}>
+          <div style={{ background: '#fafbf8', borderRadius: 2, padding: '18px 20px', marginTop: 16, marginLeft: 230, maxWidth: 620 }}>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px 12px' }}>
                   {(() => {
                     const SUM_FIELDS = [
@@ -974,7 +974,7 @@ export default function OrderDetail() {
         <div style={{ marginTop: 0 }} />
 
         {/* ——— 5、卡片底部：备注信息 ——— */}
-        <div style={{ padding: '16px 16px 44px 8px' }}>
+        <div style={{ padding: '16px 16px 44px 278px' }}>
           {editingRemark ? (
             <div>
               <div className="flex items-center" style={{ gap: 6, marginBottom: 8 }}>
