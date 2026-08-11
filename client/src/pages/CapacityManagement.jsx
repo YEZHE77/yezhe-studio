@@ -452,7 +452,7 @@ export default function CapacityManagement() {
   const reload = () => setReloadKey((k) => k + 1);
 
   return (
-    <div className="max-w-5xl mx-auto space-y-5">
+    <div className="space-y-5" style={{ maxWidth: 1050 }}>
       <div>
         <h1 className="text-xl font-semibold text-fg">容量管理</h1>
         <p className="text-muted text-xs mt-0.5">Cloudflare R2 免费额度下的存储与流量监控 · 无任何付费 / VIP / 扩容购买逻辑</p>
