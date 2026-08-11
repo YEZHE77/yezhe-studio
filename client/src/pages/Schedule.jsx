@@ -355,16 +355,8 @@ export default function Schedule() {
           {/* 状态图例下拉 */}
           <StatusLegend />
 
-          {/* 视图切换 + 日期导航（居中） */}
+          {/* 日期导航（居中，参考图：仅年份/月份下拉 + 前后翻月） */}
           <div className="flex items-center" style={{ gap: 8, position: 'absolute', left: '50%', transform: 'translateX(-50%)' }}>
-            <div className="flex items-center" style={{ gap: 4, marginRight: 2 }}>
-              {[['month', '月'], ['week', '周'], ['day', '日']].map(([k, lab]) => (
-                <button key={k} onClick={() => setView(k)}
-                  style={{ height: 28, padding: '0 10px', borderRadius: 4, fontSize: 13,
-                    border: `1px solid ${G_BORDER}`, background: view === k ? G_BLUE : '#FFFFFF',
-                    color: view === k ? '#FFFFFF' : '#333333' }}>{lab}</button>
-              ))}
-            </div>
             <button onClick={() => shiftView(-1)} style={{ width: 28, height: 28, border: `1px solid ${G_BORDER}`, borderRadius: 4, color: '#888888', background: '#FFFFFF', fontSize: 16 }}>‹</button>
             {view === 'month' ? (
               <>
@@ -387,21 +379,6 @@ export default function Schedule() {
 
           {/* 右侧按钮组 */}
           <div className="flex items-center" style={{ gap: 10 }}>
-            {/* 套系筛选 + 状态筛选（spec：按摄影师、套系、订单状态筛选日历视图） */}
-            <select value={state.package_id} onChange={(e) => setState((s) => ({ ...s, package_id: e.target.value }))}
-              style={{ height: 28, border: `1px solid ${G_BORDER}`, borderRadius: 4, fontSize: 13, color: '#333333', background: '#FFFFFF', padding: '0 8px', maxWidth: 150 }}>
-              <option value="">全部套系</option>
-              {pkgList.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
-            <select value={state.status} onChange={(e) => setState((s) => ({ ...s, status: e.target.value }))}
-              style={{ height: 28, border: `1px solid ${G_BORDER}`, borderRadius: 4, fontSize: 13, color: '#333333', background: '#FFFFFF', padding: '0 8px' }}>
-              <option value="">全部状态</option>
-              <option value="free">空闲</option>
-              <option value="booked">已预约</option>
-              <option value="locked">锁场</option>
-              <option value="closed">已关闭</option>
-              <option value="pending">待确认</option>
-            </select>
             <div className="relative" ref={accRef}>
               <button onClick={() => setAccOpen((v) => !v)} className="flex items-center" style={{ gap: 6, height: 28, padding: '0 12px', border: `1px solid ${G_BORDER}`, borderRadius: 4, background: '#FFFFFF', fontSize: 12, fontWeight: 500, color: '#666666' }}>
                 <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 6h18M3 12h12M3 18h6" /></svg>
