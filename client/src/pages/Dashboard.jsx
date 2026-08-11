@@ -256,14 +256,14 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* 品牌管理 + 日常管理（合并成一个大卡片，底色渐变优化；内部卡片设计保持不变） */}
-      <div className="bg-white border mt-12" style={{ borderRadius: 8, borderColor: '#E6E9EF', padding: '38px 50px 44px', background: 'linear-gradient(180deg, #FFFFFF 0%, #F5F8FC 100%)' }}>
-        <div className="text-[16px] font-medium mb-[38px]" style={{ color: '#333333' }}>品牌管理</div>
+      {/* 品牌管理 + 日常管理（合并成一个大卡片，底色纯色优化；内部卡片设计保持不变） */}
+      <div className="bg-white border mt-4" style={{ borderRadius: 8, borderColor: '#E6E9EF', padding: '22px 50px 28px', background: '#F7F8FA' }}>
+        <div className="text-[16px] font-medium mb-6" style={{ color: '#333333' }}>品牌管理</div>
         <div className="grid grid-cols-5 gap-[10px]">
           {BRAND_CARDS.map((c) => <BigCard key={c.title} {...c} />)}
         </div>
-        <div style={{ height: 1, background: '#E6E9EF', margin: '40px 0' }} />
-        <div className="text-[16px] font-medium mb-[38px]" style={{ color: '#333333' }}>日常管理</div>
+        <div style={{ height: 1, background: '#E6E9EF', margin: '16px 0' }} />
+        <div className="text-[16px] font-medium mb-6" style={{ color: '#333333' }}>日常管理</div>
         <div className="grid grid-cols-5 gap-[10px]">
           {OPS_CARDS.map((c) => <BigCard key={c.title} {...c} />)}
         </div>
