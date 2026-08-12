@@ -116,6 +116,7 @@ export default function Schedule() {
   const [pkgList, setPkgList] = useState([]);
   const [lunarMap, setLunarMap] = useState({});
   const [selDate, setSelDate] = useState(`${init.getFullYear()}-${pad(init.getMonth() + 1)}-${pad(init.getDate())}`);
+  const [isMobileView, setIsMobileView] = useState(() => (window.innerWidth || 1200) < 768);
   const [err, setErr] = useState('');
   const [advOpen, setAdvOpen] = useState(false);
   const [accOpen, setAccOpen] = useState(false);
@@ -162,6 +163,11 @@ export default function Schedule() {
   useEffect(() => {
     http.get('/api/schedules/lunar?month=' + encodeURIComponent(state.month)).then((r) => setLunarMap(r.data || {})).catch(() => {});
   }, [state.month]);
+  useEffect(() => {
+    const onResize = () => setIsMobileView((window.innerWidth || 1200) < 768);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
   useEffect(() => {
     const onDown = (e) => { if (advRef.current && !advRef.current.contains(e.target)) setAdvOpen(false); };
     document.addEventListener('mousedown', onDown);
@@ -345,6 +351,203 @@ export default function Schedule() {
       </div>
     );
   };
+
+  // ========== 手机端档期视图（工作台「待拍摄」进入）==========
+  function MobileView() {
+    const cells = buildMonth(y, m - 1);
+    const selRows = rowsOf(selDate);
+    const selPends = pendsOf(selDate);
+
+    const mobileCell = (date) => {
+      const day = Number(date.slice(8));
+      const rows = rowsOf(date);
+      const pends = pendsOf(date);
+      const st = dayState(rows, pends);
+      const lunar = lunarMap[date] || '';
+      const selected = selDate === date;
+      const isToday = date === todayStr;
+      const isClosed = st.kind === 'closed';
+      const hasOrder = st.orderRows.length > 0;
+
+      let bg = '#FFFFFF';
+      if (isClosed) bg = 'repeating-linear-gradient(-45deg, rgba(150,150,150,0.22) 0px, rgba(150,150,150,0.22) 1px, transparent 1px, transparent 8px), #F7F7F7';
+      else if (st.kind === 'booked') bg = '#FF949C';
+      else if (selected) bg = G_SEL;
+
+      return (
+        <button
+          key={date}
+          type="button"
+          onClick={() => setSelDate(date)}
+          style={{
+            aspectRatio: '1 / 1',
+            background: bg,
+            border: 'none',
+            padding: 4,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 2,
+            position: 'relative',
+            boxShadow: selected ? `inset 0 0 0 2px ${G_BLUE}` : 'inset 0 0 0 1px #EFEFEF'
+          }}
+        >
+          <span style={{
+            width: 24,
+            height: 24,
+            borderRadius: '50%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: 14,
+            fontWeight: isToday ? 600 : 400,
+            background: isToday ? G_TODAY : 'transparent',
+            color: isToday ? '#fff' : (st.kind === 'booked' ? '#fff' : '#333')
+          }}>{day}</span>
+          {lunar && lunar !== '初一' && (
+            <span style={{ fontSize: 10, color: st.kind === 'booked' ? 'rgba(255,255,255,0.9)' : '#999' }}>{lunar}</span>
+          )}
+          {hasOrder && (
+            <span style={{
+              position: 'absolute',
+              bottom: 4,
+              right: 4,
+              minWidth: 16,
+              height: 16,
+              borderRadius: '50%',
+              background: st.kind === 'booked' ? '#fff' : '#FF4D4F',
+              color: st.kind === 'booked' ? '#FF4D4F' : '#fff',
+              fontSize: 10,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '0 3px'
+            }}>{st.orderRows.length}</span>
+          )}
+        </button>
+      );
+    };
+
+    const statusDot = (key) => (
+      <span style={{ width: 7, height: 7, borderRadius: '50%', background: G_STATUS_MAP[key]?.color || '#ccc', flexShrink: 0 }} />
+    );
+
+    return (
+      <div style={{ minHeight: '100vh', background: '#F8F8F8', paddingBottom: 90 }}>
+        {/* 月份切换 */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '12px 16px',
+          background: '#fff',
+          borderBottom: '1px solid #EFEFEF'
+        }}>
+          <button type="button" onClick={() => shiftMonth(-1)} style={{ background: 'none', border: 'none', padding: 6 }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#666" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
+          </button>
+          <div style={{ fontSize: 17, fontWeight: 500, color: '#1f2329' }}>{y}年{m}月</div>
+          <button type="button" onClick={() => shiftMonth(1)} style={{ background: 'none', border: 'none', padding: 6 }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#666" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6" /></svg>
+          </button>
+        </div>
+
+        {/* 星期表头 */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(7, 1fr)',
+          background: '#fff',
+          padding: '8px 0',
+          borderBottom: '1px solid #EFEFEF'
+        }}>
+          {WEEK.map((w) => (
+            <div key={w} style={{ textAlign: 'center', fontSize: 13, color: '#666' }}>{w}</div>
+          ))}
+        </div>
+
+        {/* 月历 */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(7, 1fr)',
+          gap: 1,
+          background: '#EFEFEF',
+          padding: 1
+        }}>
+          {cells.map((day, i) => (
+            day == null
+              ? <div key={i} style={{ aspectRatio: '1 / 1', background: '#FAFAFA' }} />
+              : mobileCell(`${y}-${pad(m)}-${pad(day)}`)
+          ))}
+        </div>
+
+        {/* 选中日期订单列表 */}
+        <div style={{ padding: '16px 12px 24px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+            <div style={{ fontSize: 15, fontWeight: 500, color: '#1f2329' }}>
+              {selDate} {WEEK_FULL[new Date(selDate + 'T00:00:00').getDay()]}
+            </div>
+            <button
+              type="button"
+              onClick={() => openNew(selDate)}
+              style={{ fontSize: 13, color: G_BLUE, background: 'none', border: 'none', padding: '4px 8px' }}
+            >+ 新建档期</button>
+          </div>
+
+          {selPends.length > 0 && (
+            <div style={{ marginBottom: 12 }}>
+              <div style={{ fontSize: 12, color: '#F0A020', marginBottom: 6, fontWeight: 500 }}>待确认预约 {selPends.length} 条</div>
+              {selPends.map((a) => (
+                <div key={a.id} style={{ background: '#fff', borderRadius: 10, padding: '12px 14px', marginBottom: 8 }}>
+                  <div style={{ fontSize: 14, color: '#1f2329' }}>{a.customer_name || '未知客户'}</div>
+                  <div style={{ fontSize: 12, color: '#999', marginTop: 4 }}>{a.hope_time || '时间待定'} · {a.package_name || '未选套系'}</div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {selRows.filter((r) => r.order_no).length === 0 && selPends.length === 0 && (
+            <div style={{ textAlign: 'center', color: '#BBBBBB', fontSize: 14, padding: '40px 0' }}>当日无档期安排</div>
+          )}
+
+          {selRows.filter((r) => r.order_no).map((r) => {
+            const sk = statusKeyOf(r);
+            const label = G_STATUS_MAP[sk]?.label || '等待拍摄';
+            return (
+              <button
+                key={r.id}
+                type="button"
+                onClick={() => { if (r.order_id) nav('/orders/' + r.order_id); }}
+                style={{
+                  width: '100%',
+                  background: '#fff',
+                  borderRadius: 12,
+                  padding: '14px 16px',
+                  marginBottom: 10,
+                  border: 'none',
+                  textAlign: 'left'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div style={{ fontSize: 15, fontWeight: 500, color: '#1f2329' }}>{r.order_customer || '未知客户'}</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#666' }}>
+                    {statusDot(sk)}
+                    {label}
+                  </div>
+                </div>
+                <div style={{ fontSize: 12, color: '#999', marginTop: 8 }}>
+                  {r.period || '全天'} · {r.executor_name || r.photographer || '未分配'}
+                </div>
+                {r.note && <div style={{ fontSize: 12, color: '#999', marginTop: 4 }}>备注：{r.note}</div>}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+
+  if (isMobileView) return <MobileView />;
 
   return (
     <div className="w-full min-h-screen flex items-stretch overflow-x-auto" style={{ background: G_PAGE_BG }}>

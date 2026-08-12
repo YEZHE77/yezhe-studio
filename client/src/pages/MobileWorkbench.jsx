@@ -389,7 +389,7 @@ export default function MobileWorkbench() {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
             <button
               type="button"
-              onClick={() => nav('/settings')}
+              onClick={() => nav('/home')}
               style={{ background: '#fff', border: '1px solid ' + LINE, borderRadius: 12, padding: '14px 0', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
             >
               <Smartphone className="w-5 h-5" strokeWidth={1.5} style={{ color: TEXT }} />

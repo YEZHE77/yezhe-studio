@@ -23,6 +23,8 @@ const SelectionAdmin = React.lazy(() => import('../pages/SelectionAdmin.jsx'));
 const CapacityManagement = React.lazy(() => import('../pages/CapacityManagement.jsx'));
 const Channels = React.lazy(() => import('../pages/Channels.jsx'));
 const Finance = React.lazy(() => import('../pages/Finance.jsx'));
+// C 端微官网（H5 客户首页，与小程序 pages/index 结构一致）——工作台「小程序」入口预览
+const Home = React.lazy(() => import('../pages/Home.jsx'));
 
 const GREEN = '#7ECDBB';
 const GREEN_DARK = '#5FBBA6';
@@ -161,6 +163,7 @@ function TabBar({ active, onTab, onPlus }) {
 
 // 深层业务页顶部标题
 function getPageTitle(path) {
+  if (path === '/home') return '微官网';
   if (path === '/finance') return '财务管理';
   if (path === '/settings') return '资料设置';
   if (path === '/orders') return '待办事项';
@@ -208,6 +211,7 @@ export default function MobileShell() {
           <Suspense fallback={<PageLoader />}>
             <Routes>
               <Route path="/" element={<MobileWorkbench />} />
+              <Route path="/home" element={<Home />} />
               <Route path="/m/site" element={<MobileSite />} />
               <Route path="/m/notice" element={<Placeholder title="公告" hint="暂无新公告。" />} />
               <Route path="/m/msg" element={<Placeholder title="消息" hint="暂无新消息。" />} />
