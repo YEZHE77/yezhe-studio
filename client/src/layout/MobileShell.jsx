@@ -173,9 +173,9 @@ export default function MobileShell() {
   useEffect(() => { window.scrollTo(0, 0); }, [location.pathname]);
 
   return (
-    <div className="flex flex-col" style={{ minHeight: '100vh', background: '#F8F8F8' }}>
+    <div className="flex flex-col" style={{ height: '100dvh', overflow: 'hidden', background: '#F8F8F8' }}>
       <div className="flex-1 min-w-0 flex flex-col" style={{ minHeight: 0 }}>
-        {!isTab && <TopBack title="工作台" />}
+        {!isTab && location.pathname !== '/profile/edit' && <TopBack title="工作台" />}
         <div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
           <Suspense fallback={<PageLoader />}>
             <Routes>

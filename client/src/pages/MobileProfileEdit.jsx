@@ -149,7 +149,7 @@ export default function MobileProfileEdit() {
 
   if (loading || !studio) {
     return (
-      <div style={{ minHeight: '100vh', background: '#F8F8F8', display: 'flex', alignItems: 'center', justifyContent: 'center', color: MUTED }}>
+      <div style={{ minHeight: '100%', background: '#F8F8F8', display: 'flex', alignItems: 'center', justifyContent: 'center', color: MUTED }}>
         加载中…
       </div>
     );
@@ -169,7 +169,7 @@ export default function MobileProfileEdit() {
   ];
 
   return (
-    <div style={{ minHeight: '100vh', background: '#F8F8F8', paddingBottom: 24 }}>
+    <div style={{ minHeight: '100%', background: '#F8F8F8', paddingBottom: 84 }}>
       {/* 顶部导航 */}
       <div className="flex items-center" style={{ background: '#fff', borderBottom: '1px solid ' + LINE, padding: '12px 16px', position: 'sticky', top: 0, zIndex: 10 }}>
         <button type="button" onClick={() => nav(-1)} style={{ background: 'none', border: 'none', padding: 0, display: 'flex', alignItems: 'center', color: TEXT }}>
