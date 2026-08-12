@@ -165,6 +165,7 @@ export default function MobileWorkbench() {
   const nav = useNavigate();
   const { user, updateUser } = useAuth();
   const [stats, setStats] = useState(null);
+  const [studio, setStudio] = useState(null);
   const [loading, setLoading] = useState(true);
   const fileRef = useRef(null);
   const [uploading, setUploading] = useState(false);
@@ -200,6 +201,13 @@ export default function MobileWorkbench() {
       .then((r) => setStats(r.data))
       .catch(() => {})
       .finally(() => setLoading(false));
+  }, []);
+
+  // 工作室名称（编辑资料可改，存于 settings/studio.name）
+  useEffect(() => {
+    http.get('/api/settings/studio')
+      .then((r) => setStudio(r.data))
+      .catch(() => setStudio({}));
   }, []);
 
   const pb = stats && stats.pendingBlocks ? stats.pendingBlocks : {};
@@ -252,7 +260,7 @@ export default function MobileWorkbench() {
             </button>
             <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleAvatar} />
             <div>
-              <div style={{ fontSize: 17, fontWeight: 500 }}>岛像微电影</div>
+              <div style={{ fontSize: 17, fontWeight: 500 }}>{studio?.name || user?.name || '岛像微电影'}</div>
             </div>
           </div>
           <button

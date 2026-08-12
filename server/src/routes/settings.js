@@ -9,7 +9,7 @@ import QRCode from 'qrcode';
 const router = Router();
 
 const DEFAULT_STUDIO = {
-  name: '叶哲 Studio',
+  name: '岛像微电影',
   logo: '',
   cover: '',
   // 幻灯片背景音乐（BGM）HTTPS 地址（可选）。
