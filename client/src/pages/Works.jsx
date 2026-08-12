@@ -9,7 +9,6 @@ import {
   MoreHorizontal,
   ChevronDown,
   Eye,
-  Heart,
   MoreVertical,
   Plus,
   Image as ImageIcon
@@ -350,7 +349,7 @@ export default function Works() {
               onDrop={(e) => sortMode && handleDrop(e, w.id)}
               onDragEnd={resetDrag}
               onClick={() => !sortMode && navigate('/works/' + w.id)}
-              className={`bg-white rounded-xl overflow-hidden shadow-sm transition select-none
+              className={`bg-white rounded-2xl overflow-hidden shadow-md transition select-none
                 ${sortMode ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'}
                 ${isDragOver ? 'ring-2 ring-[#FF7A8A]' : ''}
                 ${isDragged ? 'opacity-40' : ''}`}>
@@ -366,16 +365,10 @@ export default function Works() {
                 {w.pinned && (
                   <span className="absolute left-2 top-2 rounded px-2 py-0.5 text-[10px] text-white" style={{ background: CORAL }}>置顶</span>
                 )}
-                {/* 统计角标 */}
-                <div className="absolute top-2 right-2 flex items-center gap-2 text-white text-xs drop-shadow">
-                  <span className="flex items-center gap-0.5">
-                    <Eye className="w-3.5 h-3.5" /> {w.views ?? 0}
-                  </span>
-                  {w.likes != null && (
-                    <span className="flex items-center gap-0.5">
-                      <Heart className="w-3.5 h-3.5" /> {w.likes}
-                    </span>
-                  )}
+                {/* 浏览量角标 */}
+                <div className="absolute top-2 right-2 flex items-center gap-1 text-white text-[10px] bg-black/30 backdrop-blur-sm rounded-full px-1.5 py-0.5">
+                  <Eye className="w-3 h-3" />
+                  <span>{w.views ?? 0}</span>
                 </div>
                 {/* 排序模式拖拽手柄 */}
                 {sortMode && (
@@ -384,14 +377,14 @@ export default function Works() {
                   </div>
                 )}
               </div>
-              <div className="p-2.5">
-                <div className="flex items-start justify-between gap-2">
+              <div className="p-3">
+                <div className="flex items-center justify-between gap-2">
                   <div className="flex-1 min-w-0">
-                    <div className="text-sm font-medium text-gray-900 truncate">{w.title}</div>
-                    <div className="text-xs text-gray-400 mt-1">{formatDate(w.created_at)}</div>
+                    <div className="text-sm text-gray-900 truncate">{w.title}</div>
+                    <div className="text-xs text-gray-400 mt-0.5">{formatDate(w.created_at)}</div>
                   </div>
                   {!sortMode && (
-                    <button onClick={(e) => { e.stopPropagation(); setActiveMenuWork(w); }} className="p-1 text-gray-400 -mr-1 -mt-1">
+                    <button onClick={(e) => { e.stopPropagation(); setActiveMenuWork(w); }} className="p-1 text-gray-400 -mr-1 -mt-0.5">
                       <MoreVertical className="w-4 h-4" />
                     </button>
                   )}
