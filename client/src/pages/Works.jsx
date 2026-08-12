@@ -5,7 +5,6 @@ import { useViewState } from '../tabMemory.js';
 import {
   ChevronLeft,
   Search,
-  HelpCircle,
   MoreHorizontal,
   ChevronDown,
   Eye,
@@ -243,11 +242,10 @@ export default function Works() {
 
   return (
     <div className="min-h-screen bg-[#f7f7f7] pb-24">
-      {/* 顶部栏：返回 + 搜索 + 帮助 + 更多 */}
+      {/* 顶部栏：返回 + 搜索 + 更多 */}
       <div className="flex items-center gap-2 px-3 py-3 bg-white border-b border-gray-100">
-        <button onClick={() => navigate('/')} className="flex items-center text-gray-700" style={{ padding: 0, background: 'none', border: 'none' }}>
+        <button onClick={() => navigate('/')} className="p-1.5 text-gray-700" style={{ background: 'none', border: 'none' }}>
           <ChevronLeft className="w-6 h-6" />
-          <span className="text-sm ml-0.5">返回</span>
         </button>
         <div className="flex-1 relative">
           <input
@@ -258,9 +256,6 @@ export default function Works() {
           />
           <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
         </div>
-        <button className="p-1.5 text-gray-500" onClick={() => alert('搜索作品名称或客户姓名')}>
-          <HelpCircle className="w-6 h-6" />
-        </button>
         <div className="relative">
           <button onClick={(e) => { e.stopPropagation(); setShowTopMenu((v) => !v); }} className="p-1.5 text-gray-500">
             <MoreHorizontal className="w-6 h-6" />
