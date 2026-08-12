@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import http, { img, compressImage, uploadImage } from '../api.js';
+import http, { img, compressImage, uploadImage, BASE } from '../api.js';
 import bgm from '../bgm.js';
 import Slideshow from '../components/Slideshow.jsx';
 import Lightbox from '../components/Lightbox.jsx';
@@ -104,6 +104,16 @@ export default function WorkDetail() {
   const [slideOpen, setSlideOpen] = useState(false);
   const [slidePhotos, setSlidePhotos] = useState([]);
   const creatingRef = useRef(false);
+  // 草稿状态追踪：避免 /works/new 自动 createDraft 后，用户直接返回却留下空白作品
+  // draftIdRef：createDraft 成功后填入真实作品 ID
+  // draftCleanedRef：标记是否已处理（保存后或主动清理后），防止重复 DELETE
+  // 下面 4 个 *Ref 镜像 albums/form 关键字段，让组件卸载时的 cleanup 能同步读取最新状态
+  const draftIdRef = useRef(null);
+  const draftCleanedRef = useRef(false);
+  const albumsLenRef = useRef(0);
+  const formTitleRef = useRef('');
+  const formIsPublicRef = useRef(false);
+  const formAlbumCopyRef = useRef('');
   // 单击预览（Lightbox）
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewIndex, setPreviewIndex] = useState(0);
@@ -221,6 +231,7 @@ export default function WorkDetail() {
         order_id: null
       });
       clearTimeout(timeout);
+      draftIdRef.current = r.data.id; // 记录草稿 ID，离开页面时若仍是空草稿则自动清理
       navigate('/works/' + r.data.id, { replace: true });
       // creating 保持 true 直到新 id 触发的 loadAll 完成后才清（见下方 useEffect）
     } catch (err) {
@@ -321,11 +332,62 @@ export default function WorkDetail() {
       });
       clearDraft(id);
       await loadWork();
+      draftCleanedRef.current = true; // 已保存，不再被 cleanup 自动删除
       alert('保存成功');
     } catch (err) {
       alert((err.response && err.response.data && err.response.data.error) || '保存失败');
     } finally { setSaving(false); }
   }
+
+  // 空草稿判定（无照片 + 标题未改 + 文案为空 + 未公开）；任一条件不满足都视为有效作品，不清理
+  function isEmptyDraft() {
+    if (!draftIdRef.current) return false;
+    return albumsLenRef.current === 0
+      && formTitleRef.current === '未命名作品'
+      && !formIsPublicRef.current
+      && !formAlbumCopyRef.current;
+  }
+
+  // 主动清理空草稿（供「返回」按钮和组件卸载时调用）。fire-and-forget；失败仅记录
+  function cleanupEmptyDraft() {
+    if (draftCleanedRef.current) return;
+    if (!isEmptyDraft()) {
+      draftCleanedRef.current = true; // 有内容，标记为「无需清理」，后续跳过
+      return;
+    }
+    draftCleanedRef.current = true;
+    const draftId = draftIdRef.current;
+    const token = (() => { try { return localStorage.getItem('token') || ''; } catch { return ''; } })();
+    // 用 fetch + keepalive，组件卸载后仍能完成请求；axios 请求会被浏览器中止
+    fetch((BASE || '') + '/api/works/' + draftId, {
+      method: 'DELETE',
+      headers: token ? { 'Authorization': 'Bearer ' + token } : {},
+      keepalive: true
+    }).catch((e) => console.warn('[WorkDetail] 清理空草稿失败', draftId, e && e.message));
+  }
+
+  // 「返回」按钮处理：先清理空草稿，再 navigate（同步等待，给用户即时反馈）
+  async function handleBack() {
+    if (isEmptyDraft()) {
+      const draftId = draftIdRef.current;
+      draftCleanedRef.current = true;
+      try { await http.delete('/api/works/' + draftId); } catch (e) { console.warn('[WorkDetail] 清理空草稿失败', e && e.message); }
+    } else {
+      draftCleanedRef.current = true;
+    }
+    navigate('/works');
+  }
+
+  // 同步关键 state 到 ref，供组件卸载 cleanup 读取（state 不可访问）
+  useEffect(() => { albumsLenRef.current = albums.length; }, [albums.length]);
+  useEffect(() => { formTitleRef.current = form.title; }, [form.title]);
+  useEffect(() => { formIsPublicRef.current = !!form.is_public; }, [form.is_public]);
+  useEffect(() => { formAlbumCopyRef.current = form.album_copy || ''; }, [form.album_copy]);
+
+  // 组件卸载 cleanup：处理「底部 TabBar 切换 / 关闭 tab / App 内路由跳转」等场景的空草稿清理
+  useEffect(() => {
+    return () => cleanupEmptyDraft();
+  }, []);
 
   function onUploadClick() {
     if (fileRef.current) {
@@ -948,7 +1010,7 @@ export default function WorkDetail() {
     return (
       <div className="min-h-screen bg-[#f7f7f7] flex flex-col">
         <div className="flex items-center px-3 py-2 bg-white border-b border-gray-100 sticky top-0 z-10">
-          <button onClick={() => navigate('/works')} className="flex items-center text-gray-700 shrink-0" style={{ background: 'none', border: 'none', padding: 0 }}>
+          <button onClick={handleBack} className="flex items-center text-gray-700 shrink-0" style={{ background: 'none', border: 'none', padding: 0 }}>
             <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M15 6l-6 6 6 6" /></svg>
             <span className="text-sm ml-1">返回</span>
           </button>
@@ -1049,7 +1111,7 @@ export default function WorkDetail() {
       {/* 顶部导航：返回 + 标题 + 删除 */}
       <div className="flex items-center justify-between flex-wrap gap-3 mb-5">
         <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-          <button onClick={() => navigate('/works')} className="px-3 py-1.5 rounded border border-line text-sm text-muted hover:text-brand hover:border-brand shrink-0">← 返回作品列表</button>
+          <button onClick={handleBack} className="px-3 py-1.5 rounded border border-line text-sm text-muted hover:text-brand hover:border-brand shrink-0">← 返回作品列表</button>
           <h1 className="text-lg sm:text-xl text-fg truncate min-w-0">{isNew ? '新建作品' : (work?.title || '未命名作品')}</h1>
           {!isNew && <span className="text-xs px-2 py-0.5 rounded bg-panel border border-line text-muted shrink-0">{work.is_public ? '公开' : '私密'}</span>}
         </div>

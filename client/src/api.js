@@ -6,7 +6,7 @@ import axios from 'axios';
 // 开发：留空，由 vite.config.js 的 proxy 转发到本地 4000。
 // 注：环境变量末尾若有 / 会导致双斜杠，统一去掉。
 const DEFAULT_BASE = import.meta.env.DEV ? '' : 'https://yezhe-studio-server.onrender.com';
-const BASE = (import.meta.env.VITE_API_BASE || DEFAULT_BASE).replace(/\/+$/, '');
+export const BASE = (import.meta.env.VITE_API_BASE || DEFAULT_BASE).replace(/\/+$/, '');
 const TIMEOUT = 15000; // 15 秒超时
 
 const http = axios.create({ baseURL: BASE, timeout: TIMEOUT });
