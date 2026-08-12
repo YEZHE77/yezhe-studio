@@ -3,7 +3,6 @@ import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-
 import Icon from '../components/Icon.jsx';
 import { useAuth } from '../auth.jsx';
 import MobileWorkbench from '../pages/MobileWorkbench.jsx';
-import MobileProfileEdit from '../pages/MobileProfileEdit.jsx';
 
 // 复用现有 B 端页面组件（独立懒加载，不触碰桌面 AppShell 路由表）
 const Works = React.lazy(() => import('../pages/Works.jsx'));
@@ -181,12 +180,11 @@ export default function MobileShell() {
   return (
     <div className="flex flex-col" style={{ height: '100dvh', overflow: 'hidden', background: '#F8F8F8' }}>
       <div className="flex-1 min-w-0 flex flex-col" style={{ minHeight: 0 }}>
-        {!isTab && location.pathname !== '/profile/edit' && <TopBack title="工作台" />}
+        {!isTab && <TopBack title="工作台" />}
         <div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
           <Suspense fallback={<PageLoader />}>
             <Routes>
               <Route path="/" element={<MobileWorkbench />} />
-              <Route path="/profile/edit" element={<MobileProfileEdit />} />
               <Route path="/m/site" element={<MobileSite />} />
               <Route path="/m/notice" element={<Placeholder title="公告" hint="暂无新公告。" />} />
               <Route path="/m/msg" element={<Placeholder title="消息" hint="暂无新消息。" />} />
