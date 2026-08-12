@@ -193,6 +193,14 @@ export default function WorkDetail() {
     if (creatingRef.current) return;
     creatingRef.current = true;
     setCreating(true); // 让 UI 显示 loading，避免用户在草稿创建完成前误操作（否则 id 还是 'new'，上传会 404）
+    // 超时保护：15 秒后自动解除 creating（防 Render 冷启动卡死）
+    const timeout = setTimeout(() => {
+      if (creatingRef.current) {
+        creatingRef.current = false;
+        setCreating(false);
+        alert('创建作品超时，请检查网络后刷新页面重试');
+      }
+    }, 15000);
     try {
       const r = await http.post('/api/works', {
         title: '未命名作品',
@@ -212,9 +220,11 @@ export default function WorkDetail() {
         customer_name: '',
         order_id: null
       });
+      clearTimeout(timeout);
       navigate('/works/' + r.data.id, { replace: true });
       // creating 保持 true 直到新 id 触发的 loadAll 完成后才清（见下方 useEffect）
     } catch (err) {
+      clearTimeout(timeout);
       alert((err.response && err.response.data && err.response.data.error) || '创建作品失败');
       creatingRef.current = false;
       setCreating(false);
@@ -328,8 +338,13 @@ export default function WorkDetail() {
   // 选图后：读取每张原图 name+size，打开预览弹窗（不限制重复上传）
   async function onPickFiles(e) {
     const files = e.target.files;
-    if (!fileRef.current) return;
     if (!files || !files.length) return;
+    // 草稿还没创建完（id='new'）时拦截，给明确提示
+    if (id === 'new' || creating) {
+      alert('作品正在创建中，请稍等几秒再上传照片');
+      if (fileRef.current) fileRef.current.value = '';
+      return;
+    }
     setPreparing(true);
     try {
       const MAX = 3 * 1024 * 1024; // 单张硬性限制 3M
@@ -1016,10 +1031,10 @@ export default function WorkDetail() {
                 </div>
                 <p className="text-sm text-gray-400 mb-4">还没有上传照片，添加第一张客片吧</p>
                 {/* 用 label 包裹 file input，业内移动端标准做法，绕开 iOS Safari 对 ref.click() 的偶发拦截。
-                    creating=true 时（草稿未创建完）禁用并显示创建中，避免 id='new' 时上传 404 */}
-                <label className={'px-8 py-2.5 rounded-full text-white text-sm font-medium select-none ' + (creating ? 'bg-gray-400 cursor-wait' : 'bg-[#FF7A8A] cursor-pointer active:opacity-80') + ((uploading || preparing || creating) ? ' opacity-60 pointer-events-none' : '')}>
+                    creating=true 时改变文案提示，但不阻止点击——由 onPickFiles 内部判断给出 alert，避免「点了没反应」 */}
+                <label className={'px-8 py-2.5 rounded-full text-white text-sm font-medium cursor-pointer select-none active:opacity-80 ' + (creating ? 'bg-gray-400' : 'bg-[#FF7A8A]') + (uploading || preparing ? ' opacity-60' : '')}>
                   {creating ? '创建作品中…' : uploading ? '上传中…' : preparing ? '准备中…' : '+ 上传照片'}
-                  <input ref={fileRef} type="file" accept="image/*" multiple className="hidden" onChange={onPickFiles} disabled={creating} />
+                  <input ref={fileRef} type="file" accept="image/*" multiple className="hidden" onChange={onPickFiles} />
                 </label>
               </div>
             </div>
