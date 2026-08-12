@@ -14,6 +14,20 @@ const JSON_COLS = ['package_snapshot', 'addons_snapshot', 'logs', 'phones', 'tim
 
 function nowISO() { return new Date().toISOString(); }
 
+// —— 收款渠道（线下区分微信/支付宝/现金/银行转账；线上统一 online） ——
+const CHANNEL_LABEL = { wechat: '微信', alipay: '支付宝', cash: '现金', bank: '银行转账', online: '线上' };
+function normChannel(method, channel) {
+  const m = method === 'online' ? 'online' : 'offline';
+  if (m === 'online') return 'online';
+  return ['wechat', 'alipay', 'cash', 'bank'].includes(channel) ? channel : 'cash';
+}
+function channelLabel(method, channel) {
+  const m = method === 'online' ? 'online' : 'offline';
+  if (m === 'online') return '线上';
+  const name = CHANNEL_LABEL[normChannel(m, channel)] || '其他';
+  return '线下·' + name;
+}
+
 // —— 新增订单弹窗字段的规范化助手（多值字段统一 JSON 文本落库） ——
 const PAYMENT_STATUS = ['unpaid', 'deposit', 'paid']; // 未付定金 / 已付定金 / 已付全款
 function normPhones(v) {
@@ -311,16 +325,16 @@ router.post('/', authRequired, requireRole(['admin', 'photographer', 'finance'])
     if (payment_status !== 'unpaid') {
       if (deposit > 0) {
         await insert(
-          `INSERT INTO payments (order_id, order_no, type, amount, method, note) VALUES (?,?,?,?,?,?)`,
-          [id, order_no, 'deposit', deposit, b.deposit_method || 'offline', '创建订单时收取定金']
+          `INSERT INTO payments (order_id, order_no, type, amount, method, channel, note) VALUES (?,?,?,?,?,?,?)`,
+          [id, order_no, 'deposit', deposit, b.deposit_method || 'offline', normChannel(b.deposit_method, b.deposit_channel), '创建订单时收取定金']
         );
       }
       if (payment_status === 'paid') {
         const rest = Math.max(0, total - deposit);
         if (rest > 0) {
           await insert(
-            `INSERT INTO payments (order_id, order_no, type, amount, method, note) VALUES (?,?,?,?,?,?)`,
-            [id, order_no, 'balance', rest, b.balance_method || 'offline', '创建订单时结清全款']
+            `INSERT INTO payments (order_id, order_no, type, amount, method, channel, note) VALUES (?,?,?,?,?,?,?)`,
+            [id, order_no, 'balance', rest, b.balance_method || 'offline', normChannel(b.balance_method, b.balance_channel), '创建订单时结清全款']
           );
         }
       }
@@ -530,8 +544,8 @@ router.post('/:id/payments', authRequired, requireRole(['admin', 'photographer',
     const amount = parseFloat(b.amount) || 0;
     if (amount <= 0) return res.status(400).json({ error: '金额必须大于 0' });
     const pid = await insert(
-      `INSERT INTO payments (order_id, order_no, type, amount, method, note) VALUES (?,?,?,?,?,?)`,
-      [o.id, o.order_no, type, amount, b.method || 'offline', b.note || '']
+      `INSERT INTO payments (order_id, order_no, type, amount, method, channel, note) VALUES (?,?,?,?,?,?,?)`,
+      [o.id, o.order_no, type, amount, b.method || 'offline', normChannel(b.method, b.channel), b.note || '']
     );
     // 重算 paid_amount（应收类加、退款减）
     const agg = await get(
@@ -544,7 +558,7 @@ router.post('/:id/payments', authRequired, requireRole(['admin', 'photographer',
     const paid = (parseFloat(agg.received) - parseFloat(agg.refunded));
     await run('UPDATE orders SET paid_amount = ? WHERE id = ?', [paid, o.id]);
     const TYPE_LABEL = { deposit: '定金', balance: '尾款', extra: '加片/增值', refund: '退款' };
-    await appendLog(o.id, `收款登记：${TYPE_LABEL[type]} ¥${amount}（${b.method === 'online' ? '线上' : '线下'}）`);
+    await appendLog(o.id, `收款登记：${TYPE_LABEL[type]} ¥${amount}（${channelLabel(b.method, b.channel)}）`);
     // 收到定金确保订单处于「已付定金」状态（兼容旧数据由 unpaid 归一）
     if (type === 'deposit' && o.status !== 'deposit') {
       await run("UPDATE orders SET status = 'deposit' WHERE id = ?", [o.id]);
@@ -630,8 +644,8 @@ router.post('/:id/refund', authRequired, requireRole(['admin', 'finance']), asyn
     const amount = parseFloat(b.amount) || 0;
     if (amount <= 0) return res.status(400).json({ error: '退款金额必须大于 0' });
     await insert(
-      `INSERT INTO payments (order_id, order_no, type, amount, method, note) VALUES (?,?,?,?,?,?)`,
-      [o.id, o.order_no, 'refund', amount, 'offline', b.note || '退款']
+      `INSERT INTO payments (order_id, order_no, type, amount, method, channel, note) VALUES (?,?,?,?,?,?,?)`,
+      [o.id, o.order_no, 'refund', amount, 'offline', normChannel('offline', b.channel), b.note || '退款']
     );
     const agg = await get(
       `SELECT COALESCE(SUM(CASE WHEN type='refund' THEN amount ELSE 0 END),0) AS refunded FROM payments WHERE order_id = ?`,

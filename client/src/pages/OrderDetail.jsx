@@ -14,6 +14,13 @@ const STAGE_COLOR = {
   retouching: 'bg-purple-500', delivered: 'bg-teal-500', completed: 'bg-emerald-500', cancelled: 'bg-line'
 };
 const TYPE_LABEL = { deposit: '定金', balance: '尾款', extra: '加片/增值', refund: '退款' };
+// 收款渠道显示：线上统一「线上」；线下按 channel 区分微信/支付宝/现金/银行转账
+const CHANNEL_LABEL = { wechat: '微信', alipay: '支付宝', cash: '现金', bank: '银行转账', online: '线上' };
+function payMethodLabel(p) {
+  if (!p) return '—';
+  if (p.method === 'online') return '线上';
+  return '线下·' + (CHANNEL_LABEL[p.channel] || '其他');
+}
 const PAY_STATUS_LABEL = { unpaid: '未付定金', deposit: '已付定金', paid: '已付全款' };
 const HOURS = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0') + ':00');
 
@@ -440,7 +447,7 @@ export default function OrderDetail() {
     setAddonBox({
       unit, included, picked, count: String(count),
       feeText: dt.extra_photo_fee || '', discountText: dt.extra_photo_discount || '',
-      fromSnapshot: !!(snap.id || snap.name), method: 'offline'
+      fromSnapshot: !!(snap.id || snap.name), method: 'offline', channel: 'wechat'
     });
   }
   async function submitAddon() {
@@ -449,7 +456,7 @@ export default function OrderDetail() {
     if (r.fee <= 0) { alert('加片张数为 0，无需登记加片费'); return; }
     try {
       await http.post('/api/orders/' + detail.id + '/payments', {
-        type: 'extra', amount: r.fee, method: addonBox.method,
+        type: 'extra', amount: r.fee, method: addonBox.method, channel: addonBox.channel,
         note: `加片 ${r.count} 张 × ¥${r.unitPrice}/张${r.discount < 1 ? ' × ' + (r.discount * 10).toFixed(1) + ' 折' : ''}（按订单套系快照核算）`
       });
       setAddonBox(null);
@@ -1253,13 +1260,17 @@ export default function OrderDetail() {
           )}
           {logTab === 'trade' && (
             <div>
-              <div style={{ color: '#222222', marginBottom: 8 }}>收款流水</div>
+              <div className="flex items-center justify-between" style={{ marginBottom: 8 }}>
+                <div style={{ color: '#222222' }}>收款流水</div>
+                <button type="button" onClick={() => setPay({ type: 'deposit', amount: '', method: 'offline', channel: 'wechat', note: '' })}
+                  style={{ background: 'none', border: '1px solid ' + BLUE, color: BLUE, fontSize: 12, borderRadius: 4, padding: '2px 10px', cursor: 'pointer', lineHeight: '20px' }}>+ 登记收款</button>
+              </div>
               {(!detail.payments || detail.payments.length === 0) && <div style={{ color: '#999999', fontSize: 14, padding: '4px 0' }}>暂无流水</div>}
               {detail.payments && detail.payments.map((p) => (
                 <div key={p.id} className="flex items-center justify-between" style={{ borderBottom: '1px solid ' + DIV, padding: '8px 0' }}>
                   <div>
                     <span style={{ color: '#222222' }}>{TYPE_LABEL[p.type]}</span>
-                    <span style={{ color: '#666666', marginLeft: 8 }}>{p.method === 'online' ? '线上' : '线下'}</span>
+                    <span style={{ color: '#666666', marginLeft: 8 }}>{payMethodLabel(p)}</span>
                   </div>
                   <div style={{ color: p.type === 'refund' ? '#ef4444' : '#10b981' }}>
                     {p.type === 'refund' ? '-' : '+'}¥{Number(p.amount).toLocaleString()}
@@ -1298,9 +1309,15 @@ export default function OrderDetail() {
             </select>
             <input value={pay.amount} onChange={(e) => setPay({ ...pay, amount: e.target.value })} type="number" placeholder="金额"
               style={{ ...modalInputStyle, marginTop: 12 }} />
-            <select value={pay.method} onChange={(e) => setPay({ ...pay, method: e.target.value })} style={{ ...modalInputStyle, marginTop: 12 }}>
+            <select value={pay.method} onChange={(e) => setPay({ ...pay, method: e.target.value, channel: e.target.value === 'online' ? 'online' : 'wechat' })} style={{ ...modalInputStyle, marginTop: 12 }}>
               <option value="offline">线下</option><option value="online">线上</option>
             </select>
+            {pay.method === 'offline' && (
+              <select value={pay.channel} onChange={(e) => setPay({ ...pay, channel: e.target.value })} style={{ ...modalInputStyle, marginTop: 12 }}>
+                <option value="wechat">微信</option><option value="alipay">支付宝</option>
+                <option value="cash">现金</option><option value="bank">银行转账</option>
+              </select>
+            )}
             <input value={pay.note} onChange={(e) => setPay({ ...pay, note: e.target.value })} placeholder="备注(选填)"
               style={{ ...modalInputStyle, marginTop: 12 }} />
             {err && <div style={{ color: '#ef4444', fontSize: 12, marginTop: 8 }}>{err}</div>}
@@ -1692,11 +1709,18 @@ export default function OrderDetail() {
                 <input value={addonBox.unit} type="number" min="0"
                   onChange={(e) => setAddonBox({ ...addonBox, unit: parseFloat(e.target.value) || 0 })} style={modalInputStyle} />
               </div>
-              <select value={addonBox.method} onChange={(e) => setAddonBox({ ...addonBox, method: e.target.value })}
+              <select value={addonBox.method} onChange={(e) => setAddonBox({ ...addonBox, method: e.target.value, channel: e.target.value === 'online' ? 'online' : 'wechat' })}
                 style={{ ...modalInputStyle, marginTop: 12 }}>
                 <option value="offline">线下收款</option>
                 <option value="online">线上收款</option>
               </select>
+              {addonBox.method === 'offline' && (
+                <select value={addonBox.channel} onChange={(e) => setAddonBox({ ...addonBox, channel: e.target.value })}
+                  style={{ ...modalInputStyle, marginTop: 12 }}>
+                  <option value="wechat">微信</option><option value="alipay">支付宝</option>
+                  <option value="cash">现金</option><option value="bank">银行转账</option>
+                </select>
+              )}
               <div style={{ marginTop: 12, background: '#f9fafb', borderRadius: 4, padding: 12, fontSize: 14, color: '#222222' }}>
                 应收加片费：<b>¥{r.fee.toLocaleString()}</b>
                 <span style={{ fontSize: 12, color: '#888888', marginLeft: 8 }}>
@@ -1968,7 +1992,7 @@ export default function OrderDetail() {
                       <tr key={p.id}>
                         <td style={{ padding: '4px 8px', border: '1px solid #ddd' }}>{TYPE_LABEL[p.type] || p.type}</td>
                         <td style={{ padding: '4px 8px', border: '1px solid #ddd', textAlign: 'right' }}>{p.type === 'refund' ? '-' : '+'}¥{Number(p.amount).toLocaleString()}</td>
-                        <td style={{ padding: '4px 8px', border: '1px solid #ddd' }}>{p.method === 'online' ? '线上' : '线下'}</td>
+                        <td style={{ padding: '4px 8px', border: '1px solid #ddd' }}>{payMethodLabel(p)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -2040,7 +2064,7 @@ export default function OrderDetail() {
                     <div key={p.id} className="flex items-center justify-between" style={{ borderBottom: '1px solid ' + DIV, padding: '8px 0' }}>
                       <div>
                         <span style={{ color: '#222222' }}>{TYPE_LABEL[p.type]}</span>
-                        <span style={{ color: '#666666', marginLeft: 8 }}>{p.method === 'online' ? '线上' : '线下'}</span>
+                        <span style={{ color: '#666666', marginLeft: 8 }}>{payMethodLabel(p)}</span>
                       </div>
                       <div style={{ color: p.type === 'refund' ? '#ef4444' : '#10b981' }}>
                         {p.type === 'refund' ? '-' : '+'}¥{Number(p.amount).toLocaleString()}

@@ -130,10 +130,10 @@ async function doConfirm(req, res) {
         a.source || '小程序', 0, 'deposit']
     );
 
-    // 建单即视为已收定金，登记定金收款流水
+    // 建单即视为已收定金，登记定金收款流水（channel：线上 online / 线下默认 cash）
     await insert(
-      `INSERT INTO payments (order_id, order_no, type, amount, method, note) VALUES (?,?,?,?,?,?)`,
-      [orderId, order_no, 'deposit', deposit, deposit_method, '接受预约时收取定金']
+      `INSERT INTO payments (order_id, order_no, type, amount, method, channel, note) VALUES (?,?,?,?,?,?,?)`,
+      [orderId, order_no, 'deposit', deposit, deposit_method, deposit_method === 'online' ? 'online' : 'cash', '接受预约时收取定金']
     );
 
     await run(

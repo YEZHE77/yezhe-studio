@@ -93,15 +93,19 @@ CREATE TABLE IF NOT EXISTS schedules (
 );`;
 
 // 收款流水（财务看板与资金流水的唯一可信来源）
+// method 分组线上/线下（online/offline）；channel 记录具体收款渠道：
+// wechat=微信、alipay=支付宝、cash=现金、bank=银行转账、online=线上支付（线上不细分时）
 const PG_PAYMENTS = `
 CREATE TABLE IF NOT EXISTS payments (
   id SERIAL PRIMARY KEY, order_id INTEGER, order_no TEXT, type TEXT NOT NULL DEFAULT 'deposit',
-  amount REAL NOT NULL DEFAULT 0, method TEXT NOT NULL DEFAULT 'offline', note TEXT, created_at TIMESTAMPTZ DEFAULT now()
+  amount REAL NOT NULL DEFAULT 0, method TEXT NOT NULL DEFAULT 'offline', channel TEXT NOT NULL DEFAULT 'cash',
+  note TEXT, created_at TIMESTAMPTZ DEFAULT now()
 );`;
 const SQLITE_PAYMENTS = `
 CREATE TABLE IF NOT EXISTS payments (
   id INTEGER PRIMARY KEY AUTOINCREMENT, order_id INTEGER, order_no TEXT, type TEXT NOT NULL DEFAULT 'deposit',
-  amount REAL NOT NULL DEFAULT 0, method TEXT NOT NULL DEFAULT 'offline', note TEXT, created_at TEXT DEFAULT CURRENT_TIMESTAMP
+  amount REAL NOT NULL DEFAULT 0, method TEXT NOT NULL DEFAULT 'offline', channel TEXT NOT NULL DEFAULT 'cash',
+  note TEXT, created_at TEXT DEFAULT CURRENT_TIMESTAMP
 );`;
 
 // 统一分享内核（5 大 C 端模块共用底座）：shares 分享令牌表 + share_logs 访问留痕
@@ -349,6 +353,9 @@ export async function initSchema() {
   // media 补列：处理状态（同步写入后恒为 ready）+ 内容 hash（内容级去重，best-effort）
   await ensureColumn('media', 'status', `TEXT NOT NULL DEFAULT 'ready'`);
   await ensureColumn('media', 'hash', 'TEXT');
+
+  // payments 补列：收款渠道（线下区分微信/支付宝/现金/转账，线上为 online）
+  await ensureColumn('payments', 'channel', `TEXT NOT NULL DEFAULT 'cash'`);
 
   // categories 增量补列（is_active 启用/禁用、deleted 软删、preset 预设保护）
   await ensureColumn('categories', 'is_active', 'INTEGER NOT NULL DEFAULT 1');

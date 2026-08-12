@@ -17,7 +17,10 @@ router.get('/summary', authRequired, async (req, res) => {
         COALESCE(SUM(CASE WHEN type='balance' THEN amount ELSE 0 END),0) AS balance,
         COALESCE(SUM(CASE WHEN type='extra' THEN amount ELSE 0 END),0) AS extra,
         COALESCE(SUM(CASE WHEN type IN ('deposit','balance','extra') AND method='online' THEN amount ELSE 0 END),0) AS online,
-        COALESCE(SUM(CASE WHEN type IN ('deposit','balance','extra') AND method='offline' THEN amount ELSE 0 END),0) AS offline
+        COALESCE(SUM(CASE WHEN type IN ('deposit','balance','extra') AND method='offline' THEN amount ELSE 0 END),0) AS offline,
+        COALESCE(SUM(CASE WHEN type IN ('deposit','balance','extra') AND method='offline' AND channel='wechat' THEN amount ELSE 0 END),0) AS offline_wechat,
+        COALESCE(SUM(CASE WHEN type IN ('deposit','balance','extra') AND method='offline' AND channel='alipay' THEN amount ELSE 0 END),0) AS offline_alipay,
+        COALESCE(SUM(CASE WHEN type IN ('deposit','balance','extra') AND method='offline' AND (channel IS NULL OR channel NOT IN ('wechat','alipay')) THEN amount ELSE 0 END),0) AS offline_other
       FROM payments`);
     const o = await get(`
       SELECT COALESCE(SUM(deposit),0) AS deposit_sum, COALESCE(SUM(balance),0) AS balance_sum
@@ -30,6 +33,9 @@ router.get('/summary', authRequired, async (req, res) => {
       refunded: Math.round(parseFloat(p.refunded) * 100) / 100,
       online: Math.round(parseFloat(p.online) * 100) / 100,
       offline: Math.round(parseFloat(p.offline) * 100) / 100,
+      offlineWechat: Math.round(parseFloat(p.offline_wechat || 0) * 100) / 100,
+      offlineAlipay: Math.round(parseFloat(p.offline_alipay || 0) * 100) / 100,
+      offlineOther: Math.round(parseFloat(p.offline_other || 0) * 100) / 100,
       incomeBreakdown: {
         deposit: Math.round(parseFloat(p.deposit || 0) * 100) / 100,
         balance: Math.round(parseFloat(p.balance || 0) * 100) / 100,

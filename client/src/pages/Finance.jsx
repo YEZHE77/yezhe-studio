@@ -59,7 +59,9 @@ function MobileView({ summary, stats, months, staff, pkgs, ledger, year, onYearC
     { label: '实收', value: summary ? summary.received : null, color: MINT },
     { label: '退款', value: summary ? summary.refunded : null, color: '#FF4D4F' },
     { label: '线上', value: summary ? summary.online : null, color: BRAND },
-    { label: '线下', value: summary ? summary.offline : null, color: '#F5A623' },
+    { label: '线下·微信', value: summary ? summary.offlineWechat : null, color: '#07C160' },
+    { label: '线下·支付宝', value: summary ? summary.offlineAlipay : null, color: '#1677FF' },
+    { label: '线下·其他', value: summary ? summary.offlineOther : null, color: '#F5A623' },
     { label: '尾款待收', value: stats ? stats.pendingBalance : null, color: '#FF7A8A' }
   ];
 
@@ -184,7 +186,7 @@ function MobileView({ summary, stats, months, staff, pkgs, ledger, year, onYearC
                   <td style={{ padding: '10px 6px', color: MUTED, whiteSpace: 'nowrap' }}>{new Date(l.created_at).toLocaleString('zh-CN')}</td>
                   <td style={{ padding: '10px 6px', color: MUTED }}>{l.order_no}</td>
                   <td style={{ padding: '10px 6px', color: TEXT }}>{TYPE_LABEL[l.type]}</td>
-                  <td style={{ padding: '10px 6px', color: MUTED }}>{l.method === 'online' ? '线上' : '线下'}</td>
+                  <td style={{ padding: '10px 6px', color: MUTED }}>{l.method === 'online' ? '线上' : ('线下·' + ({ wechat: '微信', alipay: '支付宝', cash: '现金', bank: '银行转账' }[l.channel] || '其他'))}</td>
                   <td style={{ padding: '10px 6px', textAlign: 'right', color: l.type === 'refund' ? '#FF4D4F' : MINT, whiteSpace: 'nowrap' }}>
                     {l.type === 'refund' ? '-' : '+'}¥{Number(l.amount).toLocaleString()}
                   </td>
@@ -222,12 +224,14 @@ function DesktopView({ summary, months, staff, pkgs, ledger, year, onYearChange 
       </div>
 
       {/* KPI */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-5">
+      <div className="grid grid-cols-2 md:grid-cols-7 gap-3 mb-5">
         <Kpi label="应收" value={summary ? summary.receivable : '—'} cls="text-white" />
         <Kpi label="实收" value={summary ? summary.received : '—'} cls="text-emerald-400" />
         <Kpi label="退款" value={summary ? summary.refunded : '—'} cls="text-red-400" />
         <Kpi label="线上" value={summary ? summary.online : '—'} cls="text-sky-400" />
-        <Kpi label="线下" value={summary ? summary.offline : '—'} cls="text-amber-400" />
+        <Kpi label="线下·微信" value={summary ? summary.offlineWechat : '—'} cls="text-green-400" />
+        <Kpi label="线下·支付宝" value={summary ? summary.offlineAlipay : '—'} cls="text-blue-400" />
+        <Kpi label="线下·其他" value={summary ? summary.offlineOther : '—'} cls="text-amber-400" />
       </div>
 
       {/* 周期报表 */}
@@ -299,7 +303,7 @@ function DesktopView({ summary, months, staff, pkgs, ledger, year, onYearChange 
                   <td className="p-2 text-muted whitespace-nowrap">{new Date(l.created_at).toLocaleString('zh-CN')}</td>
                   <td className="p-2 text-muted">{l.order_no}</td>
                   <td className="p-2 text-white">{TYPE_LABEL[l.type]}</td>
-                  <td className="p-2 text-muted">{l.method === 'online' ? '线上' : '线下'}</td>
+                  <td className="p-2 text-muted">{l.method === 'online' ? '线上' : ('线下·' + ({ wechat: '微信', alipay: '支付宝', cash: '现金', bank: '银行转账' }[l.channel] || '其他'))}</td>
                   <td className="p-2 text-muted truncate max-w-[160px]">{l.note}</td>
                   <td className={'p-2 text-right ' + (l.type === 'refund' ? 'text-red-400' : 'text-emerald-400')}>{l.type === 'refund' ? '-' : '+'}¥{Number(l.amount).toLocaleString()}</td>
                 </tr>
