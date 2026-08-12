@@ -261,9 +261,14 @@ export default function Works() {
             <MoreHorizontal className="w-6 h-6" />
           </button>
           {showTopMenu && (
-            <div className="absolute right-0 top-full mt-1 w-32 rounded-lg bg-white shadow-lg border border-gray-100 py-1 z-50">
+            <div className="absolute right-0 top-full mt-1 w-40 rounded-lg bg-white shadow-lg border border-gray-100 py-1 z-50">
               {!sortMode ? (
-                <button onClick={() => { setShowTopMenu(false); toggleSortMode(); }} className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50">自定义排序</button>
+                <>
+                  <button onClick={() => { setShowTopMenu(false); openNew(); }} className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2">
+                    <Plus className="w-4 h-4" /> 添加新客片
+                  </button>
+                  <button onClick={() => { setShowTopMenu(false); toggleSortMode(); }} className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50">自定义排序</button>
+                </>
               ) : (
                 <>
                   <button onClick={() => { setShowTopMenu(false); saveSortOrder(); }} disabled={savingSort || !allItems.length} className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50">{savingSort ? '保存中…' : '保存排序'}</button>
@@ -392,7 +397,7 @@ export default function Works() {
         {displayItems.length === 0 && !loading && (
           <div className="col-span-full text-center text-gray-400 py-12">
             <div className="text-sm">暂无作品</div>
-            <div className="mt-1 text-xs">点击右下角添加新客片</div>
+            <div className="mt-1 text-xs">点击右上角「…」添加新客片</div>
           </div>
         )}
       </div>
@@ -405,15 +410,6 @@ export default function Works() {
               className={'w-8 h-8 rounded-full text-sm border ' + (data.page === i + 1 ? 'bg-[#FF7A8A] text-white border-[#FF7A8A]' : 'bg-white border-gray-200 text-gray-500')}>{i + 1}</button>
           ))}
         </div>
-      )}
-
-      {/* 底部悬浮添加按钮 */}
-      {!sortMode && (
-        <button onClick={openNew}
-          className="fixed right-4 bottom-6 z-50 flex items-center gap-1 px-4 py-2.5 rounded-full text-white text-sm shadow-lg active:scale-95 transition"
-          style={{ background: CORAL }}>
-          <Plus className="w-4 h-4" /> 添加新客片
-        </button>
       )}
 
       {/* 点击外部关闭下拉/菜单的透明层 */}
