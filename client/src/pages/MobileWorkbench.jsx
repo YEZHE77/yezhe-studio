@@ -284,7 +284,7 @@ export default function MobileWorkbench() {
       </div>
 
       {/* 统计区（一行 3 功能横版：余额 / 待跟进 / 待拍摄） */}
-      <div style={{ background: '#fff', borderTop: '1px solid ' + LINE, borderBottom: '1px solid ' + LINE }}>
+      <div style={{ background: '#fff', borderTop: '1px solid ' + LINE }}>
         <div style={{ display: 'flex' }}>
           {/* 余额：与网页版后台「商户余额」同步，使用 stats.balance，点击跳财务管理 */}
           <div
@@ -384,7 +384,7 @@ export default function MobileWorkbench() {
       </div>
 
       {/* 大容器卡片：外部展示（粉色强调）+ 功能（无标题）+ 工具 + 拓客引流 + 其他功能 */}
-      <div style={{ background: '#fff', borderTop: '1px solid ' + LINE }}>
+      <div style={{ background: '#fff' }}>
         <GroupBlock title="外部展示" last>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <button
