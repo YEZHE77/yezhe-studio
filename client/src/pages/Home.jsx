@@ -26,36 +26,51 @@ export default function Home() {
   const [storyOpen, setStoryOpen] = useState(false);
   const [toast, setToast] = useState('');
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [syncing, setSyncing] = useState(true);
+
+  // 异步加载作品，返回 Promise 供首次同步状态聚合
+  const loadWorksAsync = (p, cat, reset) => {
+    return new Promise((resolve) => {
+      if (loading) { resolve(); return; }
+      setLoading(true);
+      const params = ['page=' + p, 'pageSize=8'];
+      if (cat) params.push('category=' + cat);
+      const myReq = ++reqRef.current;
+      http.get('/api/works/public?' + params.join('&'))
+        .then((r) => {
+          if (myReq !== reqRef.current) return;
+          const data = r.data || {};
+          const items = (data.items || []).map((w) => ({ ...w, cover: img(w.cover_url || '', 'thumb') }));
+          setWorks((prev) => (reset ? items : prev.concat(items)));
+          setPage(p);
+          setHasMore(items.length < (data.total || 0));
+        })
+        .catch(() => {})
+        .finally(() => { setLoading(false); resolve(); });
+    });
+  };
+
+  const loadWorks = (p, cat, reset) => { loadWorksAsync(p, cat, reset); };
 
   useEffect(() => {
-    http.get('/api/settings/studio').then((r) => {
+    let mounted = true;
+    setSyncing(true);
+    const fetchStudio = http.get('/api/settings/studio').then((r) => {
+      if (!mounted) return;
       const s = r.data || {};
       setStudio(s);
       const hero = (s.heroImages || []).map((u) => img(u, 'thumb')).filter(Boolean);
       if (hero.length) setBanners(hero);
     }).catch(() => {});
-    http.get('/api/categories').then((r) => setCategories(r.data || [])).catch(() => {});
-    loadWorks(1, 0, true);
+    const fetchCats = http.get('/api/categories').then((r) => {
+      if (!mounted) return;
+      setCategories(r.data || []);
+    }).catch(() => {});
+    Promise.all([fetchStudio, fetchCats, loadWorksAsync(1, 0, true)]).finally(() => {
+      if (mounted) setSyncing(false);
+    });
+    return () => { mounted = false; };
   }, []);
-
-  const loadWorks = (p, cat, reset) => {
-    if (loading) return;
-    setLoading(true);
-    const params = ['page=' + p, 'pageSize=8'];
-    if (cat) params.push('category=' + cat);
-    const myReq = ++reqRef.current;
-    http.get('/api/works/public?' + params.join('&'))
-      .then((r) => {
-        if (myReq !== reqRef.current) return;
-        const data = r.data || {};
-        const items = (data.items || []).map((w) => ({ ...w, cover: img(w.cover_url || '', 'thumb') }));
-        setWorks((prev) => (reset ? items : prev.concat(items)));
-        setPage(p);
-        setHasMore(items.length < (data.total || 0));
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  };
 
   const selectCat = (id) => {
     if (id === activeCat) return;
@@ -94,6 +109,17 @@ export default function Home() {
       {/* 顶部黑色自定义导航栏（对齐小程序轻薄版：44px内容高/左24rpx LOGO/36rpx品牌/右侧三点菜单） */}
       <div className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between h-11 px-3 bg-[#111111] text-white">
         <div className="flex items-center min-w-0">
+          {/* 返回按钮：在工作台内嵌预览时提供返回工作台能力，小程序原生环境可隐藏 */}
+          <button
+            type="button"
+            onClick={() => { try { nav(-1); } catch { nav('/'); } }}
+            className="mr-2 flex h-8 w-8 shrink-0 items-center justify-center rounded-full active:bg-white/10"
+            aria-label="返回"
+          >
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M15 18l-6-6 6-6" />
+            </svg>
+          </button>
           <div className="mr-2 h-8 w-8 shrink-0 overflow-hidden rounded-full bg-[#333]">
             {studio.logo && (
               <img src={img(studio.logo, 'thumb')} alt="" className="h-full w-full object-cover" />
@@ -110,6 +136,14 @@ export default function Home() {
         </button>
       </div>
       <div className="h-11" />
+
+      {/* 首次进入同步提示：完成后自动消失 */}
+      {syncing && (
+        <div className="flex items-center justify-center gap-2 bg-[#f9f8f6] py-1.5 text-xs text-gray-400">
+          <span className="inline-block h-3 w-3 animate-spin rounded-full border border-gray-300 border-t-[var(--brand-green)]" />
+          正在同步 C 端内容…
+        </div>
+      )}
 
       {/* 顶部轮播 Banner（16:9 比例） */}
       <div className="w-full aspect-[16/9] overflow-hidden">
@@ -196,7 +230,12 @@ export default function Home() {
           ))}
         </div>
 
-        {works.length === 0 && !loading && <div className="py-16 text-center text-sm text-gray-400">暂无作品</div>}
+        {works.length === 0 && !loading && !syncing && (
+          <div className="py-16 text-center">
+            <div className="text-sm text-gray-400">暂无作品</div>
+            <div className="mt-2 text-xs text-gray-300">请在「作品管理」中发布作品并设为公开</div>
+          </div>
+        )}
         {works.length > 0 && hasMore && (
           <button onClick={loadMore} className="mx-auto mt-8 block h-[44px] w-[200px] rounded-lg border border-gray-300 text-sm text-gray-500">MORE</button>
         )}
