@@ -236,66 +236,72 @@ export default function Settings() {
   }
 
   return (
-    <div style={{ maxWidth: 1050 }}>
-      <div className="flex items-center justify-between mb-4">
+    <div className="max-w-[1050px] max-md:max-w-full">
+      <div className="flex items-center justify-between mb-4 max-md:mb-3 max-md:px-4 max-md:pt-2">
         <div>
-          <h1 className="text-xl font-semibold text-fg">资料设置</h1>
-          <p className="text-xs text-muted mt-0.5">工作室对外资料 · 保存后 C 端小程序「关于我们」实时同步</p>
+          <h1 className="text-xl font-semibold text-fg max-md:text-lg">资料设置</h1>
+          <p className="text-xs text-muted mt-0.5 max-md:text-[11px] max-md:leading-tight max-md:max-w-[260px]">工作室对外资料 · 保存后 C 端小程序「关于我们」实时同步</p>
         </div>
         <button onClick={save} disabled={saving || !loaded}
-          className="px-5 py-2 rounded-lg bg-brand text-white text-sm hover:opacity-90 disabled:opacity-50">
+          className="px-5 py-2 rounded-lg bg-brand text-white text-sm hover:opacity-90 disabled:opacity-50 max-md:px-4 max-md:py-1.5 max-md:text-xs max-md:rounded-md">
           {saving ? '保存中…' : '保存'}
         </button>
       </div>
 
-      {tip && <div className="mb-4 text-sm px-4 py-2 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200">{tip}</div>}
+      {tip && <div className="mb-4 text-sm px-4 py-2 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 max-md:text-xs max-md:mx-4">{tip}</div>}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-md:gap-0">
         {/* 表单 */}
-        <div className="bg-panel border border-line rounded-xl2 p-5">
+        <div className="bg-panel border border-line rounded-xl2 p-5 max-md:rounded-none max-md:border-x-0 max-md:border-t-0 max-md:p-4 max-md:bg-white">
           <Field label="工作室名称">
-            <input className={inputCls} value={form.name} onChange={(e) => set('name', e.target.value)} />
+            <input className={inputCls + ' max-md:py-2.5'} value={form.name} onChange={(e) => set('name', e.target.value)} />
           </Field>
           <Field label="品牌 Slogan（首页工作室名称下方浅灰小字 · 留空则不显示）">
-            <input className={inputCls} value={form.slogan} onChange={(e) => set('slogan', e.target.value)} placeholder="拍摄有温度的照片，记录平凡生活中的美好。" />
+            <input className={inputCls + ' max-md:py-2.5'} value={form.slogan} onChange={(e) => set('slogan', e.target.value)} placeholder="拍摄有温度的照片，记录平凡生活中的美好。" />
           </Field>
           <Field label="幻灯片背景音乐 BGM（留空则用前端内置本地 MP3）">
-            <input className={inputCls} value={form.bgmUrl} onChange={(e) => set('bgmUrl', e.target.value)} placeholder="可选：填自有 CDN/R2 代理的 MP3 地址覆盖（勿用网易云/QQ 音乐等防盗链链接）" />
-            <p className="text-xs text-muted mt-1">留空 → 使用已打包进前端的本地 MP3（当前默认《Kiss The Rain - Yiruma》）：循环播放、右上角🎵可开关、退出幻灯片自动暂停；要替换曲子把 mp3 放进前端 bgm 目录即可，或在此填自有 CDN/R2 代理地址（小程序需加入 downloadFile 合法域名）。</p>
+            <input className={inputCls + ' max-md:py-2.5'} value={form.bgmUrl} onChange={(e) => set('bgmUrl', e.target.value)} placeholder="可选：填自有 CDN/R2 代理的 MP3 地址" />
+            <p className="text-xs text-muted mt-1 max-md:text-[11px] max-md:leading-relaxed">留空 → 使用已打包进前端的本地 MP3（当前默认《Kiss The Rain - Yiruma》）；要替换曲子可在此填自有 CDN/R2 代理地址。</p>
           </Field>
           <Field label="简介 / 品牌故事（关于我们页正文）">
-            <textarea className={inputCls + ' h-20 resize-none'} value={form.intro} onChange={(e) => set('intro', e.target.value)} />
+            <textarea className={inputCls + ' h-20 resize-none max-md:py-2.5'} value={form.intro} onChange={(e) => set('intro', e.target.value)} />
           </Field>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <Field label="联系电话"><input className={inputCls} value={form.contact.phone} onChange={(e) => set('phone', e.target.value)} /></Field>
-            <Field label="微信号"><input className={inputCls} value={form.contact.wechat} onChange={(e) => set('wechat', e.target.value)} /></Field>
-            <Field label="地址"><input className={inputCls} value={form.contact.address} onChange={(e) => set('address', e.target.value)} /></Field>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 max-md:gap-4">
+            <Field label="联系电话"><input className={inputCls + ' max-md:py-2.5'} value={form.contact.phone} onChange={(e) => set('phone', e.target.value)} /></Field>
+            <Field label="微信号"><input className={inputCls + ' max-md:py-2.5'} value={form.contact.wechat} onChange={(e) => set('wechat', e.target.value)} /></Field>
+            <Field label="地址"><input className={inputCls + ' max-md:py-2.5'} value={form.contact.address} onChange={(e) => set('address', e.target.value)} /></Field>
           </div>
           <Field label="Logo">
-            <div className="flex items-center gap-3">
-              {form.logo && <img src={img(form.logo)} alt="" loading="lazy" decoding="async" className="w-14 h-14 rounded-lg object-cover border border-line" />}
-              <button onClick={() => logoRef.current.click()} className="px-3 py-1.5 rounded-lg border border-line text-sm text-muted hover:text-brand hover:border-brand">上传 Logo</button>
-              <input ref={logoRef} type="file" accept="image/*" className="hidden" onChange={(e) => startCrop(e.target.files[0], 'logo', 1, 400, 400)} />
+            <div className="flex items-center gap-3 max-md:flex-col max-md:items-start">
+              {form.logo && <img src={img(form.logo)} alt="" loading="lazy" decoding="async" className="w-14 h-14 rounded-lg object-cover border border-line max-md:w-16 max-md:h-16" />}
+              <div className="flex items-center gap-2">
+                <button onClick={() => logoRef.current.click()} className="px-3 py-1.5 rounded-lg border border-line text-sm text-muted hover:text-brand hover:border-brand max-md:text-xs">上传 Logo</button>
+                <input ref={logoRef} type="file" accept="image/*" className="hidden" onChange={(e) => startCrop(e.target.files[0], 'logo', 1, 400, 400)} />
+              </div>
             </div>
           </Field>
           <Field label="封面图（关于我们页封面）">
-            <div className="flex items-center gap-3">
-              {form.cover && <img src={img(form.cover)} alt="" loading="lazy" decoding="async" className="w-24 h-16 rounded-lg object-cover border border-line" />}
-              <button onClick={() => coverRef.current.click()} className="px-3 py-1.5 rounded-lg border border-line text-sm text-muted hover:text-brand hover:border-brand">上传封面</button>
-              <input ref={coverRef} type="file" accept="image/*" className="hidden" onChange={(e) => startCrop(e.target.files[0], 'cover', 16 / 9, 1200, 675)} />
+            <div className="flex items-center gap-3 max-md:flex-col max-md:items-start">
+              {form.cover && <img src={img(form.cover)} alt="" loading="lazy" decoding="async" className="w-24 h-16 rounded-lg object-cover border border-line max-md:w-full max-md:h-auto max-md:aspect-[16/9]" />}
+              <div className="flex items-center gap-2">
+                <button onClick={() => coverRef.current.click()} className="px-3 py-1.5 rounded-lg border border-line text-sm text-muted hover:text-brand hover:border-brand max-md:text-xs">上传封面</button>
+                <input ref={coverRef} type="file" accept="image/*" className="hidden" onChange={(e) => startCrop(e.target.files[0], 'cover', 16 / 9, 1200, 675)} />
+              </div>
             </div>
           </Field>
           <Field label="客服微信二维码（小程序首页「添加客服」弹窗展示）">
-            <div className="flex items-center gap-3">
-              {form.serviceQr && <img src={img(form.serviceQr)} alt="" loading="lazy" decoding="async" className="w-28 h-28 rounded-lg object-contain border border-line bg-panel2" />}
-              <button onClick={() => serviceQrRef.current.click()} className="px-3 py-1.5 rounded-lg border border-line text-sm text-muted hover:text-brand hover:border-brand">上传二维码</button>
-              {form.serviceQr && <button onClick={() => set('serviceQr', '')} className="px-2 py-1.5 rounded-lg border border-line text-sm text-muted hover:text-red-500 hover:border-red-300">移除</button>}
-              <input ref={serviceQrRef} type="file" accept="image/*" className="hidden" onChange={(e) => uploadQr(e.target.files[0])} />
+            <div className="flex items-center gap-3 max-md:flex-col max-md:items-start">
+              {form.serviceQr && <img src={img(form.serviceQr)} alt="" loading="lazy" decoding="async" className="w-28 h-28 rounded-lg object-contain border border-line bg-panel2 max-md:w-24 max-md:h-24" />}
+              <div className="flex items-center gap-2">
+                <button onClick={() => serviceQrRef.current.click()} className="px-3 py-1.5 rounded-lg border border-line text-sm text-muted hover:text-brand hover:border-brand max-md:text-xs">上传二维码</button>
+                {form.serviceQr && <button onClick={() => set('serviceQr', '')} className="px-2 py-1.5 rounded-lg border border-line text-sm text-muted hover:text-red-500 hover:border-red-300 max-md:text-xs">移除</button>}
+                <input ref={serviceQrRef} type="file" accept="image/*" className="hidden" onChange={(e) => uploadQr(e.target.files[0])} />
+              </div>
             </div>
-            <p className="text-xs text-muted mt-1">建议上传正方形微信二维码 PNG/JPG；小程序弹窗内客户<b>长按即可保存图片、扫码添加客服</b>。请勿使用裁剪，保持二维码完整。留空则小程序弹窗提示「暂未配置客服二维码」。</p>
+            <p className="text-xs text-muted mt-1 max-md:text-[11px] max-md:leading-relaxed">建议上传正方形微信二维码 PNG/JPG；小程序弹窗内客户<b>长按即可保存图片、扫码添加客服</b>。留空则小程序弹窗提示「暂未配置客服二维码」。</p>
           </Field>
           <Field label={`首页轮播图（多张 · ${form.heroImages.length} 张）`}>
-            <div className="flex flex-wrap gap-3 items-start">
+            <div className="flex flex-wrap gap-3 items-start max-md:gap-2">
               {form.heroImages.map((u, i) => (
                 <div key={i}
                   draggable
@@ -303,7 +309,7 @@ export default function Settings() {
                   onDragOver={(e) => onHeroDragOver(e, i)}
                   onDrop={(e) => onHeroDrop(e, i)}
                   onDragEnd={resetHeroDrag}
-                  className={`relative w-32 aspect-[16/9] rounded-lg overflow-hidden border group cursor-grab active:cursor-grabbing select-none
+                  className={`relative w-32 aspect-[16/9] rounded-lg overflow-hidden border group cursor-grab active:cursor-grabbing select-none max-md:w-24
                     ${heroOver === i && heroDragged !== null && heroDragged !== i ? 'border-brand ring-2 ring-brand' : 'border-line'}
                     ${heroDragged === i ? 'opacity-40' : ''}`}>
                   <img src={img(u)} alt="" loading="lazy" decoding="async" className="w-full h-full object-cover" draggable={false} />
@@ -313,17 +319,17 @@ export default function Settings() {
                 </div>
               ))}
               <button type="button" onClick={() => heroRef.current.click()} disabled={heroBusy}
-                className="w-32 aspect-[16/9] rounded-lg border border-dashed border-line text-xs text-muted flex flex-col items-center justify-center gap-1 hover:text-brand hover:border-brand disabled:opacity-50">
+                className="w-32 aspect-[16/9] rounded-lg border border-dashed border-line text-xs text-muted flex flex-col items-center justify-center gap-1 hover:text-brand hover:border-brand disabled:opacity-50 max-md:w-24">
                 {heroBusy ? '上传中…' : '+ 添加'}
               </button>
               <input ref={heroRef} type="file" accept="image/*" multiple className="hidden" onChange={(e) => addHeroFiles(e.target.files)} />
             </div>
-            <p className="text-xs text-muted mt-2">建议上传 16:9 比例照片；支持一次选多张；<b>拖拽缩略图即可调整轮播顺序</b>，从左到右的顺序即为小程序首页轮播顺序；第一张建议为品牌主视觉。删除：鼠标移到图片上点右上角 ×。</p>
+            <p className="text-xs text-muted mt-2 max-md:text-[11px] max-md:leading-relaxed">建议上传 16:9 比例照片；支持一次选多张；<b>拖拽缩略图即可调整轮播顺序</b>。删除：鼠标移到图片上点右上角 ×。</p>
           </Field>
         </div>
 
-        {/* 预览 */}
-        <div className="bg-panel border border-line rounded-xl2 p-5">
+        {/* 预览（手机端隐藏，节省空间） */}
+        <div className="bg-panel border border-line rounded-xl2 p-5 max-md:hidden">
           <div className="text-xs text-muted mb-3">C 端「首页轮播 / 关于我们」预览</div>
           <div className="rounded-xl overflow-hidden border border-line">
             {form.heroImages.length > 0 ? (
@@ -366,34 +372,34 @@ export default function Settings() {
       )}
 
       {/* 对外预约设置 */}
-      <div className="mt-6">
-        <div className="flex items-center justify-between mb-4">
+      <div className="mt-6 max-md:mt-0">
+        <div className="flex items-center justify-between mb-4 max-md:mb-3 max-md:px-4 max-md:pt-5">
           <div>
-            <h2 className="text-lg font-semibold text-fg">对外预约设置</h2>
-            <p className="text-xs text-muted mt-0.5">控制小程序「预约档期」入口与每周可约日 · 保存后 C 端实时生效</p>
+            <h2 className="text-lg font-semibold text-fg max-md:text-base">对外预约设置</h2>
+            <p className="text-xs text-muted mt-0.5 max-md:text-[11px] max-md:leading-tight max-md:max-w-[260px]">控制小程序「预约档期」入口与每周可约日 · 保存后 C 端实时生效</p>
           </div>
           <button onClick={saveBooking} disabled={bookingSaving || !bookingLoaded}
-            className="px-5 py-2 rounded-lg bg-brand text-white text-sm hover:opacity-90 disabled:opacity-50">
+            className="px-5 py-2 rounded-lg bg-brand text-white text-sm hover:opacity-90 disabled:opacity-50 max-md:px-3.5 max-md:py-1.5 max-md:text-xs max-md:rounded-md max-md:whitespace-nowrap">
             {bookingSaving ? '保存中…' : '保存预约设置'}
           </button>
         </div>
 
-        {bookingTip && <div className="mb-4 text-sm px-4 py-2 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200">{bookingTip}</div>}
+        {bookingTip && <div className="mb-4 text-sm px-4 py-2 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 max-md:text-xs max-md:mx-4">{bookingTip}</div>}
 
-        <div className="bg-panel border border-line rounded-xl2 p-5">
-          <div className="flex items-center justify-between py-3 border-b border-line">
+        <div className="bg-panel border border-line rounded-xl2 p-5 max-md:rounded-none max-md:border-x-0 max-md:border-t-0 max-md:p-4 max-md:bg-white">
+          <div className="flex items-center justify-between py-3 border-b border-line max-md:py-2.5">
             <div>
-              <div className="text-sm font-medium text-fg">开放对外预约</div>
-              <div className="text-xs text-muted mt-0.5">关闭后小程序首页预约入口隐藏，客户无法提交新预约</div>
+              <div className="text-sm font-medium text-fg max-md:text-[13px]">开放对外预约</div>
+              <div className="text-xs text-muted mt-0.5 max-md:text-[11px] max-md:leading-tight max-md:max-w-[240px]">关闭后小程序首页预约入口隐藏，客户无法提交新预约</div>
             </div>
             <button onClick={() => setBookingOpen(!booking.open)} type="button" disabled={!bookingLoaded}
               className={'relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors disabled:opacity-50 ' + (booking.open ? 'bg-brand' : 'bg-gray-300')}>
               <span className={'inline-block h-5 w-5 transform rounded-full bg-white transition-transform ' + (booking.open ? 'translate-x-5' : 'translate-x-1')} />
             </button>
           </div>
-          <div className="py-3">
-            <div className="text-sm font-medium text-fg mb-1">每周可预约日</div>
-            <div className="text-xs text-muted mb-3">未勾选的星期整日视为关闭，日历对应日期自动置灰（不影响已锁定的既有档期）</div>
+          <div className="py-3 max-md:py-2.5">
+            <div className="text-sm font-medium text-fg mb-1 max-md:text-[13px]">每周可预约日</div>
+            <div className="text-xs text-muted mb-3 max-md:text-[11px] max-md:leading-tight">未勾选的星期整日视为关闭，日历对应日期自动置灰（不影响已锁定的既有档期）</div>
             <div className="flex flex-wrap gap-2">
               {DAY_LABELS.map((label, d) => {
                 const on = booking.openDays.includes(d);
@@ -409,40 +415,40 @@ export default function Settings() {
         </div>
 
       {/* 账户安全：修改密码 */}
-      <div className="mt-6">
-        <div className="mb-4">
-          <h2 className="text-lg font-semibold text-fg">账户安全</h2>
-          <p className="text-xs text-muted mt-0.5">修改当前登录账号的登录密码（需输入旧密码验证）</p>
+      <div className="mt-6 max-md:mt-0">
+        <div className="mb-4 max-md:mb-3 max-md:px-4 max-md:pt-5">
+          <h2 className="text-lg font-semibold text-fg max-md:text-base">账户安全</h2>
+          <p className="text-xs text-muted mt-0.5 max-md:text-[11px] max-md:leading-tight">修改当前登录账号的登录密码（需输入旧密码验证）</p>
         </div>
-        {pwTip && <div className="mb-4 text-sm px-4 py-2 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200">{pwTip}</div>}
-        <div className="bg-panel border border-line rounded-xl2 p-5 max-w-xl">
+        {pwTip && <div className="mb-4 text-sm px-4 py-2 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 max-md:text-xs max-md:mx-4">{pwTip}</div>}
+        <div className="bg-panel border border-line rounded-xl2 p-5 max-w-xl max-md:rounded-none max-md:border-x-0 max-md:border-t-0 max-md:p-4 max-md:bg-white max-md:max-w-full">
           <Field label="当前密码">
-            <input type="password" className={inputCls} value={pwOld} onChange={(e) => setPwOld(e.target.value)} />
+            <input type="password" className={inputCls + ' max-md:py-2.5'} value={pwOld} onChange={(e) => setPwOld(e.target.value)} />
           </Field>
           <Field label="新密码（至少 6 位）">
-            <input type="password" className={inputCls} value={pwNew} onChange={(e) => setPwNew(e.target.value)} />
+            <input type="password" className={inputCls + ' max-md:py-2.5'} value={pwNew} onChange={(e) => setPwNew(e.target.value)} />
           </Field>
           <Field label="确认新密码">
-            <input type="password" className={inputCls} value={pwConfirm} onChange={(e) => setPwConfirm(e.target.value)} />
+            <input type="password" className={inputCls + ' max-md:py-2.5'} value={pwConfirm} onChange={(e) => setPwConfirm(e.target.value)} />
           </Field>
           <button onClick={changePassword} disabled={pwSaving}
-            className="px-5 py-2 rounded-lg bg-brand text-white text-sm hover:opacity-90 disabled:opacity-50">
+            className="px-5 py-2 rounded-lg bg-brand text-white text-sm hover:opacity-90 disabled:opacity-50 max-md:w-full max-md:py-2.5">
             {pwSaving ? '保存中…' : '修改密码'}
           </button>
         </div>
       </div>
 
       {/* 数据备份：双重备份能力（手动导出 + R2 定时写入） */}
-      <div className="mt-6">
-        <div className="mb-4">
-          <h2 className="text-lg font-semibold text-fg">数据备份</h2>
-          <p className="text-xs text-muted mt-0.5">手动导出全量业务 JSON 到本地电脑；系统每日 03:10 还会自动写入 R2 /backup 目录一份。</p>
+      <div className="mt-6 max-md:mt-0 max-md:pb-6">
+        <div className="mb-4 max-md:mb-3 max-md:px-4 max-md:pt-5">
+          <h2 className="text-lg font-semibold text-fg max-md:text-base">数据备份</h2>
+          <p className="text-xs text-muted mt-0.5 max-md:text-[11px] max-md:leading-tight">手动导出全量业务 JSON 到本地电脑；系统每日 03:10 还会自动写入 R2 /backup 目录一份。</p>
         </div>
-        {backupTip && <div className="mb-4 text-sm px-4 py-2 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200">{backupTip}</div>}
-        <div className="bg-panel border border-line rounded-xl2 p-5 max-w-xl">
-          <p className="text-sm text-muted mb-4">备份包含全部订单、客户、相册、作品、设置等结构化数据（不含明文密钥）。图片二进制已存于 R2，无需重复备份。</p>
+        {backupTip && <div className="mb-4 text-sm px-4 py-2 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 max-md:text-xs max-md:mx-4">{backupTip}</div>}
+        <div className="bg-panel border border-line rounded-xl2 p-5 max-w-xl max-md:rounded-none max-md:border-x-0 max-md:border-t-0 max-md:p-4 max-md:bg-white max-md:max-w-full">
+          <p className="text-sm text-muted mb-4 max-md:text-xs max-md:leading-relaxed">备份包含全部订单、客户、相册、作品、设置等结构化数据（不含明文密钥）。图片二进制已存于 R2，无需重复备份。</p>
           <button onClick={doBackup} disabled={backupBusy}
-            className="px-5 py-2 rounded-lg bg-brand text-white text-sm hover:opacity-90 disabled:opacity-50">
+            className="px-5 py-2 rounded-lg bg-brand text-white text-sm hover:opacity-90 disabled:opacity-50 max-md:w-full max-md:py-2.5">
             {backupBusy ? '导出中…' : '导出 JSON 备份'}
           </button>
         </div>
