@@ -19,7 +19,24 @@ router.post('/login', async (req, res) => {
 
 router.get('/me', authRequired, async (req, res) => {
   try {
-    const u = await get('SELECT id, username, role, name FROM users WHERE id = ?', [req.user.uid]);
+    const u = await get('SELECT id, username, role, name, avatar FROM users WHERE id = ?', [req.user.uid]);
+    res.json(u);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// 更新当前登录账号资料（头像 / 名称）
+router.put('/me', authRequired, async (req, res) => {
+  try {
+    const { name, avatar } = req.body || {};
+    const sets = [];
+    const vals = [];
+    if (name !== undefined) { sets.push('name = ?'); vals.push(String(name)); }
+    if (avatar !== undefined) { sets.push('avatar = ?'); vals.push(String(avatar)); }
+    if (sets.length) {
+      vals.push(req.user.uid);
+      await run('UPDATE users SET ' + sets.join(', ') + ' WHERE id = ?', vals);
+    }
+    const u = await get('SELECT id, username, role, name, avatar FROM users WHERE id = ?', [req.user.uid]);
     res.json(u);
   } catch (e) { res.status(500).json({ error: e.message }); }
 });

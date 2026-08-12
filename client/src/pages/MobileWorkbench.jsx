@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import http, { img } from '../api.js';
+import http, { img, uploadImage } from '../api.js';
 import { useAuth } from '../auth.jsx';
 import {
   Crown,
@@ -140,9 +140,27 @@ function GroupBlock({ title, children, last }) {
 
 export default function MobileWorkbench() {
   const nav = useNavigate();
-  const { user } = useAuth();
+  const { user, updateUser } = useAuth();
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
+  const fileRef = useRef(null);
+  const [uploading, setUploading] = useState(false);
+
+  const handleAvatar = async (e) => {
+    const file = e.target.files && e.target.files[0];
+    e.target.value = '';
+    if (!file) return;
+    try {
+      setUploading(true);
+      const r = await uploadImage(file, { category: 'avatar', isPublic: true });
+      await updateUser({ avatar: r.url });
+    } catch (err) {
+      console.warn('头像上传失败', err);
+      alert('头像上传失败，请重试');
+    } finally {
+      setUploading(false);
+    }
+  };
 
   useEffect(() => {
     setLoading(true);
@@ -163,30 +181,26 @@ export default function MobileWorkbench() {
       <div style={{ background: '#1A1A1A', padding: '20px 16px', color: '#fff' }}>
         <div className="flex items-center" style={{ justifyContent: 'space-between' }}>
           <div className="flex items-center" style={{ gap: 12 }}>
-            <div
-              style={{
-                width: 50,
-                height: 50,
-                borderRadius: '50%',
-                overflow: 'hidden',
-                background: '#333',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                flexShrink: 0
-              }}
+            <button
+              type="button"
+              onClick={() => fileRef.current && fileRef.current.click()}
+              disabled={uploading}
+              style={{ width: 50, height: 50, borderRadius: '50%', overflow: 'hidden', background: '#333', border: 'none', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, position: 'relative', cursor: 'pointer' }}
             >
               {user?.avatar ? (
                 <img src={img(user.avatar)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
               ) : (
-                <span style={{ fontSize: 20 }}>岛</span>
+                <span style={{ fontSize: 20, color: '#fff' }}>岛</span>
               )}
-            </div>
+              {uploading && (
+                <span style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.45)', color: '#fff', fontSize: 11, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  上传中
+                </span>
+              )}
+            </button>
+            <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleAvatar} />
             <div>
               <div style={{ fontSize: 17, fontWeight: 500 }}>岛像微电影</div>
-              <div style={{ fontSize: 12, color: '#999', marginTop: 4, display: 'flex', alignItems: 'center' }}>
-                定制版已过期 <ChevronRight className="w-3 h-3" style={{ color: '#999' }} />
-              </div>
             </div>
           </div>
           <button
@@ -328,9 +342,12 @@ export default function MobileWorkbench() {
           新手引导
         </button>
         <div style={{ fontSize: 12, color: MUTED, marginTop: 12, textAlign: 'center', lineHeight: 1.6 }}>
-          在电脑浏览器打开 <span style={{ color: '#3B8CFF' }}>www.picbling.com</span>
+          在电脑浏览器打开{' '}
+          <a href="https://yezhe-studio.pages.dev" target="_blank" rel="noreferrer" style={{ color: '#3B8CFF', textDecoration: 'none' }}>
+            yezhe-studio.pages.dev
+          </a>
           <br />
-          登录电脑端使用
+          登录电脑端后台使用
         </div>
       </div>
     </div>

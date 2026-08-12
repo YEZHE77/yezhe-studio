@@ -24,8 +24,8 @@ const CapacityManagement = React.lazy(() => import('../pages/CapacityManagement.
 const Channels = React.lazy(() => import('../pages/Channels.jsx'));
 const Finance = React.lazy(() => import('../pages/Finance.jsx'));
 
-const GREEN = '#60C4AA';
-const GREEN_DARK = '#4BB399';
+const GREEN = '#7ECDBB';
+const GREEN_DARK = '#5FBBA6';
 const PINK = '#FF7A8A';
 const PINK_DARK = '#FF6B6B';
 const TEXT = '#1f2329';

@@ -28,8 +28,14 @@ export function AuthProvider({ children }) {
     setUser(null);
   }
 
+  async function updateUser(patch) {
+    const r = await http.put('/api/auth/me', patch);
+    setUser((prev) => ({ ...(prev || {}), ...r.data }));
+    return r.data;
+  }
+
   return (
-    <AuthCtx.Provider value={{ user, ready, login, logout }}>{children}</AuthCtx.Provider>
+    <AuthCtx.Provider value={{ user, ready, login, logout, updateUser }}>{children}</AuthCtx.Provider>
   );
 }
 
