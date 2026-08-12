@@ -218,7 +218,18 @@ export default function Home() {
         <div className="flex flex-wrap -mx-1.5">
           {works.map((w) => (
             <div key={w.id} onClick={() => nav('/w/' + w.id)} className="relative mb-4 ml-1.5 mr-1.5 w-[calc(50%-12px)] overflow-hidden rounded-2xl bg-gray-100" style={{ borderRadius: '16px' }}>
-              <img src={w.cover} alt="" loading="lazy" className="aspect-[4/5] w-full object-cover" />
+              {w.cover ? (
+                <img src={w.cover} alt="" loading="lazy" className="aspect-[4/5] w-full object-cover"
+                  onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+              ) : (
+                <div className="flex aspect-[4/5] w-full items-center justify-center bg-gray-200">
+                  <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="#ccc" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="3" y="3" width="18" height="18" rx="2" />
+                    <circle cx="9" cy="9" r="2" />
+                    <path d="M21 15l-5-5L5 21" />
+                  </svg>
+                </div>
+              )}
               {w.live && (
                 <span className="absolute right-2 top-2 rounded px-2 py-1 text-[10px] text-white" style={{ background: 'rgba(126,204,187,0.95)' }}>图片直播</span>
               )}
