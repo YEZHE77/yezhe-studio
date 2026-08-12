@@ -124,17 +124,16 @@ function Cell({ item, onClick }) {
   );
 }
 
-function Section({ title, items, onClick }) {
+function GroupBlock({ title, children, last }) {
   return (
-    <div style={{ marginTop: 18 }}>
+    <div
+      style={{
+        padding: '16px',
+        borderBottom: last ? 'none' : '1px solid ' + LINE
+      }}
+    >
       <div style={{ fontSize: 15, fontWeight: 600, color: TEXT, marginBottom: 10 }}>{title}</div>
-      <div style={{ background: '#fff', borderRadius: 12, border: '1px solid ' + LINE }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)' }}>
-          {items.map((it) => (
-            <Cell key={it.label} item={it} onClick={() => onClick(it.to)} />
-          ))}
-        </div>
-      </div>
+      {children}
     </div>
   );
 }
@@ -159,9 +158,9 @@ export default function MobileWorkbench() {
   const shootCount = safe(pb.shoot);
 
   return (
-    <div style={{ background: '#F8F8F8', minHeight: '100vh', padding: 12, paddingBottom: 28 }}>
-      {/* 深色头部 */}
-      <div style={{ background: '#1A1A1A', borderRadius: 16, padding: '20px 16px', color: '#fff' }}>
+    <div style={{ background: '#fff', minHeight: '100vh', paddingBottom: 28 }}>
+      {/* 深色头部（全宽铺满） */}
+      <div style={{ background: '#1A1A1A', padding: '20px 16px', color: '#fff' }}>
         <div className="flex items-center" style={{ justifyContent: 'space-between' }}>
           <div className="flex items-center" style={{ gap: 12 }}>
             <div
@@ -207,8 +206,8 @@ export default function MobileWorkbench() {
         </div>
       </div>
 
-      {/* 三列统计 */}
-      <div style={{ background: '#fff', borderRadius: 12, marginTop: 12, display: 'flex' }}>
+      {/* 三列统计（全宽，上下分隔线） */}
+      <div style={{ background: '#fff', borderTop: '1px solid ' + LINE, borderBottom: '1px solid ' + LINE, display: 'flex' }}>
         <div style={{ flex: 1, textAlign: 'center', padding: '16px 0' }}>
           <div style={{ fontSize: 20, color: CORAL, lineHeight: 1.1 }}>¥0.00</div>
           <div style={{ fontSize: 12, color: MUTED, marginTop: 4 }}>余额</div>
@@ -225,8 +224,8 @@ export default function MobileWorkbench() {
         </div>
       </div>
 
-      {/* 三个快捷卡 */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginTop: 12 }}>
+      {/* 三个快捷卡（铺满，内部小卡保留圆角） */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, padding: 12 }}>
         <button
           type="button"
           onClick={() => nav('/settings')}
@@ -280,33 +279,38 @@ export default function MobileWorkbench() {
         </button>
       </div>
 
-      {/* 外部展示 */}
-      <div style={{ marginTop: 18 }}>
-        <div style={{ fontSize: 15, fontWeight: 600, color: TEXT, marginBottom: 10 }}>外部展示</div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-          <button
-            type="button"
-            onClick={() => nav('/settings')}
-            style={{ background: '#fff', border: '1px solid ' + LINE, borderRadius: 12, padding: '14px 0', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
-          >
-            <Smartphone className="w-5 h-5" strokeWidth={1.5} style={{ color: TEXT }} />
-            <span style={{ fontSize: 14, color: TEXT }}>小程序</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => nav('/settings')}
-            style={{ background: '#fff', border: '1px solid ' + LINE, borderRadius: 12, padding: '14px 0', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
-          >
-            <Monitor className="w-5 h-5" strokeWidth={1.5} style={{ color: TEXT }} />
-            <span style={{ fontSize: 14, color: TEXT }}>网站</span>
-          </button>
-        </div>
+      {/* 大容器卡片：外部展示 + 功能 + 工具 + 拓客引流 + 其他功能（组间横分隔线） */}
+      <div style={{ background: '#fff', borderTop: '1px solid ' + LINE }}>
+        <GroupBlock title="外部展示">
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            <button
+              type="button"
+              onClick={() => nav('/settings')}
+              style={{ background: '#fff', border: '1px solid ' + LINE, borderRadius: 12, padding: '14px 0', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
+            >
+              <Smartphone className="w-5 h-5" strokeWidth={1.5} style={{ color: TEXT }} />
+              <span style={{ fontSize: 14, color: TEXT }}>小程序</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => nav('/settings')}
+              style={{ background: '#fff', border: '1px solid ' + LINE, borderRadius: 12, padding: '14px 0', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
+            >
+              <Monitor className="w-5 h-5" strokeWidth={1.5} style={{ color: TEXT }} />
+              <span style={{ fontSize: 14, color: TEXT }}>网站</span>
+            </button>
+          </div>
+        </GroupBlock>
+        {SECTIONS.map((s, i) => (
+          <GroupBlock key={s.title} title={s.title} last={i === SECTIONS.length - 1}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)' }}>
+              {s.items.map((it) => (
+                <Cell key={it.label} item={it} onClick={() => nav(it.to)} />
+              ))}
+            </div>
+          </GroupBlock>
+        ))}
       </div>
-
-      {/* 各功能区块 */}
-      {SECTIONS.map((s) => (
-        <Section key={s.title} title={s.title} items={s.items} onClick={(to) => nav(to)} />
-      ))}
 
       {/* 底部引导 */}
       <div style={{ marginTop: 24, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
