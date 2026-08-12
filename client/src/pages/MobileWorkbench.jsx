@@ -31,7 +31,7 @@ import {
   MessageCircle,
   ChevronRight,
   Monitor,
-  Cloud,
+  Link,
   Eye,
   EyeOff
 } from 'lucide-react';
@@ -392,7 +392,7 @@ export default function MobileWorkbench() {
               onClick={() => nav('/home')}
               style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '16px 0', background: '#fff', border: '1px solid ' + LINE, borderRadius: 12 }}
             >
-              <Cloud className="w-5 h-5" strokeWidth={1.5} style={{ color: TEXT }} />
+              <Link className="w-5 h-5" strokeWidth={1.5} style={{ color: TEXT }} />
               <span style={{ fontSize: 14, color: TEXT }}>小程序</span>
             </button>
             <button
