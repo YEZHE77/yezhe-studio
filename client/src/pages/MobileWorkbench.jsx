@@ -68,12 +68,17 @@ function compressImageToBase64(file, maxWidth = 400, quality = 0.85) {
 
 const SECTIONS = [
   {
-    title: '工具',
+    title: '功能',
     items: [
       { label: '新手引导', icon: BookOpen, color: CORAL, to: '/settings' },
       { label: '资料', icon: FileText, color: CORAL, to: '/settings' },
       { label: '作品', icon: Image, color: CORAL, to: '/works' },
-      { label: '套系', icon: Layers, color: CORAL, to: '/packages' },
+      { label: '套系', icon: Layers, color: CORAL, to: '/packages' }
+    ]
+  },
+  {
+    title: '工具',
+    items: [
       { label: '档期', icon: CalendarDays, color: CORAL, to: '/schedule' },
       { label: '订单', icon: ClipboardList, color: CORAL, to: '/orders' },
       { label: '客资', icon: Users, color: CORAL, to: '/customers' },
@@ -119,8 +124,8 @@ function Cell({ item, onClick }) {
       className="flex flex-col items-center justify-center relative"
       style={{ padding: '14px 4px', background: 'none', border: 'none' }}
     >
-      <Icon className="w-6 h-6" strokeWidth={1.5} style={{ color: item.color }} />
-      <span className="mt-2" style={{ fontSize: 12, color: TEXT }}>{item.label}</span>
+      <Icon className="w-7 h-7" strokeWidth={1.5} style={{ color: item.color }} />
+      <span className="mt-2" style={{ fontSize: 13, color: TEXT }}>{item.label}</span>
       {item.tag && (
         <span
           style={{
@@ -143,15 +148,16 @@ function Cell({ item, onClick }) {
   );
 }
 
-function GroupBlock({ title, children, last }) {
+function GroupBlock({ title, children, last, pink }) {
   return (
     <div
       style={{
         padding: '16px',
+        background: pink ? '#FCE4E4' : '#fff',
         borderBottom: last ? 'none' : '1px solid ' + LINE
       }}
     >
-      <div style={{ fontSize: 15, color: TEXT, marginBottom: 10 }}>{title}</div>
+      <div style={{ fontSize: 17, color: TEXT, marginBottom: 12 }}>{title}</div>
       {children}
     </div>
   );
@@ -377,9 +383,9 @@ export default function MobileWorkbench() {
         </button>
       </div>
 
-      {/* 大容器卡片：外部展示 + 功能 + 工具 + 拓客引流 + 其他功能（组间横分隔线） */}
+      {/* 大容器卡片：外部展示（粉色强调）+ 功能 + 工具 + 拓客引流 + 其他功能（组间横分隔线） */}
       <div style={{ background: '#fff', borderTop: '1px solid ' + LINE }}>
-        <GroupBlock title="外部展示">
+        <GroupBlock title="外部展示" pink>
           <div style={{ background: '#fff', border: '1px solid ' + LINE, borderRadius: 12, display: 'flex', overflow: 'hidden' }}>
             <button
               type="button"
