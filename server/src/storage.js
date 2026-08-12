@@ -107,6 +107,97 @@ export function objectUrl(provider, key) {
   return provider === 'cos' ? `${c.cdnDomain}/${key}` : `${c.R2_WORKER_DOMAIN}/r2/${key}`;
 }
 
+// 缩略图尺寸规格：列表卡片 / 详情预览 / 高清预览（按需取用，命中 Worker ?w=<width> 路径）
+// 改这里时必须同时检查 cloudflare/worker.js 的 buildThumbKey（路径规则一致）
+const THUMB_WIDTHS = [400, 800, 1200];
+const THUMB_QUALITY = 75; // JPEG quality，75 视觉无损 + 体积小
+
+// 由原始 key 推算缩略图 key：biz-works/xxx.jpg → biz-works/thumb_400/xxx.jpg
+function thumbKey(originalKey, width) {
+  const idx = originalKey.lastIndexOf('/');
+  if (idx === -1) return `thumb_${width}/${originalKey}`;
+  const dir = originalKey.substring(0, idx);
+  const name = originalKey.substring(idx + 1);
+  return `${dir}/thumb_${width}/${name}`;
+}
+
+// 由已存 URL 拼出指定宽度的缩略图 URL（前端 thumb()/img('thumb') 共用此规则）
+// 仅对 R2 Worker 域名有意义（COS 可走 CDN image processing 或 Cloudflare Image Resizing）
+export function thumbnailUrl(originalUrl, width) {
+  if (!originalUrl || !width) return originalUrl || '';
+  // R2 Worker: 拼 ?w=<width>，Worker 内部会查 thumb_<width>/ 变体
+  const r2 = r2Config();
+  if (r2 && originalUrl.startsWith(r2.R2_WORKER_DOMAIN + '/r2/')) {
+    const u = new URL(originalUrl);
+    u.searchParams.set('w', String(width));
+    return u.toString();
+  }
+  // COS: 直接拼 thumb_<width>/ 子路径（前提是后端上传时生成了对应变体）
+  const cos = cosConfig();
+  if (cos && originalUrl.startsWith(cos.cdnDomain + '/')) {
+    return originalUrl.replace(/^(.+?)\/([^/]+)$/, `$1/thumb_${width}/$2`);
+  }
+  return originalUrl;
+}
+
+// 用 sharp 生成三个尺寸缩略图，返回 [{key, buffer}]；输入 buffer + 原 key
+// 失败抛出，由调用方决定是否降级（不影响主上传）
+async function generateThumbnailVariants(buffer, originalKey) {
+  let sharpLib;
+  try {
+    sharpLib = (await import('sharp')).default;
+  } catch (e) {
+    throw new Error('sharp 模块不可用: ' + (e && e.message));
+  }
+  const ext = (originalKey.split('.').pop() || '').toLowerCase();
+  // 跳过非图片格式（无法 decode）
+  if (!['jpg', 'jpeg', 'png', 'webp', 'gif', 'avif', 'tiff'].includes(ext)) return [];
+  const out = [];
+  for (const w of THUMB_WIDTHS) {
+    try {
+      const t = sharpLib(buffer).rotate(); // 按 EXIF 自动旋正
+      const resized = await t.resize({ width: w, withoutEnlargement: true, fit: 'inside' })
+        .jpeg({ quality: THUMB_QUALITY, mozjpeg: true })
+        .toBuffer();
+      out.push({ key: thumbKey(originalKey, w), buffer: resized, width: w });
+    } catch (e) {
+      console.warn('[storage] 生成缩略图失败', originalKey, 'w=' + w, e.message);
+    }
+  }
+  return out;
+}
+
+// 上传缩略图变体到对象存储（best-effort；失败仅记录，不影响主上传）
+async function uploadThumbnailVariants(zone, name, variants, provider) {
+  if (!variants || !variants.length) return;
+  const { PutObjectCommand } = await import('@aws-sdk/client-s3');
+  const client = await makeS3Client(provider);
+  for (const v of variants) {
+    try {
+      await client.send(new PutObjectCommand({
+        Bucket: bucketOf(provider),
+        Key: v.key,
+        Body: v.buffer,
+        ContentType: 'image/jpeg'
+      }));
+    } catch (e) {
+      console.warn('[storage] 上传缩略图失败', v.key, e.message);
+    }
+  }
+}
+
+// 删除原图时同步清理其缩略图变体（best-effort）
+async function destroyThumbnailVariants(originalKey, provider) {
+  try {
+    const { DeleteObjectsCommand } = await import('@aws-sdk/client-s3');
+    const client = await makeS3Client(provider);
+    const objs = THUMB_WIDTHS.map((w) => ({ Key: thumbKey(originalKey, w) }));
+    await client.send(new DeleteObjectsCommand({ Bucket: bucketOf(provider), Delete: { Objects: objs } }));
+  } catch (e) {
+    console.warn('[storage] 删除缩略图失败', originalKey, e.message);
+  }
+}
+
 // 由已存 URL 反推 provider（用于删除 / 迁移）
 export function matchProviderByUrl(url) {
   if (!url) return null;
@@ -154,9 +245,9 @@ export async function saveImage(file, zone = 'biz-works', meta = {}) {
   let url, storeKey = null;
   // 同步计算内容 hash（内容级去重，best-effort）—— 在删除临时文件前完成
   let hash = null;
+  const body = fs.readFileSync(file.path);
   try {
-    const buf = fs.readFileSync(file.path);
-    hash = crypto.createHash('sha256').update(buf).digest('hex');
+    hash = crypto.createHash('sha256').update(body).digest('hex');
   } catch (e) {
     console.warn('[storage] hash 计算失败（不影响上传）', e.message);
   }
@@ -165,7 +256,6 @@ export async function saveImage(file, zone = 'biz-works', meta = {}) {
     const { PutObjectCommand } = await import('@aws-sdk/client-s3');
     const client = await makeS3Client(provider);
     const key = `${zone}/${name}`;
-    const body = fs.readFileSync(file.path);
     await client.send(new PutObjectCommand({
       Bucket: bucketOf(provider),
       Key: key,
@@ -176,6 +266,14 @@ export async function saveImage(file, zone = 'biz-works', meta = {}) {
     // 返回对外完整 URL（绝不返回原始桶地址）
     url = objectUrl(provider, key);
     storeKey = key;
+  }
+
+  // 同步生成缩略图变体（best-effort；失败仅记录，不影响主上传；前端列表用 thumb_400 提速 5-10 倍）
+  try {
+    const variants = await generateThumbnailVariants(body, storeKey);
+    if (variants.length) await uploadThumbnailVariants(zone, name, variants, provider);
+  } catch (e) {
+    console.warn('[storage] 缩略图生成/上传失败（原图不受影响）', e.message);
   }
 
   // 同步登记媒资（容量统计 + hash），在上传响应前完成（同步模式，不再走异步队列）
@@ -196,6 +294,8 @@ async function destroyMediaObject(url) {
   const { DeleteObjectCommand } = await import('@aws-sdk/client-s3');
   const client = await makeS3Client(provider);
   await client.send(new DeleteObjectCommand({ Bucket: bucketOf(provider), Key: key }));
+  // 同步删除缩略图变体（best-effort；不影响主删除流程）
+  await destroyThumbnailVariants(key, provider);
 }
 
 // 从数据库保存的 URL 提取对象 key 并删除（fire-and-forget，失败仅记录）。provider 无关。
@@ -240,6 +340,13 @@ export async function saveBuffer(buffer, ext, zone = 'biz-works', meta = {}) {
   // 同步计算 hash + 登记媒资（同步上传模式，分片合并路径同样适用）
   let hash = null;
   try { hash = crypto.createHash('sha256').update(buffer).digest('hex'); } catch (e) {}
+  // 同步生成缩略图变体（best-effort；失败仅记录）
+  try {
+    const variants = await generateThumbnailVariants(buffer, storeKey);
+    if (variants.length) await uploadThumbnailVariants(zone, name, variants, provider);
+  } catch (e) {
+    console.warn('[storage] 缩略图生成/上传失败（原图不受影响）', e.message);
+  }
   await recordMedia({ url, category: meta.category, bytes: buffer.length, isPublic: meta.isPublic, r2Key: storeKey, hash });
   return { url, name, r2Key: storeKey, hash };
 }

@@ -365,7 +365,7 @@ export default function Works() {
               <div className="relative aspect-[4/3] bg-gray-100">
                 {w.cover_url && !brokenCoverIds.has(w.id) ? (
                   <img
-                    src={img(w.cover_url)}
+                    src={img(w.cover_url, 'thumb')}
                     alt=""
                     loading="lazy"
                     decoding="async"
