@@ -178,12 +178,18 @@ export default function Orders() {
   }, []);
   useEffect(() => { loadStats(); }, [loadStats]);
 
-  // 工作台「待处理订单」进度条点击跳转：读取 ?status= 预筛选
+  // 工作台跳转预筛选：
+  //   ?status=xxx  直接设置列表状态筛选（兼容旧工作台进度条入口）
+  //   ?tab=xxx     移动端待办事项 Tab key，映射为对应 status（如 waitingShoot → deposit）
   // 同时清理历史遗留的 ?pkg= 参数——旧方案会据此自动弹出「新建订单」，
   // 现已彻底移除该行为：新建订单只能由用户点击【+ 添加新订单】主动触发。
   useEffect(() => {
     const s = params.get('status');
-    if (s) setState((x) => ({ ...x, status: s }));
+    const tab = params.get('tab');
+    let nextStatus = '';
+    if (s) nextStatus = s;
+    else if (tab && TAB_STATUS[tab]) nextStatus = TAB_STATUS[tab];
+    if (nextStatus) setState((x) => ({ ...x, status: nextStatus }));
     if (params.get('pkg')) {
       const next = new URLSearchParams(params);
       next.delete('pkg');

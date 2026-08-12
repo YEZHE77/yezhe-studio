@@ -316,13 +316,13 @@ export default function MobileWorkbench() {
             <div style={{ fontSize: 11, color: '#BBBBBB', marginTop: 6 }}>待跟进</div>
           </button>
           <div style={{ width: 1, background: LINE, margin: '14px 0' }} />
-          {/* 待拍摄 */}
+          {/* 待拍摄：跳转待办事项页并自动定位到「等待拍摄」Tab */}
           <button
             type="button"
-            onClick={() => nav('/schedule')}
+            onClick={() => nav('/orders?tab=waitingShoot')}
             style={{ flex: 1, textAlign: 'center', padding: '14px 0 12px', background: 'none', border: 'none' }}
           >
-            <div style={{ fontSize: 24, fontWeight: 600, color: TEXT, lineHeight: 1 }}>{shootCount || 2}</div>
+            <div style={{ fontSize: 24, fontWeight: 600, color: TEXT, lineHeight: 1 }}>{shootCount}</div>
             <div style={{ fontSize: 11, color: '#BBBBBB', marginTop: 6 }}>待拍摄</div>
           </button>
         </div>
