@@ -292,7 +292,7 @@ export default function MobileWorkbench() {
         >
           <div className="flex items-center justify-center" style={{ color: CORAL, lineHeight: 1 }}>
             <span style={{ fontSize: hideBalance ? 18 : 24, fontWeight: 600 }}>
-              {hideBalance ? '¥ ***' : (stats ? '¥' + Number(stats.received).toLocaleString() : '--')}
+              {hideBalance ? '¥ ***' : (stats ? '¥' + Number(stats.balance).toLocaleString() : '--')}
             </span>
             <button
               type="button"
