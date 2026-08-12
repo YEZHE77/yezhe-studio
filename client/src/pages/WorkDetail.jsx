@@ -339,12 +339,12 @@ export default function WorkDetail() {
     } finally { setSaving(false); }
   }
 
-  // 空草稿判定（无照片 + 标题未改 + 文案为空 + 未公开）；任一条件不满足都视为有效作品，不清理
+  // 空草稿判定（无照片 + 标题未改 + 文案为空）；is_public 不参与判定，
+  // 因为 createDraft 默认会创建 is_public=true 的作品，刚进 /works/new 就该被识别为空草稿
   function isEmptyDraft() {
     if (!draftIdRef.current) return false;
     return albumsLenRef.current === 0
       && formTitleRef.current === '未命名作品'
-      && !formIsPublicRef.current
       && !formAlbumCopyRef.current;
   }
 
