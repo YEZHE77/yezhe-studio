@@ -70,7 +70,7 @@ const SECTIONS = [
     title: '功能',
     items: [
       { label: '新手引导', icon: BookOpen, color: ORANGE, to: '/settings' },
-      { label: '资料', icon: FileText, color: CORAL, to: '/settings' },
+      { label: '资料', icon: FileText, color: CORAL, to: '/profile/edit' },
       { label: '作品', icon: Image, color: ORANGE, to: '/works' },
       { label: '套系', icon: Layers, color: CORAL, to: '/packages' }
     ]
@@ -257,7 +257,7 @@ export default function MobileWorkbench() {
           </div>
           <button
             type="button"
-            onClick={() => nav('/settings')}
+            onClick={() => nav('/profile/edit')}
             style={{
               fontSize: 12,
               color: '#fff',

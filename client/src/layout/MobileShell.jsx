@@ -3,6 +3,7 @@ import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-
 import Icon from '../components/Icon.jsx';
 import { useAuth } from '../auth.jsx';
 import MobileWorkbench from '../pages/MobileWorkbench.jsx';
+import MobileProfileEdit from '../pages/MobileProfileEdit.jsx';
 
 // 复用现有 B 端页面组件（独立懒加载，不触碰桌面 AppShell 路由表）
 const Works = React.lazy(() => import('../pages/Works.jsx'));
@@ -134,9 +135,9 @@ function TabBar({ active, onTab, onPlus }) {
       {TABS.map((t) => {
         if (t.key === 'plus') {
           return (
-            <button key={t.key} type="button" onClick={onPlus} className="flex-1 flex items-center justify-center" style={{ background: 'none', border: 'none' }}>
-              <span style={{ width: 46, height: 46, borderRadius: '50%', background: PINK, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: -14, boxShadow: '0 4px 12px rgba(255,122,138,0.4)' }}>
-                <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12h14" /></svg>
+            <button key={t.key} type="button" onClick={onPlus} style={{ flex: 1, background: 'none', border: 'none', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', paddingTop: 4 }}>
+              <span style={{ width: 56, height: 56, borderRadius: '50%', background: `linear-gradient(135deg, ${PINK} 0%, ${PINK_DARK} 100%)`, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: -18, boxShadow: '0 6px 18px rgba(255,107,107,0.45)', border: '3px solid #fff' }}>
+                <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12h14" /></svg>
               </span>
             </button>
           );
@@ -179,6 +180,7 @@ export default function MobileShell() {
           <Suspense fallback={<PageLoader />}>
             <Routes>
               <Route path="/" element={<MobileWorkbench />} />
+              <Route path="/profile/edit" element={<MobileProfileEdit />} />
               <Route path="/m/site" element={<MobileSite />} />
               <Route path="/m/notice" element={<Placeholder title="公告" hint="暂无新公告。" />} />
               <Route path="/m/msg" element={<Placeholder title="消息" hint="暂无新消息。" />} />

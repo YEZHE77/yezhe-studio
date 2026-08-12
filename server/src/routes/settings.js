@@ -31,7 +31,17 @@ const DEFAULT_STUDIO = {
     { id: 'works', label: '作品', visible: true },
     { id: 'packages', label: '套餐', visible: true },
     { id: 'about', label: '关于我们', visible: true }
-  ]
+  ],
+  // 手机端「编辑资料」扩展字段
+  subTitle: '', // 名称下方副标题，如「婚纱照 | 婚礼跟拍 | 人物肖像」
+  tags: [], // 标签数组，如 ['婚纱电影','婚前影像','婚礼拍摄']
+  address: '', // 地址文字
+  location: null, // { lat, lng, name }
+  socials: { wechat: '', weibo: '', phone: '', douyin: '' },
+  members: [], // [{ id, name, avatar, sort }]
+  website: { enabled: false, domain: '' }, // 我的网站
+  miniProgram: { enabled: false }, // 小程序
+  agreement: { enabled: false } // 顾客协议
 };
 
 function safeParse(v) {
@@ -74,7 +84,11 @@ router.put('/studio', authRequired, async (req, res) => {
       ...DEFAULT_STUDIO,
       ...existing,
       ...body,
-      contact: { ...DEFAULT_STUDIO.contact, ...(existing.contact || {}), ...(body.contact || {}) }
+      contact: { ...DEFAULT_STUDIO.contact, ...(existing.contact || {}), ...(body.contact || {}) },
+      socials: { ...DEFAULT_STUDIO.socials, ...(existing.socials || {}), ...(body.socials || {}) },
+      website: { ...DEFAULT_STUDIO.website, ...(existing.website || {}), ...(body.website || {}) },
+      miniProgram: { ...DEFAULT_STUDIO.miniProgram, ...(existing.miniProgram || {}), ...(body.miniProgram || {}) },
+      agreement: { ...DEFAULT_STUDIO.agreement, ...(existing.agreement || {}), ...(body.agreement || {}) }
     };
     const value = JSON.stringify(merged);
     const exists = await get("SELECT key FROM settings WHERE key = 'studio'");
