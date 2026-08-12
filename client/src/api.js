@@ -111,21 +111,34 @@ export function debounce(fn, delay = 300) {
 
 // 图片地址补全（本地 /uploads 在开发期由代理处理；生产需拼 Render 地址）
 // 支持 mode 取压缩版本：
-//   thumb  → Cloudflare Pages 边缘压缩 400px JPEG（依赖 Cloudflare Dashboard 启用 Image Transformations）
-//   preview → 1080px 同上
+//   thumb  → 400px 缩略图（列表页）
+//   preview → 1080px 大图预览
 // 非 https URL（本地 /uploads）不参与压缩，直接返回原 URL
 //
-// Cloudflare Image Resizing 路径：<PAGES_HOST>/cdn-cgi/image/width=<w>,quality=<q>,fit=cover/<原URL>
-//  - Image transformations 是 Cloudflare Pages 的内置功能（免费 5000 次 unique transforms/月）
-//  - 启用后任意 R2 URL 走 Pages 边缘会被自动转码压缩，无需后端预生成缩略图
-//  - 路径必须以 https:// 开头且 Pages 域名为前缀（worker 域名是 R2 的 worker 域名）
-//  - 启用方法：Cloudflare Dashboard → Workers & Pages → yezhe-studio → Settings → Functions → Image transformations → Enabled
+// ====== 方案 B：R2 Worker ?w= 参数（当前生效） ======
+// R2 Worker 已内置缩略图查找：?w=400 → 先查 thumb_400/<name>，命中返回小图，未命中降级原图
+// 优点：无需 Cloudflare Dashboard 配置，立即生效
+// 缺点：历史图片无预生成缩略图时降级原图（慢但能加载）
+//
+// ====== 方案 A：Cloudflare Pages Image Resizing（待启用，更快） ======
+// 启用后把 USE_CF_RESIZING 改为 true 即可走 Pages 边缘压缩，无需后端预生成缩略图
+// 启用方法：Cloudflare Dashboard → Workers & Pages → yezhe-studio → Settings → Functions → Image transformations → Enabled
+
+const USE_CF_RESIZING = false; // Image Transformations 启用后改为 true
 const PAGES_HOST = 'https://yezhe-studio.pages.dev';
 
 function imageResized(src, width, quality = 75) {
-  // Cloudflare 要求被压缩的源 URL 是 https 完整路径，直接拼到 /cdn-cgi/image/ 后
-  // 格式：<pages>/cdn-cgi/image/width=400,quality=75,fit=cover/<源URL>
   return `${PAGES_HOST}/cdn-cgi/image/width=${width},quality=${quality},fit=cover/${src}`;
+}
+
+function workerThumb(src, width) {
+  try {
+    const u = new URL(src);
+    u.searchParams.set('w', String(width));
+    return u.toString();
+  } catch (e) {
+    return src;
+  }
 }
 
 export function img(url, mode) {
@@ -135,8 +148,12 @@ export function img(url, mode) {
   if (!src.startsWith('http')) return src;
   if (!mode) return src;
   try {
-    if (mode === 'thumb') return imageResized(src, 400);
-    if (mode === 'preview') return imageResized(src, 1080);
+    if (mode === 'thumb') {
+      return USE_CF_RESIZING ? imageResized(src, 400) : workerThumb(src, 400);
+    }
+    if (mode === 'preview') {
+      return USE_CF_RESIZING ? imageResized(src, 1080) : workerThumb(src, 1080);
+    }
     return src;
   } catch (e) {
     return src;
@@ -147,7 +164,7 @@ export function img(url, mode) {
 export function thumb(url, width = 400) {
   if (!url) return '';
   if (!url.startsWith('http')) return url;
-  return imageResized(url, width);
+  return USE_CF_RESIZING ? imageResized(url, width) : workerThumb(url, width);
 }
 
 /**
