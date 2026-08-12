@@ -1,5 +1,5 @@
 const { requestTask } = require('../../utils/req.js');
-const { getImageUrl } = require('../../utils/imageUrl.js');
+const { getImageUrl, rewriteHost } = require('../../utils/imageUrl.js');
 
 Page({
   data: {
@@ -114,6 +114,10 @@ Page({
   async loadStudio() {
     try {
       const s = await this._req('/api/settings/studio');
+      if (s) {
+        if (s.logo) s.logo = rewriteHost(s.logo);
+        if (s.cover) s.cover = rewriteHost(s.cover);
+      }
       const app = getApp();
       app.setCached('studio', s || {});
       // 优先使用 B 端上传的首页轮播图；没有则清空，由 loadWorks 用作品封面兜底

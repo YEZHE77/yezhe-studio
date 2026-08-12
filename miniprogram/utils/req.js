@@ -17,7 +17,7 @@ function warnDomain() {
     '  request 合法域名: ' + CONFIG.API_BASE + '\n' +
     '  downloadFile 合法域名: ' + CONFIG.API_BASE + '\n' +
     (CONFIG.IMG_CDN ? '  downloadFile 合法域名: ' + CONFIG.IMG_CDN + '\n' : '') +
-    '  downloadFile 合法域名: https://yezhe-img-proxy.yezhe128627.workers.dev （R2 兜底，未启用 COS 时）'
+    '  downloadFile 合法域名: https://yezhe-studio.pages.dev （R2 图片代理，workers.dev 被墙已改走 pages.dev）'
   );
 }
 

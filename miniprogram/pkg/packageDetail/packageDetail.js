@@ -1,5 +1,6 @@
 const { CONFIG } = require('../../utils/config.js');
 const { request } = require('../../utils/req.js');
+const { rewriteHost } = require('../../utils/imageUrl.js');
 
 function abs(u) {
   if (!u) return '';
@@ -43,6 +44,7 @@ Page({
   },
 
   applyPkg(p) {
+    if (p && p.cover_url) p.cover_url = rewriteHost(p.cover_url);
     const specs = Array.isArray(p.specs) ? p.specs : [];
     const spec = specs[0] || null;
     this.setData({

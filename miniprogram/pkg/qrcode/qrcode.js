@@ -1,4 +1,5 @@
 const { requestTask } = require('../../utils/req.js');
+const { rewriteHost } = require('../../utils/imageUrl.js');
 
 Page({
   data: {
@@ -17,7 +18,7 @@ Page({
     this.setData({
       id,
       title: decodeURIComponent(options.title || ''),
-      cover: decodeURIComponent(options.cover || ''),
+      cover: rewriteHost(decodeURIComponent(options.cover || '')),
       category: decodeURIComponent(options.category || '')
     });
     this.genQr();

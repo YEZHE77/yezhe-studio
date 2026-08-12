@@ -1,5 +1,5 @@
 const { requestTask } = require('../../utils/req.js');
-const { getImageUrl } = require('../../utils/imageUrl.js');
+const { getImageUrl, rewriteHost } = require('../../utils/imageUrl.js');
 const Bgm = require('../../utils/bgm.js');
 
 Page({
@@ -124,7 +124,7 @@ Page({
   applyGallery(g) {
     const photos = (g.photos || []).filter(Boolean).map((u, i) => ({
       id: i,
-      url: u,
+      url: rewriteHost(u),
       thumb: getImageUrl(u, 'thumb'),
       preview: getImageUrl(u, 'preview')
     }));
@@ -141,7 +141,7 @@ Page({
         name: g.brand_name || '',
         slogan: g.brand_slogan || '',
         intro: g.brand_intro || '',
-        logo: g.brand_logo || ''
+        logo: rewriteHost(g.brand_logo || '')
       }
     });
   },

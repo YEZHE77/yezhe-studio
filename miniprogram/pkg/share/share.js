@@ -4,12 +4,12 @@
 // 客户扫码即进入本页，校验通过后查看对应内容（影集/作品/套系/档期/账单）。
 const { CONFIG } = require('../../utils/config.js');
 const { requestTask } = require('../../utils/req.js');
-const { getImageUrl } = require('../../utils/imageUrl.js');
+const { getImageUrl, rewriteHost } = require('../../utils/imageUrl.js');
 
-// 把后端返回的相对 /uploads 路径补全为可访问的完整 URL
+// 把后端返回的相对 /uploads 路径补全为可访问的完整 URL，并重写 workers.dev → pages.dev
 function abs(u) {
   if (!u) return '';
-  if (u.indexOf('http') === 0) return u;
+  if (u.indexOf('http') === 0) return rewriteHost(u);
   if (u.indexOf('/uploads') === 0) return CONFIG.API_BASE + u;
   return u;
 }

@@ -4,13 +4,19 @@
 //   2) 作品直连模式：?workId=xxx（公开接口 /api/works/public/:id/album，客户无需登录）
 // 沉浸式上下滑动 + 播放/投屏/分享/更多；支持 onShareAppMessage 转发给好友。
 const { requestTask } = require('../../utils/req.js');
-const { getImageUrl } = require('../../utils/imageUrl.js');
+const { getImageUrl, rewriteHost } = require('../../utils/imageUrl.js');
 
 function abs(u) {
   if (!u) return '';
   if (u.indexOf('http') === 0) return u;
   if (u.indexOf('/uploads') === 0) return CONFIG.API_BASE + u;
   return u;
+}
+
+// 重写 gallery 对象中可能含 workers.dev 的图片字段
+function fixGalleryLogo(g) {
+  if (g && g.brand_logo) g.brand_logo = rewriteHost(g.brand_logo);
+  return g;
 }
 
 Page({
@@ -66,6 +72,7 @@ Page({
       const g = (r.data && (r.data.gallery || r.data.work)) || null;
       if (!g) { this.setData({ loading: false, error: '相册内容不存在或已失效' }); return; }
       const photos = (g.photos || []).map((u) => getImageUrl(abs(u), 'preview')).filter(Boolean);
+      fixGalleryLogo(g);
       this.setData({ loading: false, gallery: g, photos });
       wx.setNavigationBarTitle({ title: g.subtitle || g.title || '作品相册' });
     } catch (e) {
@@ -85,6 +92,7 @@ Page({
       const g = (r && r.gallery) || null;
       if (!g) { this.setData({ loading: false, error: '作品相册不存在或已失效' }); return; }
       const photos = (g.photos || []).map((u) => getImageUrl(abs(u), 'preview')).filter(Boolean);
+      fixGalleryLogo(g);
       this.setData({ loading: false, gallery: g, photos });
       wx.setNavigationBarTitle({ title: g.subtitle || g.title || '作品相册' });
     } catch (e) {
@@ -142,6 +150,7 @@ Page({
       const g = r.gallery || (r.data && r.data.gallery) || null;
       if (!g) { this.setData({ pwBusy: false, pwErr: '相册内容不存在或已失效' }); return; }
       const photos = (g.photos || []).map((u) => getImageUrl(abs(u), 'preview')).filter(Boolean);
+      fixGalleryLogo(g);
       this.setData({ pwBusy: false, albumLock: false, pw: '', gallery: g, photos });
       wx.setNavigationBarTitle({ title: g.subtitle || g.title || '作品相册' });
     } catch (e) {

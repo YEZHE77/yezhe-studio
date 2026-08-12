@@ -1,11 +1,11 @@
 const { CONFIG } = require('../../utils/config.js');
 const { requestTask } = require('../../utils/req.js');
-const { getImageUrl } = require('../../utils/imageUrl.js');
+const { getImageUrl, rewriteHost } = require('../../utils/imageUrl.js');
 const Bgm = require('../../utils/bgm.js');
 
 function abs(u) {
   if (!u) return '';
-  if (u.indexOf('http') === 0) return u;
+  if (u.indexOf('http') === 0) return rewriteHost(u);
   if (u.indexOf('/uploads') === 0) return CONFIG.API_BASE + u;
   return u;
 }
@@ -70,7 +70,7 @@ Page({
   async load() {
     try {
       const r = await this._req('/api/customer/album/' + this.data.orderId);
-      const photos = (r.photos || []).map((p) => ({ ...p, thumb: getImageUrl(p.photo_url, 'preview') }));
+      const photos = (r.photos || []).map((p) => ({ ...p, photo_url: rewriteHost(p.photo_url || ''), thumb: getImageUrl(p.photo_url, 'preview') }));
       this.setData({ photos, allowDownload: !!r.allowDownload });
       if (photos.length === 0) wx.showToast({ title: '成片尚未上传', icon: 'none' });
     } catch (e) {

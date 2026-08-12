@@ -1,4 +1,5 @@
 const { request } = require('../../utils/req.js');
+const { rewriteHost } = require('../../utils/imageUrl.js');
 
 Page({
   data: {
@@ -20,7 +21,13 @@ Page({
   load() {
     this.setData({ loading: true });
     return request('/api/settings/studio')
-      .then((s) => this.setData({ studio: s || this.data.studio, loading: false }))
+      .then((s) => {
+        if (s) {
+          if (s.logo) s.logo = rewriteHost(s.logo);
+          if (s.cover) s.cover = rewriteHost(s.cover);
+        }
+        this.setData({ studio: s || this.data.studio, loading: false });
+      })
       .catch(() => this.setData({ loading: false }));
   },
 
