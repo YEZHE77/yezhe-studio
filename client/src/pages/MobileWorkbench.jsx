@@ -31,7 +31,7 @@ import {
   MessageCircle,
   ChevronRight,
   Monitor,
-  Smartphone,
+  Cloud,
   Eye,
   EyeOff
 } from 'lucide-react';
@@ -153,7 +153,7 @@ function GroupBlock({ title, children, last, pink }) {
     <div
       style={{
         padding: '16px',
-        background: pink ? '#FCE4E4' : '#fff',
+        background: pink ? '#FFF5F5' : '#fff',
         borderBottom: last ? 'none' : '1px solid ' + LINE
       }}
     >
@@ -386,19 +386,19 @@ export default function MobileWorkbench() {
       {/* 大容器卡片：外部展示（粉色强调）+ 功能（无标题）+ 工具 + 拓客引流 + 其他功能 */}
       <div style={{ background: '#fff', borderTop: '1px solid ' + LINE }}>
         <GroupBlock title="外部展示" pink last>
-          <div style={{ background: '#fff', border: '1px solid ' + LINE, borderRadius: 12, display: 'flex', overflow: 'hidden' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <button
               type="button"
               onClick={() => nav('/home')}
-              style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '16px 0', background: 'none', border: 'none', borderRight: '1px solid ' + LINE }}
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '16px 0', background: '#fff', border: '1px solid ' + LINE, borderRadius: 12 }}
             >
-              <Smartphone className="w-5 h-5" strokeWidth={1.5} style={{ color: TEXT }} />
+              <Cloud className="w-5 h-5" strokeWidth={1.5} style={{ color: TEXT }} />
               <span style={{ fontSize: 14, color: TEXT }}>小程序</span>
             </button>
             <button
               type="button"
               onClick={() => nav('/settings')}
-              style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '16px 0', background: 'none', border: 'none' }}
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '16px 0', background: '#fff', border: '1px solid ' + LINE, borderRadius: 12 }}
             >
               <Monitor className="w-5 h-5" strokeWidth={1.5} style={{ color: TEXT }} />
               <span style={{ fontSize: 14, color: TEXT }}>网站</span>
