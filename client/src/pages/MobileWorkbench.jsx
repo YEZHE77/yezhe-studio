@@ -383,9 +383,9 @@ export default function MobileWorkbench() {
         </button>
       </div>
 
-      {/* 大容器卡片：外部展示（粉色强调）+ 功能 + 工具 + 拓客引流 + 其他功能（组间横分隔线） */}
+      {/* 大容器卡片：外部展示（粉色强调）+ 功能（无标题）+ 工具 + 拓客引流 + 其他功能 */}
       <div style={{ background: '#fff', borderTop: '1px solid ' + LINE }}>
-        <GroupBlock title="外部展示" pink>
+        <GroupBlock title="外部展示" pink last>
           <div style={{ background: '#fff', border: '1px solid ' + LINE, borderRadius: 12, display: 'flex', overflow: 'hidden' }}>
             <button
               type="button"
@@ -405,8 +405,16 @@ export default function MobileWorkbench() {
             </button>
           </div>
         </GroupBlock>
-        {SECTIONS.map((s, i) => (
-          <GroupBlock key={s.title} title={s.title} last={i === SECTIONS.length - 1}>
+        {/* 功能：无标题、无下边框，与工具视觉连为一体 */}
+        <div style={{ padding: '16px 16px 8px', background: '#fff' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)' }}>
+            {SECTIONS[0].items.map((it) => (
+              <Cell key={it.label} item={it} onClick={() => nav(it.to)} />
+            ))}
+          </div>
+        </div>
+        {SECTIONS.slice(1).map((s, i) => (
+          <GroupBlock key={s.title} title={s.title} last={i === SECTIONS.slice(1).length - 1}>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)' }}>
               {s.items.map((it) => (
                 <Cell key={it.label} item={it} onClick={() => nav(it.to)} />
