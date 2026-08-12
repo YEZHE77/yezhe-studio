@@ -379,16 +379,9 @@ export default function Works() {
                 )}
               </div>
               <div className="p-3">
-                <div className="flex items-center justify-between gap-2">
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm text-gray-900 truncate">{w.title}</div>
-                    <div className="text-xs text-gray-400 mt-0.5">{formatDate(w.created_at)}</div>
-                  </div>
-                  {!sortMode && (
-                    <button onClick={(e) => { e.stopPropagation(); setActiveMenuWork(w); }} className="p-1 text-gray-400 -mr-1 -mt-0.5">
-                      <MoreVertical className="w-4 h-4" />
-                    </button>
-                  )}
+                <div className="text-base text-gray-900 truncate leading-snug">{w.title}</div>
+                <div className="text-xs text-gray-400 mt-1 truncate">
+                  #{cats.find((c) => String(c.id) === String(w.category_id))?.name || '作品'}
                 </div>
               </div>
             </div>
