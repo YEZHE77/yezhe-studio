@@ -32,6 +32,7 @@ export default function Works() {
   const [state, setState] = useViewState('works', { tab: '', q: '', vis: '', page: 1 });
   const [cats, setCats] = useState([]);
   const [data, setData] = useState({ items: [], total: 0, pageSize: 12 });
+  const [loading, setLoading] = useState(true);
   const [workShare, setWorkShare] = useState(null); // 作品分享相册 {open, workId, title, result, busy}
   const [sortMode, setSortMode] = useState(false);
   const [allItems, setAllItems] = useState([]); // 排序模式下加载全部作品（忽略分页）
@@ -86,7 +87,11 @@ export default function Works() {
     if (state.vis === '0') p.set('is_public', '0');
     p.set('page', state.page);
     p.set('pageSize', data.pageSize || 12);
-    http.get('/api/works?' + p.toString(), { signal: ctrl.signal }).then((r) => setData(r.data)).catch(() => {});
+    setLoading(true);
+    http.get('/api/works?' + p.toString(), { signal: ctrl.signal })
+      .then((r) => setData(r.data))
+      .catch(() => {})
+      .finally(() => setLoading(false));
     return () => ctrl.abort();
   }, [state]);
 
