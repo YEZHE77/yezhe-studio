@@ -5,7 +5,7 @@ import bgm from '../bgm.js';
 import Slideshow from '../components/Slideshow.jsx';
 import Lightbox from '../components/Lightbox.jsx';
 import ImageCropper from '../components/ImageCropper.jsx';
-import { ChevronLeft, Music, PlayCircle, Image as ImageIcon, Plus } from 'lucide-react';
+import { ChevronLeft, Music, PlayCircle, Plus } from 'lucide-react';
 
 const ZONES = [
   { key: 'sample', label: '样片', desc: '对外展示、C端小程序可见' },
@@ -52,6 +52,7 @@ export default function WorkDetail() {
   const isNew = id === 'new'; // 页面式新建：直接进入编辑页，空白表单创建作品
   const fileRef = useRef(null);
   const uploadAreaRef = useRef(null);
+  const albumCopyRef = useRef(null); // 文案 textarea 自适应高度
   // 移动端响应式：宽度 < 768px 视为手机，内联样式按 isMobile 降级，避免固定宽度溢出
   const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' ? window.innerWidth < 768 : false);
   useEffect(() => {
@@ -110,8 +111,23 @@ export default function WorkDetail() {
   // 移动端编辑面板：null | 'album' | 'music' | 'settings'
   const [mobilePanel, setMobilePanel] = useState(null);
   const [mobileZone, setMobileZone] = useState('sample');
+  // 修改图片子页：上传类型 tab + 待保存变更（删除/封面/排序）
+  const [albumUploadTab, setAlbumUploadTab] = useState('image'); // 'image' | 'video'
+  const [pendingDeletes, setPendingDeletes] = useState(() => new Set());
+  const [pendingCoverUrl, setPendingCoverUrl] = useState(null);
+  const [pendingOrder, setPendingOrder] = useState(null); // 排序后的 id 数组
+  // 修改图片子页：长按拖拽排序（dragOverId 复用桌面端既有 state）
+  const [draggingId, setDraggingId] = useState(null);
+  const longPressTimerRef = useRef(null);
   // 拖拽刚结束的瞬间拦截误触发预览点击
   const justDraggedRef = useRef(false);
+  // 文案 textarea 自适应高度：内容变化时高度跟随 scrollHeight 扩展
+  useEffect(() => {
+    const el = albumCopyRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = el.scrollHeight + 'px';
+  }, [form.album_copy]);
 
   async function loadWork() {
     try {
@@ -510,10 +526,84 @@ export default function WorkDetail() {
     } finally { setReordering(false); }
   }
 
+  // 修改图片子页：批量保存所有待提交变更（删除/封面/排序）
+  async function saveAlbumChanges() {
+    const delIds = [...pendingDeletes];
+    const coverUrl = pendingCoverUrl;
+    const order = pendingOrder;
+    if (!delIds.length && !coverUrl && !order) return;
+    setReordering(true);
+    try {
+      if (order) await http.post('/api/works/' + id + '/albums/reorder', { orders: order, zone: mobileZone });
+      if (coverUrl) await http.put('/api/works/' + id, { cover_url: coverUrl });
+      if (delIds.length) await Promise.all(delIds.map((aid) => http.delete('/api/albums/' + aid)));
+      // 清空待保存状态
+      setPendingDeletes(new Set());
+      setPendingCoverUrl(null);
+      setPendingOrder(null);
+      await Promise.all([loadAlbums(), loadWork()]);
+    } catch (err) {
+      alert((err.response && err.response.data && err.response.data.error) || '保存失败');
+    } finally { setReordering(false); }
+  }
+
+  // —— 长按拖拽排序（移动端）——
+  // pointerdown → 启动 500ms 长按计时；到期设 draggingId 进入拖拽态
+  function onThumbPointerDown(e, aid) {
+    longPressTimerRef.current = setTimeout(() => {
+      setDraggingId(aid);
+    }, 500);
+  }
+  // pointermove → 拖拽中用 elementFromPoint 命中目标缩略图
+  function onThumbPointerMove(e) {
+    if (!draggingId) return;
+    const el = document.elementFromPoint(e.clientX, e.clientY);
+    const thumb = el && el.closest('[data-album-id]');
+    if (thumb) {
+      const overId = parseInt(thumb.getAttribute('data-album-id'), 10);
+      if (overId && overId !== dragOverId) setDragOverId(overId);
+    } else {
+      setDragOverId(null);
+    }
+  }
+  // pointerup → 清计时器；若有 draggingId+dragOverId 则提交排序
+  function onThumbPointerUp() {
+    if (longPressTimerRef.current) { clearTimeout(longPressTimerRef.current); longPressTimerRef.current = null; }
+    if (draggingId && dragOverId && draggingId !== dragOverId) {
+      // 基于 pendingOrder 或原始顺序计算当前显示顺序
+      const currentOrder = albumList.map((a) => a.id);
+      const fromIdx = currentOrder.indexOf(draggingId);
+      const toIdx = currentOrder.indexOf(dragOverId);
+      if (fromIdx !== -1 && toIdx !== -1) {
+        const newOrder = [...currentOrder];
+        const [moved] = newOrder.splice(fromIdx, 1);
+        newOrder.splice(toIdx, 0, moved);
+        // 完整 zone 顺序：cover 在前 + grid 新序
+        const coverId = coverPhoto ? coverPhoto.id : null;
+        const gridIds = newOrder.filter((aid2) => aid2 !== coverId);
+        setPendingOrder(coverId ? [coverId, ...gridIds] : gridIds);
+      }
+      justDraggedRef.current = true;
+      setTimeout(() => { justDraggedRef.current = false; }, 50);
+    }
+    setDraggingId(null);
+    setDragOverId(null);
+  }
+
   // 单击照片打开大图预览（拖拽刚结束的瞬间拦截，避免误触）
   function openPreview(i) {
     if (justDraggedRef.current) return;
     setPreviewIndex(i);
+    setPreviewOpen(true);
+  }
+  // 主页尾部照片预览：切换 zone + 打开 Lightbox
+  // React 18 自动 batch：同回调内 setZone+setPreviewIndex+setPreviewOpen 合并，
+  // 下次渲染 zoneAlbums 已指向新分区，Lightbox 拿到正确照片
+  function openZonePreview(zoneKey, idx) {
+    if (justDraggedRef.current) return;
+    setZone(zoneKey);
+    setSelected(new Set());
+    setPreviewIndex(idx);
     setPreviewOpen(true);
   }
   // 封面自定义裁剪
@@ -690,10 +780,10 @@ export default function WorkDetail() {
                 {Array.from({ length: 10 }).map((_, i) => (
                   <div key={i} className="aspect-square rounded-xl2 bg-ink" />
                 ))}
+              </div>
             </div>
           </div>
         </div>
-      </div>
     </div>
     );
   }
@@ -732,37 +822,96 @@ export default function WorkDetail() {
       );
     }
     if (mobilePanel === 'album') {
+      const baseList = albums.filter((a) => a.zone === mobileZone);
+      const albumList = pendingOrder
+        ? baseList.sort((a, b) => { const ai = pendingOrder.indexOf(a.id); const bi = pendingOrder.indexOf(b.id); return (ai === -1 ? 9999 : ai) - (bi === -1 ? 9999 : bi); })
+        : baseList.sort((a, b) => (a.sort - b.sort) || (a.id - b.id));
+      const currentCoverUrl = pendingCoverUrl || work?.cover_url || '';
+      const coverPhoto = albumList.find((a) => a.photo_url === currentCoverUrl) || albumList[0] || null;
+      const gridList = albumList.filter((a) => a.id !== coverPhoto?.id);
+      const pendingCount = pendingDeletes.size + (pendingCoverUrl ? 1 : 0) + (pendingOrder ? 1 : 0);
       return (
-        <div className="min-h-screen bg-[#f7f7f7] flex flex-col">
-          <div className="flex items-center justify-between px-3 py-3 bg-white border-b border-gray-100 sticky top-0 z-10">
-            <button onClick={() => setMobilePanel(null)} className="p-1 text-gray-700"><ChevronLeft className="w-6 h-6" /></button>
-            <span className="text-base text-gray-900">修改图像</span>
-            <button onClick={onUploadClick} disabled={uploading || preparing} className="text-sm px-3 py-1.5 rounded-full bg-[#FF7A8A] text-white disabled:opacity-50">{uploading ? `上传中 ${overallPct}%` : preparing ? '准备中…' : '+ 上传'}</button>
+        <div className="min-h-screen bg-white flex flex-col">
+          {/* 顶部导航：取消 + 修改图片 + 保存 */}
+          <div className="flex items-center px-4 py-3 bg-white border-b border-gray-100 sticky top-0 z-10">
+            <button onClick={() => { setPendingDeletes(new Set()); setPendingCoverUrl(null); setPendingOrder(null); setMobilePanel(null); }} className="text-sm text-gray-700 active:opacity-60">取消</button>
+            <span className="flex-1 text-center text-base text-gray-900">修改图片</span>
+            <button
+              onClick={saveAlbumChanges}
+              disabled={!pendingCount || reordering}
+              className={'text-sm px-3 py-1.5 rounded-full disabled:opacity-40 ' + (pendingCount ? 'bg-[#FF7A8A] text-white' : 'bg-gray-100 text-gray-400')}
+            >保存{pendingCount ? ` (${pendingCount})` : ''}</button>
           </div>
+          {/* 上传类型 tab：上传图片 / 上传视频 */}
           <div className="flex bg-white border-b border-gray-100">
-            {ZONES.map((z) => (
-              <button key={z.key} onClick={() => { setMobileZone(z.key); setZone(z.key); setSelected(new Set()); }}
-                className={'flex-1 py-2.5 text-sm ' + (mobileZone === z.key ? 'text-[#FF7A8A] border-b-2 border-[#FF7A8A]' : 'text-gray-500')}>
-                {z.label}
-                <span className="ml-1 text-xs text-gray-400">({albums.filter((a) => a.zone === z.key).length})</span>
-              </button>
-            ))}
+            <button
+              onClick={() => albumUploadTab !== 'image' && onUploadClick()}
+              className={'flex-1 py-3 text-sm ' + (albumUploadTab === 'image' ? 'text-[#FF7A8A] border-b-2 border-[#FF7A8A] -mb-px' : 'text-gray-500')}
+            >上传图片</button>
+            <button
+              onClick={() => alert('视频上传功能开发中')}
+              className={'flex-1 py-3 text-sm ' + (albumUploadTab === 'video' ? 'text-[#FF7A8A] border-b-2 border-[#FF7A8A] -mb-px' : 'text-gray-500')}
+            >上传视频</button>
           </div>
-          <div className="flex-1 overflow-y-auto p-3">
-            {zoneAlbums.length === 0 ? (
-              <div className="text-center text-gray-400 py-16 text-sm">该分区暂无照片<br />点击右上角上传</div>
-            ) : (
-              <div className="grid grid-cols-3 gap-2">
-                {zoneAlbums.map((a, i) => (
-                  <div key={a.id} onClick={() => openPreview(i)} className="aspect-square relative rounded-lg overflow-hidden bg-gray-100">
-                    <img src={img(a.photo_url)} alt="" loading="lazy" className="w-full h-full object-cover" onError={() => markBroken(a.id)} />
-                    {work?.cover_url && work.cover_url === a.photo_url && (
-                      <span className="absolute top-1 left-1 px-1.5 py-0.5 rounded text-[9px] text-white bg-[#FF7A8A]">封面</span>
-                    )}
-                  </div>
-                ))}
+          {/* 内容区：大封面图 + 缩略图网格 + 底部提示 */}
+          <div className="flex-1 overflow-y-auto bg-[#f7f7f7] pb-32">
+            {/* 大封面图 */}
+            <div className="relative bg-white mx-3 mt-3 rounded-lg overflow-hidden" style={{ aspectRatio: '16/10' }}>
+              {coverPhoto ? (
+                <img src={img(coverPhoto.photo_url)} alt="" className="w-full h-full object-cover" onError={() => markBroken(coverPhoto.id)} />
+              ) : (
+                <div className="absolute inset-0 flex items-center justify-center text-gray-300 text-sm">暂无封面</div>
+              )}
+              <span className="absolute bottom-2 right-2 px-2 py-0.5 rounded text-[10px] text-white bg-black/60">封面</span>
+            </div>
+            {/* 缩略图网格：3 列，左上角红圆 X 删除，长按拖拽排序 */}
+            {gridList.length > 0 && (
+              <div className="grid grid-cols-3 gap-2 mx-3 mt-3">
+                {gridList.map((a) => {
+                  const marked = pendingDeletes.has(a.id);
+                  const isDragging = draggingId === a.id;
+                  const isDragOver = dragOverId === a.id;
+                  return (
+                    <div
+                      key={a.id}
+                      data-album-id={a.id}
+                      onPointerDown={(e) => onThumbPointerDown(e, a.id)}
+                      onPointerMove={onThumbPointerMove}
+                      onPointerUp={onThumbPointerUp}
+                      onPointerCancel={onThumbPointerUp}
+                      onClick={() => { if (justDraggedRef.current) return; if (!marked) setPendingCoverUrl(a.photo_url); }}
+                      className={'relative rounded-lg overflow-hidden bg-gray-100 ' + (marked ? 'opacity-40 ' : '') + (isDragging ? 'opacity-50 ring-2 ring-[#FF7A8A] ' : '') + (isDragOver ? 'ring-2 ring-[#FF7A8A]/50 ' : '') + (!marked && !isDragging ? 'active:opacity-80' : '')}
+                      style={{ aspectRatio: '1', touchAction: 'none' }}
+                    >
+                      <img src={img(a.photo_url)} alt="" loading="lazy" className="w-full h-full object-cover pointer-events-none" onError={() => markBroken(a.id)} />
+                      {!marked && (
+                        <button
+                          onPointerDown={(e) => e.stopPropagation()}
+                          onClick={(e) => { e.stopPropagation(); setPendingDeletes((s) => { const n = new Set(s); n.add(a.id); return n; }); }}
+                          className="absolute top-1 left-1 w-5 h-5 rounded-full bg-[#FF7A8A] flex items-center justify-center text-white text-[10px] leading-none z-10"
+                          aria-label="删除"
+                        >✕</button>
+                      )}
+                      {isDragging && (
+                        <div className="absolute inset-0 flex items-center justify-center bg-black/30 pointer-events-none">
+                          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 9l-3 3 3 3M9 5l3-3 3 3M15 19l-3 3-3-3M19 9l3 3-3 3M2 12h20M12 2v20" /></svg>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             )}
+            {/* 底部提示 */}
+            <div className="text-center text-xs text-gray-400 mt-4">轻触设为封面，长按拖动排序</div>
+          </div>
+          {/* 底部保存按钮（fixed 浮动） */}
+          <div className="fixed left-0 right-0 bottom-0 bg-white border-t border-gray-100 px-4 py-3 flex justify-center" style={{ paddingBottom: 'max(12px, env(safe-area-inset-bottom))' }}>
+            <button
+              onClick={saveAlbumChanges}
+              disabled={!pendingCount || reordering}
+              className={'px-10 py-2 rounded-full border ' + (pendingCount ? 'border-[#FF7A8A] text-[#FF7A8A] active:bg-[#FF7A8A]/10' : 'border-gray-200 text-gray-300')}
+            >保存修改{pendingCount ? ` (${pendingCount})` : ''}</button>
           </div>
           <input ref={fileRef} type="file" accept="image/*" multiple className="hidden" onChange={onPickFiles} />
         </div>
@@ -773,10 +922,13 @@ export default function WorkDetail() {
     const coverSrc = work?.cover_url || (sampleFirst ? img(sampleFirst.photo_url) : '');
     return (
       <div className="min-h-screen bg-[#f7f7f7] flex flex-col">
-        <div className="flex items-center justify-between px-3 py-3 bg-white border-b border-gray-100 sticky top-0 z-10">
-          <button onClick={() => navigate('/works')} className="p-1 text-gray-700"><ChevronLeft className="w-6 h-6" /></button>
-          <span className="text-base text-gray-900">编辑客片</span>
-          <button onClick={saveBasic} disabled={saving} className="text-sm px-3 py-1.5 rounded-full bg-[#FF7A8A] text-white disabled:opacity-50">{saving ? '保存中…' : '保存'}</button>
+        <div className="flex items-center px-3 py-2 bg-white border-b border-gray-100 sticky top-0 z-10">
+          <button onClick={() => navigate('/works')} className="flex items-center text-gray-700 shrink-0" style={{ background: 'none', border: 'none', padding: 0 }}>
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M15 6l-6 6 6 6" /></svg>
+            <span className="text-sm ml-1">返回</span>
+          </button>
+          <span className="flex-1 text-center text-base text-gray-900">编辑客片</span>
+          <button onClick={saveBasic} disabled={saving} className="text-sm px-3 py-1.5 rounded-full bg-[#FF7A8A] text-white disabled:opacity-50 shrink-0">{saving ? '保存中…' : '保存'}</button>
         </div>
 
         <div className="flex-1 overflow-y-auto">
@@ -786,7 +938,7 @@ export default function WorkDetail() {
             ) : (
               <div className="absolute inset-0 flex items-center justify-center text-gray-400 text-sm">暂无封面</div>
             )}
-            <button onClick={openCoverCrop} className="absolute top-3 left-3 px-2.5 py-1.5 rounded text-xs text-white" style={{ background: 'rgba(0,0,0,0.55)' }}>更换封面</button>
+            <button onClick={() => setMobilePanel('album')} className="absolute top-3 left-3 px-2.5 py-1.5 rounded text-xs" style={{ background: 'rgba(0,0,0,0.55)', color: '#fff' }}>更换封面</button>
             <div className="absolute bottom-10 left-4 right-4">
               <div className="border-2 border-dashed border-white/80 rounded-lg px-3 py-2.5 bg-black/25 backdrop-blur-sm">
                 <input
@@ -800,40 +952,68 @@ export default function WorkDetail() {
             </div>
           </div>
 
-          <div className="bg-white px-4 py-4">
-            <div className="flex items-center justify-between mb-3">
-              <button onClick={() => setForm({ ...form, album_copy: '' })} className="text-sm text-gray-500">清除</button>
-              <button onClick={() => setForm({ ...form, album_copy: '和你一起旅行拍照。这句话里，有我最想做的三件事…' })} className="text-sm" style={{ color: '#2DB7F5' }}>自动生成</button>
-            </div>
+          <div className="bg-white px-4 py-3">
             <textarea
+              ref={albumCopyRef}
               value={form.album_copy}
               onChange={(e) => setForm({ ...form, album_copy: e.target.value })}
               placeholder="像漫步海滨沙滩时每一个袭来的浪花都与众不同，看似平淡的每一天都会有所不同。"
-              rows={4}
-              className="w-full text-sm text-gray-700 placeholder-gray-400 outline-none resize-none"
+              rows={1}
+              className="w-full text-sm text-gray-700 placeholder-gray-400 outline-none resize-none overflow-hidden leading-relaxed"
+              style={{ minHeight: '24px' }}
             />
           </div>
 
-          <div className="bg-white px-4 py-6 mt-2 flex flex-col items-center justify-center">
-            <button onClick={() => alert('视频上传功能开发中')} className="flex items-center gap-2 text-sm text-gray-400">
-              <Plus className="w-5 h-5" /> 上传视频
-            </button>
-          </div>
-        </div>
-
-        <div className="flex items-center bg-[#1f2329] text-white text-xs shrink-0">
-          <button onClick={() => setMobilePanel('music')} className="flex-1 flex flex-col items-center py-3 border-r border-white/10">
-            <Music className="w-5 h-5 mb-1" />
-            <span>选择音乐</span>
-          </button>
-          <button onClick={() => setMobilePanel('settings')} className="flex-1 flex flex-col items-center py-3 border-r border-white/10">
-            <PlayCircle className="w-5 h-5 mb-1" />
-            <span>放映设置</span>
-          </button>
-          <button onClick={() => setMobilePanel('album')} className="flex-1 flex flex-col items-center py-3">
-            <ImageIcon className="w-5 h-5 mb-1" />
-            <span>修改图像</span>
-          </button>
+          {/* 已上传照片预览 — 主页尾部无限浏览，按样片/原片/成片三区分组 */}
+          {albums.length > 0 ? (
+            <div className="bg-white px-4 py-4 border-t border-gray-100">
+              {ZONES.map((z) => {
+                const zonePhotos = albums.filter((a) => a.zone === z.key).sort((a, b) => (a.sort - b.sort) || (a.id - b.id));
+                if (!zonePhotos.length) return null;
+                return (
+                  <div key={z.key} className="mb-6 last:mb-0">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs text-gray-500 font-medium">{z.label} <span className="text-gray-400">({zonePhotos.length})</span></span>
+                      <button
+                        onClick={() => { setMobileZone(z.key); setZone(z.key); setSelected(new Set()); setMobilePanel('album'); }}
+                        className="text-xs text-[#7ecdbb] active:opacity-70"
+                      >管理</button>
+                    </div>
+                    <div className="grid grid-cols-3 gap-1.5">
+                      {zonePhotos.map((a, i) => (
+                        <div
+                          key={a.id}
+                          onClick={() => openZonePreview(z.key, i)}
+                          className="aspect-square relative rounded-lg overflow-hidden bg-gray-100 cursor-pointer active:opacity-80"
+                        >
+                          <img src={img(a.photo_url)} alt="" className="w-full h-full object-cover" loading="lazy" />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="bg-white px-4 py-8 border-t border-gray-100">
+              <div className="flex flex-col items-center justify-center text-center">
+                <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mb-3">
+                  <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="#bbb" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="3" y="3" width="18" height="18" rx="2" />
+                    <circle cx="9" cy="9" r="2" />
+                    <path d="M21 15l-5-5L5 21" />
+                  </svg>
+                </div>
+                <p className="text-sm text-gray-400 mb-4">还没有上传照片，添加第一张客片吧</p>
+                <button
+                  onClick={onUploadClick}
+                  disabled={uploading || preparing}
+                  className="px-8 py-2.5 rounded-full bg-[#FF7A8A] text-white text-sm font-medium active:opacity-80 disabled:opacity-50"
+                >{uploading ? '上传中…' : preparing ? '准备中…' : '+ 上传照片'}</button>
+              </div>
+            </div>
+          )}
+          <input ref={fileRef} type="file" accept="image/*" multiple className="hidden" onChange={onPickFiles} />
         </div>
       </div>
     );

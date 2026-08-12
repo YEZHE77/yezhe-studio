@@ -264,8 +264,8 @@ export default function Works() {
             <div className="absolute right-0 top-full mt-1 w-40 rounded-lg bg-white shadow-lg border border-gray-100 py-1 z-50">
               {!sortMode ? (
                 <>
-                  <button onClick={() => { setShowTopMenu(false); openNew(); }} className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2">
-                    <Plus className="w-4 h-4" /> 添加新客片
+                  <button onClick={() => { setShowTopMenu(false); openNew(); }} className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50">
+                    添加新客片
                   </button>
                   <button onClick={() => { setShowTopMenu(false); toggleSortMode(); }} className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50">自定义排序</button>
                 </>
@@ -336,8 +336,8 @@ export default function Works() {
         </div>
       )}
 
-      {/* 作品网格 */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 p-4">
+      {/* 作品网格：1:1 像素级复刻截图风格——偏横版封面、无圆角、无阴影、英文大写标题 */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 p-4">
         {displayItems.filter(Boolean).map((w) => {
           if (!w.id) return null;
           const isDragOver = sortMode && dragOverId === w.id;
@@ -350,11 +350,11 @@ export default function Works() {
               onDrop={(e) => sortMode && handleDrop(e, w.id)}
               onDragEnd={resetDrag}
               onClick={() => !sortMode && navigate('/works/' + w.id)}
-              className={`bg-white rounded-2xl overflow-hidden shadow-md transition select-none
+              className={`bg-white overflow-hidden transition select-none
                 ${sortMode ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'}
                 ${isDragOver ? 'ring-2 ring-[#FF7A8A]' : ''}
                 ${isDragged ? 'opacity-40' : ''}`}>
-              <div className="relative aspect-[4/5] bg-gray-100">
+              <div className="relative aspect-[4/3] bg-gray-100">
                 {w.cover_url ? (
                   <img src={img(w.cover_url)} alt="" loading="lazy" className="w-full h-full object-cover" />
                 ) : (
@@ -366,7 +366,7 @@ export default function Works() {
                 {w.pinned && (
                   <span className="absolute left-2 top-2 rounded px-2 py-0.5 text-[10px] text-white" style={{ background: CORAL }}>置顶</span>
                 )}
-                {/* 浏览量角标 */}
+                {/* 浏览量角标（保留右上角眼睛） */}
                 <div className="absolute top-2 right-2 flex items-center gap-1 text-white text-[10px] bg-black/30 backdrop-blur-sm rounded-full px-1.5 py-0.5">
                   <Eye className="w-3 h-3" />
                   <span>{w.views ?? 0}</span>
@@ -378,10 +378,19 @@ export default function Works() {
                   </div>
                 )}
               </div>
-              <div className="p-3">
-                <div className="text-base text-gray-900 truncate leading-snug">{w.title}</div>
-                <div className="text-xs text-gray-400 mt-1 truncate">
-                  #{cats.find((c) => String(c.id) === String(w.category_id))?.name || '作品'}
+              <div className="px-3 pt-3 pb-3">
+                <div className="text-base text-gray-900 truncate uppercase leading-snug" style={{ letterSpacing: '0.02em' }}>{w.title}</div>
+                <div className="flex items-center justify-between gap-2 mt-1">
+                  <div className="text-xs text-gray-400 truncate min-w-0 flex-1">
+                    #{cats.find((c) => String(c.id) === String(w.category_id))?.name || '作品'}
+                  </div>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setActiveMenuWork(w); }}
+                    aria-label="管理相册"
+                    className="shrink-0 p-1 rounded hover:bg-gray-100 active:bg-gray-200"
+                  >
+                    <MoreVertical className="w-4 h-4 text-gray-400" />
+                  </button>
                 </div>
               </div>
             </div>

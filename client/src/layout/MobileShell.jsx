@@ -192,7 +192,8 @@ export default function MobileShell() {
   const tabRoots = ['/', '/m/site', '/m/notice', '/m/msg'];
   const hideTopBackRoutes = ['/works'];
   const isTab = tabRoots.includes(location.pathname);
-  const hideTopBack = hideTopBackRoutes.includes(location.pathname);
+  // /works/:id 与 /works/new 等子路由由页面内自带顶部导航，避免双层 TopBack
+  const hideTopBack = hideTopBackRoutes.includes(location.pathname) || location.pathname.startsWith('/works/');
   const pageTitle = getPageTitle(location.pathname);
   const activeKey = (() => {
     if (location.pathname === '/') return 'home';
