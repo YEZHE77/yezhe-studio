@@ -43,6 +43,14 @@ export default function Works() {
   const [sortBy, setSortBy] = useState('newest'); // 'newest' | 'views'
   const [activeMenuWork, setActiveMenuWork] = useState(null);
   const [showTopMenu, setShowTopMenu] = useState(false);
+  // 封面图加载失败兜底：避免 R2 Worker 慢/超时导致卡片静默空白（用户看不到裂图 vs 加载中）
+  const [brokenCoverIds, setBrokenCoverIds] = useState(() => new Set());
+  function markCoverBroken(id) {
+    if (brokenCoverIds.has(id)) return;
+    const n = new Set(brokenCoverIds);
+    n.add(id);
+    setBrokenCoverIds(n);
+  }
 
   // 作品分享相册：生成公开分享令牌（type=work）→ 沉浸式相册二维码 + 链接
   function openWorkShare(w) {
@@ -355,11 +363,21 @@ export default function Works() {
                 ${isDragOver ? 'ring-2 ring-[#FF7A8A]' : ''}
                 ${isDragged ? 'opacity-40' : ''}`}>
               <div className="relative aspect-[4/3] bg-gray-100">
-                {w.cover_url ? (
-                  <img src={img(w.cover_url)} alt="" loading="lazy" className="w-full h-full object-cover" />
+                {w.cover_url && !brokenCoverIds.has(w.id) ? (
+                  <img
+                    src={img(w.cover_url)}
+                    alt=""
+                    loading="lazy"
+                    decoding="async"
+                    onError={() => markCoverBroken(w.id)}
+                    className="w-full h-full object-cover"
+                  />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center text-gray-300">
+                  <div className="w-full h-full flex flex-col items-center justify-center text-gray-300 gap-1">
                     <ImageIcon className="w-10 h-10 opacity-40" />
+                    {brokenCoverIds.has(w.id) && (
+                      <span className="text-[10px] text-gray-400">封面加载失败</span>
+                    )}
                   </div>
                 )}
                 {/* 置顶标签：后端暂无 pinned 字段，预留条件 */}
