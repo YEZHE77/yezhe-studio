@@ -365,7 +365,7 @@ export default function Works() {
                 ${isDragged ? 'opacity-40' : ''}`}>
               <div className="relative aspect-[4/5] bg-gray-100">
                 {w.cover_url ? (
-                  <img src={img(w.cover_url)} alt="" className="w-full h-full object-cover" />
+                  <img src={img(w.cover_url)} alt="" loading="lazy" className="w-full h-full object-cover" />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-gray-300">
                     <ImageIcon className="w-10 h-10 opacity-40" />

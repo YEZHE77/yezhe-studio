@@ -755,7 +755,7 @@ export default function WorkDetail() {
               <div className="grid grid-cols-3 gap-2">
                 {zoneAlbums.map((a, i) => (
                   <div key={a.id} onClick={() => openPreview(i)} className="aspect-square relative rounded-lg overflow-hidden bg-gray-100">
-                    <img src={img(a.photo_url)} alt="" className="w-full h-full object-cover" onError={() => markBroken(a.id)} />
+                    <img src={img(a.photo_url)} alt="" loading="lazy" className="w-full h-full object-cover" onError={() => markBroken(a.id)} />
                     {work?.cover_url && work.cover_url === a.photo_url && (
                       <span className="absolute top-1 left-1 px-1.5 py-0.5 rounded text-[9px] text-white bg-[#FF7A8A]">封面</span>
                     )}
