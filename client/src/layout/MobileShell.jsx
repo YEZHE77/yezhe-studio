@@ -91,11 +91,11 @@ function TopBack({ title }) {
 
 // 底部 Tab（工作台 / 微官网 / + / 公告 / 消息）
 const TABS = [
-  { key: 'home', label: '工作台', icon: 'dashboard', to: '/' },
-  { key: 'site', label: '微官网', icon: 'website', to: '/m/site' },
+  { key: 'home', label: '工作台', icon: 'monitor', to: '/' },
+  { key: 'site', label: '微官网', icon: 'home', to: '/m/site' },
   { key: 'plus', label: '', icon: 'plus', to: '' },
-  { key: 'notice', label: '公告', icon: 'finance', to: '/m/notice' },
-  { key: 'msg', label: '消息', icon: 'review', to: '/m/msg' }
+  { key: 'notice', label: '公告', icon: 'compass', to: '/m/notice' },
+  { key: 'msg', label: '消息', icon: 'bell', to: '/m/msg', badge: 2 }
 ];
 
 // + 快捷新建
@@ -135,18 +135,24 @@ function TabBar({ active, onTab, onPlus }) {
       {TABS.map((t) => {
         if (t.key === 'plus') {
           return (
-            <button key={t.key} type="button" onClick={onPlus} style={{ flex: 1, background: 'none', border: 'none', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', paddingTop: 4 }}>
-              <span style={{ width: 56, height: 56, borderRadius: '50%', background: `linear-gradient(135deg, ${PINK} 0%, ${PINK_DARK} 100%)`, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: -18, boxShadow: '0 6px 18px rgba(255,107,107,0.45)', border: '3px solid #fff' }}>
-                <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12h14" /></svg>
+            <button key={t.key} type="button" onClick={onPlus} style={{ flex: 1, background: 'none', border: 'none', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', paddingTop: 10 }}>
+              <span style={{ width: 38, height: 38, borderRadius: 10, background: PINK, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(255,122,138,0.4)' }}>
+                <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12h14" /></svg>
               </span>
             </button>
           );
         }
         const isActive = active === t.key;
+        const color = isActive ? PINK : MUTED;
         return (
-          <button key={t.key} type="button" onClick={() => onTab(t.to)} className="flex-1 flex flex-col items-center justify-center" style={{ background: 'none', border: 'none' }}>
-            <Icon name={t.icon} className="w-5 h-5" strokeWidth={1.6} />
-            <span className="mt-0.5" style={{ fontSize: 11, color: isActive ? GREEN_DARK : MUTED }}>{t.label}</span>
+          <button key={t.key} type="button" onClick={() => onTab(t.to)} className="flex-1 flex flex-col items-center justify-center" style={{ background: 'none', border: 'none', position: 'relative' }}>
+            <Icon name={t.icon} className="w-5 h-5" strokeWidth={1.6} style={{ color }} />
+            <span className="mt-0.5" style={{ fontSize: 11, color }}>{t.label}</span>
+            {!!t.badge && (
+              <span style={{ position: 'absolute', top: 6, right: '22%', minWidth: 16, height: 16, borderRadius: 8, background: '#FF4D4F', color: '#fff', fontSize: 10, fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 4px', border: '2px solid #fff' }}>
+                {t.badge > 99 ? '99+' : t.badge}
+              </span>
+            )}
           </button>
         );
       })}

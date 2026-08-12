@@ -20,10 +20,15 @@ const PATHS = {
   live: <><circle cx="12" cy="12" r="2" /><path d="M7.5 7.5a6 6 0 0 0 0 9M16.5 7.5a6 6 0 0 1 0 9" /></>,
   ai: <><path d="M12 3l1.8 4.6L18 9l-4.2 1.4L12 15l-1.8-4.6L6 9l4.2-1.4z" /><path d="M18.5 14.5l.9 2.3 2.3.9-2.3.9-.9 2.3-.9-2.3-2.3-.9 2.3-.9z" /></>,
   team: <><circle cx="9" cy="8" r="3" /><path d="M3 20a6 6 0 0 1 12 0" /><circle cx="17" cy="9" r="2.4" /><path d="M15.5 20a5 5 0 0 1 5.5-4.6" /></>,
-  album: <><path d="M5 4a2 2 0 0 1 2-2h12v18H7a2 2 0 0 0-2 2z" /><path d="M9 2v18" /></>
+  album: <><path d="M5 4a2 2 0 0 1 2-2h12v18H7a2 2 0 0 0-2 2z" /><path d="M9 2v18" /></>,
+  monitor: <><rect x="2" y="4" width="20" height="14" rx="2" /><path d="M8 21h8M12 18v3" /></>,
+  home: <><path d="M3 9.5L12 3l9 6.5v10a1.5 1.5 0 0 1-1.5 1.5h-5v-7h-5v7h-5A1.5 1.5 0 0 1 3 19.5z" /></>,
+  compass: <><circle cx="12" cy="12" r="9" /><path d="M15.5 8.5l-4 7-3-3 7-4z" /></>,
+  bell: <><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.7 21a1.8 1.8 0 0 1-3.4 0" /></>,
+  message: <><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8A8.5 8.5 0 0 1 12 20a8.5 8.5 0 0 1-7.1-4.7 8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.3-7.4 8.38 8.38 0 0 1 7.7 0A8.5 8.5 0 0 1 21 11.5z" /><path d="M9 12h6M12 9v6" /></>
 };
 
-export default function Icon({ name, className = 'w-5 h-5', strokeWidth = 1.6 }) {
+export default function Icon({ name, className = 'w-5 h-5', strokeWidth = 1.6, style }) {
   const path = PATHS[name] || PATHS.dashboard;
   return (
     <svg
@@ -35,6 +40,7 @@ export default function Icon({ name, className = 'w-5 h-5', strokeWidth = 1.6 })
       strokeLinecap="round"
       strokeLinejoin="round"
       className={className}
+      style={style}
       aria-hidden="true"
     >
       {path}
