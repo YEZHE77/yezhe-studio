@@ -245,6 +245,8 @@ export default function Packages() {
 
   return (
     <div className="p-4 sm:p-6 min-h-full" style={{ background: '#F8F8F8', maxWidth: 1050 }}>
+      {/* 大卡片容器（包含顶部区域：标题+搜索+高级设置+筛选栏+套系列表） */}
+      <div className="bg-white border rounded-lg" style={{ borderColor: '#E6E9EF', borderRadius: 8, padding: '16px 20px' }}>
       {/* 标题（左） + 搜索区（右）；面包屑由全局 <Breadcrumb /> 渲染 */}
       <div className="flex items-end justify-between gap-4 flex-wrap mb-4">
         <div>
@@ -390,6 +392,7 @@ export default function Packages() {
             </div>
           </>
         )}
+      </div>
       </div>
 
       {/* 订单溯源弹窗 */}

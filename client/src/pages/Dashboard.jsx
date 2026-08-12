@@ -200,10 +200,10 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* 账户概览（参考图：4 等分居中 + 区间竖线，标题/进入下移到红框位置，标签后跟帮助/编辑图标） */}
-      <div className={'bg-white border mt-8 ' + (loading ? 'opacity-50' : '')} style={{ borderRadius: 4, borderColor: '#F0F0F0', padding: '60px 16px 38px' }}>
+      {/* 账户概览（参考图：高100px、上下padding 25/23、4等分列；标题12px在上，金额25px与明细同排） */}
+      <div className={'bg-white border mt-8 ' + (loading ? 'opacity-50' : '')} style={{ borderRadius: 4, borderColor: '#F0F0F0', padding: '25px 16px 17px' }}>
         <div className="grid grid-cols-2 lg:grid-cols-4 sm:divide-x sm:divide-[#F0F0F0]">
-          <div className="text-center">
+          <div className="text-center flex flex-col items-center justify-center">
             <div className="flex items-center justify-center gap-2">
               <span className="text-[16px]" style={{ color: '#333333', fontWeight: 400 }}>账户概览</span>
               <button
@@ -214,18 +214,20 @@ export default function Dashboard() {
               >
                 <EyeIcon off={hiddenMoney} />
               </button>
-              <button type="button" className="text-xs" style={{ color: '#00BAFB' }} onClick={() => nav('/finance')}>进入</button>
             </div>
+            <button type="button" className="text-xs mt-0.5" style={{ color: '#00BAFB' }} onClick={() => nav('/finance')}>进入</button>
           </div>
           {overview.map((o, i) => (
             <div key={o.label} className="text-center">
-              <div className="flex items-center justify-center gap-1.5 text-xs" style={{ color: '#999999' }}>
+              <div className="flex items-center justify-center gap-1.5 text-xs" style={{ color: '#999999', height: 18 }}>
                 <span>{o.label}</span>
                 <span title="帮助"><HelpIcon /></span>
                 {i === 0 && <span title="编辑" style={{ cursor: 'pointer', display: 'flex' }} onClick={() => nav('/finance')}><EditIcon /></span>}
               </div>
-              <div className="mt-1" style={{ fontSize: 25, color: '#333333' }}>{hiddenMoney ? '¥••••' : '¥' + o.value}</div>
-              <button type="button" className="mt-1 text-xs" style={{ color: '#00BAFB' }} onClick={() => nav('/finance')}>明细</button>
+              <div className="flex items-center justify-center gap-2" style={{ minHeight: 34 }}>
+                <span style={{ fontSize: 25, color: '#333333' }}>{hiddenMoney ? '¥••••' : '¥' + o.value}</span>
+                <button type="button" className="text-xs shrink-0" style={{ color: '#00BAFB' }} onClick={() => nav('/finance')}>明细</button>
+              </div>
             </div>
           ))}
         </div>
