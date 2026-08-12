@@ -197,7 +197,7 @@ export default function Works() {
 
   return (
     <div style={{ maxWidth: 1050 }}>
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 gap-3">
         <h1 className="text-xl font-semibold text-fg">作品管理</h1>
         <div className="flex items-center gap-2">
           {sortMode ? (
@@ -216,15 +216,15 @@ export default function Works() {
       </div>
 
       {/* 分类 Tab + 管理入口 */}
-      <div className="flex items-center gap-2 mb-3 overflow-x-auto">
+      <div className="flex items-center gap-2 mb-3 overflow-x-auto pb-1">
         <button onClick={() => setTab('')}
-          className={'px-4 py-2 rounded-full text-sm border ' + (state.tab === '' ? 'bg-brand text-white border-brand' : 'bg-panel border-line text-muted')}>全部</button>
+          className={'px-4 py-2 rounded-full text-sm border whitespace-nowrap shrink-0 ' + (state.tab === '' ? 'bg-brand text-white border-brand' : 'bg-panel border-line text-muted')}>全部</button>
         {cats.filter(Boolean).map((c) => (
           <button key={c.id} onClick={() => setTab(String(c.id))}
-            className={'px-4 py-2 rounded-full text-sm border ' + (state.tab === String(c.id) ? 'bg-brand text-white border-brand' : 'bg-panel border-line text-muted')}>{c.name || '未命名'}</button>
+            className={'px-4 py-2 rounded-full text-sm border whitespace-nowrap truncate max-w-[140px] shrink-0 ' + (state.tab === String(c.id) ? 'bg-brand text-white border-brand' : 'bg-panel border-line text-muted')}>{c.name || '未命名'}</button>
         ))}
         <button onClick={() => navigate('/categories')}
-          className="ml-1 flex items-center gap-1 px-3 py-2 rounded-full text-sm border border-dashed border-line text-muted hover:text-brand hover:border-brand bg-panel shrink-0"
+          className="ml-1 flex items-center gap-1 px-3 py-2 rounded-full text-sm border border-dashed border-line text-muted hover:text-brand hover:border-brand bg-panel shrink-0 whitespace-nowrap"
           title="管理分类">
           <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
             <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" />
@@ -269,8 +269,14 @@ export default function Works() {
               ${sortMode ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer hover:shadow-md hover:-translate-y-0.5'}
               ${isDragOver ? 'border-brand ring-2 ring-brand' : 'border-line'}
               ${isDragged ? 'opacity-40' : ''}`}>
-            <div className="h-40 bg-ink flex items-center justify-center text-muted text-3xl relative">
-              {w.cover_url ? <img src={img(w.cover_url)} className="w-full h-full object-cover" alt="" /> : '▣'}
+            <div className="h-32 sm:h-40 bg-ink flex items-center justify-center text-muted relative">
+              {w.cover_url ? <img src={img(w.cover_url)} className="w-full h-full object-cover" alt="" /> : (
+                <svg viewBox="0 0 24 24" className="w-10 h-10 opacity-40" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="3" width="18" height="18" rx="2" />
+                  <circle cx="9" cy="9" r="2" />
+                  <path d="M21 15l-5-5L5 21" />
+                </svg>
+              )}
               {!sortMode && (
                 <button onClick={(e) => togglePublic(w, e)} title={w.is_public ? '已公开 · 点击隐藏' : '已隐藏 · 点击公开'}
                   className="absolute top-2 right-2 bg-black/55 !text-white p-1.5 rounded-full hover:bg-black/75 transition">
@@ -310,10 +316,10 @@ export default function Works() {
                     className={'mt-2 w-full text-xs py-1.5 rounded border ' + (w.allow_download ? 'bg-emerald-50 text-emerald-600 border-emerald-200' : 'bg-panel2 text-muted border-line')}>
                     {w.allow_download ? '✓ 允许下载' : '禁止下载'}
                   </button>
-                  <div className="flex gap-2 mt-2">
-                    <button onClick={(e) => { e.stopPropagation(); navigate('/works/' + w.id); }} className="flex-1 text-xs py-1.5 rounded border border-line text-brand hover:bg-brand/5">管理相册</button>
-                    <button onClick={(e) => { e.stopPropagation(); openWorkShare(w); }} className="flex-1 text-xs py-1.5 rounded border border-line text-emerald-500 hover:bg-emerald-50">分享相册</button>
-                    <button onClick={(e) => remove(w, e)} className="flex-1 text-xs py-1.5 rounded border border-line text-red-500 hover:bg-red-50">删除</button>
+                  <div className="flex flex-col sm:flex-row gap-2 mt-2">
+                    <button onClick={(e) => { e.stopPropagation(); navigate('/works/' + w.id); }} className="w-full sm:flex-1 text-xs py-1.5 rounded border border-line text-brand hover:bg-brand/5">管理相册</button>
+                    <button onClick={(e) => { e.stopPropagation(); openWorkShare(w); }} className="w-full sm:flex-1 text-xs py-1.5 rounded border border-line text-emerald-500 hover:bg-emerald-50">分享相册</button>
+                    <button onClick={(e) => remove(w, e)} className="w-full sm:flex-1 text-xs py-1.5 rounded border border-line text-red-500 hover:bg-red-50">删除</button>
                   </div>
                 </>
               )}
