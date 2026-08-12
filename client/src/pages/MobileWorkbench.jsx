@@ -285,7 +285,7 @@ export default function MobileWorkbench() {
 
       {/* 三列统计（全宽，上下分隔线） */}
       <div style={{ background: '#fff', borderTop: '1px solid ' + LINE, borderBottom: '1px solid ' + LINE, display: 'flex' }}>
-        {/* 余额：显示实收净额（商户账户余额），点击跳财务管理 */}
+        {/* 余额：与网页版后台「商户余额」同步，使用 stats.balance，点击跳财务管理 */}
         <div
           onClick={() => nav('/finance')}
           style={{ flex: 1, textAlign: 'center', padding: '14px 0 12px', cursor: 'pointer' }}
