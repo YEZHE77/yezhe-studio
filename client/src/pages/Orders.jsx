@@ -641,7 +641,7 @@ export default function Orders() {
    ========================================================================== */
 
 const TAB_STATUS = {
-  unpaid: 'unpaid',
+  deposit: 'deposit_paid', // 已付定金 Tab → 列表按 payment_status='deposit' 过滤
   waitingShoot: 'deposit',
   unDelivered: 'shot',
   selecting: 'selecting',
@@ -650,7 +650,7 @@ const TAB_STATUS = {
 const STATUS_TAB = Object.fromEntries(Object.entries(TAB_STATUS).map(([k, v]) => [v, k]));
 
 const TODO_TABS = [
-  { key: 'unpaid', label: '未付定金', color: '#FF8A8A', lineColor: '#FF8A8A' },
+  { key: 'deposit', label: '已付定金', color: '#FF8A8A', lineColor: '#FF8A8A' },
   { key: 'waitingShoot', label: '等待拍摄', color: '#7ECDBB', lineColor: '#7ECDBB' },
   { key: 'unDelivered', label: '未交片', color: '#F5A623', lineColor: '#F5A623' },
   { key: 'selecting', label: '待选片', color: '#2DB7F5', lineColor: '#2DB7F5' },
@@ -672,7 +672,7 @@ function MobileTodoView({ stats, list, listTotal, state, setState, refreshOrderL
       .catch(() => {});
   }, []);
 
-  const activeKey = STATUS_TAB[state.status] || 'unpaid';
+  const activeKey = STATUS_TAB[state.status] || 'deposit';
 
   const onTabChange = (key) => {
     const status = TAB_STATUS[key];

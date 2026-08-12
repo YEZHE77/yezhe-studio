@@ -69,9 +69,11 @@ router.get('/', authRequired, async (req, res) => {
     const { status, q, executor, sort, shootFrom, shootTo } = req.query;
     const where = ['cancelled = 0', 'is_deleted = 0'];
     const params = [];
-    // 状态：unpaid 是「未付定金」意向态，映射到 payment_status；其余按 status 列
+    // 状态：unpaid 是「未付定金」意向态，deposit_paid 是「已付定金」，
+    // 两者映射到 payment_status；其余按 status 列
     if (status) {
       if (status === 'unpaid') { where.push('payment_status = ?'); params.push('unpaid'); }
+      else if (status === 'deposit_paid') { where.push('payment_status = ?'); params.push('deposit'); }
       else { where.push('status = ?'); params.push(status); }
     }
     if (q) {
@@ -140,10 +142,10 @@ router.get('/stats', authRequired, async (req, res) => {
     // 订单总数（筛选栏「所有订单 (N)」用，后端动态返回，前端禁止硬编码）
     const tot = await get('SELECT COUNT(*) AS c FROM orders WHERE cancelled = 0 AND is_deleted = 0');
 
-    // 工作台「待办事项」分类统计
+    // 工作台「待办事项」分类统计（deposit=已付定金含后续各阶段，waitingShoot=已付定金且未拍摄）
     const todoWhere = 'WHERE cancelled = 0 AND is_deleted = 0';
-    const [unpaidRow, waitingShootRow, unDeliveredRow, selectingRow, retouchingRow] = await Promise.all([
-      get(`SELECT COUNT(*) AS c FROM orders ${todoWhere} AND payment_status = 'unpaid'`),
+    const [depositRow, waitingShootRow, unDeliveredRow, selectingRow, retouchingRow] = await Promise.all([
+      get(`SELECT COUNT(*) AS c FROM orders ${todoWhere} AND payment_status = 'deposit'`),
       get(`SELECT COUNT(*) AS c FROM orders ${todoWhere} AND payment_status = 'deposit' AND status = 'deposit'`),
       get(`SELECT COUNT(*) AS c FROM orders ${todoWhere} AND status = 'shot'`),
       get(`SELECT COUNT(*) AS c FROM orders ${todoWhere} AND status = 'selecting'`),
@@ -155,7 +157,7 @@ router.get('/stats', authRequired, async (req, res) => {
       selectionTimeout: Number(sel.c) || 0,
       total: Number(tot.c) || 0,
       todo: {
-        unpaid: Number(unpaidRow.c) || 0,
+        deposit: Number(depositRow.c) || 0,
         waitingShoot: Number(waitingShootRow.c) || 0,
         unDelivered: Number(unDeliveredRow.c) || 0,
         selecting: Number(selectingRow.c) || 0,
@@ -181,6 +183,7 @@ router.get('/export', authRequired, async (req, res) => {
     const params = [];
     if (status) {
       if (status === 'unpaid') { where.push('payment_status = ?'); params.push('unpaid'); }
+      else if (status === 'deposit_paid') { where.push('payment_status = ?'); params.push('deposit'); }
       else { where.push('status = ?'); params.push(status); }
     }
     if (q) {
