@@ -274,7 +274,22 @@ export default function Orders() {
   };
 
   /* ------------------------------ 渲染 ------------------------------ */
-  // 页面底色为纯白 #ffffff（AppShell 外层是 #f4f6f9，这里用负外边距铺满）
+  // 移动端：复刻「待办事项」独立页面（顶部日期条 + 横向状态 Tab + 订单列表）
+  if (isMobile) {
+    return (
+      <MobileTodoView
+        stats={stats}
+        list={list}
+        listTotal={listTotal}
+        state={state}
+        setState={setState}
+        refreshOrderList={refreshOrderList}
+        onNavToOrder={(id) => nav('/orders/' + id)}
+        onLoadMore={() => refreshOrderList({ reset: false })}
+      />
+    );
+  }
+
   return (
     <div className="p-4 sm:p-6 min-h-full" style={{ background: '#F8F8F8', maxWidth: 1050 }}>
       {/* 大卡片容器（包含顶部区域：标题+搜索+筛选栏+订单列表） */}
@@ -618,5 +633,272 @@ export default function Orders() {
         </div>
       )}
     </div>
+  );
+}
+
+/* ==========================================================================
+   移动端待办事项视图（1:1 复刻截图 IMG_7445）
+   ========================================================================== */
+
+const TAB_STATUS = {
+  unpaid: 'unpaid',
+  waitingShoot: 'deposit',
+  unDelivered: 'shot',
+  selecting: 'selecting',
+  retouching: 'retouching'
+};
+const STATUS_TAB = Object.fromEntries(Object.entries(TAB_STATUS).map(([k, v]) => [v, k]));
+
+const TODO_TABS = [
+  { key: 'unpaid', label: '未付定金', color: '#FF8A8A', lineColor: '#FF8A8A' },
+  { key: 'waitingShoot', label: '等待拍摄', color: '#7ECDBB', lineColor: '#7ECDBB' },
+  { key: 'unDelivered', label: '未交片', color: '#F5A623', lineColor: '#F5A623' },
+  { key: 'selecting', label: '待选片', color: '#2DB7F5', lineColor: '#2DB7F5' },
+  { key: 'retouching', label: '待精修', color: '#F5A623', lineColor: '#F5A623' }
+];
+
+const WEEK_DAYS = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+
+function pad2(n) { return String(n).padStart(2, '0'); }
+
+function MobileTodoView({ stats, list, listTotal, state, setState, refreshOrderList, onNavToOrder, onLoadMore }) {
+  const nav = useNavigate();
+  const [lunarMap, setLunarMap] = useState({});
+
+  useEffect(() => {
+    const now = new Date();
+    const month = `${now.getFullYear()}-${pad2(now.getMonth() + 1)}`;
+    http.get('/api/schedules/lunar?month=' + encodeURIComponent(month))
+      .then((r) => setLunarMap(r.data || {}))
+      .catch(() => {});
+  }, []);
+
+  const activeKey = STATUS_TAB[state.status] || 'unpaid';
+
+  const onTabChange = (key) => {
+    const status = TAB_STATUS[key];
+    if (status && status !== state.status) {
+      setState((s) => ({ ...s, status }));
+    }
+  };
+
+  const today = new Date();
+  const todayStr = `${today.getFullYear()}-${pad2(today.getMonth() + 1)}-${pad2(today.getDate())}`;
+  const lunarToday = lunarMap[todayStr] || '';
+
+  return (
+    <div style={{ minHeight: '100vh', background: '#F8F8F8' }}>
+      {/* 顶部导航栏 */}
+      <div style={{
+        height: 44,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: '#fff',
+        borderBottom: '1px solid #EFEFEF',
+        position: 'relative'
+      }}>
+        <button
+          type="button"
+          onClick={() => nav(-1)}
+          style={{
+            position: 'absolute',
+            left: 4,
+            top: '50%',
+            transform: 'translateY(-50%)',
+            background: 'none',
+            border: 'none',
+            padding: 10,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}
+        >
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1f2329" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M15 18l-6-6 6-6" />
+          </svg>
+        </button>
+        <span style={{ fontSize: 17, fontWeight: 500, color: '#1f2329' }}>待办事项</span>
+      </div>
+
+      {/* 深色日期条 */}
+      <div style={{
+        background: '#4A4A4A',
+        padding: '16px 20px',
+        display: 'flex',
+        alignItems: 'center',
+        color: '#fff'
+      }}>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 14, flexShrink: 0 }}>
+          <rect x="3" y="4" width="18" height="18" rx="2" />
+          <path d="M16 2v4M8 2v4M3 10h18" />
+        </svg>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', minWidth: 44 }}>
+            <span style={{ fontSize: 38, fontWeight: 500, lineHeight: 1 }}>{today.getDate()}</span>
+            <span style={{ fontSize: 11, textTransform: 'uppercase', opacity: 0.8, letterSpacing: 0.5 }}>
+              {today.toLocaleDateString('en-US', { month: 'long' })}
+            </span>
+          </div>
+          <div style={{ width: 1, height: 42, background: 'rgba(255,255,255,0.22)' }} />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+            {lunarToday && <span style={{ fontSize: 13 }}>农历{lunarToday}</span>}
+            <span style={{ fontSize: 13, opacity: 0.85 }}>{WEEK_DAYS[today.getDay()]}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* 横向状态 Tab */}
+      <div style={{
+        background: '#fff',
+        display: 'flex',
+        overflowX: 'auto',
+        scrollbarWidth: 'none',
+        msOverflowStyle: 'none',
+        borderBottom: '1px solid #EFEFEF'
+      }}>
+        {TODO_TABS.map((t) => {
+          const count = stats?.todo?.[t.key] ?? 0;
+          const active = activeKey === t.key;
+          return (
+            <button
+              key={t.key}
+              type="button"
+              onClick={() => onTabChange(t.key)}
+              style={{
+                flex: '0 0 auto',
+                minWidth: 82,
+                padding: '12px 14px 10px',
+                background: 'none',
+                border: 'none',
+                textAlign: 'center',
+                position: 'relative',
+                WebkitTapHighlightColor: 'transparent'
+              }}
+            >
+              {active && (
+                <div style={{
+                  position: 'absolute',
+                  inset: '8px 5px',
+                  background: t.color,
+                  borderRadius: 8,
+                  zIndex: 0
+                }} />
+              )}
+              <div style={{
+                fontSize: 22,
+                fontWeight: 600,
+                color: active ? '#fff' : '#1f2329',
+                lineHeight: 1,
+                position: 'relative',
+                zIndex: 1
+              }}>{count}</div>
+              <div style={{
+                fontSize: 12,
+                color: active ? '#fff' : '#999999',
+                marginTop: 6,
+                position: 'relative',
+                zIndex: 1
+              }}>{t.label}</div>
+              {!active && (
+                <div style={{
+                  position: 'absolute',
+                  bottom: 0,
+                  left: '18%',
+                  right: '18%',
+                  height: 2,
+                  background: t.lineColor,
+                  borderRadius: 1,
+                  zIndex: 1
+                }} />
+              )}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* 订单列表 */}
+      <div style={{ padding: 12 }}>
+        {list.length === 0 ? (
+          <div style={{ textAlign: 'center', color: '#BBBBBB', fontSize: 14, padding: '100px 0' }}>暂无数据</div>
+        ) : (
+          <>
+            {list.map((o) => (
+              <TodoOrderCard key={o.id} order={o} onClick={() => onNavToOrder(o.id)} />
+            ))}
+            {list.length < listTotal && (
+              <button
+                type="button"
+                onClick={onLoadMore}
+                style={{
+                  width: '100%',
+                  padding: '12px 0',
+                  background: '#fff',
+                  border: 'none',
+                  borderRadius: 10,
+                  marginTop: 10,
+                  color: '#666666',
+                  fontSize: 13
+                }}
+              >加载更多（{list.length}/{listTotal}）</button>
+            )}
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function TodoOrderCard({ order, onClick }) {
+  const snap = asObj(order.package_snapshot);
+  const pkgName = [snap.name, snap.spec && snap.spec.name].filter(Boolean).join('｜') || '未选套系';
+  const amount = Number(order.total_amount || 0);
+  const execs = asArr(order.executors);
+  const execNames = execs.map((e) => e.name).filter(Boolean).join('、') || '未分配';
+  const statusLabel = {
+    unpaid: '未付定金',
+    deposit: '等待拍摄',
+    shot: '未交片',
+    selecting: '待选片',
+    retouching: '待精修'
+  }[order.status] || (stageLabel(order));
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      style={{
+        width: '100%',
+        background: '#fff',
+        borderRadius: 12,
+        padding: '14px 16px',
+        marginBottom: 10,
+        border: 'none',
+        textAlign: 'left',
+        display: 'block'
+      }}
+    >
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <div style={{ minWidth: 0, flex: 1 }}>
+          <div style={{ fontSize: 15, color: '#1f2329', fontWeight: 500 }}>{order.order_name || '未命名订单'}</div>
+          <div style={{ fontSize: 12, color: '#999999', marginTop: 4 }}>{pkgName}</div>
+        </div>
+        <div style={{ fontSize: 15, color: '#FF4D4F', fontWeight: 500, marginLeft: 8, whiteSpace: 'nowrap' }}>
+          ¥{amount.toLocaleString()}
+        </div>
+      </div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 12 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: '#999999' }}>
+          <span>{order.customer_name || '—'}</span>
+          <span style={{ color: '#2DB7F5' }}>{statusLabel}</span>
+        </div>
+        <div style={{ fontSize: 12, color: '#999999' }}>
+          {Number(order.date_tbd) === 1 ? '日期待定' : (order.shoot_date || '未排期')}
+        </div>
+      </div>
+      {execNames && (
+        <div style={{ fontSize: 11, color: '#BBBBBB', marginTop: 8 }}>执行人：{execNames}</div>
+      )}
+    </button>
   );
 }

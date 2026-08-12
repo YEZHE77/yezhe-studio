@@ -139,10 +139,28 @@ router.get('/stats', authRequired, async (req, res) => {
     );
     // 订单总数（筛选栏「所有订单 (N)」用，后端动态返回，前端禁止硬编码）
     const tot = await get('SELECT COUNT(*) AS c FROM orders WHERE cancelled = 0 AND is_deleted = 0');
+
+    // 工作台「待办事项」分类统计
+    const todoWhere = 'WHERE cancelled = 0 AND is_deleted = 0';
+    const [unpaidRow, waitingShootRow, unDeliveredRow, selectingRow, retouchingRow] = await Promise.all([
+      get(`SELECT COUNT(*) AS c FROM orders ${todoWhere} AND payment_status = 'unpaid'`),
+      get(`SELECT COUNT(*) AS c FROM orders ${todoWhere} AND payment_status = 'deposit' AND status = 'deposit'`),
+      get(`SELECT COUNT(*) AS c FROM orders ${todoWhere} AND status = 'shot'`),
+      get(`SELECT COUNT(*) AS c FROM orders ${todoWhere} AND status = 'selecting'`),
+      get(`SELECT COUNT(*) AS c FROM orders ${todoWhere} AND status = 'retouching'`)
+    ]);
+
     res.json({
       expiringSoon: Number(exp.c) || 0,
       selectionTimeout: Number(sel.c) || 0,
-      total: Number(tot.c) || 0
+      total: Number(tot.c) || 0,
+      todo: {
+        unpaid: Number(unpaidRow.c) || 0,
+        waitingShoot: Number(waitingShootRow.c) || 0,
+        unDelivered: Number(unDeliveredRow.c) || 0,
+        selecting: Number(selectingRow.c) || 0,
+        retouching: Number(retouchingRow.c) || 0
+      }
     });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
