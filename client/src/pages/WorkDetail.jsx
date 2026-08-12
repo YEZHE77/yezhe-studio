@@ -982,7 +982,7 @@ export default function WorkDetail() {
               ref={albumCopyRef}
               value={form.album_copy}
               onChange={(e) => setForm({ ...form, album_copy: e.target.value })}
-              placeholder="像漫步海滨沙滩时每一个袭来的浪花都与众不同，看似平淡的每一天都会有所不同。"
+              placeholder="输入文案"
               rows={1}
               className="w-full text-sm text-gray-700 placeholder-gray-400 outline-none resize-none overflow-hidden leading-relaxed"
               style={{ minHeight: '24px' }}
