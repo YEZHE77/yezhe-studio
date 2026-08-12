@@ -159,6 +159,28 @@ function TabBar({ active, onTab, onPlus }) {
   );
 }
 
+// 深层业务页顶部标题
+function getPageTitle(path) {
+  if (path === '/finance') return '财务管理';
+  if (path === '/settings') return '资料设置';
+  if (path === '/orders') return '订单中心';
+  if (path.startsWith('/orders/')) return '订单详情';
+  if (path === '/schedule') return '档期管理';
+  if (path === '/works') return '作品管理';
+  if (path.startsWith('/works/')) return '作品详情';
+  if (path === '/packages') return '套系管理';
+  if (path.startsWith('/packages/')) return '套系详情';
+  if (path === '/customers') return '客资管理';
+  if (path === '/datacharts') return '数据统计';
+  if (path === '/card') return '名片';
+  if (path === '/capacity') return '容量管理';
+  if (path === '/channels') return '渠道管理';
+  if (path === '/reviews') return '评价管理';
+  if (path === '/selections') return '选片工具';
+  if (path === '/appointments') return '预约管理';
+  return '工作台';
+}
+
 export default function MobileShell() {
   const location = useLocation();
   const nav = useNavigate();
@@ -166,6 +188,7 @@ export default function MobileShell() {
 
   const tabRoots = ['/', '/m/site', '/m/notice', '/m/msg'];
   const isTab = tabRoots.includes(location.pathname);
+  const pageTitle = getPageTitle(location.pathname);
   const activeKey = (() => {
     if (location.pathname === '/') return 'home';
     if (location.pathname.startsWith('/m/site')) return 'site';
@@ -180,7 +203,7 @@ export default function MobileShell() {
   return (
     <div className="flex flex-col" style={{ height: '100dvh', overflow: 'hidden', background: '#F8F8F8' }}>
       <div className="flex-1 min-w-0 flex flex-col" style={{ minHeight: 0 }}>
-        {!isTab && <TopBack title="工作台" />}
+        {!isTab && <TopBack title={pageTitle} />}
         <div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
           <Suspense fallback={<PageLoader />}>
             <Routes>
