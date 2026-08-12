@@ -385,7 +385,7 @@ export default function MobileWorkbench() {
 
       {/* 大容器卡片：外部展示（粉色强调）+ 功能（无标题）+ 工具 + 拓客引流 + 其他功能 */}
       <div style={{ background: '#fff', borderTop: '1px solid ' + LINE }}>
-        <GroupBlock title="外部展示" pink last>
+        <GroupBlock title="外部展示" last>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <button
               type="button"
