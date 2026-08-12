@@ -42,6 +42,29 @@ const TEXT = '#1f2329';
 const MUTED = '#999999';
 const LINE = '#EFEFEF';
 
+// 本地开发兜底：把头像压缩成 base64 dataURI 直接存用户表，避免无云存储时上传失败
+function compressImageToBase64(file, maxWidth = 400, quality = 0.85) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const scale = Math.min(1, maxWidth / Math.max(img.width, img.height));
+        canvas.width = Math.round(img.width * scale);
+        canvas.height = Math.round(img.height * scale);
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.onerror = reject;
+      img.src = reader.result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
 const SECTIONS = [
   {
     title: '功能',
@@ -152,11 +175,20 @@ export default function MobileWorkbench() {
     if (!file) return;
     try {
       setUploading(true);
-      const r = await uploadImage(file, { category: 'avatar', isPublic: true });
-      await updateUser({ avatar: r.url });
+      // 先尝试云端上传（线上有 COS/R2 配置时走正常路径）
+      try {
+        const r = await uploadImage(file, { category: 'avatar', isPublic: true });
+        await updateUser({ avatar: r.url });
+        return;
+      } catch (cloudErr) {
+        // 本地开发未配置云存储时会失败，降级为压缩后 base64 直接存用户表
+        console.warn('云端上传不可用，降级为 base64 头像', cloudErr);
+        const dataUrl = await compressImageToBase64(file);
+        await updateUser({ avatar: dataUrl });
+      }
     } catch (err) {
-      console.warn('头像上传失败', err);
-      alert('头像上传失败，请重试');
+      console.warn('头像保存失败', err);
+      alert('头像保存失败，请重试');
     } finally {
       setUploading(false);
     }
@@ -197,6 +229,26 @@ export default function MobileWorkbench() {
                   上传中
                 </span>
               )}
+              <span
+                style={{
+                  position: 'absolute',
+                  right: 0,
+                  bottom: 0,
+                  width: 18,
+                  height: 18,
+                  borderRadius: '50%',
+                  background: '#7ECDBB',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  border: '2px solid #1A1A1A'
+                }}
+              >
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z" />
+                  <circle cx="12" cy="13" r="3" />
+                </svg>
+              </span>
             </button>
             <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleAvatar} />
             <div>
