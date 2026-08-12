@@ -285,15 +285,18 @@ export default function MobileWorkbench() {
 
       {/* 三列统计（全宽，上下分隔线） */}
       <div style={{ background: '#fff', borderTop: '1px solid ' + LINE, borderBottom: '1px solid ' + LINE, display: 'flex' }}>
-        {/* 余额 */}
-        <div style={{ flex: 1, textAlign: 'center', padding: '14px 0 12px' }}>
+        {/* 余额：显示实收净额（商户账户余额），点击跳财务管理 */}
+        <div
+          onClick={() => nav('/finance')}
+          style={{ flex: 1, textAlign: 'center', padding: '14px 0 12px', cursor: 'pointer' }}
+        >
           <div className="flex items-center justify-center" style={{ color: CORAL, lineHeight: 1 }}>
             <span style={{ fontSize: hideBalance ? 18 : 24, fontWeight: 600 }}>
-              {hideBalance ? '¥ ***' : '¥0.00'}
+              {hideBalance ? '¥ ***' : (stats ? '¥' + Number(stats.received).toLocaleString() : '--')}
             </span>
             <button
               type="button"
-              onClick={() => setHideBalance((v) => !v)}
+              onClick={(e) => { e.stopPropagation(); setHideBalance((v) => !v); }}
               style={{ background: 'none', border: 'none', padding: 4, marginLeft: 2, display: 'flex', alignItems: 'center', color: '#D0D0D0' }}
             >
               {hideBalance ? <EyeOff size={16} /> : <Eye size={16} />}
