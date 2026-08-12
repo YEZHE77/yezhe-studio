@@ -34,6 +34,7 @@ import sharesRoutes from './routes/shares.js';
 import galleriesRoutes from './routes/galleries.js';
 import uploadChunkRoutes from './routes/uploadChunk.js';
 import uploadFileRoutes from './routes/uploadFile.js';
+import adminThumbnailsRoutes from './routes/adminThumbnails.js';
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -113,6 +114,7 @@ app.use('/api/health', healthRoutes);
 app.use('/api/wx', wxRoutes);
 app.use('/api/customer', customerRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/admin', adminThumbnailsRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/share', shareRoutes);
 app.use('/api/shares', sharesRoutes);
