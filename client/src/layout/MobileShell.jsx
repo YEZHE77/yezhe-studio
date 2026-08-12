@@ -163,7 +163,7 @@ function TabBar({ active, onTab, onPlus }) {
 function getPageTitle(path) {
   if (path === '/finance') return '财务管理';
   if (path === '/settings') return '资料设置';
-  if (path === '/orders') return '订单中心';
+  if (path === '/orders') return '待办事项';
   if (path.startsWith('/orders/')) return '订单详情';
   if (path === '/schedule') return '档期管理';
   if (path === '/works') return '作品管理';

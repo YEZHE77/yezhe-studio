@@ -662,7 +662,6 @@ const WEEK_DAYS = ['周日', '周一', '周二', '周三', '周四', '周五', '
 function pad2(n) { return String(n).padStart(2, '0'); }
 
 function MobileTodoView({ stats, list, listTotal, state, setState, refreshOrderList, onNavToOrder, onLoadMore }) {
-  const nav = useNavigate();
   const [lunarMap, setLunarMap] = useState({});
 
   useEffect(() => {
@@ -688,40 +687,7 @@ function MobileTodoView({ stats, list, listTotal, state, setState, refreshOrderL
 
   return (
     <div style={{ minHeight: '100vh', background: '#F8F8F8' }}>
-      {/* 顶部导航栏 */}
-      <div style={{
-        height: 44,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: '#fff',
-        borderBottom: '1px solid #EFEFEF',
-        position: 'relative'
-      }}>
-        <button
-          type="button"
-          onClick={() => nav(-1)}
-          style={{
-            position: 'absolute',
-            left: 4,
-            top: '50%',
-            transform: 'translateY(-50%)',
-            background: 'none',
-            border: 'none',
-            padding: 10,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center'
-          }}
-        >
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1f2329" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M15 18l-6-6 6-6" />
-          </svg>
-        </button>
-        <span style={{ fontSize: 17, fontWeight: 500, color: '#1f2329' }}>待办事项</span>
-      </div>
-
-      {/* 深色日期条 */}
+      {/* 深色日期条（顶部导航由 MobileShell TopBack 统一承载：返回 + 标题“待办事项”） */}
       <div style={{
         background: '#4A4A4A',
         padding: '16px 20px',
