@@ -93,6 +93,7 @@ export default function WorkDetail() {
       ? { ...DEFAULT_FORM, ...initialDraft, album_password: '' }
       : { ...DEFAULT_FORM }
   );
+  const [creating, setCreating] = useState(false); // 新建草稿创建中：禁用所有变更类操作（避免 id='new' 时误调接口）
   const [draggedId, setDraggedId] = useState(null);
   const [dragOverId, setDragOverId] = useState(null);
   const [reordering, setReordering] = useState(false);
@@ -191,6 +192,7 @@ export default function WorkDetail() {
     // 这样用户无需先点「保存基本信息」就能直接上传照片。
     if (creatingRef.current) return;
     creatingRef.current = true;
+    setCreating(true); // 让 UI 显示 loading，避免用户在草稿创建完成前误操作（否则 id 还是 'new'，上传会 404）
     try {
       const r = await http.post('/api/works', {
         title: '未命名作品',
@@ -211,9 +213,11 @@ export default function WorkDetail() {
         order_id: null
       });
       navigate('/works/' + r.data.id, { replace: true });
+      // creating 保持 true 直到新 id 触发的 loadAll 完成后才清（见下方 useEffect）
     } catch (err) {
       alert((err.response && err.response.data && err.response.data.error) || '创建作品失败');
       creatingRef.current = false;
+      setCreating(false);
     }
   }
 
@@ -227,6 +231,8 @@ export default function WorkDetail() {
 
   useEffect(() => { http.get('/api/categories').then((r) => setCats(r.data)); }, []);
   useEffect(() => { loadAll(); }, [id]);
+  // 草稿创建完成（id 从 'new' 切到真实 id）后清掉 creating 标志
+  useEffect(() => { if (!isNew) setCreating(false); }, [isNew]);
 
   // 自动保存表单草稿（防抖 600ms）：滚动导致页面回收/组件重挂载或刷新时，输入不丢失
   useEffect(() => {
@@ -1009,10 +1015,11 @@ export default function WorkDetail() {
                   </svg>
                 </div>
                 <p className="text-sm text-gray-400 mb-4">还没有上传照片，添加第一张客片吧</p>
-                {/* 用 label 包裹 file input，业内移动端标准做法，绕开 iOS Safari 对 ref.click() 的偶发拦截 */}
-                <label className={'px-8 py-2.5 rounded-full bg-[#FF7A8A] text-white text-sm font-medium cursor-pointer select-none ' + (uploading || preparing ? 'opacity-50 pointer-events-none' : 'active:opacity-80')}>
-                  {uploading ? '上传中…' : preparing ? '准备中…' : '+ 上传照片'}
-                  <input ref={fileRef} type="file" accept="image/*" multiple className="hidden" onChange={onPickFiles} />
+                {/* 用 label 包裹 file input，业内移动端标准做法，绕开 iOS Safari 对 ref.click() 的偶发拦截。
+                    creating=true 时（草稿未创建完）禁用并显示创建中，避免 id='new' 时上传 404 */}
+                <label className={'px-8 py-2.5 rounded-full text-white text-sm font-medium select-none ' + (creating ? 'bg-gray-400 cursor-wait' : 'bg-[#FF7A8A] cursor-pointer active:opacity-80') + ((uploading || preparing || creating) ? ' opacity-60 pointer-events-none' : '')}>
+                  {creating ? '创建作品中…' : uploading ? '上传中…' : preparing ? '准备中…' : '+ 上传照片'}
+                  <input ref={fileRef} type="file" accept="image/*" multiple className="hidden" onChange={onPickFiles} disabled={creating} />
                 </label>
               </div>
             </div>
