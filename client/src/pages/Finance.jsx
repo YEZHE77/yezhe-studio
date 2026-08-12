@@ -48,20 +48,27 @@ export default function Finance() {
     return <MobileView summary={summary} stats={stats} months={months} staff={staff} pkgs={pkgs} ledger={ledger} year={Number(state.year) || year} onYearChange={(y) => setState((s) => ({ ...s, year: String(y) }))} />;
   }
 
-  return <DesktopView summary={summary} months={months} staff={staff} pkgs={pkgs} ledger={ledger} year={Number(state.year) || year} onYearChange={(y) => setState((s) => ({ ...s, year: String(y) }))} />;
+  return <DesktopView summary={summary} stats={stats} months={months} staff={staff} pkgs={pkgs} ledger={ledger} year={Number(state.year) || year} onYearChange={(y) => setState((s) => ({ ...s, year: String(y) }))} />;
 }
 
 function MobileView({ summary, stats, months, staff, pkgs, ledger, year, onYearChange }) {
   const maxMonth = months.reduce((m, x) => Math.max(m, x.net), 0) || 1;
 
+  const offlineDetail = summary
+    ? [
+        { k: '微信', v: summary.offlineWechat, c: '#07C160' },
+        { k: '支付宝', v: summary.offlineAlipay, c: '#1677FF' },
+        { k: '其他', v: summary.offlineOther, c: '#F5A623' }
+      ]
+    : null;
+
+  // 成对并列：应收|实收、线上|线下、退款|尾款待收；线下卡片内附渠道明细
   const kpiItems = [
     { label: '应收', value: summary ? summary.receivable : null, color: TEXT },
     { label: '实收', value: summary ? summary.received : null, color: MINT },
-    { label: '退款', value: summary ? summary.refunded : null, color: '#FF4D4F' },
     { label: '线上', value: summary ? summary.online : null, color: BRAND },
-    { label: '线下·微信', value: summary ? summary.offlineWechat : null, color: '#07C160' },
-    { label: '线下·支付宝', value: summary ? summary.offlineAlipay : null, color: '#1677FF' },
-    { label: '线下·其他', value: summary ? summary.offlineOther : null, color: '#F5A623' },
+    { label: '线下', value: summary ? summary.offline : null, color: '#07C160', detail: offlineDetail },
+    { label: '退款', value: summary ? summary.refunded : null, color: '#FF4D4F' },
     { label: '尾款待收', value: stats ? stats.pendingBalance : null, color: '#FF7A8A' }
   ];
 
@@ -95,6 +102,16 @@ function MobileView({ summary, stats, months, staff, pkgs, ledger, year, onYearC
           >
             <div style={{ fontSize: 12, color: MUTED, marginBottom: 6 }}>{it.label}</div>
             <div style={{ fontSize: 22, fontWeight: 600, color: it.color, lineHeight: 1 }}>¥{fmt(it.value)}</div>
+            {it.detail && it.detail.length > 0 && (
+              <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                {it.detail.map((d) => (
+                  <div key={d.k} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11 }}>
+                    <span style={{ color: MUTED }}>{d.k}</span>
+                    <span style={{ color: d.c, fontWeight: 600 }}>¥{fmt(d.v)}</span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         ))}
       </div>
@@ -210,8 +227,16 @@ function MobilePanel({ title, children }) {
   );
 }
 
-function DesktopView({ summary, months, staff, pkgs, ledger, year, onYearChange }) {
+function DesktopView({ summary, stats, months, staff, pkgs, ledger, year, onYearChange }) {
   const maxMonth = months.reduce((m, x) => Math.max(m, x.net), 0) || 1;
+
+  const offlineDetail = summary
+    ? [
+        { k: '微信', v: summary.offlineWechat, cls: 'text-green-400' },
+        { k: '支付宝', v: summary.offlineAlipay, cls: 'text-blue-400' },
+        { k: '其他', v: summary.offlineOther, cls: 'text-amber-400' }
+      ]
+    : null;
 
   return (
     <div style={{ maxWidth: 1050 }}>
@@ -223,15 +248,14 @@ function DesktopView({ summary, months, staff, pkgs, ledger, year, onYearChange 
         </select>
       </div>
 
-      {/* KPI */}
-      <div className="grid grid-cols-2 md:grid-cols-7 gap-3 mb-5">
+      {/* KPI 成对并列：应收|实收、线上|线下、退款|尾款待收 */}
+      <div className="grid grid-cols-2 md:grid-cols-6 gap-3 mb-5">
         <Kpi label="应收" value={summary ? summary.receivable : '—'} cls="text-white" />
         <Kpi label="实收" value={summary ? summary.received : '—'} cls="text-emerald-400" />
-        <Kpi label="退款" value={summary ? summary.refunded : '—'} cls="text-red-400" />
         <Kpi label="线上" value={summary ? summary.online : '—'} cls="text-sky-400" />
-        <Kpi label="线下·微信" value={summary ? summary.offlineWechat : '—'} cls="text-green-400" />
-        <Kpi label="线下·支付宝" value={summary ? summary.offlineAlipay : '—'} cls="text-blue-400" />
-        <Kpi label="线下·其他" value={summary ? summary.offlineOther : '—'} cls="text-amber-400" />
+        <Kpi label="线下" value={summary ? summary.offline : '—'} cls="text-green-400" detail={offlineDetail} />
+        <Kpi label="退款" value={summary ? summary.refunded : '—'} cls="text-red-400" />
+        <Kpi label="尾款待收" value={stats ? stats.pendingBalance : '—'} cls="text-pink-400" />
       </div>
 
       {/* 周期报表 */}
@@ -318,11 +342,21 @@ function DesktopView({ summary, months, staff, pkgs, ledger, year, onYearChange 
   );
 }
 
-function Kpi({ label, value, cls }) {
+function Kpi({ label, value, cls, detail }) {
   return (
     <div className="bg-panel border border-line rounded-xl2 p-4">
       <div className="text-muted text-xs mb-1">{label}</div>
       <div className={'text-xl ' + cls}>¥{typeof value === 'number' ? value.toLocaleString() : value}</div>
+      {detail && detail.length > 0 && (
+        <div className="mt-2 space-y-1">
+          {detail.map((d) => (
+            <div key={d.k} className="flex items-center justify-between text-xs">
+              <span className="text-muted">{d.k}</span>
+              <span className={'font-medium ' + d.cls}>¥{typeof d.v === 'number' ? d.v.toLocaleString() : '—'}</span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
