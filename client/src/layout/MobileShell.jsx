@@ -190,7 +190,9 @@ export default function MobileShell() {
   const [sheetOpen, setSheetOpen] = useState(false);
 
   const tabRoots = ['/', '/m/site', '/m/notice', '/m/msg'];
+  const hideTopBackRoutes = ['/works'];
   const isTab = tabRoots.includes(location.pathname);
+  const hideTopBack = hideTopBackRoutes.includes(location.pathname);
   const pageTitle = getPageTitle(location.pathname);
   const activeKey = (() => {
     if (location.pathname === '/') return 'home';
@@ -206,7 +208,7 @@ export default function MobileShell() {
   return (
     <div className="flex flex-col" style={{ height: '100dvh', overflow: 'hidden', background: '#F8F8F8' }}>
       <div className="flex-1 min-w-0 flex flex-col" style={{ minHeight: 0 }}>
-        {!isTab && <TopBack title={pageTitle} />}
+        {!isTab && !hideTopBack && <TopBack title={pageTitle} />}
         <div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
           <Suspense fallback={<PageLoader />}>
             <Routes>

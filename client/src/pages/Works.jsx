@@ -244,9 +244,10 @@ export default function Works() {
   return (
     <div className="min-h-screen bg-[#f7f7f7] pb-24">
       {/* 顶部栏：返回 + 搜索 + 帮助 + 更多 */}
-      <div className="flex items-center gap-2 px-3 py-3 bg-white">
-        <button onClick={() => { try { navigate(-1); } catch { navigate('/'); } }} className="p-1.5 text-gray-700">
+      <div className="flex items-center gap-2 px-3 py-3 bg-white border-b border-gray-100">
+        <button onClick={() => navigate('/')} className="flex items-center text-gray-700" style={{ padding: 0, background: 'none', border: 'none' }}>
           <ChevronLeft className="w-6 h-6" />
+          <span className="text-sm ml-0.5">返回</span>
         </button>
         <div className="flex-1 relative">
           <input
