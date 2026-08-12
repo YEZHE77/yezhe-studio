@@ -26,6 +26,8 @@ const Finance = React.lazy(() => import('../pages/Finance.jsx'));
 
 const GREEN = '#60C4AA';
 const GREEN_DARK = '#4BB399';
+const PINK = '#FF7A8A';
+const PINK_DARK = '#FF6B6B';
 const TEXT = '#1f2329';
 const MUTED = '#999999';
 const BAR_BG = '#ffffff';
@@ -133,7 +135,7 @@ function TabBar({ active, onTab, onPlus }) {
         if (t.key === 'plus') {
           return (
             <button key={t.key} type="button" onClick={onPlus} className="flex-1 flex items-center justify-center" style={{ background: 'none', border: 'none' }}>
-              <span style={{ width: 46, height: 46, borderRadius: '50%', background: GREEN, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: -14, boxShadow: '0 4px 12px rgba(96,196,170,0.4)' }}>
+              <span style={{ width: 46, height: 46, borderRadius: '50%', background: PINK, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: -14, boxShadow: '0 4px 12px rgba(255,122,138,0.4)' }}>
                 <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12h14" /></svg>
               </span>
             </button>
