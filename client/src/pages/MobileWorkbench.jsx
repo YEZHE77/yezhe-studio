@@ -36,9 +36,8 @@ import {
   EyeOff
 } from 'lucide-react';
 
-// 截图色板
-const CORAL = '#FF8A8A';
-const ORANGE = '#F5A623';
+// 截图色板（主色统一珊瑚红 #FF7A8A，与底部 TabBar/+ 按钮同色）
+const CORAL = '#FF7A8A';
 const MINT = '#7ECDBB';
 const TEXT = '#1f2329';
 const MUTED = '#999999';
@@ -69,49 +68,44 @@ function compressImageToBase64(file, maxWidth = 400, quality = 0.85) {
 
 const SECTIONS = [
   {
-    title: '功能',
-    items: [
-      { label: '新手引导', icon: BookOpen, color: ORANGE, to: '/settings' },
-      { label: '资料', icon: FileText, color: ORANGE, to: '/settings' },
-      { label: '作品', icon: Image, color: ORANGE, to: '/works' },
-      { label: '套系', icon: Layers, color: ORANGE, to: '/packages' }
-    ]
-  },
-  {
     title: '工具',
     items: [
-      { label: '档期', icon: CalendarDays, color: ORANGE, to: '/schedule' },
-      { label: '订单', icon: ClipboardList, color: ORANGE, to: '/orders' },
-      { label: '客资', icon: Users, color: ORANGE, to: '/customers' },
-      { label: '选片工具', icon: Images, color: ORANGE, to: '/selections' },
-      { label: '团队管理', icon: UserCog, color: ORANGE, to: '/settings' },
-      { label: '评价管理', icon: MessageSquare, color: ORANGE, to: '/reviews' },
-      { label: '图片直播', icon: Video, color: ORANGE, to: '/settings' },
-      { label: 'AI修图', icon: Sparkles, color: ORANGE, to: '/settings' }
+      { label: '新手引导', icon: BookOpen, color: CORAL, to: '/settings' },
+      { label: '资料', icon: FileText, color: CORAL, to: '/settings' },
+      { label: '作品', icon: Image, color: CORAL, to: '/works' },
+      { label: '套系', icon: Layers, color: CORAL, to: '/packages' },
+      { label: '档期', icon: CalendarDays, color: CORAL, to: '/schedule' },
+      { label: '订单', icon: ClipboardList, color: CORAL, to: '/orders' },
+      { label: '客资', icon: Users, color: CORAL, to: '/customers' },
+      { label: '选片工具', icon: Images, color: CORAL, to: '/selections' },
+      { label: '团队管理', icon: UserCog, color: CORAL, to: '/settings' },
+      { label: '评价管理', icon: MessageSquare, color: CORAL, to: '/reviews' },
+      { label: '图片直播', icon: Video, color: CORAL, to: '/settings' },
+      { label: 'AI修图', icon: Sparkles, color: CORAL, to: '/settings' }
     ]
   },
   {
     title: '拓客引流',
     items: [
-      { label: '优惠券', icon: Ticket, color: ORANGE, to: '/settings' },
-      { label: '促销套系', icon: Diamond, color: ORANGE, to: '/packages' },
-      { label: '优惠码', icon: Tag, color: ORANGE, to: '/settings' },
-      { label: '拼团活动', icon: Users2, color: ORANGE, to: '/settings' },
-      { label: '客户积分', icon: Coins, color: ORANGE, to: '/settings' },
-      { label: '生成名片', icon: IdCard, color: ORANGE, to: '/card' },
-      { label: '九图海报', icon: LayoutGrid, color: ORANGE, to: '/settings' },
-      { label: '摄影日历', icon: CalendarDays, color: ORANGE, to: '/schedule' }
+      { label: '优惠券', icon: Ticket, color: CORAL, to: '/settings' },
+      { label: '促销套系', icon: Diamond, color: CORAL, to: '/packages' },
+      { label: '优惠码', icon: Tag, color: CORAL, to: '/settings' },
+      { label: '拼团活动', icon: Users2, color: CORAL, to: '/settings' },
+      { label: '客户积分', icon: Coins, color: CORAL, to: '/settings' },
+      { label: '生成名片', icon: IdCard, color: CORAL, to: '/card' },
+      { label: '九图海报', icon: LayoutGrid, color: CORAL, to: '/settings' },
+      { label: '摄影日历', icon: CalendarDays, color: CORAL, to: '/schedule' }
     ]
   },
   {
     title: '其他功能',
     items: [
-      { label: '相册印刷', icon: Printer, color: ORANGE, to: '/settings', tag: 'NEW' },
-      { label: '存储空间', icon: HardDrive, color: ORANGE, to: '/capacity' },
-      { label: '容量管理', icon: Gauge, color: ORANGE, to: '/capacity' },
-      { label: '访客', icon: User, color: ORANGE, to: '/datacharts' },
-      { label: '统计', icon: BarChart3, color: ORANGE, to: '/datacharts' },
-      { label: '关联公众号', icon: MessageCircle, color: ORANGE, to: '/settings' }
+      { label: '相册印刷', icon: Printer, color: CORAL, to: '/settings', tag: 'NEW' },
+      { label: '存储空间', icon: HardDrive, color: CORAL, to: '/capacity' },
+      { label: '容量管理', icon: Gauge, color: CORAL, to: '/capacity' },
+      { label: '访客', icon: User, color: CORAL, to: '/datacharts' },
+      { label: '统计', icon: BarChart3, color: CORAL, to: '/datacharts' },
+      { label: '关联公众号', icon: MessageCircle, color: CORAL, to: '/settings' }
     ]
   }
 ];
@@ -157,7 +151,7 @@ function GroupBlock({ title, children, last }) {
         borderBottom: last ? 'none' : '1px solid ' + LINE
       }}
     >
-      <div style={{ fontSize: 15, fontWeight: 600, color: TEXT, marginBottom: 10 }}>{title}</div>
+      <div style={{ fontSize: 15, color: TEXT, marginBottom: 10 }}>{title}</div>
       {children}
     </div>
   );
@@ -263,7 +257,7 @@ export default function MobileWorkbench() {
             </button>
             <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleAvatar} />
             <div>
-              <div style={{ fontSize: 17, fontWeight: 500 }}>{studio?.name || user?.name || '岛像微电影'}</div>
+              <div style={{ fontSize: 17 }}>{studio?.name || user?.name || '岛像微电影'}</div>
             </div>
           </div>
           <button
@@ -292,7 +286,7 @@ export default function MobileWorkbench() {
             style={{ flex: 1, textAlign: 'center', padding: '14px 0 12px', cursor: 'pointer' }}
           >
             <div className="flex items-center justify-center" style={{ color: CORAL, lineHeight: 1 }}>
-              <span style={{ fontSize: hideBalance ? 18 : 24, fontWeight: 600 }}>
+              <span style={{ fontSize: hideBalance ? 18 : 24 }}>
                 {hideBalance ? '¥ ***' : (stats && typeof stats.balance === 'number' ? '¥' + stats.balance.toLocaleString() : '--')}
               </span>
               <button
@@ -312,7 +306,7 @@ export default function MobileWorkbench() {
             onClick={() => nav('/orders')}
             style={{ flex: 1, textAlign: 'center', padding: '14px 0 12px', background: 'none', border: 'none' }}
           >
-            <div style={{ fontSize: 24, fontWeight: 600, color: TEXT, lineHeight: 1 }}>{followTotal}</div>
+            <div style={{ fontSize: 24, color: TEXT, lineHeight: 1 }}>{followTotal}</div>
             <div style={{ fontSize: 11, color: '#BBBBBB', marginTop: 6 }}>待跟进</div>
           </button>
           <div style={{ width: 1, background: LINE, margin: '14px 0' }} />
@@ -322,7 +316,7 @@ export default function MobileWorkbench() {
             onClick={() => nav('/orders?tab=waitingShoot')}
             style={{ flex: 1, textAlign: 'center', padding: '14px 0 12px', background: 'none', border: 'none' }}
           >
-            <div style={{ fontSize: 24, fontWeight: 600, color: TEXT, lineHeight: 1 }}>{shootCount}</div>
+            <div style={{ fontSize: 24, color: TEXT, lineHeight: 1 }}>{shootCount}</div>
             <div style={{ fontSize: 11, color: '#BBBBBB', marginTop: 6 }}>待拍摄</div>
           </button>
         </div>
