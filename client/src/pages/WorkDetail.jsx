@@ -5,6 +5,7 @@ import bgm from '../bgm.js';
 import Slideshow from '../components/Slideshow.jsx';
 import Lightbox from '../components/Lightbox.jsx';
 import ImageCropper from '../components/ImageCropper.jsx';
+import { ChevronLeft, Music, PlayCircle, Image as ImageIcon, Plus } from 'lucide-react';
 
 const ZONES = [
   { key: 'sample', label: '样片', desc: '对外展示、C端小程序可见' },
@@ -106,6 +107,9 @@ export default function WorkDetail() {
   const [previewIndex, setPreviewIndex] = useState(0);
   // 封面裁剪
   const [coverCrop, setCoverCrop] = useState({ open: false, file: null, aspect: null, uploading: false });
+  // 移动端编辑面板：null | 'album' | 'music' | 'settings'
+  const [mobilePanel, setMobilePanel] = useState(null);
+  const [mobileZone, setMobileZone] = useState('sample');
   // 拖拽刚结束的瞬间拦截误触发预览点击
   const justDraggedRef = useRef(false);
 
@@ -625,6 +629,14 @@ export default function WorkDetail() {
   }
 
   if (loading) {
+    if (isMobile) {
+      return (
+        <div className="min-h-screen flex flex-col items-center justify-center text-gray-400 text-sm bg-[#f7f7f7]">
+          <span className="inline-block w-5 h-5 border-2 border-gray-300 border-t-[#FF7A8A] rounded-full animate-spin mb-2" />
+          加载中…
+        </div>
+      );
+    }
     return (
       <div className="max-w-7xl mx-auto animate-pulse">
         {isNew && (
@@ -683,6 +695,147 @@ export default function WorkDetail() {
         </div>
       </div>
     </div>
+    );
+  }
+
+  if (isMobile) {
+    if (mobilePanel === 'music') {
+      return (
+        <div className="min-h-screen bg-white flex flex-col">
+          <div className="flex items-center px-3 py-3 bg-white border-b border-gray-100 sticky top-0 z-10">
+            <button onClick={() => setMobilePanel(null)} className="p-1 text-gray-700"><ChevronLeft className="w-6 h-6" /></button>
+            <span className="flex-1 text-center text-base text-gray-900">选择音乐</span>
+            <span className="w-8" />
+          </div>
+          <div className="flex-1 flex flex-col items-center justify-center text-gray-400 text-sm p-6 text-center">
+            <Music className="w-10 h-10 mb-3 text-gray-300" />
+            <div>音乐库功能开发中</div>
+            <div className="text-xs text-gray-400 mt-2">后续可在此为相册配置背景音乐</div>
+          </div>
+        </div>
+      );
+    }
+    if (mobilePanel === 'settings') {
+      return (
+        <div className="min-h-screen bg-white flex flex-col">
+          <div className="flex items-center px-3 py-3 bg-white border-b border-gray-100 sticky top-0 z-10">
+            <button onClick={() => setMobilePanel(null)} className="p-1 text-gray-700"><ChevronLeft className="w-6 h-6" /></button>
+            <span className="flex-1 text-center text-base text-gray-900">放映设置</span>
+            <span className="w-8" />
+          </div>
+          <div className="flex-1 flex flex-col items-center justify-center text-gray-400 text-sm p-6 text-center">
+            <PlayCircle className="w-10 h-10 mb-3 text-gray-300" />
+            <div>放映设置功能开发中</div>
+            <div className="text-xs text-gray-400 mt-2">后续可在此配置自动播放、切换效果等</div>
+          </div>
+        </div>
+      );
+    }
+    if (mobilePanel === 'album') {
+      return (
+        <div className="min-h-screen bg-[#f7f7f7] flex flex-col">
+          <div className="flex items-center justify-between px-3 py-3 bg-white border-b border-gray-100 sticky top-0 z-10">
+            <button onClick={() => setMobilePanel(null)} className="p-1 text-gray-700"><ChevronLeft className="w-6 h-6" /></button>
+            <span className="text-base text-gray-900">修改图像</span>
+            <button onClick={onUploadClick} disabled={uploading || preparing} className="text-sm px-3 py-1.5 rounded-full bg-[#FF7A8A] text-white disabled:opacity-50">{uploading ? `上传中 ${overallPct}%` : preparing ? '准备中…' : '+ 上传'}</button>
+          </div>
+          <div className="flex bg-white border-b border-gray-100">
+            {ZONES.map((z) => (
+              <button key={z.key} onClick={() => { setMobileZone(z.key); setZone(z.key); setSelected(new Set()); }}
+                className={'flex-1 py-2.5 text-sm ' + (mobileZone === z.key ? 'text-[#FF7A8A] border-b-2 border-[#FF7A8A]' : 'text-gray-500')}>
+                {z.label}
+                <span className="ml-1 text-xs text-gray-400">({albums.filter((a) => a.zone === z.key).length})</span>
+              </button>
+            ))}
+          </div>
+          <div className="flex-1 overflow-y-auto p-3">
+            {zoneAlbums.length === 0 ? (
+              <div className="text-center text-gray-400 py-16 text-sm">该分区暂无照片<br />点击右上角上传</div>
+            ) : (
+              <div className="grid grid-cols-3 gap-2">
+                {zoneAlbums.map((a, i) => (
+                  <div key={a.id} onClick={() => openPreview(i)} className="aspect-square relative rounded-lg overflow-hidden bg-gray-100">
+                    <img src={img(a.photo_url)} alt="" className="w-full h-full object-cover" onError={() => markBroken(a.id)} />
+                    {work?.cover_url && work.cover_url === a.photo_url && (
+                      <span className="absolute top-1 left-1 px-1.5 py-0.5 rounded text-[9px] text-white bg-[#FF7A8A]">封面</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+          <input ref={fileRef} type="file" accept="image/*" multiple className="hidden" onChange={onPickFiles} />
+        </div>
+      );
+    }
+
+    const sampleFirst = albums.find((a) => a.zone === 'sample');
+    const coverSrc = work?.cover_url || (sampleFirst ? img(sampleFirst.photo_url) : '');
+    return (
+      <div className="min-h-screen bg-[#f7f7f7] flex flex-col">
+        <div className="flex items-center justify-between px-3 py-3 bg-white border-b border-gray-100 sticky top-0 z-10">
+          <button onClick={() => navigate('/works')} className="p-1 text-gray-700"><ChevronLeft className="w-6 h-6" /></button>
+          <span className="text-base text-gray-900">编辑客片</span>
+          <button onClick={saveBasic} disabled={saving} className="text-sm px-3 py-1.5 rounded-full bg-[#FF7A8A] text-white disabled:opacity-50">{saving ? '保存中…' : '保存'}</button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto">
+          <div className="relative w-full bg-gray-200" style={{ aspectRatio: '3/4', maxHeight: '70vh' }}>
+            {coverSrc ? (
+              <img src={coverSrc} alt="" className="w-full h-full object-cover" onError={(e) => { e.target.style.display = 'none'; }} />
+            ) : (
+              <div className="absolute inset-0 flex items-center justify-center text-gray-400 text-sm">暂无封面</div>
+            )}
+            <button onClick={openCoverCrop} className="absolute top-3 left-3 px-2.5 py-1.5 rounded text-xs text-white" style={{ background: 'rgba(0,0,0,0.55)' }}>更换封面</button>
+            <div className="absolute bottom-10 left-4 right-4">
+              <div className="border-2 border-dashed border-white/80 rounded-lg px-3 py-2.5 bg-black/25 backdrop-blur-sm">
+                <input
+                  value={form.title}
+                  onChange={(e) => setForm({ ...form, title: e.target.value })}
+                  placeholder="输入标题"
+                  className="w-full bg-transparent text-white text-lg outline-none placeholder-white/60"
+                  style={{ textShadow: '0 1px 3px rgba(0,0,0,0.4)' }}
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white px-4 py-4">
+            <div className="flex items-center justify-between mb-3">
+              <button onClick={() => setForm({ ...form, album_copy: '' })} className="text-sm text-gray-500">清除</button>
+              <button onClick={() => setForm({ ...form, album_copy: '和你一起旅行拍照。这句话里，有我最想做的三件事…' })} className="text-sm" style={{ color: '#2DB7F5' }}>自动生成</button>
+            </div>
+            <textarea
+              value={form.album_copy}
+              onChange={(e) => setForm({ ...form, album_copy: e.target.value })}
+              placeholder="像漫步海滨沙滩时每一个袭来的浪花都与众不同，看似平淡的每一天都会有所不同。"
+              rows={4}
+              className="w-full text-sm text-gray-700 placeholder-gray-400 outline-none resize-none"
+            />
+          </div>
+
+          <div className="bg-white px-4 py-6 mt-2 flex flex-col items-center justify-center">
+            <button onClick={() => alert('视频上传功能开发中')} className="flex items-center gap-2 text-sm text-gray-400">
+              <Plus className="w-5 h-5" /> 上传视频
+            </button>
+          </div>
+        </div>
+
+        <div className="flex items-center bg-[#1f2329] text-white text-xs shrink-0">
+          <button onClick={() => setMobilePanel('music')} className="flex-1 flex flex-col items-center py-3 border-r border-white/10">
+            <Music className="w-5 h-5 mb-1" />
+            <span>选择音乐</span>
+          </button>
+          <button onClick={() => setMobilePanel('settings')} className="flex-1 flex flex-col items-center py-3 border-r border-white/10">
+            <PlayCircle className="w-5 h-5 mb-1" />
+            <span>放映设置</span>
+          </button>
+          <button onClick={() => setMobilePanel('album')} className="flex-1 flex flex-col items-center py-3">
+            <ImageIcon className="w-5 h-5 mb-1" />
+            <span>修改图像</span>
+          </button>
+        </div>
+      </div>
     );
   }
 
