@@ -329,15 +329,6 @@ export default function Works() {
         </div>
       </div>
 
-      {/* 提示横幅 */}
-      <div className="mx-4 mt-3 rounded-lg bg-[#FFF8E7] px-3 py-2.5 text-xs text-[#C28C3D]">
-        <span className="inline-flex items-center gap-1">
-          <svg viewBox="0 0 24 24" className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-          体验版仅显示10个公开和2个非公开作品。
-        </span>
-        <span className="underline ml-1 cursor-pointer">前往升级</span>
-      </div>
-
       {/* 排序模式提示 */}
       {sortMode && (
         <div className="mx-4 mt-3 text-xs text-gray-500 bg-white border border-gray-100 rounded-lg p-3">
