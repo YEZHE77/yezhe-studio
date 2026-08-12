@@ -312,7 +312,11 @@ export default function WorkDetail() {
   }
 
   function onUploadClick() {
-    if (fileRef.current) fileRef.current.click();
+    if (fileRef.current) {
+      fileRef.current.click();
+    } else {
+      alert('文件选择器未就绪，请刷新页面后重试');
+    }
   }
 
   // 选图后：读取每张原图 name+size，打开预览弹窗（不限制重复上传）
@@ -1005,15 +1009,14 @@ export default function WorkDetail() {
                   </svg>
                 </div>
                 <p className="text-sm text-gray-400 mb-4">还没有上传照片，添加第一张客片吧</p>
-                <button
-                  onClick={onUploadClick}
-                  disabled={uploading || preparing}
-                  className="px-8 py-2.5 rounded-full bg-[#FF7A8A] text-white text-sm font-medium active:opacity-80 disabled:opacity-50"
-                >{uploading ? '上传中…' : preparing ? '准备中…' : '+ 上传照片'}</button>
+                {/* 用 label 包裹 file input，业内移动端标准做法，绕开 iOS Safari 对 ref.click() 的偶发拦截 */}
+                <label className={'px-8 py-2.5 rounded-full bg-[#FF7A8A] text-white text-sm font-medium cursor-pointer select-none ' + (uploading || preparing ? 'opacity-50 pointer-events-none' : 'active:opacity-80')}>
+                  {uploading ? '上传中…' : preparing ? '准备中…' : '+ 上传照片'}
+                  <input ref={fileRef} type="file" accept="image/*" multiple className="hidden" onChange={onPickFiles} />
+                </label>
               </div>
             </div>
           )}
-          <input ref={fileRef} type="file" accept="image/*" multiple className="hidden" onChange={onPickFiles} />
         </div>
       </div>
     );
