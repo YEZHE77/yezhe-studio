@@ -126,6 +126,20 @@ export function debounce(fn, delay = 300) {
 
 const USE_CF_RESIZING = false; // Image Transformations 启用后改为 true
 const PAGES_HOST = 'https://yezhe-studio.pages.dev';
+const WORKER_HOST = 'yezhe-img-proxy.yezhe128627.workers.dev';
+
+// workers.dev 域名在国内被 GFW 封锁，重写为 pages.dev（_worker.js 代理 /r2/* 到 Worker）
+function rewriteHost(src) {
+  try {
+    const u = new URL(src);
+    if (u.hostname === WORKER_HOST || u.hostname.endsWith('.workers.dev')) {
+      u.hostname = 'yezhe-studio.pages.dev';
+    }
+    return u.toString();
+  } catch (e) {
+    return src;
+  }
+}
 
 function imageResized(src, width, quality = 75) {
   return `${PAGES_HOST}/cdn-cgi/image/width=${width},quality=${quality},fit=cover/${src}`;
@@ -146,6 +160,7 @@ export function img(url, mode) {
   let src = url;
   if (src.startsWith('/uploads')) src = BASE + src;
   if (!src.startsWith('http')) return src;
+  src = rewriteHost(src); // workers.dev → pages.dev（绕过 GFW 封锁）
   if (!mode) return src;
   try {
     if (mode === 'thumb') {
@@ -164,6 +179,7 @@ export function img(url, mode) {
 export function thumb(url, width = 400) {
   if (!url) return '';
   if (!url.startsWith('http')) return url;
+  url = rewriteHost(url); // workers.dev → pages.dev（绕过 GFW 封锁）
   return USE_CF_RESIZING ? imageResized(url, width) : workerThumb(url, width);
 }
 
