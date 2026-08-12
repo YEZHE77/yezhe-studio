@@ -72,9 +72,9 @@ const SECTIONS = [
     title: '功能',
     items: [
       { label: '新手引导', icon: BookOpen, color: ORANGE, to: '/settings' },
-      { label: '资料', icon: FileText, color: CORAL, to: '/settings' },
+      { label: '资料', icon: FileText, color: ORANGE, to: '/settings' },
       { label: '作品', icon: Image, color: ORANGE, to: '/works' },
-      { label: '套系', icon: Layers, color: CORAL, to: '/packages' }
+      { label: '套系', icon: Layers, color: ORANGE, to: '/packages' }
     ]
   },
   {
@@ -84,31 +84,31 @@ const SECTIONS = [
       { label: '订单', icon: ClipboardList, color: ORANGE, to: '/orders' },
       { label: '客资', icon: Users, color: ORANGE, to: '/customers' },
       { label: '选片工具', icon: Images, color: ORANGE, to: '/selections' },
-      { label: '团队管理', icon: UserCog, color: CORAL, to: '/settings' },
+      { label: '团队管理', icon: UserCog, color: ORANGE, to: '/settings' },
       { label: '评价管理', icon: MessageSquare, color: ORANGE, to: '/reviews' },
-      { label: '图片直播', icon: Video, color: '#FF6B6B', to: '/settings' },
+      { label: '图片直播', icon: Video, color: ORANGE, to: '/settings' },
       { label: 'AI修图', icon: Sparkles, color: ORANGE, to: '/settings' }
     ]
   },
   {
     title: '拓客引流',
     items: [
-      { label: '优惠券', icon: Ticket, color: CORAL, to: '/settings' },
-      { label: '促销套系', icon: Diamond, color: CORAL, to: '/packages' },
+      { label: '优惠券', icon: Ticket, color: ORANGE, to: '/settings' },
+      { label: '促销套系', icon: Diamond, color: ORANGE, to: '/packages' },
       { label: '优惠码', icon: Tag, color: ORANGE, to: '/settings' },
-      { label: '拼团活动', icon: Users2, color: CORAL, to: '/settings' },
+      { label: '拼团活动', icon: Users2, color: ORANGE, to: '/settings' },
       { label: '客户积分', icon: Coins, color: ORANGE, to: '/settings' },
       { label: '生成名片', icon: IdCard, color: ORANGE, to: '/card' },
       { label: '九图海报', icon: LayoutGrid, color: ORANGE, to: '/settings' },
-      { label: '摄影日历', icon: CalendarDays, color: CORAL, to: '/schedule' }
+      { label: '摄影日历', icon: CalendarDays, color: ORANGE, to: '/schedule' }
     ]
   },
   {
     title: '其他功能',
     items: [
-      { label: '相册印刷', icon: Printer, color: CORAL, to: '/settings', tag: 'NEW' },
+      { label: '相册印刷', icon: Printer, color: ORANGE, to: '/settings', tag: 'NEW' },
       { label: '存储空间', icon: HardDrive, color: ORANGE, to: '/capacity' },
-      { label: '容量管理', icon: Gauge, color: CORAL, to: '/capacity' },
+      { label: '容量管理', icon: Gauge, color: ORANGE, to: '/capacity' },
       { label: '访客', icon: User, color: ORANGE, to: '/datacharts' },
       { label: '统计', icon: BarChart3, color: ORANGE, to: '/datacharts' },
       { label: '关联公众号', icon: MessageCircle, color: ORANGE, to: '/settings' }
@@ -386,11 +386,11 @@ export default function MobileWorkbench() {
       {/* 大容器卡片：外部展示 + 功能 + 工具 + 拓客引流 + 其他功能（组间横分隔线） */}
       <div style={{ background: '#fff', borderTop: '1px solid ' + LINE }}>
         <GroupBlock title="外部展示">
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+          <div style={{ background: '#fff', border: '1px solid ' + LINE, borderRadius: 12, display: 'flex', overflow: 'hidden' }}>
             <button
               type="button"
               onClick={() => nav('/home')}
-              style={{ background: '#fff', border: '1px solid ' + LINE, borderRadius: 12, padding: '14px 0', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
+              style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '16px 0', background: 'none', border: 'none', borderRight: '1px solid ' + LINE }}
             >
               <Smartphone className="w-5 h-5" strokeWidth={1.5} style={{ color: TEXT }} />
               <span style={{ fontSize: 14, color: TEXT }}>小程序</span>
@@ -398,7 +398,7 @@ export default function MobileWorkbench() {
             <button
               type="button"
               onClick={() => nav('/settings')}
-              style={{ background: '#fff', border: '1px solid ' + LINE, borderRadius: 12, padding: '14px 0', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
+              style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '16px 0', background: 'none', border: 'none' }}
             >
               <Monitor className="w-5 h-5" strokeWidth={1.5} style={{ color: TEXT }} />
               <span style={{ fontSize: 14, color: TEXT }}>网站</span>
