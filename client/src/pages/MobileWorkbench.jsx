@@ -283,47 +283,63 @@ export default function MobileWorkbench() {
         </div>
       </div>
 
-      {/* 三列统计（全宽，上下分隔线） */}
-      <div style={{ background: '#fff', borderTop: '1px solid ' + LINE, borderBottom: '1px solid ' + LINE, display: 'flex' }}>
-        {/* 余额：与网页版后台「商户余额」同步，使用 stats.balance，点击跳财务管理 */}
-        <div
-          onClick={() => nav('/finance')}
-          style={{ flex: 1, textAlign: 'center', padding: '14px 0 12px', cursor: 'pointer' }}
-        >
-          <div className="flex items-center justify-center" style={{ color: CORAL, lineHeight: 1 }}>
-            <span style={{ fontSize: hideBalance ? 18 : 24, fontWeight: 600 }}>
-              {hideBalance ? '¥ ***' : (stats ? '¥' + Number(stats.balance).toLocaleString() : '--')}
-            </span>
-            <button
-              type="button"
-              onClick={(e) => { e.stopPropagation(); setHideBalance((v) => !v); }}
-              style={{ background: 'none', border: 'none', padding: 4, marginLeft: 2, display: 'flex', alignItems: 'center', color: '#D0D0D0' }}
-            >
-              {hideBalance ? <EyeOff size={16} /> : <Eye size={16} />}
-            </button>
+      {/* 统计区（2×2：余额/尾款待收，待跟进/待拍摄） */}
+      <div style={{ background: '#fff', borderTop: '1px solid ' + LINE, borderBottom: '1px solid ' + LINE }}>
+        <div style={{ display: 'flex' }}>
+          {/* 余额：与网页版后台「商户余额」同步，使用 stats.balance，点击跳财务管理 */}
+          <div
+            onClick={() => nav('/finance')}
+            style={{ flex: 1, textAlign: 'center', padding: '14px 0 12px', cursor: 'pointer' }}
+          >
+            <div className="flex items-center justify-center" style={{ color: CORAL, lineHeight: 1 }}>
+              <span style={{ fontSize: hideBalance ? 18 : 24, fontWeight: 600 }}>
+                {hideBalance ? '¥ ***' : (stats ? '¥' + Number(stats.balance).toLocaleString() : '--')}
+              </span>
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); setHideBalance((v) => !v); }}
+                style={{ background: 'none', border: 'none', padding: 4, marginLeft: 2, display: 'flex', alignItems: 'center', color: '#D0D0D0' }}
+              >
+                {hideBalance ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
+            <div style={{ fontSize: 11, color: '#BBBBBB', marginTop: 6 }}>余额</div>
           </div>
-          <div style={{ fontSize: 11, color: '#BBBBBB', marginTop: 6 }}>余额</div>
+          <div style={{ width: 1, background: LINE, margin: '14px 0' }} />
+          {/* 尾款待收：订单尾款应收 − 已收尾款，点击跳财务管理 */}
+          <button
+            type="button"
+            onClick={() => nav('/finance')}
+            style={{ flex: 1, textAlign: 'center', padding: '14px 0 12px', background: 'none', border: 'none' }}
+          >
+            <div style={{ fontSize: 24, fontWeight: 600, color: '#F5A623', lineHeight: 1 }}>
+              {stats ? '¥' + Number(stats.pendingBalance).toLocaleString() : '--'}
+            </div>
+            <div style={{ fontSize: 11, color: '#BBBBBB', marginTop: 6 }}>尾款待收</div>
+          </button>
         </div>
-        <div style={{ width: 1, background: LINE, margin: '14px 0' }} />
-        {/* 待跟进 */}
-        <button
-          type="button"
-          onClick={() => nav('/orders')}
-          style={{ flex: 1, textAlign: 'center', padding: '14px 0 12px', background: 'none', border: 'none' }}
-        >
-          <div style={{ fontSize: 24, fontWeight: 600, color: TEXT, lineHeight: 1 }}>{followTotal}</div>
-          <div style={{ fontSize: 11, color: '#BBBBBB', marginTop: 6 }}>待跟进</div>
-        </button>
-        <div style={{ width: 1, background: LINE, margin: '14px 0' }} />
-        {/* 待拍摄 */}
-        <button
-          type="button"
-          onClick={() => nav('/schedule')}
-          style={{ flex: 1, textAlign: 'center', padding: '14px 0 12px', background: 'none', border: 'none' }}
-        >
-          <div style={{ fontSize: 24, fontWeight: 600, color: TEXT, lineHeight: 1 }}>{shootCount || 2}</div>
-          <div style={{ fontSize: 11, color: '#BBBBBB', marginTop: 6 }}>待拍摄</div>
-        </button>
+        <div style={{ height: 1, background: LINE, margin: '0 16px' }} />
+        <div style={{ display: 'flex' }}>
+          {/* 待跟进 */}
+          <button
+            type="button"
+            onClick={() => nav('/orders')}
+            style={{ flex: 1, textAlign: 'center', padding: '14px 0 12px', background: 'none', border: 'none' }}
+          >
+            <div style={{ fontSize: 24, fontWeight: 600, color: TEXT, lineHeight: 1 }}>{followTotal}</div>
+            <div style={{ fontSize: 11, color: '#BBBBBB', marginTop: 6 }}>待跟进</div>
+          </button>
+          <div style={{ width: 1, background: LINE, margin: '14px 0' }} />
+          {/* 待拍摄 */}
+          <button
+            type="button"
+            onClick={() => nav('/schedule')}
+            style={{ flex: 1, textAlign: 'center', padding: '14px 0 12px', background: 'none', border: 'none' }}
+          >
+            <div style={{ fontSize: 24, fontWeight: 600, color: TEXT, lineHeight: 1 }}>{shootCount || 2}</div>
+            <div style={{ fontSize: 11, color: '#BBBBBB', marginTop: 6 }}>待拍摄</div>
+          </button>
+        </div>
       </div>
 
       {/* 三个快捷卡（铺满，内部小卡保留圆角） */}

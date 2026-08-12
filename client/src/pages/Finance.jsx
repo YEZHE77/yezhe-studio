@@ -24,6 +24,7 @@ export default function Finance() {
   const year = new Date().getFullYear();
   const [state, setState] = useViewState('finance', { year: String(year) });
   const [summary, setSummary] = useState(null);
+  const [stats, setStats] = useState(null);
   const [months, setMonths] = useState([]);
   const [staff, setStaff] = useState([]);
   const [pkgs, setPkgs] = useState([]);
@@ -36,6 +37,7 @@ export default function Finance() {
     const from = `${y}-01-01`;
     const to = `${y}-12-31`;
     http.get('/api/finance/summary').then((r) => setSummary(r.data)).catch(() => {});
+    http.get('/api/stats').then((r) => setStats(r.data)).catch(() => {});
     http.get('/api/finance/by-month?year=' + state.year).then((r) => setMonths(r.data)).catch(() => {});
     http.get('/api/finance/staff').then((r) => setStaff(r.data)).catch(() => {});
     http.get('/api/finance/packages').then((r) => setPkgs(r.data)).catch(() => {});
@@ -43,13 +45,13 @@ export default function Finance() {
   }, [state.year]);
 
   if (isMobile) {
-    return <MobileView summary={summary} months={months} staff={staff} pkgs={pkgs} ledger={ledger} year={Number(state.year) || year} onYearChange={(y) => setState((s) => ({ ...s, year: String(y) }))} />;
+    return <MobileView summary={summary} stats={stats} months={months} staff={staff} pkgs={pkgs} ledger={ledger} year={Number(state.year) || year} onYearChange={(y) => setState((s) => ({ ...s, year: String(y) }))} />;
   }
 
   return <DesktopView summary={summary} months={months} staff={staff} pkgs={pkgs} ledger={ledger} year={Number(state.year) || year} onYearChange={(y) => setState((s) => ({ ...s, year: String(y) }))} />;
 }
 
-function MobileView({ summary, months, staff, pkgs, ledger, year, onYearChange }) {
+function MobileView({ summary, stats, months, staff, pkgs, ledger, year, onYearChange }) {
   const maxMonth = months.reduce((m, x) => Math.max(m, x.net), 0) || 1;
 
   const kpiItems = [
@@ -57,7 +59,8 @@ function MobileView({ summary, months, staff, pkgs, ledger, year, onYearChange }
     { label: '实收', value: summary ? summary.received : null, color: MINT },
     { label: '退款', value: summary ? summary.refunded : null, color: '#FF4D4F' },
     { label: '线上', value: summary ? summary.online : null, color: BRAND },
-    { label: '线下', value: summary ? summary.offline : null, color: '#F5A623' }
+    { label: '线下', value: summary ? summary.offline : null, color: '#F5A623' },
+    { label: '尾款待收', value: stats ? stats.pendingBalance : null, color: '#FF7A8A' }
   ];
 
   const fmt = (v) => typeof v === 'number' ? v.toLocaleString() : '—';
@@ -78,15 +81,14 @@ function MobileView({ summary, months, staff, pkgs, ledger, year, onYearChange }
 
       {/* KPI 卡片 */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10, marginBottom: 12 }}>
-        {kpiItems.map((it, idx) => (
+        {kpiItems.map((it) => (
           <div
             key={it.label}
             style={{
               background: '#fff',
               borderRadius: 12,
               padding: '14px 12px',
-              boxShadow: '0 1px 2px rgba(0,0,0,0.03)',
-              gridColumn: idx === kpiItems.length - 1 ? '1 / -1' : undefined
+              boxShadow: '0 1px 2px rgba(0,0,0,0.03)'
             }}
           >
             <div style={{ fontSize: 12, color: MUTED, marginBottom: 6 }}>{it.label}</div>

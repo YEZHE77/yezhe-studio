@@ -18,6 +18,10 @@ router.get('/', authRequired, async (req, res) => {
     const onlineIncome = parseFloat(total.deposit_online) + parseFloat(total.balance_online);
     const offlineIncome = balance - onlineIncome;
 
+    // 待收尾款：订单尾款应收合计 − 已收尾款流水（payments type='balance'）
+    const balPaid = await get(`SELECT COALESCE(SUM(amount),0) AS paid FROM payments WHERE type='balance'`);
+    const pendingBalance = Math.round((parseFloat(total.balance_sum) - parseFloat(balPaid.paid)) * 100) / 100;
+
     // 实收（来自收款流水，含退款抵扣）
     const pay = await get(`
       SELECT
@@ -45,6 +49,7 @@ router.get('/', authRequired, async (req, res) => {
       balance: Math.round(balance * 100) / 100,
       received: Math.round(received * 100) / 100,
       refunded: Math.round(refunded * 100) / 100,
+      pendingBalance,
       onlineIncome: Math.round(onlineIncome * 100) / 100,
       offlineIncome: Math.round(offlineIncome * 100) / 100,
       pendingBlocks,
