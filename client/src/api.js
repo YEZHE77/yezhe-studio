@@ -110,7 +110,24 @@ export function debounce(fn, delay = 300) {
 }
 
 // 图片地址补全（本地 /uploads 在开发期由代理处理；生产需拼 Render 地址）
-// 支持 mode 取压缩版本：thumb ?w=420 / preview ?w=1080（仅 R2 Worker 代理域名）
+// 支持 mode 取压缩版本：
+//   thumb  → Cloudflare Pages 边缘压缩 400px JPEG（依赖 Cloudflare Dashboard 启用 Image Transformations）
+//   preview → 1080px 同上
+// 非 https URL（本地 /uploads）不参与压缩，直接返回原 URL
+//
+// Cloudflare Image Resizing 路径：<PAGES_HOST>/cdn-cgi/image/width=<w>,quality=<q>,fit=cover/<原URL>
+//  - Image transformations 是 Cloudflare Pages 的内置功能（免费 5000 次 unique transforms/月）
+//  - 启用后任意 R2 URL 走 Pages 边缘会被自动转码压缩，无需后端预生成缩略图
+//  - 路径必须以 https:// 开头且 Pages 域名为前缀（worker 域名是 R2 的 worker 域名）
+//  - 启用方法：Cloudflare Dashboard → Workers & Pages → yezhe-studio → Settings → Functions → Image transformations → Enabled
+const PAGES_HOST = 'https://yezhe-studio.pages.dev';
+
+function imageResized(src, width, quality = 75) {
+  // Cloudflare 要求被压缩的源 URL 是 https 完整路径，直接拼到 /cdn-cgi/image/ 后
+  // 格式：<pages>/cdn-cgi/image/width=400,quality=75,fit=cover/<源URL>
+  return `${PAGES_HOST}/cdn-cgi/image/width=${width},quality=${quality},fit=cover/${src}`;
+}
+
 export function img(url, mode) {
   if (!url) return '';
   let src = url;
@@ -118,22 +135,19 @@ export function img(url, mode) {
   if (!src.startsWith('http')) return src;
   if (!mode) return src;
   try {
-    const u = new URL(src);
-    u.searchParams.delete('w');
-    if (mode === 'thumb') u.searchParams.set('w', '420');
-    else if (mode === 'preview') u.searchParams.set('w', '1080');
-    return u.toString();
+    if (mode === 'thumb') return imageResized(src, 400);
+    if (mode === 'preview') return imageResized(src, 1080);
+    return src;
   } catch (e) {
     return src;
   }
 }
 
-// 获取缩略图 URL（支持 CDN 裁剪参数，Worker 支持后生效）
+// 获取缩略图 URL（指定宽度）
 export function thumb(url, width = 400) {
   if (!url) return '';
-  // 仅对 R2 Worker URL 追加裁剪参数
-  if (url.includes('workers.dev/r2/')) return url + '?w=' + width;
-  return url;
+  if (!url.startsWith('http')) return url;
+  return imageResized(url, width);
 }
 
 /**
