@@ -366,7 +366,7 @@ export default function Orders() {
           <option value="retouching">精修中</option>
           <option value="delivered">已交付</option>
           <option value="completed">已完成</option>
-          <option value="cancelled">已作废</option>
+          <option value="cancelled">已关闭</option>
           <option value="__trash">回收站</option>
         </select>
 
@@ -674,7 +674,7 @@ const ORDER_STATUS_OPTIONS = [
   { value: 'retouching', label: '精修中' },
   { value: 'delivered', label: '已交付' },
   { value: 'completed', label: '已完成' },
-  { value: 'cancelled', label: '已作废' },
+  { value: 'cancelled', label: '已关闭' },
   { value: '__trash', label: '回收站' }
 ];
 
