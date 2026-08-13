@@ -123,6 +123,7 @@ export default function Packages() {
   const [statusOpen, setStatusOpen] = useState(false);
   const [catOpen, setCatOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [sortOpen, setSortOpen] = useState(false);
 
   // Tab 记忆：状态筛选 + 搜索 + 分类
   const [state, setState] = useViewState('packages', { status: 'all', q: '', category: '' });
@@ -296,29 +297,9 @@ export default function Packages() {
               <div style={{ position: 'absolute', top: 'calc(100% + 8px)', right: 4, background: '#fff', borderRadius: 10, boxShadow: '0 4px 20px rgba(0,0,0,0.12)', zIndex: 50, minWidth: 170, overflow: 'hidden' }}>
                 {/* 向上三角箭头 */}
                 <div style={{ position: 'absolute', top: -6, right: 14, width: 0, height: 0, borderLeft: '6px solid transparent', borderRight: '6px solid transparent', borderBottom: '6px solid #fff' }} />
-                <button onClick={() => { setMenuOpen(false); alert('套系排序功能开发中'); }} style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '12px 16px', background: 'none', border: 'none', fontSize: 14, color: '#555', textAlign: 'left' }}>
+                <button onClick={() => { setMenuOpen(false); setSortOpen(true); }} style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '12px 16px', background: 'none', border: 'none', fontSize: 14, color: '#555', textAlign: 'left' }}>
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#999" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 5h10M11 9h7M11 13h4M3 17l3 3 3-3M6 18V4"/></svg>
                   套系排序
-                </button>
-                <div style={{ height: 1, background: '#F0F0F0', margin: '0 16px' }} />
-                <button onClick={() => { setMenuOpen(false); alert('显示货币功能开发中'); }} style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '12px 16px', background: 'none', border: 'none', fontSize: 14, color: '#555', textAlign: 'left' }}>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#999" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M16 8h-6a2 2 0 0 0 0 4h4a2 2 0 0 1 0 4H8"/><path d="M12 18V6"/></svg>
-                  显示货币
-                </button>
-                <div style={{ height: 1, background: '#F0F0F0', margin: '0 16px' }} />
-                <button onClick={() => { setMenuOpen(false); alert('分类布局功能开发中'); }} style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '12px 16px', background: 'none', border: 'none', fontSize: 14, color: '#555', textAlign: 'left' }}>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#999" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
-                  分类布局
-                </button>
-                <div style={{ height: 1, background: '#F0F0F0', margin: '0 16px' }} />
-                <button onClick={() => { setMenuOpen(false); alert('菜单设置功能开发中'); }} style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '12px 16px', background: 'none', border: 'none', fontSize: 14, color: '#555', textAlign: 'left' }}>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#999" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg>
-                  菜单设置
-                </button>
-                <div style={{ height: 1, background: '#F0F0F0', margin: '0 16px' }} />
-                <button onClick={() => { setMenuOpen(false); alert('套系海报功能开发中'); }} style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '12px 16px', background: 'none', border: 'none', fontSize: 14, color: '#555', textAlign: 'left' }}>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#999" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
-                  套系海报
                 </button>
                 <div style={{ height: 1, background: '#F0F0F0', margin: '0 16px' }} />
                 <button onClick={() => { setMenuOpen(false); nav('/packages/new'); }} style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '12px 16px', background: 'none', border: 'none', fontSize: 14, color: '#2f7cf6', textAlign: 'left', fontWeight: 500 }}>
@@ -582,6 +563,66 @@ export default function Packages() {
           onClose={() => setSharePkg(null)}
         />
       )}
+      {/* 套系排序管理弹窗 */}
+      {sortOpen && (
+        <PackageSortModal
+          list={list}
+          onClose={() => setSortOpen(false)}
+          onMoved={load}
+        />
+      )}
+    </div>
+  );
+}
+
+// 套系排序弹窗：显示当前列表，上下箭头调整顺序，调用 POST /api/packages/:id/move
+function PackageSortModal({ list, onClose, onMoved }) {
+  const [items, setItems] = useState(list);
+  const [moving, setMoving] = useState(false);
+
+  useEffect(() => { setItems(list); }, [list]);
+
+  const move = async (id, dir) => {
+    if (moving) return;
+    setMoving(true);
+    try {
+      await http.post('/api/packages/' + id + '/move', { dir });
+      onMoved();
+    } catch (e) {
+      alert((e.response && e.response.data && e.response.data.error) || '移动失败');
+    } finally {
+      setMoving(false);
+    }
+  };
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 100, background: 'rgba(0,0,0,0.5)' }} onClick={onClose}>
+      <div onClick={(e) => e.stopPropagation()} style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: '#fff', borderRadius: '16px 16px 0 0', maxHeight: '85vh', display: 'flex', flexDirection: 'column' }}>
+        <div style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid #F0F0F0' }}>
+          <span style={{ fontSize: 16, fontWeight: 600, color: '#333' }}>套系排序</span>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: 14, color: '#999' }}>完成</button>
+        </div>
+        <div style={{ overflowY: 'auto', padding: '8px 20px calc(16px + env(safe-area-inset-bottom))', flex: 1 }}>
+          {items.map((p, idx) => (
+            <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0', borderBottom: idx < items.length - 1 ? '1px solid #F5F5F5' : 'none' }}>
+              <div style={{ width: 48, height: 48, borderRadius: 6, overflow: 'hidden', background: '#f5f5f5', flexShrink: 0 }}>
+                {p.cover_url ? <img src={img(p.cover_url, 'thumb')} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : null}
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 14, color: '#333', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</div>
+                <div style={{ fontSize: 12, color: '#999', marginTop: 2 }}>¥{Number(p.price || 0).toLocaleString()}</div>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flexShrink: 0 }}>
+                <button onClick={() => move(p.id, 'up')} disabled={idx === 0 || moving} style={{ background: 'none', border: '1px solid #E5E5E5', borderRadius: 4, padding: '4px 8px', fontSize: 12, color: idx === 0 || moving ? '#ccc' : '#666' }}>上移</button>
+                <button onClick={() => move(p.id, 'down')} disabled={idx === items.length - 1 || moving} style={{ background: 'none', border: '1px solid #E5E5E5', borderRadius: 4, padding: '4px 8px', fontSize: 12, color: idx === items.length - 1 || moving ? '#ccc' : '#666' }}>下移</button>
+              </div>
+            </div>
+          ))}
+          {items.length === 0 && (
+            <div style={{ textAlign: 'center', padding: 40, color: '#999', fontSize: 14 }}>暂无套系</div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
