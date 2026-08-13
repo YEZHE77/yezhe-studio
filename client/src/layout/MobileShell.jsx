@@ -172,6 +172,8 @@ function getPageTitle(path) {
   if (path === '/orders') return '待办事项';
   if (path.startsWith('/orders/')) return '订单详情';
   if (path === '/schedule') return '档期管理';
+  if (path === '/schedule/new') return '新增订单';
+  if (path.startsWith('/schedule/')) return '档期管理';
   if (path === '/works') return '作品管理';
   if (path.startsWith('/works/') && (path.endsWith('/edit') || path === '/works/new')) return '作品编辑';
   if (path.startsWith('/works/')) return '作品预览';
@@ -198,8 +200,8 @@ export default function MobileShell() {
   const tabRoots = ['/', '/m/site', '/m/notice', '/m/msg'];
   const hideTopBackRoutes = ['/works', '/packages', '/schedule', '/orders'];
   const isTab = tabRoots.includes(location.pathname);
-  // /packages/* /orders/* 等子路由由页面内自带顶部导航，避免双层 TopBack
-  const hideTopBack = hideTopBackRoutes.includes(location.pathname) || location.pathname.startsWith('/works/') || location.pathname.startsWith('/packages/') || location.pathname.startsWith('/orders/');
+  // /packages/* /orders/* /schedule/* 等子路由由页面内自带顶部导航，避免双层 TopBack
+  const hideTopBack = hideTopBackRoutes.includes(location.pathname) || location.pathname.startsWith('/works/') || location.pathname.startsWith('/packages/') || location.pathname.startsWith('/orders/') || location.pathname.startsWith('/schedule/');
   const pageTitle = getPageTitle(location.pathname);
   const activeKey = (() => {
     if (location.pathname === '/') return 'home';
