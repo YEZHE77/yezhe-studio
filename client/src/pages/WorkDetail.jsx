@@ -45,6 +45,137 @@ function clearDraft(id) {
   try { localStorage.removeItem(draftKey(id)); } catch {}
 }
 
+// 上传预览/进度弹窗（移动端与桌面端共用）：
+// 此前该弹窗只渲染在桌面端 return 分支，移动端选图后 setUploadOpen(true) 无任何界面反馈，
+// 表现为「点了上传照片没反应、看不到进度」。提取为组件后移动/桌面统一渲染。
+function UploadModal({ open, zoneLabel, previews, rows, uploading, paused, weakNet, warming, overallPct,
+  onClose, onCancel, onTogglePause, onConfirm, onRetry, onDismissWeakNet }) {
+  if (!open) return null;
+  const toUpload = previews.filter((p) => !p.error && !p.oversize);
+  const errCount = previews.filter((p) => p.error).length;
+  const overCount = previews.filter((p) => p.oversize).length;
+  // 每个预览对应类型与（非超限/非失败）行索引
+  const kinds = previews.map((p) => {
+    if (p.error) return { kind: 'err' };
+    if (p.oversize) return { kind: 'over' };
+    return { kind: 'up', ri: toUpload.indexOf(p) };
+  });
+  const failCount = rows.filter((r) => r.status === 'failed').length;
+  const doneCount = rows.filter((r) => r.status === 'done').length;
+  return (
+    <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" onClick={() => !uploading && onClose()}>
+      <div className="bg-panel border border-line rounded-xl2 w-full max-w-3xl max-h-[85vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between p-4 border-b border-line">
+          <div>
+            <h3 className="text-base text-fg">上传到「{zoneLabel}」相册</h3>
+            <p className="text-xs text-muted mt-0.5">
+              待上传 {toUpload.length} 张{errCount ? ` · 读取失败 ${errCount} 张` : ''}{overCount ? ` · 超过15M ${overCount} 张（已过滤）` : ''}
+            </p>
+          </div>
+          <button onClick={onClose} disabled={uploading} className="text-muted hover:text-fg text-sm disabled:opacity-40">✕</button>
+        </div>
+        {weakNet && (
+          <div className="mx-4 mt-3 px-3 py-2 rounded bg-amber-50 border border-amber-300 text-amber-700 text-xs flex items-center justify-between gap-2">
+            <span>⚠️ 检测到弱网，已自动重试；若持续失败请检查网络后单张重试。</span>
+            <button onClick={onDismissWeakNet} className="text-amber-700 shrink-0">知道了</button>
+          </div>
+        )}
+        {warming && (
+          <div className="mx-4 mt-3 px-3 py-2 rounded bg-blue-50 border border-blue-300 text-blue-700 text-xs flex items-center gap-2">
+            <svg className="animate-spin h-3.5 w-3.5 shrink-0" viewBox="0 0 24 24" fill="none">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+            </svg>
+            <span>服务器唤醒中，请稍候（Render 免费服务首次访问需数秒冷启动）…</span>
+          </div>
+        )}
+        <div className="p-4 overflow-y-auto">
+          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
+            {previews.map((p, i) => {
+              const k = kinds[i];
+              const row = k.kind === 'up' ? rows[k.ri] : null;
+              const isFailed = row && row.status === 'failed';
+              const isDone = row && row.status === 'done';
+              const isUploading = row && row.status === 'uploading';
+              return (
+              <div key={i} className={'relative aspect-square rounded-xl2 overflow-hidden bg-ink border ' + (
+                k.kind === 'over' ? 'border-red-400'
+                : isFailed ? 'border-red-400'
+                : isDone ? 'border-green-400/70'
+                : 'border-brand/40'
+              )}>
+                <img src={p.url} className="w-full h-full object-cover" alt={p.name} />
+                {k.kind === 'over' && (
+                  <>
+                    <div className="absolute inset-0 bg-black/55" />
+                    <span className="absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded bg-red-500/90 text-white text-[10px]">超过15M限制</span>
+                    <span className="absolute bottom-1.5 right-1.5 text-white/80 text-[10px]">已过滤</span>
+                  </>
+                )}
+                {k.kind === 'err' && (
+                  <span className="absolute bottom-1.5 left-1.5 px-1.5 py-0.5 rounded bg-amber-500/80 text-white text-[10px]">读取失败</span>
+                )}
+                {k.kind === 'up' && (
+                  <>
+                    {isUploading && (
+                      <div className="absolute bottom-0 left-0 right-0 h-1.5 bg-black/40">
+                        <div className="h-full bg-brand transition-all" style={{ width: (row.progress || 0) + '%' }} />
+                      </div>
+                    )}
+                    {isFailed && (
+                      <button onClick={() => onRetry(k.ri)} className="absolute inset-0 flex items-center justify-center">
+                        <span className="px-2 py-1 rounded bg-red-500/90 text-white text-[10px]">↻ 重试</span>
+                      </button>
+                    )}
+                    <span className={'absolute bottom-1.5 left-1.5 px-1.5 py-0.5 rounded text-white text-[10px] ' + (
+                      isDone ? 'bg-green-500/80' : isFailed ? 'bg-red-500/80' : isUploading ? 'bg-brand/90' : 'bg-brand/80'
+                    )}>
+                      {isDone ? '完成' : isFailed ? '失败' : isUploading ? `上传中 ${row.progress || 0}%` : '待上传'}
+                    </span>
+                  </>
+                )}
+              </div>
+              );
+            })}
+          </div>
+        </div>
+        {uploading && (
+          <div className="px-4 pb-3">
+            <div className="flex items-center justify-between text-xs text-muted mb-1">
+              <span>总进度 {doneCount}/{rows.length || toUpload.length}</span>
+              <span>{overallPct}%</span>
+            </div>
+            <div className="h-1.5 bg-ink rounded overflow-hidden">
+              <div className="h-full bg-brand transition-all" style={{ width: overallPct + '%' }} />
+            </div>
+          </div>
+        )}
+        <div className="p-4 border-t border-line flex items-center justify-between flex-wrap gap-3">
+          <span className="text-xs text-muted">
+            {failCount ? `失败 ${failCount} 张可单张重试 · ` : ''}{overCount ? `超过15M ${overCount} 张已过滤 · ` : ''}所有照片均可上传
+          </span>
+          <div className="flex gap-2">
+            {uploading ? (
+              <>
+                <button onClick={onTogglePause} className="px-4 py-2 rounded border border-line text-sm text-brand hover:border-brand">{paused ? '继续' : '暂停'}</button>
+                <button onClick={onCancel} className="px-4 py-2 rounded border border-line text-sm text-red-500 hover:border-red-300">取消</button>
+              </>
+            ) : (
+              <button onClick={onClose} className="px-4 py-2 rounded border border-line text-sm text-fg hover:border-brand">取消</button>
+            )}
+            {!uploading && (
+              <button onClick={onConfirm} disabled={toUpload.length === 0}
+                className="px-4 py-2 rounded bg-brand text-white text-sm hover:opacity-90 disabled:opacity-60">
+                {`上传 ${toUpload.length} 张`}
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function WorkDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -931,12 +1062,13 @@ export default function WorkDetail() {
           </div>
           {/* 上传类型 tab：上传图片 / 上传视频 */}
           <div className="flex bg-white border-b border-gray-100">
+            {/* label+htmlFor 直连隐藏 file input：绕开 iOS Safari 对 ref.click() 的偶发拦截（与空态上传按钮同款做法） */}
+            <label
+              htmlFor="album-upload-input"
+              className={'flex-1 py-3 text-sm text-center block cursor-pointer select-none ' + (albumUploadTab === 'image' ? 'text-[#FF7A8A] border-b-2 border-[#FF7A8A] -mb-px' : 'text-gray-500')}
+            >上传图片</label>
             <button
-              onClick={() => albumUploadTab !== 'image' && onUploadClick()}
-              className={'flex-1 py-3 text-sm ' + (albumUploadTab === 'image' ? 'text-[#FF7A8A] border-b-2 border-[#FF7A8A] -mb-px' : 'text-gray-500')}
-            >上传图片</button>
-            <button
-              onClick={() => alert('视频上传功能开发中')}
+              onClick={() => { setAlbumUploadTab('video'); alert('视频上传功能开发中'); }}
               className={'flex-1 py-3 text-sm ' + (albumUploadTab === 'video' ? 'text-[#FF7A8A] border-b-2 border-[#FF7A8A] -mb-px' : 'text-gray-500')}
             >上传视频</button>
           </div>
@@ -1000,7 +1132,25 @@ export default function WorkDetail() {
               className={'px-10 py-2 rounded-full border ' + (pendingCount ? 'border-[#FF7A8A] text-[#FF7A8A] active:bg-[#FF7A8A]/10' : 'border-gray-200 text-gray-300')}
             >保存修改{pendingCount ? ` (${pendingCount})` : ''}</button>
           </div>
-          <input ref={fileRef} type="file" accept="image/*" multiple className="hidden" onChange={onPickFiles} />
+          <input id="album-upload-input" ref={fileRef} type="file" accept="image/*" multiple className="hidden" onChange={onPickFiles} />
+          {/* 移动端共用上传预览/进度弹窗（此前仅桌面端渲染，移动端选图后无反馈） */}
+          <UploadModal
+            open={uploadOpen}
+            zoneLabel={ZONES.find((z) => z.key === zone).label}
+            previews={uploadPreviews}
+            rows={uploadRows}
+            uploading={uploading}
+            paused={paused}
+            weakNet={weakNet}
+            warming={warming}
+            overallPct={overallPct}
+            onClose={closeUpload}
+            onCancel={cancelUpload}
+            onTogglePause={togglePause}
+            onConfirm={confirmUpload}
+            onRetry={retryOne}
+            onDismissWeakNet={() => setWeakNet(false)}
+          />
         </div>
       );
     }
@@ -1102,6 +1252,24 @@ export default function WorkDetail() {
             </div>
           )}
         </div>
+        {/* 移动端共用上传预览/进度弹窗（此前仅桌面端渲染，移动端选图后无反馈） */}
+        <UploadModal
+          open={uploadOpen}
+          zoneLabel={ZONES.find((z) => z.key === zone).label}
+          previews={uploadPreviews}
+          rows={uploadRows}
+          uploading={uploading}
+          paused={paused}
+          weakNet={weakNet}
+          warming={warming}
+          overallPct={overallPct}
+          onClose={closeUpload}
+          onCancel={cancelUpload}
+          onTogglePause={togglePause}
+          onConfirm={confirmUpload}
+          onRetry={retryOne}
+          onDismissWeakNet={() => setWeakNet(false)}
+        />
       </div>
     );
   }
@@ -1401,132 +1569,24 @@ export default function WorkDetail() {
         )}
         </div>
       </div>
-      {/* 上传预览弹窗：选图后展示缩略图，所有照片（含重复）均可上传 */}
-      {uploadOpen && (() => {
-        const toUpload = uploadPreviews.filter((p) => !p.error && !p.oversize);
-        const errCount = uploadPreviews.filter((p) => p.error).length;
-        const overCount = uploadPreviews.filter((p) => p.oversize).length;
-        // 每个预览对应类型与（非超限/非失败）行索引
-        const kinds = uploadPreviews.map((p) => {
-          if (p.error) return { kind: 'err' };
-          if (p.oversize) return { kind: 'over' };
-          return { kind: 'up', ri: toUpload.indexOf(p) };
-        });
-        const failCount = uploadRows.filter((r) => r.status === 'failed').length;
-        const doneCount = uploadRows.filter((r) => r.status === 'done').length;
-        return (
-        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" onClick={() => !uploading && closeUpload()}>
-          <div className="bg-panel border border-line rounded-xl2 w-full max-w-3xl max-h-[85vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between p-4 border-b border-line">
-              <div>
-                <h3 className="text-base text-fg">上传到「{ZONES.find((z) => z.key === zone).label}」相册</h3>
-                <p className="text-xs text-muted mt-0.5">
-                  待上传 {toUpload.length} 张{errCount ? ` · 读取失败 ${errCount} 张` : ''}{overCount ? ` · 超过15M ${overCount} 张（已过滤）` : ''}
-                </p>
-              </div>
-              <button onClick={closeUpload} disabled={uploading} className="text-muted hover:text-fg text-sm disabled:opacity-40">✕</button>
-            </div>
-            {weakNet && (
-              <div className="mx-4 mt-3 px-3 py-2 rounded bg-amber-50 border border-amber-300 text-amber-700 text-xs flex items-center justify-between gap-2">
-                <span>⚠️ 检测到弱网，已自动重试；若持续失败请检查网络后单张重试。</span>
-                <button onClick={() => setWeakNet(false)} className="text-amber-700 shrink-0">知道了</button>
-              </div>
-            )}
-            {warming && (
-              <div className="mx-4 mt-3 px-3 py-2 rounded bg-blue-50 border border-blue-300 text-blue-700 text-xs flex items-center gap-2">
-                <svg className="animate-spin h-3.5 w-3.5 shrink-0" viewBox="0 0 24 24" fill="none">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
-                </svg>
-                <span>服务器唤醒中，请稍候（Render 免费服务首次访问需数秒冷启动）…</span>
-              </div>
-            )}
-            <div className="p-4 overflow-y-auto">
-              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
-                {uploadPreviews.map((p, i) => {
-                  const k = kinds[i];
-                  const row = k.kind === 'up' ? uploadRows[k.ri] : null;
-                  const isFailed = row && row.status === 'failed';
-                  const isDone = row && row.status === 'done';
-                  const isUploading = row && row.status === 'uploading';
-                  return (
-                  <div key={i} className={'relative aspect-square rounded-xl2 overflow-hidden bg-ink border ' + (
-                    k.kind === 'over' ? 'border-red-400'
-                    : isFailed ? 'border-red-400'
-                    : isDone ? 'border-green-400/70'
-                    : 'border-brand/40'
-                  )}>
-                    <img src={p.url} className="w-full h-full object-cover" alt={p.name} />
-                    {k.kind === 'over' && (
-                      <>
-                        <div className="absolute inset-0 bg-black/55" />
-                        <span className="absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded bg-red-500/90 text-white text-[10px]">超过15M限制</span>
-                        <span className="absolute bottom-1.5 right-1.5 text-white/80 text-[10px]">已过滤</span>
-                      </>
-                    )}
-                    {k.kind === 'err' && (
-                      <span className="absolute bottom-1.5 left-1.5 px-1.5 py-0.5 rounded bg-amber-500/80 text-white text-[10px]">读取失败</span>
-                    )}
-                    {k.kind === 'up' && (
-                      <>
-                        {isUploading && (
-                          <div className="absolute bottom-0 left-0 right-0 h-1.5 bg-black/40">
-                            <div className="h-full bg-brand transition-all" style={{ width: (row.progress || 0) + '%' }} />
-                          </div>
-                        )}
-                        {isFailed && (
-                          <button onClick={() => retryOne(k.ri)} className="absolute inset-0 flex items-center justify-center">
-                            <span className="px-2 py-1 rounded bg-red-500/90 text-white text-[10px]">↻ 重试</span>
-                          </button>
-                        )}
-                        <span className={'absolute bottom-1.5 left-1.5 px-1.5 py-0.5 rounded text-white text-[10px] ' + (
-                          isDone ? 'bg-green-500/80' : isFailed ? 'bg-red-500/80' : isUploading ? 'bg-brand/90' : 'bg-brand/80'
-                        )}>
-                          {isDone ? '完成' : isFailed ? '失败' : isUploading ? `上传中 ${row.progress || 0}%` : '待上传'}
-                        </span>
-                      </>
-                    )}
-                  </div>
-                  );
-                })}
-              </div>
-            </div>
-            {uploading && (
-              <div className="px-4 pb-3">
-                <div className="flex items-center justify-between text-xs text-muted mb-1">
-                  <span>总进度 {doneCount}/{uploadRows.length || toUpload.length}</span>
-                  <span>{overallPct}%</span>
-                </div>
-                <div className="h-1.5 bg-ink rounded overflow-hidden">
-                  <div className="h-full bg-brand transition-all" style={{ width: overallPct + '%' }} />
-                </div>
-              </div>
-            )}
-            <div className="p-4 border-t border-line flex items-center justify-between flex-wrap gap-3">
-              <span className="text-xs text-muted">
-                {failCount ? `失败 ${failCount} 张可单张重试 · ` : ''}{overCount ? `超过15M ${overCount} 张已过滤 · ` : ''}所有照片均可上传
-              </span>
-              <div className="flex gap-2">
-                {uploading ? (
-                  <>
-                    <button onClick={togglePause} className="px-4 py-2 rounded border border-line text-sm text-brand hover:border-brand">{paused ? '继续' : '暂停'}</button>
-                    <button onClick={cancelUpload} className="px-4 py-2 rounded border border-line text-sm text-red-500 hover:border-red-300">取消</button>
-                  </>
-                ) : (
-                  <button onClick={closeUpload} className="px-4 py-2 rounded border border-line text-sm text-fg hover:border-brand">取消</button>
-                )}
-                {!uploading && (
-                  <button onClick={confirmUpload} disabled={toUpload.length === 0}
-                    className="px-4 py-2 rounded bg-brand text-white text-sm hover:opacity-90 disabled:opacity-60">
-                    {`上传 ${toUpload.length} 张`}
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-        );
-      })()}
+      {/* 上传预览弹窗：选图后展示缩略图，所有照片（含重复）均可上传（移动/桌面共用） */}
+      <UploadModal
+        open={uploadOpen}
+        zoneLabel={ZONES.find((z) => z.key === zone).label}
+        previews={uploadPreviews}
+        rows={uploadRows}
+        uploading={uploading}
+        paused={paused}
+        weakNet={weakNet}
+        warming={warming}
+        overallPct={overallPct}
+        onClose={closeUpload}
+        onCancel={cancelUpload}
+        onTogglePause={togglePause}
+        onConfirm={confirmUpload}
+        onRetry={retryOne}
+        onDismissWeakNet={() => setWeakNet(false)}
+      />
       <Slideshow photos={slidePhotos} open={slideOpen} onClose={closeSlide} title={work ? work.title : ''} />
 
       {/* 单张大图预览 */}
