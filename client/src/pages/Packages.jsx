@@ -114,6 +114,15 @@ function fmtDeposit(v) {
 
 export default function Packages() {
   const nav = useNavigate();
+  const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' ? window.innerWidth < 768 : false);
+  useEffect(() => {
+    const onResize = () => setIsMobile(typeof window !== 'undefined' ? window.innerWidth < 768 : false);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+  const [statusOpen, setStatusOpen] = useState(false);
+  const [catOpen, setCatOpen] = useState(false);
+
   // Tab 记忆：状态筛选 + 搜索 + 分类
   const [state, setState] = useViewState('packages', { status: 'all', q: '', category: '' });
   const [list, setList] = useState([]);
@@ -242,6 +251,119 @@ export default function Packages() {
   };
 
   const catName = (id) => { const c = categories.find((x) => x.id === id); return c ? c.name : (id ? '分类#' + id : '—'); };
+
+  const statusOptions = [
+    { value: 'all', label: '全部' },
+    { value: 'on', label: '已上架' },
+    { value: 'off', label: '已下架' },
+  ];
+  const subtitleOf = (p) => {
+    const parts = [];
+    if (p.duration) parts.push(p.duration);
+    if (p.retouch_count) parts.push(`${p.retouch_count}张精修`);
+    if (p.album_service === 'none') parts.push('不提供相册');
+    else if (p.album_service === 'provide') parts.push('提供相册');
+    else if (p.album_service === 'extra') parts.push('相册另购');
+    return parts.join(' | ');
+  };
+
+  if (isMobile) {
+    return (
+      <div style={{ background: '#F8F8F8', minHeight: '100vh', paddingBottom: 100 }}>
+        {/* 顶部搜索栏 */}
+        <div style={{ background: '#fff', padding: '10px 16px', display: 'flex', alignItems: 'center', gap: 10, borderBottom: '1px solid #EFEFEF' }}>
+          <button onClick={() => nav(-1)} style={{ background: 'none', border: 'none', padding: 4, display: 'flex', alignItems: 'center' }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#666" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
+          </button>
+          <div style={{ flex: 1, display: 'flex', alignItems: 'center', background: '#F5F5F5', borderRadius: 20, padding: '6px 12px', gap: 6 }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#999" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /></svg>
+            <input
+              value={qInput}
+              onChange={(e) => setQInput(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && doSearch()}
+              placeholder="输入套系名称"
+              style={{ border: 'none', background: 'transparent', outline: 'none', fontSize: 14, flex: 1, color: '#333' }}
+            />
+          </div>
+          <button style={{ background: 'none', border: 'none', padding: 4, color: '#666', fontSize: 16 }}>?</button>
+          <button style={{ background: 'none', border: 'none', padding: 4, color: '#666', fontSize: 16 }}>⋯</button>
+        </div>
+
+        {/* 筛选栏 */}
+        <div style={{ display: 'flex', background: '#fff', borderBottom: '1px solid #EFEFEF', position: 'relative' }}>
+          <button onClick={() => { setStatusOpen(!statusOpen); setCatOpen(false); }} style={{ flex: 1, textAlign: 'center', padding: '12px 0', background: 'none', border: 'none', fontSize: 14, color: '#333', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+            状态 {statusOpen ? <span>▲</span> : <span>▼</span>}
+          </button>
+          <button onClick={() => { setCatOpen(!catOpen); setStatusOpen(false); }} style={{ flex: 1, textAlign: 'center', padding: '12px 0', background: 'none', border: 'none', fontSize: 14, color: '#333', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+            分类 {catOpen ? <span>▲</span> : <span>▼</span>}
+          </button>
+
+          {/* 状态下拉 */}
+          {statusOpen && (
+            <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: '#fff', borderBottom: '1px solid #EFEFEF', zIndex: 10, boxShadow: '0 4px 8px rgba(0,0,0,0.08)' }}>
+              {statusOptions.map((o) => (
+                <button key={o.value} onClick={() => { setState((s) => ({ ...s, status: o.value })); setStatusOpen(false); }} style={{ display: 'block', width: '100%', padding: '12px 16px', textAlign: 'left', background: 'none', border: 'none', fontSize: 14, color: state.status === o.value ? '#2f7cf6' : '#333' }}>
+                  {o.label}
+                </button>
+              ))}
+            </div>
+          )}
+          {/* 分类下拉 */}
+          {catOpen && (
+            <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: '#fff', borderBottom: '1px solid #EFEFEF', zIndex: 10, boxShadow: '0 4px 8px rgba(0,0,0,0.08)' }}>
+              <button onClick={() => { setState((s) => ({ ...s, category: '' })); setCatOpen(false); }} style={{ display: 'block', width: '100%', padding: '12px 16px', textAlign: 'left', background: 'none', border: 'none', fontSize: 14, color: state.category === '' ? '#2f7cf6' : '#333' }}>全部</button>
+              {categories.filter(Boolean).map((c) => (
+                <button key={c.id} onClick={() => { setState((s) => ({ ...s, category: String(c.id) })); setCatOpen(false); }} style={{ display: 'block', width: '100%', padding: '12px 16px', textAlign: 'left', background: 'none', border: 'none', fontSize: 14, color: state.category === String(c.id) ? '#2f7cf6' : '#333' }}>
+                  {c.name || '未命名'}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* 提示横幅 */}
+        <div style={{ background: '#FFF9E6', padding: '10px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 13, color: '#666' }}>
+          <span>您目前没有上线的促销/拼团活动</span>
+          <button style={{ background: 'none', border: 'none', color: '#2f7cf6', fontSize: 13 }}>设置</button>
+        </div>
+
+        {/* 列表 */}
+        <div style={{ padding: '12px 16px' }}>
+          {list.length === 0 ? (
+            <div style={{ textAlign: 'center', color: '#999', padding: '40px 0', fontSize: 14 }}>暂无套系</div>
+          ) : (
+            list.map((p) => {
+              const off = p.status === 'off';
+              return (
+                <div key={p.id} onClick={() => nav('/packages/' + p.id + '/edit')} style={{ background: '#fff', borderRadius: 12, padding: '12px 14px', marginBottom: 10, display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                  <div style={{ width: 80, height: 80, borderRadius: 8, background: '#f5f5f5', overflow: 'hidden', flexShrink: 0, position: 'relative' }}>
+                    {p.cover_url ? <img src={img(p.cover_url)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : null}
+                    {off && <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.45)', color: '#fff', fontSize: 12 }}>已下架</div>}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                      <div style={{ fontSize: 15, fontWeight: 500, color: '#1f2329', lineHeight: 1.3, flex: 1 }}>{p.name}</div>
+                      <div style={{ fontSize: 15, color: '#e4393c', fontWeight: 500, whiteSpace: 'nowrap' }}>¥{Number(p.price).toLocaleString()}</div>
+                    </div>
+                    <div style={{ fontSize: 12, color: '#999', marginTop: 6 }}>{subtitleOf(p)}</div>
+                    <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
+                      <span style={{ fontSize: 11, color: '#2f7cf6', background: '#EBF2FF', padding: '2px 6px', borderRadius: 4 }}>{catName(p.category_id)}</span>
+                      {off && <span style={{ fontSize: 11, color: '#888', background: '#f5f5f5', padding: '2px 6px', borderRadius: 4 }}>已下架</span>}
+                    </div>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+
+        {/* 底部悬浮按钮 */}
+        <button onClick={() => nav('/packages/new')} style={{ position: 'fixed', bottom: 24, right: 16, background: '#FF6B8A', color: '#fff', border: 'none', borderRadius: 24, padding: '12px 20px', fontSize: 14, display: 'flex', alignItems: 'center', gap: 6, boxShadow: '0 4px 12px rgba(255,107,138,0.35)', zIndex: 100 }}>
+          <span style={{ fontSize: 18 }}>+</span> 添加新套系
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="p-4 sm:p-6 min-h-full" style={{ background: '#F8F8F8', maxWidth: 1050 }}>
