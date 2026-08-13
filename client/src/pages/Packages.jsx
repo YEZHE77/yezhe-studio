@@ -361,12 +361,6 @@ export default function Packages() {
           )}
         </div>
 
-        {/* 提示横幅 */}
-        <div style={{ background: '#FFF9E6', padding: '10px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 13, color: '#666' }}>
-          <span>您目前没有上线的促销/拼团活动</span>
-          <button style={{ background: 'none', border: 'none', color: '#2f7cf6', fontSize: 13 }}>设置</button>
-        </div>
-
         {/* 列表 */}
         <div style={{ padding: '12px 16px' }}>
           {list.length === 0 ? (
