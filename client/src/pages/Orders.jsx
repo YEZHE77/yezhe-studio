@@ -1197,6 +1197,7 @@ function OrderCard({ order, studioLogo, onClick, onShare }) {
           ><IconQr style={{ width: 12, height: 12, color: '#666' }} /></button>
         </div>
       </div>
+      <div style={{ height: 1, background: '#F0F0F0' }} />
 
       {/* 套系名 + 分类 + 尾款标签（红底白字，对齐截图） */}
       <div style={{ padding: '6px 14px' }}>
@@ -1256,6 +1257,7 @@ function OrderCard({ order, studioLogo, onClick, onShare }) {
           ) : null}
         </div>
       </div>
+      <div style={{ height: 1, background: '#F0F0F0' }} />
 
       {/* 备注 + 编辑入口（点击编辑跳 /orders/:id/notes） */}
       <div style={{ display: 'flex', alignItems: 'center', padding: '8px 14px' }}>
