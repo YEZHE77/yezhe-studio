@@ -270,8 +270,12 @@ export default function Packages() {
   if (isMobile) {
     return (
       <div style={{ background: '#F8F8F8', minHeight: '100vh', paddingBottom: 100 }}>
-        {/* 顶部搜索栏（返回按钮由 MobileShell TopBack 提供，避免双返回） */}
-        <div style={{ background: '#fff', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 10, borderBottom: '1px solid #EFEFEF' }}>
+        {/* 顶部搜索栏（返回 + 搜索 + 更多，与 MobileShell TopBack 同一行） */}
+        <div style={{ background: '#fff', padding: '8px 12px', display: 'flex', alignItems: 'center', gap: 10, borderBottom: '1px solid #EFEFEF' }}>
+          <button onClick={() => nav('/')} style={{ background: 'none', border: 'none', padding: 0, display: 'flex', alignItems: 'center', color: '#1f2329', fontSize: 14, gap: 2, flexShrink: 0 }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1f2329" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M15 6l-6 6 6 6" /></svg>
+            <span>返回</span>
+          </button>
           <div style={{ flex: 1, display: 'flex', alignItems: 'center', background: '#F5F5F5', borderRadius: 20, padding: '6px 12px', gap: 6 }}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#999" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /></svg>
             <input
@@ -282,7 +286,7 @@ export default function Packages() {
               style={{ border: 'none', background: 'transparent', outline: 'none', fontSize: 14, flex: 1, color: '#333' }}
             />
           </div>
-          <button style={{ background: 'none', border: 'none', padding: 4, color: '#666', fontSize: 16 }}>⋯</button>
+          <button style={{ background: 'none', border: 'none', padding: 4, color: '#666', fontSize: 16, flexShrink: 0 }}>⋯</button>
         </div>
 
         {/* 筛选栏 */}
