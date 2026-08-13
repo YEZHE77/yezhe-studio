@@ -90,11 +90,11 @@ async function fetchToken(base, username, password) {
     const urlNow = await page.evaluate(() => location.pathname);
     log('✅ URL =', urlNow);
 
-    // 断言：自绘顶栏「新增订单」+ 表单出现 + 无深色遮罩
+    // 断言：自绘顶栏收款状态标题 + 表单出现 + 无深色遮罩
     const pageState = await page.evaluate(() => {
       const text = document.body.innerText;
-      const hasTitle = text.includes('新增订单');
-      const hasCustomer = text.includes('顾客姓名') || text.includes('顾客') || text.includes('联系电话');
+      const hasTitle = ['未付款', '已付定金', '已付全款'].some((t) => text.includes(t));
+      const hasCustomer = text.includes('客户姓名') || text.includes('添加电话');
       const hasSave = text.includes('保存');
       // 深色遮罩：查找 fixed inset-0 半透明黑背景元素
       const overlay = Array.from(document.querySelectorAll('div')).some((d) => {
@@ -105,7 +105,7 @@ async function fetchToken(base, username, password) {
       return { hasTitle, hasCustomer, hasSave, overlay };
     });
     log('页面断言:', JSON.stringify(pageState));
-    if (!pageState.hasTitle) throw new Error('未找到自绘顶栏标题「新增订单」');
+    if (!pageState.hasTitle) throw new Error('未找到自绘顶栏收款状态标题');
     if (!pageState.hasSave) throw new Error('未找到保存按钮');
     if (pageState.overlay) throw new Error('⚠️ 页面仍渲染了深色遮罩（弹窗模式未切换为页面模式）');
 
