@@ -40,8 +40,9 @@ export default function WorkPreview() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [actionSheetOpen, setActionSheetOpen] = useState(false);
-  const [showGrid, setShowGrid] = useState(false);
-  const [studio, setStudio] = useState(null);
+  const [shareModalOpen, setShareModalOpen] = useState(false);
+  const [shareData, setShareData] = useState(null);
+  const [shareBusy, setShareBusy] = useState(false);
   // 幻灯片播放
   const [slideOpen, setSlideOpen] = useState(false);
   const [slideIdx, setSlideIdx] = useState(0);
@@ -148,6 +149,27 @@ export default function WorkPreview() {
     }
   };
 
+  // 分享（与套系预览 1:1）
+  const handleShare = async () => {
+    if (shareData) { setShareModalOpen(true); return; }
+    setShareBusy(true);
+    try {
+      const r = await http.post('/api/shares', { type: 'work', ref_id: parseInt(id, 10) });
+      setShareData(r.data);
+      setShareModalOpen(true);
+    } catch (e) {
+      alert(e?.response?.data?.error || '生成分享失败');
+    } finally {
+      setShareBusy(false);
+    }
+  };
+
+  const copyShareLink = () => {
+    if (!shareData?.share_url) return;
+    navigator.clipboard?.writeText(shareData.share_url);
+    alert('链接已复制');
+  };
+
   return (
     <div style={{ minHeight: '100vh', background: '#fff', paddingBottom: 'calc(70px + env(safe-area-inset-bottom))' }}>
       {/* 顶部导航（透明背景，悬浮在图片上） */}
@@ -161,10 +183,7 @@ export default function WorkPreview() {
           <IconBack />
         </button>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <button onClick={() => setShowGrid(!showGrid)} style={{ width: 32, height: 32, borderRadius: '50%', background: MRED, border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <IconGrid />
-          </button>
-          <button onClick={() => { /* 分享 */ }} style={{ width: 32, height: 32, borderRadius: '50%', background: MRED, border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <button onClick={handleShare} disabled={shareBusy} style={{ width: 32, height: 32, borderRadius: '50%', background: MRED, border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: shareBusy ? 0.5 : 1 }}>
             <IconShare />
           </button>
           <button onClick={() => setActionSheetOpen(true)} style={{ background: 'none', border: 'none', padding: 4, display: 'flex' }}>
@@ -341,6 +360,29 @@ export default function WorkPreview() {
             <button onClick={() => setActionSheetOpen(false)} style={{ display: 'block', width: 'calc(100% - 32px)', margin: '0 16px', padding: '12px 0', borderRadius: 8, border: 'none', background: '#f5f5f5', fontSize: 15, color: '#333', textAlign: 'center' }}>
               取消
             </button>
+          </div>
+        </>
+      )}
+
+      {/* 分享弹窗（与套系预览 1:1） */}
+      {shareModalOpen && (
+        <>
+          <div onClick={() => setShareModalOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 120, background: 'rgba(0,0,0,0.5)' }} />
+          <div style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', zIndex: 121, width: 'calc(100% - 48px)', maxWidth: 320, background: '#fff', borderRadius: 16, padding: 24, textAlign: 'center' }}>
+            <div style={{ fontSize: 16, fontWeight: 500, color: '#333', marginBottom: 8 }}>分享作品</div>
+            <div style={{ fontSize: 12, color: '#999', marginBottom: 16 }}>扫码或复制链接分享给客户</div>
+            {shareData?.qr_url ? (
+              <>
+                <img src={shareData.qr_url} alt="分享二维码" style={{ width: 180, height: 180, margin: '0 auto', borderRadius: 8, background: '#fff', padding: 8, border: '1px solid ' + MBORDER }} />
+                <div style={{ fontSize: 12, color: '#666', marginTop: 12, wordBreak: 'break-all' }}>{shareData.share_url}</div>
+                <div style={{ display: 'flex', gap: 8, marginTop: 16, justifyContent: 'center' }}>
+                  <button onClick={copyShareLink} style={{ padding: '8px 16px', borderRadius: 20, border: 'none', background: MRED, color: '#fff', fontSize: 14 }}>复制链接</button>
+                  <button onClick={() => setShareModalOpen(false)} style={{ padding: '8px 16px', borderRadius: 20, border: '1px solid ' + MBORDER, background: '#fff', color: '#333', fontSize: 14 }}>关闭</button>
+                </div>
+              </>
+            ) : (
+              <div style={{ color: '#999', fontSize: 14, padding: 32 }}>生成中…</div>
+            )}
           </div>
         </>
       )}
