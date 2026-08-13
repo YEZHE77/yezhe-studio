@@ -38,6 +38,7 @@ export default function Works() {
   const [dragOverId, setDragOverId] = useState(null);
   const [savingSort, setSavingSort] = useState(false);
   const [creating, setCreating] = useState(false); // 点击「添加新客片」后创建草稿中
+  const [busyText, setBusyText] = useState(null); // 全屏操作中遮罩文案（点击后立刻反馈，防止冷启动期“点了没反应”）
 
   // 移动端筛选/排序/菜单状态
   const [openFilter, setOpenFilter] = useState(null); // 'vis' | 'cat' | 'sort'
@@ -156,12 +157,14 @@ export default function Works() {
   async function openNew() {
     if (creating) return;
     setCreating(true);
+    setBusyText('正在创建作品…');
     try {
       const r = await http.post('/api/works', { title: '未命名作品' });
       navigate('/works/' + r.data.id + '/edit');
     } catch (e) {
       alert((e.response && e.response.data && e.response.data.error) || '创建作品失败');
       setCreating(false);
+      setBusyText(null);
     }
   }
 
@@ -193,6 +196,7 @@ export default function Works() {
       reload();
       return;
     }
+    setBusyText('正在加载全部作品…');
     const ctrl = new AbortController();
     const p = new URLSearchParams();
     if (state.tab) p.set('category', state.tab);
@@ -205,7 +209,9 @@ export default function Works() {
       const r = await http.get('/api/works?' + p.toString(), { signal: ctrl.signal });
       setAllItems((r.data.items || []).filter(Boolean));
       setSortMode(true);
+      setBusyText(null);
     } catch (e) {
+      setBusyText(null);
       alert('加载作品失败，无法进入排序模式');
     }
   }
@@ -522,6 +528,14 @@ export default function Works() {
               </>
             )}
           </div>
+        </div>
+      )}
+
+      {/* 全屏操作中遮罩：点击「添加新客片 / 自定义排序」后立刻反馈，防止冷启动期“点了没反应” */}
+      {busyText && (
+        <div className="fixed inset-0 z-[90] bg-white/70 flex flex-col items-center justify-center gap-3">
+          <span className="inline-block w-6 h-6 border-2 border-gray-300 border-t-[#FF7A8A] rounded-full animate-spin" />
+          <span className="text-sm text-gray-600">{busyText}</span>
         </div>
       )}
 
