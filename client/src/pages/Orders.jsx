@@ -1213,11 +1213,23 @@ function OrderCard({ order, onClick, onShare }) {
       </div>
       <div style={{ height: 1, background: '#F0F0F0' }} />
 
-      {/* 备注（截图无编辑入口，仅显示） */}
+      {/* 备注 + 编辑入口（点击编辑跳 /orders/:id/notes） */}
       <div style={{ display: 'flex', alignItems: 'center', padding: '8px 14px' }}>
-        <span style={{ flex: 1, fontSize: 12, color: order.remark ? '#666' : '#bbb', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {order.remark || '无'}
+        <span
+          onClick={(e) => { e.stopPropagation(); nav('/orders/' + order.id + '/notes'); }}
+          style={{ fontSize: 12, color: '#2f7cf6', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 3, flexShrink: 0 }}
+          aria-label="编辑备注"
+          role="button"
+          tabIndex={0}
+        >
+          <IconPencil style={{ width: 12, height: 12 }} />
+          <span>编辑</span>
         </span>
+        {order.remark ? (
+          <span style={{ marginLeft: 6, flex: 1, fontSize: 12, color: '#666', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {order.remark}
+          </span>
+        ) : null}
       </div>
     </button>
   );
