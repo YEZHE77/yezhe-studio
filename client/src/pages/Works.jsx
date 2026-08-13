@@ -456,9 +456,12 @@ export default function Works() {
         </div>
       )}
 
-      {/* 点击外部关闭下拉/菜单的透明层 */}
+      {/* 点击外部关闭下拉/菜单的透明层。
+          ⚠️ 必须 z-[4]（低于顶部栏 zIndex:5）：顶部栏 z-5 创建了 stacking context，
+          其内部菜单 z-50 实际参与顶层比较的层级是 5，若遮罩用 z-30 会盖住菜单，
+          导致点击菜单项命中遮罩、事件丢失（“点了没反应”）。 */}
       {(openFilter || showTopMenu || activeMenuWork) && (
-        <div className="fixed inset-0 z-30" onClick={closeOverlays} />
+        <div className="fixed inset-0 z-[4]" onClick={closeOverlays} />
       )}
 
       {/* 卡片操作菜单（底部浮层） */}
