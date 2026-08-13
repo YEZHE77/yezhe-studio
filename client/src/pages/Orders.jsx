@@ -965,9 +965,9 @@ function OrderCard({ order, onClick, onShare }) {
         )}
       </div>
 
-      {/* 定金 + 尾款 */}
+      {/* 定金 + 尾款（尾款换行，在定金下方） */}
       {amount > 0 && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 12, fontSize: 13 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 12, fontSize: 13 }}>
           <span style={{ color: '#999' }}>定金 <span style={{ color: '#1f2329', fontWeight: 500 }}>{fmtMoney(depositAmt)}</span></span>
           <span style={{ color: remain > 0 ? '#ff7a45' : '#999' }}>尾款 <span style={{ color: remain > 0 ? '#ff7a45' : '#1f2329', fontWeight: 500 }}>{fmtMoney(remain > 0 ? remain : 0)}</span></span>
         </div>
