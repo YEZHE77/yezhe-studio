@@ -235,7 +235,7 @@ export default function PackagePreview() {
       </div>
 
       {/* 标题 + 价格 */}
-      <div style={{ padding: '16px 16px 12px', background: '#fff' }}>
+      <div style={{ padding: '16px 16px 14px', background: '#fff', borderBottom: '1px solid ' + MBORDER }}>
         <div style={{ fontSize: 18, fontWeight: 600, color: '#1f2329', lineHeight: 1.4 }}>{data.name || '未命名套系'}</div>
         <div style={{ marginTop: 10, display: 'flex', alignItems: 'baseline', gap: 10 }}>
           <span style={{ color: MRED, display: 'flex', alignItems: 'baseline', gap: 1 }}>
@@ -247,7 +247,7 @@ export default function PackagePreview() {
       </div>
 
       {/* 信息网格 */}
-      <div style={{ padding: '0 0 16px', background: '#fff' }}>
+      <div style={{ padding: '12px 16px 16px', background: '#fff' }}>
         <div style={{ background: '#fafafa', borderRadius: 12, padding: '20px 16px', display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px 8px', textAlign: 'center' }}>
           {gridItems.map((item, i) => (
             <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
@@ -263,8 +263,8 @@ export default function PackagePreview() {
       </div>
 
       {/* 服务详情 */}
-      <div style={{ padding: '0 16px 24px', background: '#fff' }}>
-        <div style={{ fontSize: 15, fontWeight: 600, color: '#333', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
+      <div style={{ padding: '16px 16px 16px', background: '#fff', borderTop: '1px solid ' + MBORDER }}>
+        <div style={{ fontSize: 15, fontWeight: 600, color: '#333', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
           <span style={{ width: 3, height: 14, background: MRED, borderRadius: 2, display: 'inline-block' }} />
           服务详情：
         </div>
@@ -275,8 +275,8 @@ export default function PackagePreview() {
 
       {/* 温馨提示 */}
       {d.warm_tips ? (
-        <div style={{ padding: '0 16px 24px', background: '#fff' }}>
-          <div style={{ fontSize: 15, fontWeight: 600, color: '#333', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
+        <div style={{ padding: '16px 16px 24px', background: '#fff', borderTop: '1px solid ' + MBORDER }}>
+          <div style={{ fontSize: 15, fontWeight: 600, color: '#333', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
             <span style={{ width: 3, height: 14, background: MRED, borderRadius: 2, display: 'inline-block' }} />
             温馨提示：
           </div>
