@@ -106,13 +106,6 @@ export default function WorkPreview() {
   const brandName = studio?.name || '';
   const brandSlogan = studio?.slogan || '';
   const brandLogo = studio?.logo || '';
-  // 关于我们卡片：简介/品牌故事（intro）+ 微信 / 电话 / 地址（接口驱动，不写死）
-  const brandIntro = studio?.intro || '';
-  const contact = studio?.contact || {};
-  const socials = studio?.socials || {};
-  const wechat = socials.wechat || contact.wechat || '';
-  const phone = socials.phone || contact.phone || '';
-  const address = studio?.address || contact.address || '';
 
   // 幻灯片照片源 = 当前相册
   const slidePhotos = albums.map((a) => img(a.photo_url));
@@ -259,40 +252,6 @@ export default function WorkPreview() {
           </div>
         </div>
       )}
-
-      {/* 关于我们（资料设置：简介/品牌故事 + 微信 / 电话 / 地址） */}
-      {studio ? (
-        <div style={{ padding: '24px 16px 40px', borderTop: `1px solid ${MBORDER}` }}>
-          <div style={{ fontSize: 16, fontWeight: 600, color: '#333', textAlign: 'center', marginBottom: 20 }}>关于我们</div>
-          {(studio.serviceQr || studio.logo) ? (
-            <div style={{ textAlign: 'center', marginBottom: 16 }}>
-              <img src={img(studio.serviceQr || studio.logo)} alt="" style={{ width: 120, height: 120, objectFit: 'contain' }} />
-            </div>
-          ) : null}
-          <div style={{ fontSize: 14, color: '#666', textAlign: 'center', marginBottom: 16 }}>{studio.name}</div>
-          {brandIntro ? (
-            <div style={{ fontSize: 13, color: '#666', textAlign: 'center', lineHeight: 1.7, whiteSpace: 'pre-wrap', marginBottom: 12, padding: '0 4px' }}>{brandIntro}</div>
-          ) : null}
-          {wechat ? (
-            <div style={{ display: 'flex', alignItems: 'center', padding: '10px 0', borderTop: `1px solid ${MBORDER}`, fontSize: 14 }}>
-              <span style={{ color: '#999', width: 60, flexShrink: 0 }}>微信</span>
-              <span style={{ color: '#333', flex: 1 }}>{wechat}</span>
-            </div>
-          ) : null}
-          {phone ? (
-            <div style={{ display: 'flex', alignItems: 'center', padding: '10px 0', borderTop: `1px solid ${MBORDER}`, fontSize: 14 }}>
-              <span style={{ color: '#999', width: 60, flexShrink: 0 }}>电话</span>
-              <span style={{ color: '#333', flex: 1 }}>{phone}</span>
-            </div>
-          ) : null}
-          {address ? (
-            <div style={{ display: 'flex', alignItems: 'center', padding: '10px 0', borderTop: `1px solid ${MBORDER}`, fontSize: 14 }}>
-              <span style={{ color: '#999', width: 60, flexShrink: 0 }}>地址</span>
-              <span style={{ color: '#333', flex: 1 }}>{address}</span>
-            </div>
-          ) : null}
-        </div>
-      ) : null}
 
       {/* 底部品牌栏（模拟截图底部） */}
       <div style={{
