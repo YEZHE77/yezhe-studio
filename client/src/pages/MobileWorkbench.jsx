@@ -339,20 +339,20 @@ export default function MobileWorkbench() {
             <div style={{ fontSize: 11, color: '#BBBBBB', marginTop: 6 }}>余额</div>
           </div>
           <div style={{ width: 1, background: LINE, margin: '14px 0' }} />
-          {/* 已付定金：点击跳待办事项并定位到「已付定金」Tab */}
+          {/* 已付定金：点击跳待办事项并定位到「等待拍摄」Tab（deposit=已付定金=等待拍摄） */}
           <button
             type="button"
-            onClick={() => nav('/orders?tab=deposit')}
+            onClick={() => nav('/todo?tab=waiting')}
             style={{ flex: 1, textAlign: 'center', padding: '14px 0 12px', background: 'none', border: 'none' }}
           >
             <div style={{ fontSize: 24, color: TEXT, lineHeight: 1 }}>{depositCount}</div>
             <div style={{ fontSize: 11, color: '#BBBBBB', marginTop: 6 }}>已付定金</div>
           </button>
           <div style={{ width: 1, background: LINE, margin: '14px 0' }} />
-          {/* 待拍摄：跳转待办事项页并自动定位到「等待拍摄」Tab */}
+          {/* 等待拍摄：跳转待办事项页并自动定位到「等待拍摄」Tab */}
           <button
             type="button"
-            onClick={() => nav('/orders?tab=waitingShoot')}
+            onClick={() => nav('/todo?tab=waiting')}
             style={{ flex: 1, textAlign: 'center', padding: '14px 0 12px', background: 'none', border: 'none' }}
           >
             <div style={{ fontSize: 24, color: TEXT, lineHeight: 1 }}>{shootCount}</div>

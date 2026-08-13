@@ -2,7 +2,7 @@
 // 顶部日期卡片（公历 + 农历）+ 横向滚动分类 Tab（订单状态） + 过滤后的订单列表
 // 数据源：GET /api/stats（计数）+ GET /api/orders?statuses=...（列表）+ GET /api/schedules/lunar?month=YYYY-MM（农历）
 import React, { useEffect, useMemo, useState, useCallback, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import http from '../api.js';
 
 const GREEN = '#7ECDBB';
@@ -60,8 +60,10 @@ function todayInfo() {
 
 export default function Todo() {
   const nav = useNavigate();
+  const [searchParams] = useSearchParams();
+  const initialTab = searchParams.get('tab');
   const [counts, setCounts] = useState({ unpaid: 0, waiting: 0, shot: 0, selecting: 0, retouching: 0, delivered: 0 });
-  const [activeKey, setActiveKey] = useState('waiting');
+  const [activeKey, setActiveKey] = useState(TAB_DEFS.some((t) => t.key === initialTab) ? initialTab : 'waiting');
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
   const [lunar, setLunar] = useState('');
