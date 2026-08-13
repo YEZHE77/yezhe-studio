@@ -66,25 +66,66 @@ router.get('/', authRequired, async (req, res) => {
   try {
     const page = Math.max(1, parseInt(req.query.page, 10) || 1);
     const pageSize = Math.min(100, Math.max(1, parseInt(req.query.pageSize, 10) || 12));
-    const { status, q, executor, sort, shootFrom, shootTo } = req.query;
+    const { status, statuses, q, executor, executorIds, types, sort, shootFrom, shootTo, orderFrom, orderTo } = req.query;
     const where = ['cancelled = 0', 'is_deleted = 0'];
     const params = [];
-    // 状态：unpaid 是「未付定金」意向态，deposit_paid 是「已付定金」，
-    // 两者映射到 payment_status；其余按 status 列
-    if (status) {
-      if (status === 'unpaid') { where.push('payment_status = ?'); params.push('unpaid'); }
-      else if (status === 'deposit_paid') { where.push('payment_status = ?'); params.push('deposit'); }
-      else { where.push('status = ?'); params.push(status); }
+    // 状态过滤：单选（status）兼容旧链接；多选（statuses）逗号分隔，每个元素按同样的映射规则处理
+    const statusList = [];
+    if (statuses) statusList.push(...String(statuses).split(',').filter(Boolean));
+    if (status) statusList.push(String(status));
+    if (statusList.length) {
+      const ors = [];
+      for (const s of statusList) {
+        if (s === 'all' || s === '') continue;
+        if (s === 'unpaid') { ors.push('payment_status = ?'); params.push('unpaid'); }
+        else if (s === 'pending_confirm') { ors.push('(status = ? AND date_tbd = 1)'); params.push('deposit'); }
+        else if (s === 'tbd_date') { ors.push('date_tbd = 1'); }
+        else if (s === 'unpaid_deposit') { ors.push('payment_status = ?'); params.push('unpaid'); }
+        else if (s === 'has_balance') { ors.push('balance > 0'); }
+        else if (s === 'waiting_shoot') { ors.push('status = ?'); params.push('deposit'); }
+        else if (s === 'waiting_raw') { ors.push('status = ?'); params.push('shot'); }
+        else if (s === 'selecting') { ors.push('status = ?'); params.push('selecting'); }
+        else if (s === 'waiting_retouch') { ors.push('status = ?'); params.push('retouching'); }
+        else if (s === 'downloading') { ors.push('status = ?'); params.push('delivered'); }
+        else if (s === 'pending_review') { ors.push('status = ?'); params.push('completed'); }
+        else if (s === 'completed') { ors.push('status = ?'); params.push('completed'); }
+        else if (s === 'cancelled') { ors.push('status = ?'); params.push('cancelled'); }
+        else if (s === 'deposit_paid') { ors.push('payment_status = ?'); params.push('deposit'); }
+        else { ors.push('status = ?'); params.push(s); }
+      }
+      if (ors.length) where.push('(' + ors.join(' OR ') + ')');
     }
     if (q) {
       // 搜索：客户姓名 / 订单编号 / 订单名称 / 套系名(package_snapshot 内含 name)
       where.push('(customer_name LIKE ? OR order_no LIKE ? OR COALESCE(order_name, \'\') LIKE ? OR COALESCE(package_snapshot, \'\') LIKE ?)');
       params.push('%' + q + '%', '%' + q + '%', '%' + q + '%', '%' + q + '%');
     }
-    // 执行人：executors 为 JSON 数组，按 id 精准匹配（避免 1 命中 11/12…）
-    if (executor) {
-      where.push('executors LIKE ?');
-      params.push('%"id":' + Number(executor) + ',"name"%');
+    // 执行人过滤：单选（executor）兼容旧；多选（executorIds）逗号分隔，按 executors JSON 中的 id 精准匹配
+    const execList = [];
+    if (executorIds) execList.push(...String(executorIds).split(',').filter(Boolean));
+    if (executor) execList.push(String(executor));
+    if (execList.length) {
+      const ors = [];
+      for (const eid of execList) {
+        const num = Number(eid);
+        if (!Number.isFinite(num)) continue;
+        ors.push('executors LIKE ?');
+        params.push('%"id":' + num + ',"name"%');
+      }
+      if (ors.length) where.push('(' + ors.join(' OR ') + ')');
+    }
+    // 订单类型过滤（普通/促销/拼团）：前端多选逗号分隔；尚未落库该字段时存根为全部匹配
+    const typeList = types ? String(types).split(',').filter(Boolean) : [];
+    if (typeList.length && !typeList.includes('all')) {
+      // 套系级营销字段 marketing JSON 含 type（normal/promo/group）；无字段时不过滤
+      // 暂以 package_snapshot LIKE 兼容：normal → 'normal'；promo → 'promo'；group → 'group'
+      const ors = [];
+      for (const t of typeList) {
+        if (t === 'normal') ors.push("COALESCE(package_snapshot,'') LIKE '%\"type\":\"normal\"%'");
+        else if (t === 'promo') ors.push("COALESCE(package_snapshot,'') LIKE '%\"type\":\"promo\"%'");
+        else if (t === 'group') ors.push("COALESCE(package_snapshot,'') LIKE '%\"type\":\"group\"%'");
+      }
+      if (ors.length) where.push('(' + ors.join(' OR ') + ')');
     }
     // 子账号权限：摄影师仅看到分配给自己的订单（executors JSON 按 name 匹配）；管理员全部可见
     if (req.user && req.user.role === 'photographer') {
@@ -97,6 +138,8 @@ router.get('/', authRequired, async (req, res) => {
     }
     if (shootFrom) { where.push('shoot_date >= ?'); params.push(shootFrom); }
     if (shootTo) { where.push('shoot_date <= ?'); params.push(shootTo); }
+    if (orderFrom) { where.push('created_at >= ?'); params.push(orderFrom + 'T00:00:00Z'); }
+    if (orderTo) { where.push('created_at <= ?'); params.push(orderTo + 'T23:59:59Z'); }
     const whereSql = where.join(' AND ');
 
     const totalRow = await get('SELECT COUNT(*) AS c FROM orders WHERE ' + whereSql, params);
@@ -105,6 +148,8 @@ router.get('/', authRequired, async (req, res) => {
     let orderSql = 'id DESC';
     if (sort === 'shoot_date') orderSql = "(shoot_date IS NULL OR shoot_date = '') ASC, shoot_date ASC";
     else if (sort === 'amount') orderSql = 'total_amount DESC';
+    else if (sort === 'order_time') orderSql = 'id DESC';
+    else if (sort === 'recent' || sort === 'updated') orderSql = 'id DESC';
 
     const rows = await query(
       `SELECT *,

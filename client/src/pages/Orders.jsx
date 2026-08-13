@@ -88,7 +88,17 @@ const IconTrash = (p) => (
 export default function Orders() {
   const [params, setParams] = useSearchParams();
   const nav = useNavigate();
-  const [state, setState] = useViewState('orders', { status: '', q: '', executor: '', sort: 'recent', shootFrom: '', shootTo: '' });
+  const [state, setState] = useViewState('orders', {
+    statuses: [],
+    q: '',
+    executorIds: [],
+    sort: 'recent',
+    types: [],
+    shootFrom: '',
+    shootTo: '',
+    orderFrom: '',
+    orderTo: ''
+  });
 
   const [list, setList] = useState([]);
   const [listTotal, setListTotal] = useState(0);
@@ -140,12 +150,15 @@ export default function Orders() {
       }
       const nextPage = reset ? 1 : pageRef.current + 1;
       const p = new URLSearchParams();
-      if (state.status) p.set('status', state.status);
+      if (state.statuses && state.statuses.length) p.set('statuses', state.statuses.join(','));
       if (state.q) p.set('q', state.q);
-      if (state.executor) p.set('executor', state.executor);
+      if (state.executorIds && state.executorIds.length) p.set('executorIds', state.executorIds.join(','));
       if (state.sort && state.sort !== 'recent') p.set('sort', state.sort);
+      if (state.types && state.types.length && !state.types.includes('all')) p.set('types', state.types.join(','));
       if (state.shootFrom) p.set('shootFrom', state.shootFrom);
       if (state.shootTo) p.set('shootTo', state.shootTo);
+      if (state.orderFrom) p.set('orderFrom', state.orderFrom);
+      if (state.orderTo) p.set('orderTo', state.orderTo);
       p.set('page', nextPage);
       p.set('pageSize', pageSize);
       const r = await http.get('/api/orders?' + p.toString(), { signal: ctrl.signal });
@@ -270,11 +283,13 @@ export default function Orders() {
   const doExport = () => {
     const base = (http.defaults.baseURL || '').replace(/\/+$/, '');
     const p = new URLSearchParams();
-    if (state.status) p.set('status', state.status);
+    if (state.statuses && state.statuses.length) p.set('statuses', state.statuses.join(','));
     if (state.q) p.set('q', state.q);
-    if (state.executor) p.set('executor', state.executor);
+    if (state.executorIds && state.executorIds.length) p.set('executorIds', state.executorIds.join(','));
     if (state.shootFrom) p.set('shootFrom', state.shootFrom);
     if (state.shootTo) p.set('shootTo', state.shootTo);
+    if (state.orderFrom) p.set('orderFrom', state.orderFrom);
+    if (state.orderTo) p.set('orderTo', state.orderTo);
     const qs = p.toString();
     window.open(base + '/api/orders/export' + (qs ? '?' + qs : ''), '_blank');
   };
@@ -336,11 +351,11 @@ export default function Orders() {
         <div className="hidden sm:block flex-1" />
 
         <span className="text-xs whitespace-nowrap" style={{ color: '#fff' }}>状态</span>
-        <select value={trash ? '__trash' : state.status}
+        <select value={trash ? '__trash' : (state.statuses?.[0] || '')}
           onChange={(e) => {
             const v = e.target.value;
-            if (v === '__trash') { setTrash(true); setFilter('status', ''); return; }
-            setTrash(false); setFilter('status', v);
+            if (v === '__trash') { setTrash(true); setFilter('statuses', []); return; }
+            setTrash(false); setFilter('statuses', v ? [v] : []);
           }}
           className="px-3 py-1.5 rounded text-sm outline-none border-0"
           style={{ background: '#fff', color: '#333' }}>
@@ -357,7 +372,7 @@ export default function Orders() {
         </select>
 
         <span className="text-xs whitespace-nowrap" style={{ color: '#fff' }}>执行者</span>
-        <select value={state.executor} onChange={(e) => setFilter('executor', e.target.value)}
+        <select value={state.executorIds?.[0] || ''} onChange={(e) => setFilter('executorIds', e.target.value ? [Number(e.target.value)] : [])}
           className="px-3 py-1.5 rounded text-sm outline-none border-0"
           style={{ background: '#fff', color: '#333' }}>
           <option value="">所有人</option>
@@ -665,9 +680,33 @@ const ORDER_STATUS_OPTIONS = [
 ];
 
 const SORT_OPTIONS = [
-  { value: 'recent', label: '最近操作' },
+  { value: 'order_time', label: '下单时间' },
   { value: 'shoot_date', label: '拍摄时间' },
-  { value: 'amount', label: '订单金额' }
+  { value: 'recent', label: '最近操作' }
+];
+
+// 筛选抽屉 pill 选项（与参考图 1:1 对齐）
+const STATUS_PILLS = [
+  { value: 'all', label: '所有订单' },
+  { value: 'pending_confirm', label: '尚未确认预约' },
+  { value: 'tbd_date', label: '档期待定' },
+  { value: 'unpaid_deposit', label: '未支付定金' },
+  { value: 'has_balance', label: '未结算尾款' },
+  { value: 'waiting_shoot', label: '等待拍摄' },
+  { value: 'waiting_raw', label: '等待上传原片' },
+  { value: 'selecting', label: '等待选片' },
+  { value: 'waiting_retouch', label: '等待上传精修' },
+  { value: 'downloading', label: '客户下载中' },
+  { value: 'pending_review', label: '待评价' },
+  { value: 'completed', label: '订单已完成' },
+  { value: 'cancelled', label: '订单已取消' }
+];
+
+const TYPE_PILLS = [
+  { value: 'all', label: '全部订单' },
+  { value: 'normal', label: '普通订单' },
+  { value: 'promo', label: '促销订单' },
+  { value: 'group', label: '拼团订单' }
 ];
 
 const AVATAR_BG = ['#7ECDBB', '#F5A623', '#2DB7F5', '#FF8A8A', '#9B7ED8', '#5A5A5A'];
@@ -701,6 +740,26 @@ function MobileOrderCenterView({ stats, list, listTotal, state, setState, refres
   const [filterAnim, setFilterAnim] = useState(false);
   const openFilter = () => { setFilterOpen(true); requestAnimationFrame(() => setFilterAnim(true)); };
   const closeFilter = () => { setFilterAnim(false); setTimeout(() => setFilterOpen(false), 300); };
+  // 抽屉内分区的展开/折叠（默认全部展开，对齐参考图 7504）
+  const [filterSections, setFilterSections] = useState({
+    sort: true, executor: true, status: true, type: true, shootDate: true, orderDate: true
+  });
+  const toggleFilterSection = (k) => setFilterSections((p) => ({ ...p, [k]: !p[k] }));
+  // 抽屉临时状态（重置/完成期间不直接污染 viewState，点完成才落地）
+  const [filterDraft, setFilterDraft] = useState(null);
+  useEffect(() => {
+    if (filterOpen && !filterDraft) setFilterDraft({
+      sort: state.sort,
+      executorIds: state.executorIds || [],
+      statuses: state.statuses || [],
+      types: state.types || [],
+      shootFrom: state.shootFrom || '',
+      shootTo: state.shootTo || '',
+      orderFrom: state.orderFrom || '',
+      orderTo: state.orderTo || ''
+    });
+    if (!filterOpen) setFilterDraft(null);
+  }, [filterOpen]);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [sheetType, setSheetType] = useState(''); // 'status' | 'sort'
   const [qrPopover, setQrPopover] = useState(null);
@@ -710,8 +769,8 @@ function MobileOrderCenterView({ stats, list, listTotal, state, setState, refres
 
   const openSheet = (type) => { setSheetType(type); setSheetOpen(true); };
   const selectStatus = (v) => {
-    if (v === '__trash') { setTrash(true); setState((s) => ({ ...s, status: '' })); }
-    else { setTrash(false); setState((s) => ({ ...s, status: v })); }
+    if (v === '__trash') { setTrash(true); setState((s) => ({ ...s, statuses: [] })); }
+    else { setTrash(false); setState((s) => ({ ...s, statuses: v ? [v] : [] })); }
     setSheetOpen(false);
   };
   const selectSort = (v) => { setFilter('sort', v); setSheetOpen(false); };
@@ -730,7 +789,7 @@ function MobileOrderCenterView({ stats, list, listTotal, state, setState, refres
   };
   const closeQrPopover = () => setQrPopover(null);
 
-  const activeStatusLabel = ORDER_STATUS_OPTIONS.find((x) => x.value === (trash ? '__trash' : state.status))?.label || '全部订单';
+  const activeStatusLabel = ORDER_STATUS_OPTIONS.find((x) => x.value === (trash ? '__trash' : (state.statuses?.[0] || '')))?.label || '全部订单';
   const activeSortLabel = SORT_OPTIONS.find((x) => x.value === state.sort)?.label || '最近操作';
 
   return (
@@ -822,7 +881,7 @@ function MobileOrderCenterView({ stats, list, listTotal, state, setState, refres
           }}>
             <div style={{ textAlign: 'center', fontSize: 15, color: '#999', marginBottom: 8 }}>{sheetType === 'status' ? '订单状态' : '排序方式'}</div>
             {(sheetType === 'status' ? ORDER_STATUS_OPTIONS : SORT_OPTIONS).map((opt) => {
-              const active = sheetType === 'status' ? (trash ? '__trash' : state.status) === opt.value : state.sort === opt.value;
+              const active = sheetType === 'status' ? (trash ? '__trash' : (state.statuses?.[0] || '')) === opt.value : state.sort === opt.value;
               return (
                 <button key={opt.value} onClick={() => sheetType === 'status' ? selectStatus(opt.value) : selectSort(opt.value)} style={{
                   width: '100%', padding: '14px 20px', border: 'none', background: 'none',
@@ -837,50 +896,190 @@ function MobileOrderCenterView({ stats, list, listTotal, state, setState, refres
         </div>
       )}
 
-      {/* 筛选抽屉：从右向左滑出，内部可滚动 */}
-      {filterOpen && (
-        <div className="fixed inset-0 z-[60]" style={{ background: 'rgba(0,0,0,0.35)' }} onClick={closeFilter}>
-          <div onClick={(e) => e.stopPropagation()} style={{
-            position: 'absolute', top: 0, right: 0, bottom: 0, width: 280, background: '#fff',
-            display: 'flex', flexDirection: 'column',
-            transform: filterAnim ? 'translateX(0)' : 'translateX(100%)', transition: 'transform 300ms ease',
-            boxShadow: '-4px 0 20px rgba(0,0,0,0.12)'
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px', paddingTop: 'calc(16px + env(safe-area-inset-top))', borderBottom: '1px solid #F5F5F5', flexShrink: 0 }}>
-              <span style={{ fontSize: 16, color: '#1f2329', fontWeight: 500 }}>筛选</span>
-              <button onClick={closeFilter} style={{ background: 'none', border: 'none', padding: 4 }}><IconClose /></button>
-            </div>
-            <div style={{ flex: 1, overflowY: 'auto', padding: '16px' }}>
-              <div style={{ fontSize: 14, color: '#666', marginBottom: 8 }}>执行者</div>
-              <select value={state.executor} onChange={(e) => setFilter('executor', e.target.value)} style={{
-                width: '100%', padding: '10px', borderRadius: 8, border: '1px solid #E5E5E5', fontSize: 14, marginBottom: 16
-              }}>
-                <option value="">所有人</option>
-                {personnel.map((p) => (<option key={p.id} value={p.id}>{p.name}</option>))}
-              </select>
-              <div style={{ fontSize: 14, color: '#666', marginBottom: 8 }}>拍摄日期</div>
-              <input type="date" value={state.shootFrom} onChange={(e) => setFilter('shootFrom', e.target.value)} style={{
-                width: '100%', padding: '10px', borderRadius: 8, border: '1px solid #E5E5E5', fontSize: 14, marginBottom: 8
-              }} />
-              <input type="date" value={state.shootTo} onChange={(e) => setFilter('shootTo', e.target.value)} style={{
-                width: '100%', padding: '10px', borderRadius: 8, border: '1px solid #E5E5E5', fontSize: 14, marginBottom: 16
-              }} />
-              {/* 占位扩展区域：保证长内容可向下滚动 */}
-              <div style={{ height: 1 }} />
-            </div>
-            <div style={{ padding: '12px 16px calc(12px + env(safe-area-inset-bottom))', borderTop: '1px solid #F5F5F5', flexShrink: 0, background: '#fff' }}>
-              <button onClick={() => { setFilter('executor', ''); setFilter('shootFrom', ''); setFilter('shootTo', ''); }} style={{
-                width: '100%', padding: '12px 0', borderRadius: 8, border: '1px solid #E5E5E5',
-                background: '#fff', color: '#666', fontSize: 14, marginBottom: 10
-              }}>清除筛选</button>
-              <button onClick={closeFilter} style={{
-                width: '100%', padding: '12px 0', borderRadius: 8, border: 'none',
-                background: '#FA5151', color: '#fff', fontSize: 14
-              }}>确定</button>
+      {/* 筛选抽屉：右滑动画 + 6 个可折叠分区（订单排序/执行人/订单状态/订单类型/拍摄日期/下单时间） */}
+      {filterOpen && filterDraft && (() => {
+        const PINK = '#FA5151';
+        const PINK_BG = '#FFF0EF';
+        const toggleArr = (k, v) => setFilterDraft((d) => {
+          const arr = d[k] || [];
+          return { ...d, [k]: arr.includes(v) ? arr.filter((x) => x !== v) : [...arr, v] };
+        });
+        const resetDraft = () => setFilterDraft({
+          sort: 'recent', executorIds: [], statuses: [], types: [],
+          shootFrom: '', shootTo: '', orderFrom: '', orderTo: ''
+        });
+        const applyDraft = () => {
+          setState((s) => ({
+            ...s,
+            sort: filterDraft.sort,
+            executorIds: filterDraft.executorIds,
+            statuses: filterDraft.statuses,
+            types: filterDraft.types,
+            shootFrom: filterDraft.shootFrom,
+            shootTo: filterDraft.shootTo,
+            orderFrom: filterDraft.orderFrom,
+            orderTo: filterDraft.orderTo
+          }));
+          closeFilter();
+        };
+        const Section = ({ k, title, children }) => (
+          <div style={{ background: '#fff', borderBottom: '1px solid #F5F5F5' }}>
+            <button onClick={() => toggleFilterSection(k)}
+              style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', background: 'none', border: 'none', color: '#1f2329' }}>
+              <span style={{ fontSize: 15, fontWeight: 500 }}>{title}</span>
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#999" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ transform: filterSections[k] ? 'rotate(0deg)' : 'rotate(180deg)', transition: 'transform .2s' }}>
+                <path d="m6 15 6-6 6 6" />
+              </svg>
+            </button>
+            {filterSections[k] && <div style={{ padding: '4px 16px 16px' }}>{children}</div>}
+          </div>
+        );
+        const Pill = ({ active, onClick, children }) => (
+          <button onClick={onClick}
+            style={{
+              padding: '8px 14px', borderRadius: 20, fontSize: 13,
+              border: `1px solid ${active ? PINK : '#E8E8E8'}`,
+              background: active ? PINK_BG : '#F7F7F7',
+              color: active ? PINK : '#666', cursor: 'pointer', whiteSpace: 'nowrap'
+            }}>{children}</button>
+        );
+        return (
+          <div className="fixed inset-0 z-[60]" style={{ background: 'rgba(0,0,0,0.35)' }} onClick={closeFilter}>
+            <div onClick={(e) => e.stopPropagation()} style={{
+              position: 'absolute', top: 0, right: 0, bottom: 0, width: 320, maxWidth: '90vw',
+              background: '#F7F7F7', display: 'flex', flexDirection: 'column',
+              transform: filterAnim ? 'translateX(0)' : 'translateX(100%)', transition: 'transform 300ms ease',
+              boxShadow: '-4px 0 20px rgba(0,0,0,0.12)'
+            }}>
+              {/* 顶部：返回箭头 */}
+              <div style={{ display: 'flex', alignItems: 'center', padding: '12px 16px', background: '#fff', flexShrink: 0, borderBottom: '1px solid #F5F5F5' }}>
+                <button onClick={closeFilter} style={{ background: 'none', border: 'none', padding: 4, display: 'flex', alignItems: 'center' }}>
+                  <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#1f2329" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M15 18l-6-6 6-6" />
+                  </svg>
+                </button>
+              </div>
+
+              {/* 可滚动内容区 */}
+              <div style={{ flex: 1, overflowY: 'auto' }}>
+                {/* 订单排序 */}
+                <Section k="sort" title="订单排序">
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+                    {SORT_OPTIONS.map((o) => (
+                      <Pill key={o.value} active={filterDraft.sort === o.value} onClick={() => setFilterDraft((d) => ({ ...d, sort: o.value }))}>
+                        {o.label}
+                      </Pill>
+                    ))}
+                  </div>
+                </Section>
+
+                {/* 执行人 */}
+                <Section k="executor" title="执行人">
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                    <span style={{ fontSize: 12, color: '#999' }}>共 {personnel.length} 位</span>
+                    <button onClick={() => setFilterDraft((d) => ({ ...d, executorIds: d.executorIds.length === personnel.length ? [] : personnel.map((p) => p.id) }))}
+                      style={{ padding: '4px 12px', borderRadius: 14, border: '1px solid #E8E8E8', background: '#fff', color: '#666', fontSize: 12 }}>
+                      {filterDraft.executorIds.length === personnel.length ? '取消全选' : '全选'}
+                    </button>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                    {personnel.length === 0 && <div style={{ fontSize: 13, color: '#999' }}>暂无人员</div>}
+                    {personnel.map((p) => {
+                      const on = filterDraft.executorIds.includes(p.id);
+                      return (
+                        <button key={p.id} onClick={() => toggleArr('executorIds', p.id)}
+                          style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'none', border: 'none', padding: 0, textAlign: 'left' }}>
+                          {p.avatar
+                            ? <img src={p.avatar} className="rounded-full" style={{ width: 32, height: 32, objectFit: 'cover' }} alt="" />
+                            : <span style={{ width: 32, height: 32, borderRadius: '50%', background: '#333', color: '#fff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 13 }}>{(p.name || '?').slice(0, 1)}</span>}
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: 14, color: '#1f2329' }}>{p.name}</div>
+                            {p.role ? <div style={{ fontSize: 11, color: '#999' }}>{p.role === 'admin' ? '主账号' : p.role === 'photographer' ? '摄影师' : p.role === 'finance' ? '财务' : p.role}</div> : null}
+                          </div>
+                          <span style={{
+                            width: 20, height: 20, borderRadius: '50%', display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                            background: on ? PINK : 'transparent', border: `1.5px solid ${on ? PINK : '#D8D8D8'}`
+                          }}>
+                            {on && <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </Section>
+
+                {/* 订单状态 */}
+                <Section k="status" title="订单状态">
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+                    {STATUS_PILLS.map((o) => {
+                      const on = o.value === 'all' ? filterDraft.statuses.length === 0 : filterDraft.statuses.includes(o.value);
+                      return (
+                        <Pill key={o.value} active={on} onClick={() => {
+                          if (o.value === 'all') setFilterDraft((d) => ({ ...d, statuses: [] }));
+                          else toggleArr('statuses', o.value);
+                        }}>
+                          {o.label}
+                        </Pill>
+                      );
+                    })}
+                  </div>
+                </Section>
+
+                {/* 订单类型 */}
+                <Section k="type" title="订单类型">
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+                    {TYPE_PILLS.map((o) => {
+                      const on = o.value === 'all' ? filterDraft.types.length === 0 : filterDraft.types.includes(o.value);
+                      return (
+                        <Pill key={o.value} active={on} onClick={() => {
+                          if (o.value === 'all') setFilterDraft((d) => ({ ...d, types: [] }));
+                          else toggleArr('types', o.value);
+                        }}>
+                          {o.label}
+                        </Pill>
+                      );
+                    })}
+                  </div>
+                </Section>
+
+                {/* 拍摄日期 */}
+                <Section k="shootDate" title="拍摄日期">
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                    <input type="date" value={filterDraft.shootFrom} onChange={(e) => setFilterDraft((d) => ({ ...d, shootFrom: e.target.value }))}
+                      style={{ flex: 1, height: 36, padding: '0 10px', borderRadius: 18, border: '1px solid #E8E8E8', background: '#F7F7F7', fontSize: 13, color: filterDraft.shootFrom ? '#333' : '#999', outline: 'none' }} />
+                    <span style={{ color: '#999' }}>—</span>
+                    <input type="date" value={filterDraft.shootTo} onChange={(e) => setFilterDraft((d) => ({ ...d, shootTo: e.target.value }))}
+                      style={{ flex: 1, height: 36, padding: '0 10px', borderRadius: 18, border: '1px solid #E8E8E8', background: '#F7F7F7', fontSize: 13, color: filterDraft.shootTo ? '#333' : '#999', outline: 'none' }} />
+                  </div>
+                </Section>
+
+                {/* 下单时间 */}
+                <Section k="orderDate" title="下单时间">
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                    <input type="date" value={filterDraft.orderFrom} onChange={(e) => setFilterDraft((d) => ({ ...d, orderFrom: e.target.value }))}
+                      style={{ flex: 1, height: 36, padding: '0 10px', borderRadius: 18, border: '1px solid #E8E8E8', background: '#F7F7F7', fontSize: 13, color: filterDraft.orderFrom ? '#333' : '#999', outline: 'none' }} />
+                    <span style={{ color: '#999' }}>—</span>
+                    <input type="date" value={filterDraft.orderTo} onChange={(e) => setFilterDraft((d) => ({ ...d, orderTo: e.target.value }))}
+                      style={{ flex: 1, height: 36, padding: '0 10px', borderRadius: 18, border: '1px solid #E8E8E8', background: '#F7F7F7', fontSize: 13, color: filterDraft.orderTo ? '#333' : '#999', outline: 'none' }} />
+                  </div>
+                </Section>
+              </div>
+
+              {/* 底部：重置 / 完成 */}
+              <div style={{ display: 'flex', flexShrink: 0, borderTop: '1px solid #F5F5F5', background: '#fff' }}>
+                <button onClick={resetDraft}
+                  style={{ flex: 1, padding: '16px 0 calc(16px + env(safe-area-inset-bottom))', background: '#fff', color: '#666', border: 'none', fontSize: 15, borderRight: '1px solid #F5F5F5' }}>
+                  重置
+                </button>
+                <button onClick={applyDraft}
+                  style={{ flex: 1.4, padding: '16px 0 calc(16px + env(safe-area-inset-bottom))', background: PINK, color: '#fff', border: 'none', fontSize: 15 }}>
+                  完成
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* 订单二维码悬浮弹窗 */}
       {qrPopover && (
