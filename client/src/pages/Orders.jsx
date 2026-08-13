@@ -8,22 +8,21 @@ import OrderCreateModal from '../components/OrderCreateModal.jsx';
    订单中心（列表页）
    —— 本页仅承载「列表 + 筛选 + 新建」，订单详情走独立路由 /orders/:id。
    —— 视觉规范（严格按设计稿取色，禁止改动）：
-        深色筛选栏 #2c2c2c ／ 预警条底 #fff3e0 ／ 金额与预警红字 #ff3333
+        深色筛选栏 #2c2c2c ／ 预警条底 #fff3e0 ／ 金额与预警红字 #ff3333 ／ 移动端深色导航 #1f1f1f
         未结算尾款标签 #e2d2c2 ／「设置>」链接 #ff8822 ／ 页面底色 #ffffff
    —— 注意：全局 index.css 把 .text-white 覆写成了深灰（浅色主题迁移），
         因此深色区域的白字一律用内联 style={{color:'#fff'}}，不要用 text-white。
    —— 所有统计数字（订单总数 / 到期 / 选片超时）均由后端接口返回，禁止硬编码。
+   移动端顶部深色 #1f1f1f / 未结算尾款 #ff3333 红底白字 / 卡片圆角 12 / 卡片间距 12。
    ========================================================================== */
 
 const STATUS_LABEL = {
-  deposit: '已付定金', shot: '已拍摄', selecting: '选片中',
-  retouching: '精修中', delivered: '已交付', completed: '已完成', cancelled: '已作废'
+  deposit: '等待拍摄', shot: '已拍摄', selecting: '选片中',
+  retouching: '精修中', delivered: '已交付', completed: '已完成', cancelled: '已关闭'
 };
 
-// 首阶段 status 恒为 deposit（订单已建立），但收款状态可能仍是「未付定金」，
-// 直接显示「已付定金」会误导，这里按 payment_status 做展示层修正（不改后端阶段机）。
+// 首阶段 status 恒为 deposit（订单已建立），收款未到时展示为「等待拍摄」（与取消态展示统一为灰色文案）
 function stageLabel(o) {
-  if (o && o.status === 'deposit' && o.payment_status === 'unpaid') return '未付定金';
   return STATUS_LABEL[o && o.status] || '历史订单';
 }
 
@@ -467,8 +466,8 @@ export default function Orders() {
                     <div className="flex items-center gap-2 mt-1.5 flex-wrap">
                       <span style={{ color: '#ff3333' }}>¥{amount.toLocaleString()}</span>
                       {remain > 0 && (
-                        <span className="px-1.5 py-0.5 rounded text-[11px]"
-                          style={{ background: '#e2d2c2', color: '#6b5744' }}>未结算尾款</span>
+                        <span className="px-2 py-0.5 rounded-lg text-[11px] text-white"
+                          style={{ background: '#ff3333' }}>未结算尾款</span>
                       )}
                     </div>
                     <div className="flex items-center gap-1 mt-1.5 text-[12px]" style={{ color: '#6b7280' }}>
@@ -717,13 +716,13 @@ function avatarColor(name) {
 }
 
 const IconBack = () => (
-  <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#1f2329" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
+  <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
 );
 const IconSearch = () => (
-  <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#1f2329" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /></svg>
+  <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /></svg>
 );
 const IconSetting = () => (
-  <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#1f2329" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" /></svg>
+  <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" /></svg>
 );
 const IconQr = () => (
   <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" /><rect x="14" y="14" width="7" height="7" /><rect x="3" y="14" width="7" height="7" /></svg>
@@ -794,14 +793,14 @@ function MobileOrderCenterView({ stats, list, listTotal, state, setState, refres
 
   return (
     <div style={{ minHeight: '100vh', background: '#F8F8F8', paddingBottom: 'calc(24px + env(safe-area-inset-bottom))' }}>
-      {/* 顶部导航 */}
+      {/* 顶部导航：深色 #1f1f1f 背景 + 白色图标文字（对齐 IMG_7521） */}
       <div style={{
         position: 'sticky', top: 0, zIndex: 50,
-        height: 48, background: '#fff', borderBottom: '1px solid #EFEFEF',
+        height: 48, background: '#1f1f1f',
         display: 'flex', alignItems: 'center', padding: '0 12px'
       }}>
         <button onClick={() => nav('/')} style={{ background: 'none', border: 'none', padding: 4, display: 'flex', alignItems: 'center' }}><IconBack /></button>
-        <div style={{ flex: 1, textAlign: 'center', fontSize: 16, color: '#1f2329' }}>订单中心</div>
+        <div style={{ flex: 1, textAlign: 'center', fontSize: 16, color: '#fff' }}>订单中心</div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <button onClick={() => setSearchOpen(true)} style={{ background: 'none', border: 'none', padding: 4, display: 'flex', alignItems: 'center' }}><IconSearch /></button>
           <button onClick={openFilter} style={{ background: 'none', border: 'none', padding: 4, display: 'flex', alignItems: 'center' }}><IconSetting /></button>
@@ -829,13 +828,13 @@ function MobileOrderCenterView({ stats, list, listTotal, state, setState, refres
         padding: '10px 0', borderBottom: '1px solid #EFEFEF'
       }}>
         <button onClick={() => openSheet('status')} style={{ background: 'none', border: 'none', fontSize: 14, color: '#333', display: 'flex', alignItems: 'center', gap: 4 }}>
-          {activeStatusLabel}<span style={{ fontSize: 10, color: '#999' }}>▼</span>
+          {activeStatusLabel}<span style={{ fontSize: 10, color: '#333' }}>▼</span>
         </button>
         <button onClick={() => openSheet('sort')} style={{ background: 'none', border: 'none', fontSize: 14, color: '#333', display: 'flex', alignItems: 'center', gap: 4 }}>
-          {activeSortLabel}<span style={{ fontSize: 10, color: '#999' }}>▼</span>
+          {activeSortLabel}<span style={{ fontSize: 10, color: '#333' }}>▼</span>
         </button>
         <button onClick={openFilter} style={{ background: 'none', border: 'none', fontSize: 14, color: '#333', display: 'flex', alignItems: 'center', gap: 4 }}>
-          筛选<span style={{ fontSize: 10, color: '#999' }}>▼</span>
+          筛选<span style={{ fontSize: 10, color: '#333' }}>▼</span>
         </button>
       </div>
 
@@ -1116,11 +1115,7 @@ function OrderCard({ order, onClick, onShare }) {
   const pkgName = [snap.name, snap.spec && snap.spec.name].filter(Boolean).join('｜') || '未选套系';
   const pkgCategory = snap.category_name || String(snap.name || '').split('｜')[0] || '';
   const cover = snap.cover_url ? img(snap.cover_url) : '';
-  const amount = Number(order.total_amount || 0);
-  const paid = Number(order.paid_amount || 0);
-  const remain = amount - paid;
-  const depositAmt = Number(order.deposit || 0);
-  const fmtMoney = (n) => '¥' + Number(n || 0).toLocaleString('zh-CN', { maximumFractionDigits: 2 });
+  const remain = Number(order.total_amount || 0) - Number(order.paid_amount || 0);
   const statusText = stageLabel(order);
   const customerName = order.customer_name || order.order_name || '未知';
   const avatarText = String(customerName).slice(0, 1);
@@ -1138,7 +1133,7 @@ function OrderCard({ order, onClick, onShare }) {
 
   return (
     <button type="button" onClick={onClick} style={{
-      width: '100%', background: '#fff', borderRadius: 6, marginBottom: 10,
+      width: '100%', background: '#fff', borderRadius: 12, marginBottom: 12,
       border: '1px solid #F0F0F0', textAlign: 'left', display: 'block', overflow: 'hidden'
     }}>
       {/* 头像 + 客户 + 状态 */}
@@ -1154,30 +1149,19 @@ function OrderCard({ order, onClick, onShare }) {
       </div>
       <div style={{ height: 1, background: '#F0F0F0' }} />
 
-      {/* 套系名 + 分类 + 尾款标签 */}
+      {/* 套系名 + 分类 + 尾款标签（红底白字，对齐截图） */}
       <div style={{ padding: '10px 14px' }}>
         <div style={{ fontSize: 15, color: '#1f2329', lineHeight: 1.4, fontWeight: 600, marginBottom: 4 }}>{pkgName}</div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           {pkgCategory ? <span style={{ fontSize: 12, color: '#999' }}>{pkgCategory}</span> : null}
           {remain > 0 && order.status !== 'completed' && order.status !== 'cancelled' && (
-            <span style={{ fontSize: 11, color: '#6b5744', background: '#f0e2cc', padding: '1px 7px', borderRadius: 3 }}>未结算尾款</span>
+            <span style={{ fontSize: 11, color: '#fff', background: '#ff3333', padding: '1px 8px', borderRadius: 8 }}>未结算尾款</span>
           )}
         </div>
       </div>
       <div style={{ height: 1, background: '#F0F0F0' }} />
 
-      {/* 定金 + 尾款（保留位置） */}
-      {amount > 0 && (
-        <>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 2, padding: '8px 14px', fontSize: 13 }}>
-            <span style={{ color: '#999' }}>定金 <span style={{ color: '#1f2329', fontWeight: 500 }}>{fmtMoney(depositAmt)}</span></span>
-            <span style={{ color: remain > 0 ? '#ff7a45' : '#999' }}>尾款 <span style={{ color: remain > 0 ? '#ff7a45' : '#1f2329', fontWeight: 500 }}>{fmtMoney(remain > 0 ? remain : 0)}</span></span>
-          </div>
-          <div style={{ height: 1, background: '#F0F0F0' }} />
-        </>
-      )}
-
-      {/* 日期 + 封面 + 分享按钮 */}
+      {/* 日期 + 封面 + 分享按钮（删掉中间「定金+尾款」段，对齐截图紧凑版式） */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 14px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#999' }}>
           <IconCalendar style={{ width: 14, height: 14, color: '#bbb' }} />
@@ -1196,18 +1180,10 @@ function OrderCard({ order, onClick, onShare }) {
       </div>
       <div style={{ height: 1, background: '#F0F0F0' }} />
 
-      {/* 备注 + 编辑入口 */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 14px' }}>
+      {/* 备注（截图无编辑入口，仅显示） */}
+      <div style={{ display: 'flex', alignItems: 'center', padding: '8px 14px' }}>
         <span style={{ flex: 1, fontSize: 12, color: order.remark ? '#666' : '#bbb', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {order.remark || '无'}
-        </span>
-        <span
-          role="button"
-          aria-label="编辑备注"
-          onClick={(e) => { e.stopPropagation(); nav('/orders/' + order.id + '/notes'); }}
-          style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 12, color: '#7ECDBB', padding: '2px 4px' }}
-        >
-          <IconPencil style={{ width: 12, height: 12, color: '#7ECDBB' }} />编辑
         </span>
       </div>
     </button>
