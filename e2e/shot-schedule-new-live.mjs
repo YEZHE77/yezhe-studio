@@ -46,6 +46,8 @@ async function fetchToken(base, username, password) {
   const errs = [];
   page.on('pageerror', (e) => errs.push('pageerror: ' + e.message));
   page.on('console', (m) => { if (m.type() === 'error') errs.push('console: ' + m.text().slice(0, 160)); });
+  // 表单 dirty 关闭时有 confirm 二次确认，headless 需自动接受
+  page.on('dialog', async (d) => { log('dialog:', d.message().slice(0, 60)); await d.accept(); });
 
   try {
     // 1) 登录
