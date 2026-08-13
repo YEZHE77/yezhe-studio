@@ -309,7 +309,8 @@ export default function PackageEdit() {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState([]);
-  const [uploading, setUploading] = '';
+  const [catOpen, setCatOpen] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [qnaHelpOpen, setQnaHelpOpen] = useState(false);
   // 内联编辑开关（文本展示 + 编辑链接）
   const [editRaw, setEditRaw] = useState(false);

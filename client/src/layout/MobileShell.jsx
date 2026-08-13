@@ -196,7 +196,7 @@ export default function MobileShell() {
   const [sheetOpen, setSheetOpen] = useState(false);
 
   const tabRoots = ['/', '/m/site', '/m/notice', '/m/msg'];
-  const hideTopBackRoutes = ['/works'];
+  const hideTopBackRoutes = ['/works', '/packages'];
   const isTab = tabRoots.includes(location.pathname);
   // /packages/* 所有子路由由页面内自带顶部导航，避免双层 TopBack
   const hideTopBack = hideTopBackRoutes.includes(location.pathname) || location.pathname.startsWith('/works/') || location.pathname.startsWith('/packages/');
