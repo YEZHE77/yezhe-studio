@@ -409,20 +409,20 @@ export default function WorkDetail() {
     }
     setPreparing(true);
     try {
-      const MAX = 3 * 1024 * 1024; // 单张硬性限制 3M
+      const MAX = 15 * 1024 * 1024; // 选文件预检：与后端 multer 一致 15MB；实际压缩后远小于此
       const previews = [];
       const overNames = [];
       for (const f of Array.from(files)) {
         let name = f.name, size = f.size, error = false, oversize = false;
         if (!name || !size) { error = true; name = name || 'unknown'; size = size || 0; } // 读取失败 → 放行（防误拦）
-        else if (f.size > MAX) { oversize = true; overNames.push(name); } // 单张 >3M → 标记超限，不加入上传队列
+        else if (f.size > MAX) { oversize = true; overNames.push(name); } // 单张 >15M → 标记超限，不加入上传队列
         previews.push({ file: f, name, size, error, oversize, url: URL.createObjectURL(f) });
       }
       setUploadPreviews(previews);
       setUploadOpen(true);
-      // 需求：选中大于3M 的图片直接提示，不发起上传
+      // 需求：选中大于15M 的图片直接提示，不发起上传
       if (overNames.length) {
-        alert(`有 ${overNames.length} 张图片大于 3M，已自动过滤（标红「超过3M限制」），请压缩后再上传：\n` +
+        alert(`有 ${overNames.length} 张图片大于 15M，已自动过滤：\n` +
           overNames.slice(0, 3).join('、') + (overNames.length > 3 ? ' 等' : ''));
       }
     } catch (err) {
@@ -1421,7 +1421,7 @@ export default function WorkDetail() {
               <div>
                 <h3 className="text-base text-fg">上传到「{ZONES.find((z) => z.key === zone).label}」相册</h3>
                 <p className="text-xs text-muted mt-0.5">
-                  待上传 {toUpload.length} 张{errCount ? ` · 读取失败 ${errCount} 张` : ''}{overCount ? ` · 超过3M ${overCount} 张（已过滤）` : ''}
+                  待上传 {toUpload.length} 张{errCount ? ` · 读取失败 ${errCount} 张` : ''}{overCount ? ` · 超过15M ${overCount} 张（已过滤）` : ''}
                 </p>
               </div>
               <button onClick={closeUpload} disabled={uploading} className="text-muted hover:text-fg text-sm disabled:opacity-40">✕</button>
@@ -1460,7 +1460,7 @@ export default function WorkDetail() {
                     {k.kind === 'over' && (
                       <>
                         <div className="absolute inset-0 bg-black/55" />
-                        <span className="absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded bg-red-500/90 text-white text-[10px]">超过3M限制</span>
+                        <span className="absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded bg-red-500/90 text-white text-[10px]">超过15M限制</span>
                         <span className="absolute bottom-1.5 right-1.5 text-white/80 text-[10px]">已过滤</span>
                       </>
                     )}
@@ -1504,7 +1504,7 @@ export default function WorkDetail() {
             )}
             <div className="p-4 border-t border-line flex items-center justify-between flex-wrap gap-3">
               <span className="text-xs text-muted">
-                {failCount ? `失败 ${failCount} 张可单张重试 · ` : ''}{overCount ? `超过3M ${overCount} 张已过滤 · ` : ''}所有照片均可上传
+                {failCount ? `失败 ${failCount} 张可单张重试 · ` : ''}{overCount ? `超过15M ${overCount} 张已过滤 · ` : ''}所有照片均可上传
               </span>
               <div className="flex gap-2">
                 {uploading ? (

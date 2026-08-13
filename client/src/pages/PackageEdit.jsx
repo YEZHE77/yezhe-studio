@@ -250,7 +250,7 @@ export default function PackageEdit() {
     if (!file) return;
     const OK_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
     if (!OK_TYPES.includes(file.type)) { alert('仅支持 jpg / png / jpeg / webp 格式'); return; }
-    if (file.size > 3 * 1024 * 1024) { alert('图片大小不能超过 3MB'); return; }
+    if (file.size > 15 * 1024 * 1024) { alert('图片大小不能超过 15MB'); return; }
     const reader = new FileReader();
     reader.onload = () => { setCropSrc(reader.result); setCropOpen(true); };
     reader.readAsDataURL(file);
