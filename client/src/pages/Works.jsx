@@ -251,7 +251,7 @@ export default function Works() {
   return (
     <div className="min-h-screen bg-[#f7f7f7] pb-24">
       {/* 顶部栏：返回 + 搜索 + 更多（与套系列表页 Packages.jsx 同款：返回 + 搜索容器(灰底圆角) + ⋯） */}
-      <div style={{ background: '#fff', padding: '8px 12px', display: 'flex', alignItems: 'center', gap: 10, borderBottom: '1px solid #EFEFEF' }}>
+      <div style={{ background: '#fff', padding: '8px 12px', display: 'flex', alignItems: 'center', gap: 10, borderBottom: '1px solid #EFEFEF', position: 'relative', zIndex: 5 }}>
         <button onClick={() => navigate('/')} style={{ background: 'none', border: 'none', padding: 4, display: 'flex', alignItems: 'center', color: '#1f2329', flexShrink: 0 }}>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1f2329" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M15 6l-6 6 6 6" /></svg>
         </button>
@@ -264,9 +264,9 @@ export default function Works() {
             style={{ border: 'none', background: 'transparent', outline: 'none', fontSize: 14, flex: 1, color: '#333' }}
           />
         </div>
-        <button onClick={(e) => { e.stopPropagation(); setShowTopMenu((v) => !v); }} style={{ background: 'none', border: 'none', padding: 4, color: '#666', fontSize: 16, position: 'relative' }}>⋯</button>
+        <button onClick={(e) => { e.stopPropagation(); setShowTopMenu((v) => !v); }} style={{ background: 'none', border: 'none', padding: 4, color: '#666', fontSize: 16 }}>⋯</button>
         {showTopMenu && (
-          <div className="absolute right-0 top-full mt-1 w-40 rounded-lg bg-white shadow-lg border border-gray-100 py-1 z-50">
+          <div className="absolute right-3 top-full mt-1 w-40 rounded-lg bg-white shadow-lg border border-gray-100 py-1 z-50">
             {!sortMode ? (
               <>
                 <button onClick={() => { setShowTopMenu(false); openNew(); }} className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50">
