@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>岛像工作室 - 手机端模拟器</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  :root {
+    --brand: #7ECDBB;
+    --bg: #10131a;
+    --panel: #1a1f2a;
+    --panel2: #232a38;
+    --line: #2e3646;
+    --fg: #e8eaed;
+    --muted: #8a919f;
+  }
+  body {
+    font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: radial-gradient(1200px 600px at 50% -10%, #1c2230 0%, var(--bg) 55%);
+    min-height: 100vh;
+    color: var(--fg);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 20px 16px 36px;
+  }
+  header { text-align: center; margin-bottom: 14px; }
+  h1 { font-size: 18px; font-weight: 600; letter-spacing: .5px; display: flex; align-items: center; justify-content: center; gap: 8px; }
+  h1 .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--brand); box-shadow: 0 0 10px var(--brand); }
+  .sub { font-size: 12px; color: var(--muted); margin-top: 6px; line-height: 1.8; }
+  .sub code { background: var(--panel2); padding: 1px 6px; border-radius: 4px; color: var(--brand); }
+
+  /* 顶部工具栏 */
+  .toolbar {
+    display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; align-items: center;
+    margin-bottom: 14px; max-width: 860px;
+  }
+  .toolbar select, .toolbar button {
+    background: var(--panel); color: #c9ced8; border: 1px solid var(--line);
+    border-radius: 8px; padding: 7px 12px; font-size: 12px; cursor: pointer; transition: all .15s;
+    appearance: none; -webkit-appearance: none;
+  }
+  .toolbar select { background-image: linear-gradient(45deg, transparent 50%, #8a919f 50%), linear-gradient(135deg, #8a919f 50%, transparent 50%); background-position: calc(100% - 14px) 55%, calc(100% - 9px) 55%; background-size: 5px 5px; background-repeat: no-repeat; padding-right: 26px; }
+  .toolbar button:hover, .toolbar select:hover { border-color: var(--brand); color: var(--brand); }
+  .toolbar .sep { width: 1px; background: var(--line); margin: 0 2px; height: 22px; }
+  .env-tag { font-size: 11px; padding: 3px 10px; border-radius: 99px; border: 1px solid var(--line); color: var(--muted); }
+  .env-tag.local { color: #FFD479; border-color: #FFD47966; }
+  .env-tag.online { color: #7ECDBB; border-color: #7ECDBB66; }
+
+  /* 手机外框 */
+  .phone {
+    position: relative; background: #0a0c10;
+    border: 3px solid #2c313c; border-radius: 48px; padding: 12px;
+    box-shadow: 0 0 0 1px #000, 0 30px 70px rgba(0,0,0,.6), 0 6px 18px rgba(0,0,0,.45), inset 0 0 6px rgba(255,255,255,.05);
+    transition: width .3s ease, height .3s ease;
+  }
+  .screen {
+    position: relative; width: 390px; height: 844px; border-radius: 36px;
+    overflow: hidden; background: #fff; transition: width .3s ease, height .3s ease;
+  }
+  .screen iframe { width: 100%; height: 100%; border: 0; display: block; }
+
+  /* 灵动岛 / 刘海 / 挖孔（由 JS 按机型设置） */
+  .notch {
+    position: absolute; top: 11px; left: 50%; transform: translateX(-50%);
+    z-index: 20; pointer-events: none; transition: width .3s, height .3s, border-radius .3s, background .3s;
+  }
+  .notch.dynamic-island { width: 112px; height: 27px; border-radius: 20px; background: #000; }
+  .notch.faceid { width: 158px; height: 30px; border-radius: 18px; background: #000; }
+  .notch.punch-hole { width: 13px; height: 13px; border-radius: 50%; background: #000; left: calc(50% - 60px); }
+  .notch.teardrop { width: 92px; height: 20px; border-radius: 0 0 46px 46px; background: #000; }
+  .notch.none { display: none; }
+
+  /* 状态栏（iOS 风格，白色文字浮于页面之上） */
+  .statusbar {
+    position: absolute; top: 0; left: 0; right: 0; height: 44px; z-index: 15;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 24px; color: #fff; pointer-events: none;
+    font-size: 14px; font-weight: 600; letter-spacing: .3px;
+    text-shadow: 0 1px 3px rgba(0,0,0,.35);
+  }
+  .statusbar .sb-time { min-width: 54px; }
+  .statusbar .sb-right { display: flex; align-items: center; gap: 5px; }
+  .statusbar .sb-batt { display: flex; align-items: center; gap: 3px; }
+  .batt-icon { width: 23px; height: 11px; border: 1.5px solid #fff; border-radius: 3px; position: relative; opacity: .95; }
+  .batt-icon::after { content: ''; position: absolute; right: -3.5px; top: 2.5px; width: 2px; height: 4px; background: #fff; border-radius: 1px; }
+  .batt-icon .lv { position: absolute; left: 1px; top: 1px; bottom: 1px; background: #fff; border-radius: 1px; transition: width .4s; }
+  .sb-signal { display: flex; align-items: flex-end; gap: 1.5px; }
+  .sb-signal i { width: 3px; background: #fff; border-radius: 1px; opacity: .95; }
+  .sb-signal i:nth-child(1){ height: 4px; } .sb-signal i:nth-child(2){ height: 6px; }
+  .sb-signal i:nth-child(3){ height: 8px; } .sb-signal i:nth-child(4){ height: 10px; }
+  .sb-signal i.off { opacity: .3; }
+  .sb-wifi { width: 14px; height: 10px; }
+  .sb-wifi::before { content: ''; position: absolute; width: 10px; height: 10px; border-radius: 50% 50% 0 0; border: 1.5px solid #fff; border-bottom: 0; transform: rotate(45deg); }
+  .sb-wifi::after { content: ''; position: absolute; left: 4.5px; top: 8px; width: 3px; height: 3px; border-radius: 50%; background: #fff; }
+
+  /* Home 指示条 */
+  .home-bar {
+    position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%);
+    width: 128px; height: 4px; background: rgba(0,0,0,.6); border-radius: 4px; z-index: 15; pointer-events: none;
+  }
+
+  .tip { font-size: 12px; color: #6b7280; margin-top: 14px; text-align: center; line-height: 2; max-width: 640px; }
+  .tip b { color: var(--brand); font-weight: 600; }
+  .tip .warn { color: #FF8A8A; }
+  .tip a { color: var(--brand); }
+
+  /* 真机二维码弹层 */
+  .modal-mask { position: fixed; inset: 0; background: rgba(0,0,0,.6); display: none; align-items: center; justify-content: center; z-index: 999; padding: 20px; }
+  .modal-mask.show { display: flex; }
+  .modal { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 24px; max-width: 420px; width: 100%; text-align: center; }
+  .modal h3 { font-size: 15px; margin-bottom: 6px; }
+  .modal p { font-size: 12px; color: var(--muted); line-height: 1.9; margin-bottom: 14px; }
+  .modal .qr { background: #fff; border-radius: 12px; padding: 10px; display: inline-block; }
+  .modal .qr canvas { display: block; }
+  .modal .link { font-size: 12px; color: var(--brand); word-break: break-all; margin-top: 12px; }
+  .modal .close { margin-top: 14px; background: var(--brand); color: #0f1117; border: 0; border-radius: 8px; padding: 8px 28px; font-size: 13px; font-weight: 600; cursor: pointer; }
+  .modal .close:hover { opacity: .9; }
+  .loading-tip { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; background: #fff; z-index: 5; font-size: 13px; color: #8a919f; }
+  .loading-tip .spinner { width: 28px; height: 28px; border: 3px solid #e5e7eb; border-top-color: var(--brand); border-radius: 50%; animation: spin 1s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+  <header>
+    <h1><span class="dot"></span>岛像工作室 · 手机端模拟器</h1>
+    <div class="sub">网页中直接查看手机端效果 · 视口宽度 &lt;768px 自动进入手机模式 · <span class="env-tag" id="envTag">--</span></div>
+  </header>
+
+  <div class="toolbar">
+    <select id="deviceSel" title="机型"></select>
+    <span class="sep"></span>
+    <button id="rotate">🔄 横屏</button>
+    <button id="refresh">↻ 刷新</button>
+    <button id="openNew">↗ 新窗口</button>
+    <button id="qrBtn">📱 真机打开</button>
+    <span class="sep"></span>
+    <button id="envToggle" title="切换嵌入目标">🌐 线上版</button>
+  </div>
+
+  <div class="phone" id="phone">
+    <div class="screen" id="screen">
+      <iframe id="frame" title="手机端模拟"></iframe>
+      <div class="loading-tip" id="loadingTip"><div class="spinner"></div>正在加载…</div>
+      <div class="notch dynamic-island" id="notch"></div>
+      <div class="statusbar" id="statusbar">
+        <span class="sb-time" id="sbTime">9:41</span>
+        <div class="sb-right">
+          <span class="sb-signal" id="sbSignal"><i></i><i></i><i></i><i></i></span>
+          <span class="sb-wifi"></span>
+          <span class="sb-batt"><span class="batt-icon"><span class="lv" id="battLv"></span></span></span>
+        </div>
+      </div>
+      <div class="home-bar"></div>
+    </div>
+  </div>
+
+  <div class="tip">
+    登录账号 <b>admin</b> / 密码 <b>admin123</b> · 模拟器内操作即等于手机端操作<br>
+    模拟器只还原<b>屏幕尺寸与外壳</b>；<span class="warn">真实 UA、微信环境、触摸手感请用「📱 真机打开」扫码在手机上验证</span>
+  </div>
+
+  <div class="modal-mask" id="modal">
+    <div class="modal">
+      <h3>📱 用手机打开</h3>
+      <p>手机浏览器扫码或复制链接访问（需与 Mac 同网络，或直接用已上线的线上版）：</p>
+      <div class="qr"><canvas id="qrCanvas" width="220" height="220"></canvas></div>
+      <div class="link" id="qrLink"></div>
+      <button class="close" id="closeModal">关闭</button>
+    </div>
+  </div>
+
+<script>
+(function () {
+  'use strict';
+  var frame = document.getElementById('frame');
+  var screen = document.getElementById('screen');
+  var phone = document.getElementById('phone');
+  var notch = document.getElementById('notch');
+  var deviceSel = document.getElementById('deviceSel');
+  var envToggle = document.getElementById('envToggle');
+  var envTag = document.getElementById('envTag');
+  var loadingTip = document.getElementById('loadingTip');
+
+  // 机型库：名称 / 宽×高 / 外壳类型（dynamic-island | faceid | punch-hole | teardrop | none）
+  var DEVICES = [
+    { name: 'iPhone 15 Pro Max', w: 430, h: 932, notch: 'dynamic-island' },
+    { name: 'iPhone 15 Pro',     w: 393, h: 852, notch: 'dynamic-island' },
+    { name: 'iPhone 14',         w: 390, h: 844, notch: 'faceid' },
+    { name: 'iPhone 11 / X',     w: 375, h: 812, notch: 'faceid' },
+    { name: 'iPhone SE',         w: 375, h: 667, notch: 'none' },
+    { name: '华为 Mate 60 Pro',  w: 412, h: 908, notch: 'punch-hole' },
+    { name: '小米 14',           w: 393, h: 873, notch: 'punch-hole' },
+    { name: '荣耀 折叠内屏',     w: 410, h: 900, notch: 'teardrop' },
+    { name: 'Android 通用',      w: 412, h: 915, notch: 'punch-hole' },
+    { name: '小屏手机',          w: 360, h: 780, notch: 'none' }
+  ];
+  DEVICES.forEach(function (d, i) {
+    var o = document.createElement('option');
+    o.value = i; o.textContent = d.name + '（' + d.w + '×' + d.h + '）';
+    deviceSel.appendChild(o);
+  });
+
+  // 当前环境：同源根路径（本地 dev → localhost:5173；线上 → pages.dev）
+  var ROOT = new URL('/', location.href).href.replace(/\/$/, '');
+  var ONLINE_ROOT = 'https://yezhe-studio.pages.dev';
+  var isOnline = location.hostname.indexOf('pages.dev') !== -1;
+  var targets = {
+    local: ROOT,
+    online: ONLINE_ROOT
+  };
+  var curEnv = isOnline ? 'online' : 'local';
+  var currentTarget = targets[curEnv];
+
+  function isLandscape() { return !!screen.dataset.landscape; }
+
+  function applyDevice() {
+    var d = DEVICES[+deviceSel.value];
+    var w = isLandscape() ? d.h : d.w;
+    var h = isLandscape() ? d.w : d.h;
+    screen.style.width = w + 'px';
+    screen.style.height = h + 'px';
+    // 横屏时灵动岛压扁、状态栏高度不变
+    notch.className = 'notch ' + d.notch;
+    if (isLandscape() && d.notch === 'dynamic-island') { notch.style.width = '160px'; notch.style.height = '22px'; }
+    else { notch.style.width = ''; notch.style.height = ''; }
+    if (isLandscape() && d.notch === 'faceid') { notch.style.width = '200px'; notch.style.height = '22px'; }
+    else if (!isLandscape() && d.notch === 'faceid') { notch.style.width = ''; notch.style.height = ''; }
+  }
+
+  deviceSel.addEventListener('change', applyDevice);
+
+  document.getElementById('rotate').addEventListener('click', function () {
+    var t = document.getElementById('rotate');
+    screen.dataset.landscape = screen.dataset.landscape ? '' : '1';
+    t.textContent = screen.dataset.landscape ? '🔄 竖屏' : '🔄 横屏';
+    applyDevice();
+  });
+
+  document.getElementById('refresh').addEventListener('click', function () {
+    frame.src = currentTarget + '/';
+    showLoading();
+  });
+
+  document.getElementById('openNew').addEventListener('click', function () {
+    window.open(currentTarget + '/', '_blank');
+  });
+
+  envToggle.addEventListener('click', function () {
+    curEnv = curEnv === 'local' ? 'online' : 'local';
+    currentTarget = targets[curEnv];
+    envToggle.textContent = curEnv === 'local' ? '🌐 线上版' : '💻 本地版';
+    envTag.textContent = curEnv === 'local' ? '本地 dev' : '线上 pages.dev';
+    envTag.className = 'env-tag ' + (curEnv === 'local' ? 'local' : 'online');
+    frame.src = currentTarget + '/';
+    showLoading();
+  });
+
+  function showLoading() {
+    loadingTip.style.display = 'flex';
+    // iframe 加载完成或 3.5s 兜底后隐藏
+    setTimeout(function () { loadingTip.style.display = 'none'; }, 3500);
+  }
+  frame.addEventListener('load', function () { loadingTip.style.display = 'none'; });
+
+  /* 状态栏：实时时间 + 电池 */
+  var sbTime = document.getElementById('sbTime');
+  var battLv = document.getElementById('battLv');
+  var battPct = 78;
+  function tickClock() {
+    var d = new Date();
+    var hh = d.getHours(), mm = d.getMinutes();
+    sbTime.textContent = (hh < 10 ? '0' : '') + hh + ':' + (mm < 10 ? '0' : '') + mm;
+  }
+  setInterval(tickClock, 10000); tickClock();
+  setInterval(function () {
+    battPct = Math.max(20, Math.min(100, battPct + (Math.random() > .5 ? -1 : 0)));
+    battLv.style.width = battPct + '%';
+  }, 20000);
+
+  /* 真机二维码（用 QRCode 库内联最小实现，避免外网依赖） */
+  var qrCanvas = document.getElementById('qrCanvas');
+  var qrLink = document.getElementById('qrLink');
+  document.getElementById('qrBtn').addEventListener('click', function () {
+    var url = currentTarget + '/';
+    qrLink.textContent = url;
+    drawQR(qrCanvas, url);
+    document.getElementById('modal').classList.add('show');
+  });
+  document.getElementById('closeModal').addEventListener('click', function () {
+    document.getElementById('modal').classList.remove('show');
+  });
+
+  /* 极简 QR 编码器（numeric/alnum/byte 模式，纠错 M），自包含无外部依赖 */
+  function drawQR(canvas, text) {
+    try {
+      var qr = makeQR(text, 'M');
+      var size = canvas.width, cells = qr.length, cell = Math.floor(size / (cells + 8));
+      var off = Math.floor((size - cell * cells) / 2);
+      var ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, size, size);
+      ctx.fillStyle = '#000';
+      for (var y = 0; y < cells; y++) for (var x = 0; x < cells; x++) if (qr[y][x]) ctx.fillRect(off + x * cell, off + y * cell, cell, cell);
+    } catch (e) {
+      qrLink.textContent = '二维码生成失败：' + e.message + '（可直接复制链接）';
+    }
+  }
+
+  /* ---------- 自包含 QR 生成（byte 模式 + RS 纠错） ---------- */
+  var QR_ALIGN = [
+    null, [], [6,18], [6,22], [6,26], [6,30], [6,34], [6,22,38], [6,24,42], [6,26,46], [6,28,50], [6,30,54], [6,32,58], [6,34,62], [6,26,46,66], [6,26,48,70], [6,26,50,74], [6,30,54,78], [6,30,56,82], [6,30,58,86], [6,34,62,90], [6,28,50,72,94], [6,26,50,74,98], [6,30,54,78,102], [6,28,54,80,106], [6,32,58,84,110], [6,30,58,86,114], [6,34,62,90,118], [6,26,50,74,98,122], [6,30,54,78,102,126], [6,26,52,78,104,130], [6,30,56,82,108,134], [6,34,60,86,112,138], [6,30,58,86,114,142], [6,34,62,90,118,146], [6,30,54,78,102,126,150], [6,24,50,76,102,128,154], [6,28,54,80,106,132,158], [6,32,58,84,110,136,162], [6,26,54,82,110,138,166], [6,30,58,86,114,142,170]
+  ];
+  // RS 块分配（权威数据，与标准 qrcode 库一致）：
+  // QR_TOTAL_CW 每版本总码字数；QR_EC_BLOCKS 每版本块数；QR_EC_TOTAL 每版本总纠错码字数
+  var QR_TOTAL_CW = [26,44,70,100,134,172,196,242,292,346,404,466,532,581,655,733,815,901,991,1085,1156,1258,1364,1474,1588,1706,1828,1921,2051,2185,2323,2465,2611,2761,2876,3034,3196,3362,3532,3706];
+  var QR_EC_BLOCKS = {
+    L: [1,1,1,1,1,2,2,2,2,4,4,4,4,4,6,6,6,6,7,8,8,9,9,10,12,12,12,13,14,15,16,17,18,19,19,20,21,22,24,25],
+    M: [1,1,1,2,2,4,4,4,5,5,5,8,9,9,10,10,11,13,14,16,17,17,18,20,21,23,25,26,28,29,31,33,35,37,38,40,43,45,47,49],
+    Q: [1,1,2,2,4,4,6,6,8,8,8,10,12,16,12,17,16,18,21,20,23,23,25,27,29,34,34,35,38,40,43,45,48,51,53,56,59,62,65,68],
+    H: [1,1,2,4,4,4,5,6,8,8,11,11,16,16,18,16,19,21,25,25,25,34,30,32,35,37,40,42,45,48,51,54,57,60,63,66,70,74,77,81]
+  };
+  var QR_EC_TOTAL = {
+    L: [7,10,15,20,26,36,40,48,60,72,80,96,104,120,132,144,168,180,196,224,224,252,270,300,312,336,360,390,420,450,480,510,540,570,570,600,630,660,720,750],
+    M: [10,16,26,36,48,64,72,88,110,130,150,176,198,216,240,280,308,338,364,416,442,476,504,560,588,644,700,728,784,812,868,924,980,1036,1064,1120,1204,1260,1316,1372],
+    Q: [13,22,36,52,72,96,108,132,160,192,224,260,288,320,360,408,448,504,546,600,644,690,750,810,870,952,1020,1050,1140,1200,1290,1350,1440,1530,1590,1680,1770,1860,1950,2040],
+    H: [17,28,44,64,88,112,130,156,192,224,264,308,352,384,432,480,532,588,650,700,750,816,900,960,1050,1110,1200,1260,1350,1440,1530,1620,1710,1800,1890,1980,2100,2220,2310,2430]
+  };
+  function getRSBlocks(version, ecLevel) {
+    // 仿标准库 createCodewords 动态分配：总码字/块数余数决定第二组块数，每块 EC 码字数恒定
+    var totalCW = QR_TOTAL_CW[version - 1];
+    var ecTotal = QR_EC_TOTAL[ecLevel][version - 1];
+    var dataTotal = totalCW - ecTotal;
+    var nBlocks = QR_EC_BLOCKS[ecLevel][version - 1];
+    var blocksInGroup2 = totalCW % nBlocks;
+    var blocksInGroup1 = nBlocks - blocksInGroup2;
+    var totalCWGroup1 = Math.floor(totalCW / nBlocks);
+    var dataCWGroup1 = Math.floor(dataTotal / nBlocks);
+    var ecCount = totalCWGroup1 - dataCWGroup1;
+    var out = [];
+    for (var b = 0; b < nBlocks; b++) {
+      var inG1 = b < blocksInGroup1;
+      out.push({ total: inG1 ? totalCWGroup1 : totalCWGroup1 + 1, data: inG1 ? dataCWGroup1 : dataCWGroup1 + 1, ec: ecCount });
+    }
+    return out;
+  }
+  function rsInfo(version, ecLevel) {
+    var blks = getRSBlocks(version, ecLevel);
+    var total = 0, data = 0;
+    for (var b = 0; b < blks.length; b++) { total += blks[b].total; data += blks[b].data; }
+    return { total: total, data: data, ec: total - data, blocks: blks };
+  }
+  var QR_BCH = { g15: 0x537, g18: 0x1f25, g15Mask: 0x5412 };
+  var QR_POLY = (function () {
+    function gfMul(x, y) { var r = 0, i; for (i = 0; i < 8; i++) { if (y & 1) r ^= x; y >>= 1; x <<= 1; if (x & 0x100) x ^= 0x11d; } return r; }
+    function gfPow(x, y) { var r = 1; for (var i = 0; i < y; i++) r = gfMul(r, x); return r; }
+    var exp = [], log = [], i;
+    for (i = 0; i < 255; i++) { exp[i] = gfPow(2, i); log[exp[i]] = i; }
+    return { exp: exp, log: log, mul: gfMul };
+  })();
+  function rsGenPoly(deg) {
+    // 生成多项式 (x-α^0)(x-α^1)...(x-α^(deg-1))，高次在前（poly[0] 为 x^deg 系数）
+    var poly = [];
+    for (var k = 0; k < deg; k++) poly.push(0);
+    poly.push(1); // 最低次 x^0 = 1 在数组末尾
+    var root = 1;
+    for (var i = 0; i < deg; i++) {
+      for (var j = 0; j < poly.length; j++) {
+        poly[j] = QR_POLY.mul(poly[j], root);
+        if (j + 1 < poly.length) poly[j] ^= poly[j + 1];
+      }
+      root = QR_POLY.mul(root, 2);
+    }
+    return poly;
+  }
+  function rsRemainder(data, gen) {
+    // RS 余式 = D(x)·x^deg mod G(x)：数据码字后补 degree 个 0 再做长除
+    var b = data.concat(new Array(gen.length - 1).fill(0));
+    while (b.length >= gen.length) {
+      var coef = b[0];
+      if (coef) for (var i = 0; i < gen.length; i++) b[i] ^= QR_POLY.mul(gen[i], coef);
+      b.shift();
+    }
+    return b;
+  }
+  function makeQR(text, ecLevel) {
+    var bytes = [], i;
+    for (i = 0; i < text.length; i++) bytes.push(text.charCodeAt(i) & 0xff);
+    // 自动选版本
+    var version = 0;
+    var charCap = [0];
+    for (var v = 1; v <= 40; v++) {
+      var rs = rsInfo(v, ecLevel);
+      // byte 模式容量：mode(4) + count(v1-9:8位 / v10+:16位) + terminator(≤4) → v1-9: D-2，v10+: D-3
+      var cap = rs.data - (v <= 9 ? 2 : 3);
+      charCap.push(cap);
+      if (bytes.length <= cap) { version = v; break; }
+    }
+    if (!version) throw new Error('内容过长，无法生成二维码');
+    var rsFull = rsInfo(version, ecLevel); // 本版本块信息（总码字/数据码字/纠错码字）
+    // 组数据码字
+    var dataBits = [], mode = 4; // byte 模式指示符 0100
+    var vb = version <= 9 ? 8 : 16; // byte 模式 count 字段位数（v1-9: 8位, v10+: 16位）
+    var capBits = rsFull.data * 8;
+    appendBits(dataBits, mode, 4);
+    appendBits(dataBits, bytes.length, vb);
+    for (i = 0; i < bytes.length; i++) appendBits(dataBits, bytes[i], 8);
+    if (dataBits.length > capBits) throw new Error('数据超长');
+    appendBits(dataBits, 0, Math.min(4, capBits - dataBits.length));
+    while (dataBits.length % 8 !== 0) dataBits.push(0);
+    var codewords = [];
+    for (i = 0; i < dataBits.length; i += 8) {
+      var b = 0; for (var j = 0; j < 8; j++) b = (b << 1) | dataBits[i + j];
+      codewords.push(b);
+    }
+    var padWords = [0xEC, 0x11]; // 标准 pad 码字交替填充，首个必须是 0xEC
+    for (var pi = 0; codewords.length < rsFull.data; pi++) codewords.push(padWords[pi % 2]);
+    // RS 纠错码
+    var blockData = [], blockEC = [], idx = 0, b;
+    for (i = 0; i < rsFull.blocks.length; i++) {
+      var blk = rsFull.blocks[i];
+      var chunk = codewords.slice(idx, idx + blk.data); idx += blk.data;
+      var gen = rsGenPoly(blk.ec);
+      var rem = rsRemainder(chunk.slice(), gen);
+      blockData.push(chunk);
+      blockEC.push(rem);
+    }
+    // 交织
+    var final = [], maxD = 0, maxE = 0;
+    for (i = 0; i < blockData.length; i++) { maxD = Math.max(maxD, blockData[i].length); maxE = Math.max(maxE, blockEC[i].length); }
+    for (i = 0; i < maxD; i++) for (b = 0; b < blockData.length; b++) if (i < blockData[b].length) final.push(blockData[b][i]);
+    for (i = 0; i < maxE; i++) for (b = 0; b < blockEC.length; b++) if (i < blockEC[b].length) final.push(blockEC[b][i]);
+    while (final.length < rsFull.total) final.push(0);
+    // 画矩阵
+    var size = version * 4 + 17;
+    var matrix = [];
+    for (i = 0; i < size; i++) matrix.push(new Array(size).fill(0));
+    // 功能图形（顺序与标准库一致：finder → 时序 → 对齐，对齐最后画以覆盖时序）
+    placeFinder(matrix, 0, 0); placeFinder(matrix, size - 7, 0); placeFinder(matrix, 0, size - 7);
+    // 时序
+    for (i = 8; i < size - 8; i++) {
+      var vv = (i % 2 === 0);
+      if (matrix[6][i] === 0) matrix[6][i] = vv ? 1 : 0;
+      if (matrix[i][6] === 0) matrix[i][6] = vv ? 1 : 0;
+    }
+    placeAlign(matrix, version);
+    // 格式信息：EC=M, 掩码0 → 0x5412（含 BCH 与掩码异或）。
+    // 主格式 MSB-first（bit14 在 (8,0)）；副本 LSB-first（右上 (8,size-1) 放 bit0，左下 (size-7,8) 放 bit8）
+    var formatBits = 0x5412;
+    var fcoords = [[8,0],[8,1],[8,2],[8,3],[8,4],[8,5],[8,7],[8,8],[7,8],[5,8],[4,8],[3,8],[2,8],[1,8],[0,8]];
+    for (i = 0; i < 15; i++) {
+      var bit = (formatBits >> (14 - i)) & 1;
+      matrix[fcoords[i][0]][fcoords[i][1]] = bit;
+      if (i < 8) matrix[8][size - 1 - i] = (formatBits >> i) & 1;      // 右上横排副本：bit0..bit7
+      else matrix[size - 15 + i][8] = (formatBits >> i) & 1;           // 左下竖排副本：bit8..bit14
+    }
+    matrix[size - 8][8] = 1; // 固定暗模块
+    // 版本信息（v7+）：两块 3×6，18 位 BCH（LSB-first，与标准库一致）
+    if (version >= 7) placeVersion(matrix, version);
+    // 数据填充（zigzag，从右下角向上，每字节高位在前）
+    var dirUp = true, col = size - 1, bitPos = 0;
+    while (col > 0) {
+      if (col === 6) col--;
+      for (var r = 0; r < size; r++) {
+        var row = dirUp ? size - 1 - r : r;
+        for (var c = 0; c < 2; c++) {
+          var x = col - c;
+          if (matrix[row][x] === 0 && !isFunction(matrix, row, x, version)) {
+            var bi = bitPos >> 3;
+            matrix[row][x] = bi < final.length ? ((final[bi] >> (7 - (bitPos & 7))) & 1) : 0;
+            bitPos++;
+          }
+        }
+      }
+      dirUp = !dirUp; col -= 2;
+    }
+    // 掩码 0：(i+j) 为偶数时取反
+    for (i = 0; i < size; i++) for (var j = 0; j < size; j++) {
+      if (!isFunction(matrix, i, j, version)) matrix[i][j] ^= ((i + j) % 2 === 0) ? 1 : 0;
+    }
+    return matrix;
+  }
+  function bits(v) { var n = 0; while (v > 0) { n++; v >>= 1; } return n; }
+  function appendBits(arr, val, len) { for (var i = len - 1; i >= 0; i--) arr.push((val >> i) & 1); }
+  function alignPositions(ver) {
+    // 对齐图案中心列表：跳过与三个定位符重叠的角（标准库 getPositions 逻辑）
+    var al = QR_ALIGN[ver] || [], out = [];
+    for (var a = 0; a < al.length; a++) for (var b = 0; b < al.length; b++) {
+      if (a === 0 && b === 0) continue;
+      if (a === 0 && b === al.length - 1) continue;
+      if (a === al.length - 1 && b === 0) continue;
+      out.push([al[a], al[b]]);
+    }
+    return out;
+  }
+  function isFunction(m, r, c, ver) {
+    if (r < 9 && c < 9) return true;
+    if (r < 9 && c >= m.length - 8) return true;
+    if (r >= m.length - 8 && c < 9) return true;
+    if (r === 6 || c === 6) return true;
+    // 版本信息区域（v7+）：右上 6×3（行0-5，列 size-11..size-9）与左下 3×6（对称）
+    if (ver >= 7) {
+      if (r < 6 && c >= m.length - 11 && c < m.length - 8) return true;
+      if (c < 6 && r >= m.length - 11 && r < m.length - 8) return true;
+    }
+    // 对齐图形（与 placeAlign 同一份位置列表）
+    var ps = alignPositions(ver);
+    for (var a = 0; a < ps.length; a++) {
+      if (Math.abs(r - ps[a][0]) <= 2 && Math.abs(c - ps[a][1]) <= 2) return true;
+    }
+    return false;
+  }
+  function versionBits(ver) {
+    // 版本信息 18 位：ver<<12 | BCH(18,6) 余式（生成多项式 0x1f25，与标准库一致）
+    var d = ver << 12, g18 = 0x1f25;
+    while (bits(d) - bits(g18) >= 0) d ^= g18 << (bits(d) - bits(g18));
+    return (ver << 12) | d;
+  }
+  function placeVersion(m, ver) {
+    var b18 = versionBits(ver), size = m.length;
+    for (var i = 0; i < 18; i++) {
+      var bit = (b18 >> i) & 1; // LSB-first
+      var row = Math.floor(i / 3), col = (i % 3) + size - 11;
+      m[row][col] = bit;
+      m[col][row] = bit;
+    }
+  }
+  function placeFinder(m, r0, c0) {
+    for (var r = -1; r <= 7; r++) for (var c = -1; c <= 7; c++) {
+      var rr = r0 + r, cc = c0 + c;
+      if (rr < 0 || rr >= m.length || cc < 0 || cc >= m.length) continue;
+      var dark = (r >= 0 && r <= 6 && (c === 0 || c === 6)) || (c >= 0 && c <= 6 && (r === 0 || r === 6)) || (r >= 2 && r <= 4 && c >= 2 && c <= 4);
+      m[rr][cc] = dark ? 1 : 0;
+    }
+  }
+  function placeAlign(m, ver) {
+    var ps = alignPositions(ver);
+    for (var a = 0; a < ps.length; a++) {
+      var r = ps[a][0], c = ps[a][1];
+      for (var dr = -2; dr <= 2; dr++) for (var dc = -2; dc <= 2; dc++) {
+        var dark = Math.abs(dr) === 2 || Math.abs(dc) === 2 || (dr === 0 && dc === 0);
+        m[r + dr][c + dc] = dark ? 1 : 0;
+      }
+    }
+  }
+
+  /* 初始化 */
+  deviceSel.value = 0;
+  applyDevice();
+  var env = isOnline ? 'online' : 'local';
+  envTag.textContent = env === 'online' ? '线上 pages.dev' : '本地 dev';
+  envTag.className = 'env-tag ' + env;
+  envToggle.textContent = env === 'online' ? '💻 本地版' : '🌐 线上版';
+  frame.src = currentTarget + '/';
+  showLoading();
+})();
+</script>
+</body>
+</html>
