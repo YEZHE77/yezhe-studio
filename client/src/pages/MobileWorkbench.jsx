@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import http, { img, uploadImage } from '../api.js';
 import { useAuth } from '../auth.jsx';
@@ -198,13 +198,23 @@ export default function MobileWorkbench() {
     }
   };
 
-  useEffect(() => {
-    setLoading(true);
+  const refreshStats = useCallback(() => {
     http.get('/api/stats')
       .then((r) => setStats(r.data))
-      .catch(() => {})
-      .finally(() => setLoading(false));
+      .catch(() => {});
   }, []);
+
+  useEffect(() => {
+    setLoading(true);
+    refreshStats();
+    setLoading(false);
+    // 页面重新可见时刷新（从订单/档期等页面返回后数字实时更新）
+    const onVis = () => {
+      if (document.visibilityState === 'visible') refreshStats();
+    };
+    document.addEventListener('visibilitychange', onVis);
+    return () => document.removeEventListener('visibilitychange', onVis);
+  }, [refreshStats]);
 
   // 工作室名称（编辑资料可改，存于 settings/studio.name）
   useEffect(() => {
@@ -215,8 +225,10 @@ export default function MobileWorkbench() {
 
   const pb = stats && stats.pendingBlocks ? stats.pendingBlocks : {};
   const safe = (v) => (typeof v === 'number' ? v : 0);
-  const followTotal = safe(pb.deposit) + safe(pb.shoot) + safe(pb.selecting) + safe(pb.retouching);
-  const shootCount = safe(pb.shoot);
+  // 待跟进：所有活跃中的订单（未付定金、已付定金、等待拍摄、选片中、精修中、已交片）
+  const followTotal = safe(pb.unpaid) + safe(pb.deposit) + safe(pb.shoot) + safe(pb.selecting) + safe(pb.retouching) + safe(pb.delivered);
+  // 待拍摄：对应移动端「等待拍摄」Tab（映射到 deposit 状态）
+  const shootCount = safe(pb.deposit) + safe(pb.shoot);
 
   return (
     <div style={{ background: '#fff', minHeight: '100vh', paddingBottom: 28 }}>
