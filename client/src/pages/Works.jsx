@@ -250,19 +250,19 @@ export default function Works() {
 
   return (
     <div className="min-h-screen bg-[#f7f7f7] pb-24">
-      {/* 顶部栏：返回 + 搜索 + 更多 */}
-      <div className="flex items-center gap-2 px-3 py-3 bg-white border-b border-gray-100">
+      {/* 顶部栏：返回 + 搜索 + 更多（与套系列表页 Packages.jsx 同款：返回 + 搜索容器(灰底圆角) + ⋯） */}
+      <div className="flex items-center gap-2.5 px-3 py-2 bg-white border-b border-gray-100">
         <button onClick={() => navigate('/')} className="p-1.5 text-gray-700" style={{ background: 'none', border: 'none' }}>
           <ChevronLeft className="w-6 h-6" />
         </button>
-        <div className="flex-1 relative">
+        <div className="flex-1 flex items-center bg-[#F5F5F5] rounded-full px-3 py-1.5 gap-1.5">
+          <Search className="w-4 h-4 text-gray-400 shrink-0" />
           <input
             value={state.q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="输入您所需要查找的客片名称"
-            className="w-full pl-9 pr-3 py-2 rounded-full bg-[#f2f2f2] text-sm text-gray-800 outline-none"
+            className="flex-1 bg-transparent text-sm text-gray-800 outline-none"
           />
-          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
         </div>
         <div className="relative">
           <button onClick={(e) => { e.stopPropagation(); setShowTopMenu((v) => !v); }} className="p-1.5 text-gray-500">
