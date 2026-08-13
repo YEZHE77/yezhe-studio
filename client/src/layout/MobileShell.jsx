@@ -254,7 +254,8 @@ export default function MobileShell() {
           </ErrorBoundary>
         </div>
       </div>
-      <TabBar active={activeKey} onTab={(to) => nav(to)} onPlus={() => setSheetOpen(true)} />
+      {/* 底栏仅在首页一级 Tab 页显示（工作台 / 微官网 / 公告 / 消息）；二级业务页只显示内容，不占底栏空间 */}
+      {isTab && <TabBar active={activeKey} onTab={(to) => nav(to)} onPlus={() => setSheetOpen(true)} />}
       <ActionSheet open={sheetOpen} onClose={() => setSheetOpen(false)} />
     </div>
   );

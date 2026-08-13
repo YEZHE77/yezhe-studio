@@ -271,7 +271,7 @@ export default function Packages() {
 
   if (isMobile) {
     return (
-      <div style={{ background: '#F8F8F8', minHeight: '100vh', paddingBottom: 100 }}>
+      <div style={{ background: '#F8F8F8', minHeight: '100vh', paddingBottom: 28 }}>
         {/* 顶部搜索栏（返回 + 搜索 + 更多，与 MobileShell TopBack 同一行） */}
         {/* 必须有 position:relative，否则气泡弹窗 absolute 定位会相对视口跑到屏幕外 */}
         <div style={{ background: '#fff', padding: '8px 12px', display: 'flex', alignItems: 'center', gap: 10, borderBottom: '1px solid #EFEFEF', position: 'sticky', top: 0, zIndex: 5 }}>
