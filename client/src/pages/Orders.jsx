@@ -1229,7 +1229,7 @@ function OrderCard({ order, studioLogo, onClick }) {
                     alt={execName}
                     title={execName}
                     style={{
-                      position: 'absolute', left: -10, bottom: -10, width: 32, height: 32,
+                      position: 'absolute', left: -16, bottom: 16, width: 32, height: 32,
                       borderRadius: '50%', border: '2px solid #fff', objectFit: 'cover', display: 'block'
                     }}
                   />
@@ -1237,7 +1237,7 @@ function OrderCard({ order, studioLogo, onClick }) {
                   <div
                     title={execName}
                     style={{
-                      position: 'absolute', left: -10, bottom: -10, width: 32, height: 32,
+                      position: 'absolute', left: -16, bottom: 16, width: 32, height: 32,
                       borderRadius: '50%', background: avatarColor(execName), color: '#fff',
                       border: '2px solid #fff', display: 'flex', alignItems: 'center',
                       justifyContent: 'center', fontSize: 13, fontWeight: 500
