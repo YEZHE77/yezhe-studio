@@ -151,7 +151,7 @@ export default function Works() {
     }
   }
 
-  // 点击「添加新客片」进入空白新建页，不预创建作品。
+  // 点击「添加作品」进入空白新建页，不预创建作品。
   // 用户必须点击「保存基本信息」后才真正 POST /api/works 入库，避免未保存就产生「未命名作品」。
   function openNew() {
     navigate('/works/new');
@@ -277,9 +277,9 @@ export default function Works() {
             {!sortMode ? (
               <>
                 <button onClick={() => { setShowTopMenu(false); openNew(); }} className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50">
-                  添加新客片
+                  添加作品
                 </button>
-                <button onClick={() => { setShowTopMenu(false); toggleSortMode(); }} className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50">自定义排序</button>
+                <button onClick={() => { setShowTopMenu(false); toggleSortMode(); }} className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50">编辑排序</button>
               </>
             ) : (
               <>
@@ -430,7 +430,7 @@ export default function Works() {
         {displayItems.length === 0 && !loading && (
           <div className="col-span-full text-center text-gray-400 py-12">
             <div className="text-sm">暂无作品</div>
-            <div className="mt-1 text-xs">点击右上角「…」添加新客片</div>
+            <div className="mt-1 text-xs">点击右上角「…」添加作品</div>
           </div>
         )}
       </div>
@@ -523,7 +523,7 @@ export default function Works() {
         </div>
       )}
 
-      {/* 全屏操作中遮罩：点击「添加新客片 / 自定义排序」后立刻反馈，防止冷启动期“点了没反应” */}
+      {/* 全屏操作中遮罩：点击「添加作品 / 编辑排序」后立刻反馈，防止冷启动期“点了没反应” */}
       {busyText && (
         <div className="fixed inset-0 z-[90] bg-white/70 flex flex-col items-center justify-center gap-3">
           <span className="inline-block w-6 h-6 border-2 border-gray-300 border-t-[#FF7A8A] rounded-full animate-spin" />
