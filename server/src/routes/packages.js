@@ -221,10 +221,13 @@ router.post('/reorder', authRequired, requireRole(['admin', 'photographer']), as
       return res.status(400).json({ error: 'orders 必须为数字 id 数组' });
     }
     // 校验所有 id 真实存在 + 不在请求中出现重复
+    if (orders.length !== new Set(orders).size) {
+      return res.status(400).json({ error: 'orders 存在重复 id' });
+    }
     const placeholders = orders.map(() => '?').join(',');
     const rows = await query(`SELECT id FROM packages WHERE id IN (${placeholders})`, orders);
-    if (rows.length !== new Set(orders).size) {
-      return res.status(400).json({ error: '存在非法或重复的套系 id' });
+    if (rows.length !== orders.length) {
+      return res.status(400).json({ error: '存在非法的套系 id' });
     }
     // 按传入顺序逐条更新 sort（避免并发写同一 sort 字段的歧义，循环最稳）
     for (let i = 0; i < orders.length; i++) {
