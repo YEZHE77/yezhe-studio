@@ -1146,6 +1146,10 @@ function OrderCard({ order, onClick, onShare }) {
   const avatarText = String(customerName).slice(0, 1);
   const bg = avatarColor(customerName);
   const chName = order.channel || '';
+  const execs = asArr(order.executors);
+  const execFirst = execs[0] || {};
+  const execName = execFirst.name || order.executor || '';
+  const execAvatar = execFirst.avatar ? img(execFirst.avatar) : '';
 
   let dateLabel = '拍摄日期';
   let dateValue = Number(order.date_tbd) === 1 ? '日期待定' : (order.shoot_date || '未排期');
@@ -1178,7 +1182,17 @@ function OrderCard({ order, onClick, onShare }) {
             }}>{chName.slice(0, 1)}</span>
           )}
         </div>
-        <div style={{ fontSize: 13, color: '#999', whiteSpace: 'nowrap', marginLeft: 8 }}>{statusText}</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+          <div style={{ fontSize: 13, color: '#999', whiteSpace: 'nowrap' }}>{statusText}</div>
+          <button
+            onClick={(e) => { e.stopPropagation(); onShare(order, e); }}
+            aria-label="分享订单"
+            style={{
+              width: 24, height: 24, borderRadius: '50%', background: '#f5f5f5',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, flexShrink: 0
+            }}
+          ><IconQr style={{ width: 12, height: 12, color: '#666' }} /></button>
+        </div>
       </div>
 
       {/* 套系名 + 分类 + 尾款标签（红底白字，对齐截图） */}
@@ -1192,7 +1206,7 @@ function OrderCard({ order, onClick, onShare }) {
         </div>
       </div>
 
-      {/* 日期 + 封面 + 二维码（无内部分隔线；日期对齐封面顶部；二维码移至封面左下角） */}
+      {/* 日期 + 封面 + 负责人头像（无内部分隔线；日期对齐封面顶部；负责人头像替代二维码） */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '6px 14px 12px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#999', paddingTop: 4 }}>
           <IconCalendar style={{ width: 14, height: 14, color: '#bbb' }} />
@@ -1201,11 +1215,29 @@ function OrderCard({ order, onClick, onShare }) {
         {cover ? (
           <div style={{ position: 'relative', flexShrink: 0, marginLeft: 12 }}>
             <img src={cover} alt="" style={{ width: 84, height: 84, borderRadius: 6, objectFit: 'cover', display: 'block' }} />
-            <button onClick={(e) => onShare(order, e)} style={{
-              position: 'absolute', left: -8, bottom: -8, width: 22, height: 22,
-              borderRadius: '50%', background: '#1f2329', border: '2px solid #fff',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0
-            }}><IconQr /></button>
+            {execName ? (
+              execAvatar ? (
+                <img
+                  src={execAvatar}
+                  alt={execName}
+                  title={execName}
+                  style={{
+                    position: 'absolute', left: -10, bottom: -10, width: 32, height: 32,
+                    borderRadius: '50%', border: '2px solid #fff', objectFit: 'cover', display: 'block'
+                  }}
+                />
+              ) : (
+                <div
+                  title={execName}
+                  style={{
+                    position: 'absolute', left: -10, bottom: -10, width: 32, height: 32,
+                    borderRadius: '50%', background: avatarColor(execName), color: '#fff',
+                    border: '2px solid #fff', display: 'flex', alignItems: 'center',
+                    justifyContent: 'center', fontSize: 13, fontWeight: 500
+                  }}
+                >{execName.slice(0, 1)}</div>
+              )
+            ) : null}
           </div>
         ) : null}
       </div>
