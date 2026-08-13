@@ -23,31 +23,22 @@ function IconMore() {
   return <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#333" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg>;
 }
 function IconClock() {
-  return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#999" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>;
+  return <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#999" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>;
 }
 function IconImage() {
-  return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#999" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>;
+  return <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#999" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>;
 }
 function IconWand() {
-  return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#999" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 2l-9 9-4-4-6 6"/><path d="M21 2l-2 2"/><path d="M3 21l4-4"/><path d="M15 6l4 4"/></svg>;
+  return <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#999" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 2l-9 9-4-4-6 6"/><path d="M21 2l-2 2"/><path d="M3 21l4-4"/><path d="M15 6l4 4"/></svg>;
 }
 function IconShirt() {
-  return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#999" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20.38 3.46 16 2a4 4 0 0 1-8 0L3.62 3.46a2 2 0 0 0-1.34 2.23l.58 3.47a1 1 0 0 0 .99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 0 0 2-2V10h2.15a1 1 0 0 0 .99-.84l.58-3.47a2 2 0 0 0-1.34-2.23z"/></svg>;
+  return <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#999" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20.38 3.46 16 2a4 4 0 0 1-8 0L3.62 3.46a2 2 0 0 0-1.34 2.23l.58 3.47a1 1 0 0 0 .99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 0 0 2-2V10h2.15a1 1 0 0 0 .99-.84l.58-3.47a2 2 0 0 0-1.34-2.23z"/></svg>;
 }
 function IconFace() {
-  return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#999" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>;
+  return <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#999" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>;
 }
 function IconMoreService() {
-  return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#FA5151" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>;
-}
-function IconHome() {
-  return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#999" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>;
-}
-function IconHeart() {
-  return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#999" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>;
-}
-function IconService() {
-  return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#999" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>;
+  return <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#FA5151" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>;
 }
 
 // 新增：服务详情弹窗图标
@@ -87,7 +78,6 @@ export default function PackagePreview() {
   const { id } = useParams();
   const nav = useNavigate();
   const [data, setData] = useState(null);
-  const [studio, setStudio] = useState(null);
   const [loading, setLoading] = useState(true);
   const [actionSheetOpen, setActionSheetOpen] = useState(false);
   const [serviceModalOpen, setServiceModalOpen] = useState(false);
@@ -98,15 +88,11 @@ export default function PackagePreview() {
   useEffect(() => {
     if (!id) return;
     setLoading(true);
-    Promise.all([
-      http.get('/api/packages/' + id),
-      http.get('/api/settings/studio').catch(() => null)
-    ])
-      .then(([pkgRes, studioRes]) => {
+    http.get('/api/packages/' + id)
+      .then((pkgRes) => {
         const p = pkgRes.data || {};
         const d = { ...defaultDetails(), ...(p.details && typeof p.details === 'object' ? p.details : {}) };
         setData({ ...p, details: d });
-        setStudio(studioRes?.data || null);
       }).catch(() => {
         setData(null);
       }).finally(() => setLoading(false));
@@ -155,6 +141,15 @@ export default function PackagePreview() {
     { icon: <IconShirt />, label: '服装', value: d.cloth_provide !== 'not', type: 'toggle' },
   ];
 
+  // 把 1./2./3. 自动替换为带圈数字 ①②③，匹配小程序风格
+  const formatTips = (text) => {
+    if (!text) return '';
+    const circled = ['①','②','③','④','⑤','⑥','⑦','⑧','⑨','⑩','⑪','⑫','⑬','⑭','⑮','⑯','⑰','⑱','⑲','⑳'];
+    return text.split('\n').map(line => line.replace(/^(\s*)(\d+)[.．、]\s*/, (m, space, n) => {
+      const idx = parseInt(n, 10) - 1;
+      return (circled[idx] || n + '.') + ' ';
+    })).join('\n');
+  };
 
   const handleOff = async () => {
     setActionSheetOpen(false);
@@ -222,7 +217,7 @@ export default function PackagePreview() {
   };
 
   return (
-    <div style={{ minHeight: '100vh', background: '#fff', overflowY: 'auto', WebkitOverflowScrolling: 'touch', paddingBottom: 'calc(80px + env(safe-area-inset-bottom))' }}>
+    <div style={{ minHeight: '100vh', background: '#fff', overflowY: 'auto', WebkitOverflowScrolling: 'touch', paddingBottom: 'env(safe-area-inset-bottom)' }}>
       {/* 顶部导航 */}
       <div style={{ position: 'sticky', top: 0, zIndex: 50, background: '#fff', height: 48, display: 'flex', alignItems: 'center', padding: '0 12px', borderBottom: '1px solid ' + MBORDER }}>
         <button onClick={() => nav('/packages')} style={{ background: 'none', border: 'none', padding: 4, display: 'flex', alignItems: 'center' }}><IconBack /></button>
@@ -245,32 +240,35 @@ export default function PackagePreview() {
       </div>
 
       {/* 标题 + 价格 */}
-      <div style={{ padding: '16px 16px 12px' }}>
+      <div style={{ padding: '16px 16px 12px', background: '#fff' }}>
         <div style={{ fontSize: 18, fontWeight: 600, color: '#1f2329', lineHeight: 1.4 }}>{data.name || '未命名套系'}</div>
         <div style={{ marginTop: 10, display: 'flex', alignItems: 'baseline', gap: 10 }}>
-          <span style={{ fontSize: 24, fontWeight: 700, color: MRED }}>¥{Number(price || 0).toLocaleString()}</span>
+          <span style={{ color: MRED, display: 'flex', alignItems: 'baseline', gap: 1 }}>
+            <span style={{ fontSize: 16 }}>¥</span>
+            <span style={{ fontSize: 28, fontWeight: 700 }}>{Number(price || 0).toLocaleString()}</span>
+          </span>
           {deposit ? <span style={{ fontSize: 13, color: '#999' }}>定金: ¥ {Number(deposit).toLocaleString()}</span> : null}
         </div>
       </div>
 
       {/* 信息网格 */}
-      <div style={{ padding: '0 16px 16px' }}>
-        <div style={{ background: '#fafafa', borderRadius: 12, padding: '16px 12px', display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px 8px', textAlign: 'center' }}>
+      <div style={{ padding: '0 0 16px', background: '#fff' }}>
+        <div style={{ background: '#fafafa', borderRadius: 12, padding: '20px 16px', display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px 8px', textAlign: 'center' }}>
           {gridItems.map((item, i) => (
-            <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
-              <div style={{ width: 36, height: 36, borderRadius: '50%', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>{item.icon}</div>
+            <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{item.icon}</div>
               <div style={{ fontSize: 12, color: '#666' }}>{item.label}</div>
             </div>
           ))}
-          <div onClick={() => setServiceModalOpen(true)} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
-            <div style={{ width: 36, height: 36, borderRadius: '50%', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}><IconMoreService /></div>
+          <div onClick={() => setServiceModalOpen(true)} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}><IconMoreService /></div>
             <div style={{ fontSize: 12, color: MRED }}>更多服务</div>
           </div>
         </div>
       </div>
 
       {/* 服务详情 */}
-      <div style={{ padding: '0 16px 24px' }}>
+      <div style={{ padding: '0 16px 24px', background: '#fff' }}>
         <div style={{ fontSize: 15, fontWeight: 600, color: '#333', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
           <span style={{ width: 3, height: 14, background: MRED, borderRadius: 2, display: 'inline-block' }} />
           服务详情：
@@ -282,45 +280,17 @@ export default function PackagePreview() {
 
       {/* 温馨提示 */}
       {d.warm_tips ? (
-        <div style={{ padding: '0 16px 24px' }}>
+        <div style={{ padding: '0 16px 24px', background: '#fff' }}>
           <div style={{ fontSize: 15, fontWeight: 600, color: '#333', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
             <span style={{ width: 3, height: 14, background: MRED, borderRadius: 2, display: 'inline-block' }} />
             温馨提示：
           </div>
           <div style={{ fontSize: 14, color: '#555', lineHeight: 1.8, whiteSpace: 'pre-wrap' }}>
-            {d.warm_tips}
+            {formatTips(d.warm_tips)}
           </div>
         </div>
       ) : null}
 
-
-      {/* 底部固定栏 */}
-      <div style={{
-        position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 50,
-        background: '#fff', borderTop: '1px solid ' + MBORDER,
-        display: 'flex', alignItems: 'center', height: 56,
-        paddingBottom: 'env(safe-area-inset-bottom)'
-      }}>
-        <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 10, paddingLeft: 12, overflow: 'hidden' }}>
-          {studio?.logo ? (
-            <img src={img(studio.logo)} alt="" style={{ width: 36, height: 36, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
-          ) : (
-            <div style={{ width: 36, height: 36, borderRadius: '50%', background: '#eee', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ccc" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-            </div>
-          )}
-          <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', overflow: 'hidden' }}>
-            <div style={{ fontSize: 13, fontWeight: 500, color: '#333', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{studio?.name || '岛像工作室'}</div>
-            <div style={{ fontSize: 11, color: '#999', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{studio?.slogan || ''}</div>
-          </div>
-        </div>
-        <button onClick={() => nav('/schedule', { state: { openNew: true } })} style={{
-          width: 140, height: 40, borderRadius: 20, background: MRED, color: '#fff',
-          fontSize: 15, fontWeight: 500, border: 'none', marginRight: 12, display: 'flex', alignItems: 'center', justifyContent: 'center'
-        }}>
-          立即预约
-        </button>
-      </div>
 
       {/* 套系服务详情弹窗 */}
       {serviceModalOpen && (
