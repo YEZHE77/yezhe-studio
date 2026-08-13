@@ -1,6 +1,7 @@
 import React, { Suspense, useState, useEffect } from 'react';
 import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import Icon from '../components/Icon.jsx';
+import ErrorBoundary from '../components/ErrorBoundary.jsx';
 import { useAuth } from '../auth.jsx';
 import MobileWorkbench from '../pages/MobileWorkbench.jsx';
 
@@ -216,39 +217,41 @@ export default function MobileShell() {
       <div className="flex-1 min-w-0 flex flex-col" style={{ minHeight: 0 }}>
         {!isTab && !hideTopBack && <TopBack title={pageTitle} />}
         <div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
-          <Suspense fallback={<PageLoader />}>
-            <Routes>
-              <Route path="/" element={<MobileWorkbench />} />
-              <Route path="/home" element={<Home />} />
-              <Route path="/m/site" element={<MobileSite />} />
-              <Route path="/m/notice" element={<Placeholder title="公告" hint="暂无新公告。" />} />
-              <Route path="/m/msg" element={<Placeholder title="消息" hint="暂无新消息。" />} />
-              {/* 复用现有 B 端页面，保持与桌面端同一套业务逻辑 */}
-              <Route path="/works" element={<Works />} />
-              <Route path="/categories" element={<Categories />} />
-              <Route path="/works/:id/edit" element={<WorkDetail />} />
-              <Route path="/works/new" element={<WorkDetail />} />
-              <Route path="/works/:id" element={<WorkPreview />} />
-              <Route path="/packages" element={<Packages />} />
-              <Route path="/packages/new" element={<PackageEdit />} />
-              <Route path="/packages/:id" element={<PackagePreview />} />
-              <Route path="/packages/:id/edit" element={<PackageEdit />} />
-              <Route path="/schedule" element={<Schedule />} />
-              <Route path="/orders" element={<Orders />} />
-              <Route path="/orders/:id" element={<OrderDetail />} />
-              <Route path="/appointments" element={<Appointments />} />
-              <Route path="/reviews" element={<Reviews />} />
-              <Route path="/settings" element={<Settings />} />
-              <Route path="/customers" element={<Customers />} />
-              <Route path="/datacharts" element={<DataCharts />} />
-              <Route path="/card" element={<BusinessCard />} />
-              <Route path="/selections" element={<SelectionAdmin />} />
-              <Route path="/channels" element={<Channels />} />
-              <Route path="/finance" element={<Finance />} />
-              <Route path="/capacity" element={<CapacityManagement />} />
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
-          </Suspense>
+          <ErrorBoundary resetKeys={[location.pathname]}>
+            <Suspense fallback={<PageLoader />}>
+              <Routes>
+                <Route path="/" element={<MobileWorkbench />} />
+                <Route path="/home" element={<Home />} />
+                <Route path="/m/site" element={<MobileSite />} />
+                <Route path="/m/notice" element={<Placeholder title="公告" hint="暂无新公告。" />} />
+                <Route path="/m/msg" element={<Placeholder title="消息" hint="暂无新消息。" />} />
+                {/* 复用现有 B 端页面，保持与桌面端同一套业务逻辑 */}
+                <Route path="/works" element={<Works />} />
+                <Route path="/categories" element={<Categories />} />
+                <Route path="/works/:id/edit" element={<WorkDetail />} />
+                <Route path="/works/new" element={<WorkDetail />} />
+                <Route path="/works/:id" element={<WorkPreview />} />
+                <Route path="/packages" element={<Packages />} />
+                <Route path="/packages/new" element={<PackageEdit />} />
+                <Route path="/packages/:id" element={<PackagePreview />} />
+                <Route path="/packages/:id/edit" element={<PackageEdit />} />
+                <Route path="/schedule" element={<Schedule />} />
+                <Route path="/orders" element={<Orders />} />
+                <Route path="/orders/:id" element={<OrderDetail />} />
+                <Route path="/appointments" element={<Appointments />} />
+                <Route path="/reviews" element={<Reviews />} />
+                <Route path="/settings" element={<Settings />} />
+                <Route path="/customers" element={<Customers />} />
+                <Route path="/datacharts" element={<DataCharts />} />
+                <Route path="/card" element={<BusinessCard />} />
+                <Route path="/selections" element={<SelectionAdmin />} />
+                <Route path="/channels" element={<Channels />} />
+                <Route path="/finance" element={<Finance />} />
+                <Route path="/capacity" element={<CapacityManagement />} />
+                <Route path="*" element={<Navigate to="/" replace />} />
+              </Routes>
+            </Suspense>
+          </ErrorBoundary>
         </div>
       </div>
       <TabBar active={activeKey} onTab={(to) => nav(to)} onPlus={() => setSheetOpen(true)} />

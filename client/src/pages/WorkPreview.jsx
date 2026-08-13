@@ -42,6 +42,8 @@ export default function WorkPreview() {
   const nav = useNavigate();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  // 工作室资料（品牌栏 + 关于我们，接口驱动）
+  const [studio, setStudio] = useState(null);
   const [actionSheetOpen, setActionSheetOpen] = useState(false);
   const [shareModalOpen, setShareModalOpen] = useState(false);
   const [shareData, setShareData] = useState(null);
