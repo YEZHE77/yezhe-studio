@@ -225,7 +225,6 @@ export default function WorkDetail() {
       ? { ...DEFAULT_FORM, ...initialDraft, album_password: '' }
       : { ...DEFAULT_FORM }
   );
-  const [creating, setCreating] = useState(false); // 新建草稿创建中：禁用所有变更类操作（避免 id='new' 时误调接口）
   const [draggedId, setDraggedId] = useState(null);
   const [dragOverId, setDragOverId] = useState(null);
   const [reordering, setReordering] = useState(false);
@@ -235,13 +234,7 @@ export default function WorkDetail() {
   const [preparing, setPreparing] = useState(false);
   const [slideOpen, setSlideOpen] = useState(false);
   const [slidePhotos, setSlidePhotos] = useState([]);
-  const creatingRef = useRef(false);
-  // 草稿状态追踪：避免 /works/new 自动 createDraft 后，用户直接返回却留下空白作品
-  // draftIdRef：createDraft 成功后填入真实作品 ID
-  // draftCleanedRef：标记是否已处理（保存后或主动清理后），防止重复 DELETE
-  // 下面 4 个 *Ref 镜像 albums/form 关键字段，让组件卸载时的 cleanup 能同步读取最新状态
-  const draftIdRef = useRef(null);
-  const draftCleanedRef = useRef(false);
+  // 下面 4 个 *Ref 镜像 albums/form 关键字段，供异步逻辑读取最新 state
   const albumsLenRef = useRef(0);
   const formTitleRef = useRef('');
   const formIsPublicRef = useRef(false);
@@ -330,54 +323,16 @@ export default function WorkDetail() {
     }
   }
 
-  async function createDraft() {
-    // 页面式新建：进入 /works/new 时立即创建一个草稿作品，自动跳转到编辑态，
-    // 这样用户无需先点「保存基本信息」就能直接上传照片。
-    if (creatingRef.current) return;
-    creatingRef.current = true;
-    setCreating(true); // 让 UI 显示 loading，避免用户在草稿创建完成前误操作（否则 id 还是 'new'，上传会 404）
-    // 超时保护：15 秒后自动解除 creating（防 Render 冷启动卡死）
-    const timeout = setTimeout(() => {
-      if (creatingRef.current) {
-        creatingRef.current = false;
-        setCreating(false);
-        alert('创建作品超时，请检查网络后刷新页面重试');
-      }
-    }, 15000);
-    try {
-      const r = await http.post('/api/works', {
-        title: '未命名作品',
-        category_ids: [],
-        is_public: false,
-        allow_download: false,
-        tags: [],
-        album_copy: '',
-        album_password_enabled: false,
-        album_password: '',
-        album_expires_at: '',
-        cover_url: '',
-        is_private: false,
-        description: '',
-        blessing: '',
-        live: false,
-        customer_name: '',
-        order_id: null
-      });
-      clearTimeout(timeout);
-      draftIdRef.current = r.data.id; // 记录草稿 ID，离开页面时若仍是空草稿则自动清理
-      navigate('/works/' + r.data.id + '/edit', { replace: true }); // /works/:id 已是预览页，新建后须进编辑页
-      // creating 保持 true 直到新 id 触发的 loadAll 完成后才清（见下方 useEffect）
-    } catch (err) {
-      clearTimeout(timeout);
-      alert((err.response && err.response.data && err.response.data.error) || '创建作品失败');
-      creatingRef.current = false;
-      setCreating(false);
-    }
-  }
-
   async function loadAll() {
-    // 新建模式：自动创建草稿并跳转，无需用户先保存基本信息
-    if (isNew) { await createDraft(); return; }
+    if (isNew) {
+      // 新建态不预创建草稿：用户填写表单后点「保存」才真正 POST /api/works。
+      // 列表页访问时后端已热启动，WorkDetail 本地渲染无需等待。
+      setWork(null);
+      setAlbums([]);
+      setForm({ ...DEFAULT_FORM });
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     await loadWork();
     setLoading(false);
@@ -385,8 +340,6 @@ export default function WorkDetail() {
 
   useEffect(() => { http.get('/api/categories').then((r) => setCats(r.data)); }, []);
   useEffect(() => { loadAll(); }, [id]);
-  // 草稿创建完成（id 从 'new' 切到真实 id）后清掉 creating 标志
-  useEffect(() => { if (!isNew) setCreating(false); }, [isNew]);
 
   // 自动保存表单草稿（防抖 600ms）：滚动导致页面回收/组件重挂载或刷新时，输入不丢失
   useEffect(() => {
@@ -443,13 +396,13 @@ export default function WorkDetail() {
         album_expires_at: form.album_expires_at || ''
       };
       if (isNew) {
-        // 新建：创建作品（其余字段后端取默认值），成功后跳转至编辑态（replace 历史，使返回直达列表）
+        // 新建：用户已确认保存，才真正创建作品；成功后进入真实编辑页继续上传照片。
         const r = await http.post('/api/works', {
           ...payload,
           cover_url: '', is_private: false, description: '', blessing: '', live: false, customer_name: '', order_id: null
         });
         alert('作品创建成功，可继续上传照片');
-        navigate('/works/' + r.data.id, { replace: true });
+        navigate('/works/' + r.data.id + '/edit', { replace: true });
         return;
       }
       // 编辑：保留作品本身字段（封面 / 关联订单等），仅更新表单字段
@@ -465,65 +418,24 @@ export default function WorkDetail() {
       });
       clearDraft(id);
       await loadWork();
-      draftCleanedRef.current = true; // 已保存，不再被 cleanup 自动删除
       alert('保存成功');
     } catch (err) {
       alert((err.response && err.response.data && err.response.data.error) || '保存失败');
     } finally { setSaving(false); }
   }
 
-  // 空草稿判定（无照片 + 无封面 + 文案为空）；标题/是否公开不参与判定，
-  // 因为用户可能随手改了标题但没上传照片，此时仍应被识别为空草稿自动清理。
-  function isEmptyDraft() {
-    if (!draftIdRef.current) return false;
-    return albumsLenRef.current === 0
-      && !formCoverUrlRef.current
-      && !formAlbumCopyRef.current;
-  }
-
-  // 主动清理空草稿（供「返回」按钮和组件卸载时调用）。fire-and-forget；失败仅记录
-  function cleanupEmptyDraft() {
-    if (draftCleanedRef.current) return;
-    if (!isEmptyDraft()) {
-      draftCleanedRef.current = true; // 有内容，标记为「无需清理」，后续跳过
-      return;
-    }
-    draftCleanedRef.current = true;
-    const draftId = draftIdRef.current;
-    const token = (() => { try { return localStorage.getItem('token') || ''; } catch { return ''; } })();
-    // 用 fetch + keepalive，组件卸载后仍能完成请求；axios 请求会被浏览器中止
-    fetch((BASE || '') + '/api/works/' + draftId, {
-      method: 'DELETE',
-      headers: token ? { 'Authorization': 'Bearer ' + token } : {},
-      keepalive: true
-    }).catch((e) => console.warn('[WorkDetail] 清理空草稿失败', draftId, e && e.message));
-  }
-
-  // 「返回」按钮处理：先清理空草稿，再 navigate（同步等待，给用户即时反馈）
-  async function handleBack() {
-    if (isEmptyDraft()) {
-      const draftId = draftIdRef.current;
-      draftCleanedRef.current = true;
-      try { await http.delete('/api/works/' + draftId); } catch (e) { console.warn('[WorkDetail] 清理空草稿失败', e && e.message); }
-    } else {
-      draftCleanedRef.current = true;
-    }
-    // 从预览页（WorkPreview）进入编辑 → 返回上一页即预览；其他入口（新建/直达URL）返回列表
+  // 「返回」按钮处理：从预览页进入编辑则返回上一页；其他入口（新建/直达URL）返回列表
+  function handleBack() {
     if (location.state?.from === 'preview') navigate(-1);
     else navigate('/works');
   }
 
-  // 同步关键 state 到 ref，供组件卸载 cleanup 读取（state 不可访问）
+  // 同步关键 state 到 ref（保留，供后续扩展使用）
   useEffect(() => { albumsLenRef.current = albums.length; }, [albums.length]);
   useEffect(() => { formTitleRef.current = form.title; }, [form.title]);
   useEffect(() => { formIsPublicRef.current = !!form.is_public; }, [form.is_public]);
   useEffect(() => { formAlbumCopyRef.current = form.album_copy || ''; }, [form.album_copy]);
   useEffect(() => { formCoverUrlRef.current = work?.cover_url || pendingCoverUrl || ''; }, [work?.cover_url, pendingCoverUrl]);
-
-  // 组件卸载 cleanup：处理「底部 TabBar 切换 / 关闭 tab / App 内路由跳转」等场景的空草稿清理
-  useEffect(() => {
-    return () => cleanupEmptyDraft();
-  }, []);
 
   function onUploadClick() {
     if (fileRef.current) {
@@ -537,9 +449,9 @@ export default function WorkDetail() {
   async function onPickFiles(e) {
     const files = e.target.files;
     if (!files || !files.length) return;
-    // 草稿还没创建完（id='new'）时拦截，给明确提示
-    if (id === 'new' || creating) {
-      alert('作品正在创建中，请稍等几秒再上传照片');
+    // 新建态尚未保存，没有真实作品 ID，禁止上传照片
+    if (isNew) {
+      alert('请先保存基本信息，作品创建成功后再上传照片');
       if (fileRef.current) fileRef.current.value = '';
       return;
     }
@@ -942,7 +854,7 @@ export default function WorkDetail() {
   }
 
   if (loading) {
-    const loadingText = isNew ? '正在创建作品…' : '加载中…';
+    const loadingText = '加载中…';
     if (isMobile) {
       return (
         <div className="min-h-screen flex flex-col items-center justify-center text-gray-400 text-sm bg-[#f7f7f7]">
@@ -953,15 +865,6 @@ export default function WorkDetail() {
     }
     return (
       <div className="max-w-7xl mx-auto animate-pulse">
-        {isNew && (
-          <div className="mb-5 px-4 py-3 rounded bg-blue-50 border border-blue-200 text-blue-700 text-sm flex items-center gap-2">
-            <svg className="animate-spin h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
-            </svg>
-            正在创建作品草稿，请稍候…
-          </div>
-        )}
         <div className="flex items-center justify-between mb-5">
           <div className="flex items-center gap-3">
             <div className="w-28 h-9 rounded bg-ink" />
@@ -1171,7 +1074,7 @@ export default function WorkDetail() {
             <span className="text-sm ml-1">返回</span>
           </button>
           <span className="flex-1 text-center text-base text-gray-900">编辑客片</span>
-          <button onClick={saveBasic} disabled={saving} className="text-sm px-3 py-1.5 rounded-full bg-[#FF7A8A] text-white disabled:opacity-50 shrink-0">{saving ? '保存中…' : '保存'}</button>
+          <button onClick={saveBasic} disabled={saving} className="text-sm px-3 py-1.5 rounded-full bg-[#FF7A8A] text-white disabled:opacity-50 shrink-0">{saving ? '保存中…' : (isNew ? '保存并创建' : '保存')}</button>
         </div>
 
         <div className="flex-1 overflow-y-auto">
@@ -1248,12 +1151,17 @@ export default function WorkDetail() {
                   </svg>
                 </div>
                 <p className="text-sm text-gray-400 mb-4">还没有上传照片，添加第一张客片吧</p>
-                {/* 用 label 包裹 file input，业内移动端标准做法，绕开 iOS Safari 对 ref.click() 的偶发拦截。
-                    creating=true 时改变文案提示，但不阻止点击——由 onPickFiles 内部判断给出 alert，避免「点了没反应」 */}
-                <label className={'px-8 py-2.5 rounded-full text-white text-sm font-medium cursor-pointer select-none active:opacity-80 ' + (creating ? 'bg-gray-400' : 'bg-[#FF7A8A]') + (uploading || preparing ? ' opacity-60' : '')}>
-                  {creating ? '创建作品中…' : uploading ? '上传中…' : preparing ? '准备中…' : '+ 上传照片'}
-                  <input ref={fileRef} type="file" accept="image/*" multiple className="hidden" onChange={onPickFiles} />
-                </label>
+                {/* 用 label 包裹 file input，业内移动端标准做法，绕开 iOS Safari 对 ref.click() 的偶发拦截。*/}
+                {isNew ? (
+                  <span className="px-8 py-2.5 rounded-full text-white text-sm font-medium select-none bg-gray-300 opacity-80">
+                    保存基本信息后可上传照片
+                  </span>
+                ) : (
+                  <label className={'px-8 py-2.5 rounded-full text-white text-sm font-medium cursor-pointer select-none active:opacity-80 bg-[#FF7A8A]' + (uploading || preparing ? ' opacity-60' : '')}>
+                    {uploading ? '上传中…' : preparing ? '准备中…' : '+ 上传照片'}
+                    <input ref={fileRef} type="file" accept="image/*" multiple className="hidden" onChange={onPickFiles} />
+                  </label>
+                )}
               </div>
             </div>
           )}
@@ -1298,7 +1206,7 @@ export default function WorkDetail() {
           <div className="bg-panel border border-line rounded-xl2 p-5">
             <div className="flex items-center justify-between flex-wrap gap-2 mb-4">
               <div className="flex items-center gap-2">
-                <button onClick={onUploadClick} disabled={uploading || preparing} className="px-3 py-1.5 rounded bg-brand text-white text-xs hover:opacity-90 disabled:opacity-50">+ 添加照片</button>
+                <button onClick={() => isNew ? alert('请先保存基本信息，作品创建成功后再上传照片') : onUploadClick()} disabled={isNew || uploading || preparing} className="px-3 py-1.5 rounded bg-brand text-white text-xs hover:opacity-90 disabled:opacity-50">+ 添加照片</button>
                 <span className="text-xs text-muted">{albums.length}/{albums.length}</span>
               </div>
               <div className="flex items-center gap-2">
@@ -1433,7 +1341,7 @@ export default function WorkDetail() {
                 </div>
               </div>
             </div>
-            <button type="submit" disabled={saving} className="mt-5 w-full px-4 py-2 rounded bg-brand text-white text-sm hover:opacity-90 disabled:opacity-60">{saving ? '保存中…' : '保存基本信息'}</button>
+            <button type="submit" disabled={saving} className="mt-5 w-full px-4 py-2 rounded bg-brand text-white text-sm hover:opacity-90 disabled:opacity-60">{saving ? '保存中…' : (isNew ? '保存并创建作品' : '保存基本信息')}</button>
           </form>
 
           {work?.cover_url && (
@@ -1463,7 +1371,7 @@ export default function WorkDetail() {
               <div className="flex items-center gap-2">
                 <button onClick={openSlide} disabled={!zoneAlbums.length} className="px-4 py-2 rounded border border-line text-sm text-fg hover:text-brand hover:border-brand disabled:opacity-40">▶ 播放幻灯片</button>
                 <input ref={fileRef} type="file" accept="image/*" multiple className="hidden" onChange={onPickFiles} />
-                <button onClick={onUploadClick} disabled={uploading || preparing} className="px-4 py-2 rounded bg-brand text-white text-sm hover:opacity-90 disabled:opacity-60">{uploading ? `上传中 ${overallPct}%` : preparing ? '准备中…' : '+ 批量上传'}</button>
+                <button onClick={() => isNew ? alert('请先保存基本信息，作品创建成功后再上传照片') : onUploadClick()} disabled={isNew || uploading || preparing} className="px-4 py-2 rounded bg-brand text-white text-sm hover:opacity-90 disabled:opacity-60">{isNew ? '保存后可上传' : uploading ? `上传中 ${overallPct}%` : preparing ? '准备中…' : '+ 批量上传'}</button>
                 {uploading && (
                   <button onClick={togglePause} className="px-3 py-2 rounded border border-line text-sm text-muted hover:text-brand">{paused ? '继续' : '暂停'}</button>
                 )}

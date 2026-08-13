@@ -37,7 +37,6 @@ export default function Works() {
   const [draggedId, setDraggedId] = useState(null);
   const [dragOverId, setDragOverId] = useState(null);
   const [savingSort, setSavingSort] = useState(false);
-  const [creating, setCreating] = useState(false); // 点击「添加新客片」后创建草稿中
   const [busyText, setBusyText] = useState(null); // 全屏操作中遮罩文案（点击后立刻反馈，防止冷启动期“点了没反应”）
 
   // 移动端筛选/排序/菜单状态
@@ -152,20 +151,10 @@ export default function Works() {
     }
   }
 
-  // 新流程：点击「添加新客片」先在列表页异步创建草稿，再跳编辑页。
-  // 避免先跳到 /works/new 再创建草稿导致的双重加载与白屏等待。
-  async function openNew() {
-    if (creating) return;
-    setCreating(true);
-    setBusyText('正在创建作品…');
-    try {
-      const r = await http.post('/api/works', { title: '未命名作品' });
-      navigate('/works/' + r.data.id + '/edit');
-    } catch (e) {
-      alert((e.response && e.response.data && e.response.data.error) || '创建作品失败');
-      setCreating(false);
-      setBusyText(null);
-    }
+  // 点击「添加新客片」进入空白新建页，不预创建作品。
+  // 用户必须点击「保存基本信息」后才真正 POST /api/works 入库，避免未保存就产生「未命名作品」。
+  function openNew() {
+    navigate('/works/new');
   }
 
   async function remove(w, e) {
@@ -287,8 +276,8 @@ export default function Works() {
           <div className="absolute right-3 top-full mt-1 w-40 rounded-lg bg-white shadow-lg border border-gray-100 py-1 z-50">
             {!sortMode ? (
               <>
-                <button disabled={creating} onClick={() => { setShowTopMenu(false); openNew(); }} className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50">
-                  {creating ? '创建作品中…' : '添加新客片'}
+                <button onClick={() => { setShowTopMenu(false); openNew(); }} className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50">
+                  添加新客片
                 </button>
                 <button onClick={() => { setShowTopMenu(false); toggleSortMode(); }} className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50">自定义排序</button>
               </>
