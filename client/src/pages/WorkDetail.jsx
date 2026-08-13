@@ -180,7 +180,8 @@ export default function WorkDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
-  const isNew = id === 'new'; // 页面式新建：直接进入编辑页，空白表单创建作品
+  const isNew = id === 'new' || location.pathname === '/works/new'; // 页面式新建：直接进入编辑页，空白表单创建作品
+  // 注：/works/new 为静态路由，useParams() 无 :id，id 为 undefined，须用 pathname 兜底判断新建态
   const fileRef = useRef(null);
   const uploadAreaRef = useRef(null);
   const albumCopyRef = useRef(null); // 文案 textarea 自适应高度
@@ -364,7 +365,7 @@ export default function WorkDetail() {
       });
       clearTimeout(timeout);
       draftIdRef.current = r.data.id; // 记录草稿 ID，离开页面时若仍是空草稿则自动清理
-      navigate('/works/' + r.data.id, { replace: true });
+      navigate('/works/' + r.data.id + '/edit', { replace: true }); // /works/:id 已是预览页，新建后须进编辑页
       // creating 保持 true 直到新 id 触发的 loadAll 完成后才清（见下方 useEffect）
     } catch (err) {
       clearTimeout(timeout);
