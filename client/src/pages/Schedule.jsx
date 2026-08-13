@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import http, { conflictOf } from '../api.js';
 import { useViewState } from '../tabMemory.js';
 
@@ -107,6 +107,7 @@ function dayState(rows, pends) {
 
 export default function Schedule() {
   const nav = useNavigate();
+  const location = useLocation();
   const init = new Date();
   const initMonth = `${init.getFullYear()}-${pad(init.getMonth() + 1)}`;
   const [state, setState] = useViewState('schedule', { month: initMonth, executor: '', package_id: '', status: '', view: 'month' });
@@ -202,6 +203,17 @@ export default function Schedule() {
       clearTimeout(fadeTimerRef.current);
     };
   }, []);
+
+  // 从其他页面跳转过来要求打开新建弹窗
+  useEffect(() => {
+    if (location.state?.openNew) {
+      const date = selDate || todayStr;
+      setErr('');
+      setOrderDlg({ date });
+      nav(location.pathname, { replace: true, state: {} });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.state]);
 
   const cells = buildMonth(y, m - 1);
   const view = state.view || 'month';

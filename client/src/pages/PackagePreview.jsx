@@ -87,6 +87,7 @@ export default function PackagePreview() {
   const { id } = useParams();
   const nav = useNavigate();
   const [data, setData] = useState(null);
+  const [studio, setStudio] = useState(null);
   const [loading, setLoading] = useState(true);
   const [actionSheetOpen, setActionSheetOpen] = useState(false);
   const [serviceModalOpen, setServiceModalOpen] = useState(false);
@@ -94,11 +95,15 @@ export default function PackagePreview() {
   useEffect(() => {
     if (!id) return;
     setLoading(true);
-    http.get('/api/packages/' + id)
-      .then((pkgRes) => {
+    Promise.all([
+      http.get('/api/packages/' + id),
+      http.get('/api/settings/studio').catch(() => null)
+    ])
+      .then(([pkgRes, studioRes]) => {
         const p = pkgRes.data || {};
         const d = { ...defaultDetails(), ...(p.details && typeof p.details === 'object' ? p.details : {}) };
         setData({ ...p, details: d });
+        setStudio(studioRes?.data || null);
       }).catch(() => {
         setData(null);
       }).finally(() => setLoading(false));
@@ -257,21 +262,20 @@ export default function PackagePreview() {
         display: 'flex', alignItems: 'center', height: 56,
         paddingBottom: 'env(safe-area-inset-bottom)'
       }}>
-        <div style={{ flex: 1, display: 'flex', justifyContent: 'space-around', alignItems: 'center' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
-            <IconHome />
-            <span style={{ fontSize: 10, color: '#999' }}>主页</span>
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
-            <IconHeart />
-            <span style={{ fontSize: 10, color: '#999' }}>喜欢</span>
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
-            <IconService />
-            <span style={{ fontSize: 10, color: '#999' }}>客服</span>
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 10, paddingLeft: 12, overflow: 'hidden' }}>
+          {studio?.logo ? (
+            <img src={img(studio.logo)} alt="" style={{ width: 36, height: 36, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
+          ) : (
+            <div style={{ width: 36, height: 36, borderRadius: '50%', background: '#eee', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ccc" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            </div>
+          )}
+          <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', overflow: 'hidden' }}>
+            <div style={{ fontSize: 13, fontWeight: 500, color: '#333', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{studio?.name || '岛像工作室'}</div>
+            <div style={{ fontSize: 11, color: '#999', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{studio?.slogan || ''}</div>
           </div>
         </div>
-        <button style={{
+        <button onClick={() => nav('/schedule', { state: { openNew: true } })} style={{
           width: 140, height: 40, borderRadius: 20, background: MRED, color: '#fff',
           fontSize: 15, fontWeight: 500, border: 'none', marginRight: 12, display: 'flex', alignItems: 'center', justifyContent: 'center'
         }}>
