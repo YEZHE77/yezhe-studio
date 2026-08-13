@@ -227,8 +227,8 @@ export default function MobileWorkbench() {
   const safe = (v) => (typeof v === 'number' ? v : 0);
   // 待跟进：所有活跃中的订单（未付定金、已付定金、等待拍摄、选片中、精修中、已交片）
   const followTotal = safe(pb.unpaid) + safe(pb.deposit) + safe(pb.shoot) + safe(pb.selecting) + safe(pb.retouching) + safe(pb.delivered);
-  // 待拍摄：对应移动端「等待拍摄」Tab（映射到 deposit 状态）
-  const shootCount = safe(pb.deposit) + safe(pb.shoot);
+  // 等待拍摄：对应移动端「等待拍摄」Tab（只含 deposit 状态，不含已拍摄的 shoot）
+  const shootCount = safe(pb.deposit);
 
   return (
     <div style={{ background: '#fff', minHeight: '100vh', paddingBottom: 28 }}>
