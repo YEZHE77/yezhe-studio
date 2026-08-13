@@ -453,7 +453,7 @@ export default function Works() {
               <span className="text-xs text-gray-600">管理相册</span>
             </button>
             <button onClick={() => { openWorkShare(activeMenuWork); setActiveMenuWork(null); }} className="flex flex-col items-center gap-1 p-2 rounded-lg hover:bg-gray-50">
-              <svg viewBox="0 0 24 24" className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+              <svg viewBox="0 0 24 24" className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 4h14v14H5z"/><path d="M12 8l5-5"/><path d="M17 3v5h-5"/></svg>
               <span className="text-xs text-gray-600">分享相册</span>
             </button>
             <button onClick={() => { remove(activeMenuWork, { stopPropagation: () => {} }); setActiveMenuWork(null); }} className="flex flex-col items-center gap-1 p-2 rounded-lg hover:bg-gray-50">
