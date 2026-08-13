@@ -1138,60 +1138,69 @@ function OrderCard({ order, onClick, onShare }) {
 
   return (
     <button type="button" onClick={onClick} style={{
-      width: '100%', background: '#fff', borderRadius: 12, padding: 16, marginBottom: 12,
-      border: 'none', textAlign: 'left', display: 'block', boxShadow: '0 1px 4px rgba(0,0,0,0.04)'
+      width: '100%', background: '#fff', borderRadius: 8, marginBottom: 12,
+      border: '1px solid #F0F0F0', textAlign: 'left', display: 'block', overflow: 'hidden'
     }}>
       {/* 头像 + 客户 + 状态 */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, flex: 1 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 14px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, flex: 1 }}>
           <div style={{
-            width: 32, height: 32, borderRadius: '50%', background: bg, color: '#fff',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, flexShrink: 0
+            width: 28, height: 28, borderRadius: '50%', background: bg, color: '#fff',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, flexShrink: 0
           }}>{avatarText}</div>
           <div style={{ fontSize: 14, color: '#333', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{customerName}</div>
         </div>
-        <div style={{ fontSize: 14, color: '#999', whiteSpace: 'nowrap', marginLeft: 8 }}>{statusText}</div>
+        <div style={{ fontSize: 13, color: '#999', whiteSpace: 'nowrap', marginLeft: 8 }}>{statusText}</div>
       </div>
+      <div style={{ height: 1, background: '#F0F0F0' }} />
 
-      {/* 套系名 */}
-      <div style={{ fontSize: 16, color: '#1f2329', lineHeight: 1.4, marginBottom: 8 }}>{pkgName}</div>
-
-      {/* 分类 + 尾款标签 */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-        {pkgCategory ? <span style={{ fontSize: 12, color: '#999' }}>{pkgCategory}</span> : null}
-        {remain > 0 && order.status !== 'completed' && order.status !== 'cancelled' && (
-          <span style={{ fontSize: 11, color: '#6b5744', background: '#e2d2c2', padding: '2px 6px', borderRadius: 4 }}>未结算尾款</span>
-        )}
-      </div>
-
-      {/* 定金 + 尾款（尾款换行，在定金下方） */}
-      {amount > 0 && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 12, fontSize: 13 }}>
-          <span style={{ color: '#999' }}>定金 <span style={{ color: '#1f2329', fontWeight: 500 }}>{fmtMoney(depositAmt)}</span></span>
-          <span style={{ color: remain > 0 ? '#ff7a45' : '#999' }}>尾款 <span style={{ color: remain > 0 ? '#ff7a45' : '#1f2329', fontWeight: 500 }}>{fmtMoney(remain > 0 ? remain : 0)}</span></span>
+      {/* 套系名 + 分类 + 尾款标签 */}
+      <div style={{ padding: '12px 14px' }}>
+        <div style={{ fontSize: 15, color: '#1f2329', lineHeight: 1.4, fontWeight: 500, marginBottom: 6 }}>{pkgName}</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          {pkgCategory ? <span style={{ fontSize: 12, color: '#999' }}>{pkgCategory}</span> : null}
+          {remain > 0 && order.status !== 'completed' && order.status !== 'cancelled' && (
+            <span style={{ fontSize: 11, color: '#6b5744', background: '#f0e2cc', padding: '2px 8px', borderRadius: 4 }}>未结算尾款</span>
+          )}
         </div>
+      </div>
+      <div style={{ height: 1, background: '#F0F0F0' }} />
+
+      {/* 定金 + 尾款（保留位置） */}
+      {amount > 0 && (
+        <>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4, padding: '10px 14px', fontSize: 13 }}>
+            <span style={{ color: '#999' }}>定金 <span style={{ color: '#1f2329', fontWeight: 500 }}>{fmtMoney(depositAmt)}</span></span>
+            <span style={{ color: remain > 0 ? '#ff7a45' : '#999' }}>尾款 <span style={{ color: remain > 0 ? '#ff7a45' : '#1f2329', fontWeight: 500 }}>{fmtMoney(remain > 0 ? remain : 0)}</span></span>
+          </div>
+          <div style={{ height: 1, background: '#F0F0F0' }} />
+        </>
       )}
 
       {/* 日期 + 封面 + 分享按钮 */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#999' }}>
           <IconCalendar style={{ width: 14, height: 14, color: '#bbb' }} />
           <span>{dateLabel}：{dateValue}</span>
         </div>
         {cover ? (
           <div style={{ position: 'relative', flexShrink: 0, marginLeft: 12 }}>
-            <img src={cover} alt="" style={{ width: 64, height: 64, borderRadius: 8, objectFit: 'cover', display: 'block' }} />
+            <img src={cover} alt="" style={{ width: 56, height: 56, borderRadius: 6, objectFit: 'cover', display: 'block' }} />
             <button onClick={(e) => onShare(order, e)} style={{
-              position: 'absolute', right: -6, bottom: -6, width: 24, height: 24,
+              position: 'absolute', right: -6, bottom: -6, width: 22, height: 22,
               borderRadius: '50%', background: '#1f2329', border: '2px solid #fff',
               display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0
             }}><IconQr /></button>
           </div>
         ) : null}
       </div>
+      <div style={{ height: 1, background: '#F0F0F0' }} />
 
-      {/* 备注：编辑入口（左移） */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12 }}>
+      {/* 备注 + 编辑入口 */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px' }}>
+        <span style={{ flex: 1, fontSize: 12, color: order.remark ? '#666' : '#bbb', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {order.remark || '无'}
+        </span>
         <span
           role="button"
           aria-label="编辑备注"
@@ -1200,9 +1209,6 @@ function OrderCard({ order, onClick, onShare }) {
         >
           <IconPencil style={{ width: 13, height: 13, color: '#7ECDBB' }} />编辑
         </span>
-        {order.remark ? (
-          <span style={{ fontSize: 12, color: '#666', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{order.remark}</span>
-        ) : null}
       </div>
     </button>
   );
