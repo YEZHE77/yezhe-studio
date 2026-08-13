@@ -445,6 +445,12 @@ export default function Orders() {
                     ) : (
                       <div className="flex items-center gap-1.5 min-w-0">
                         <span className="text-fg text-sm truncate">订单：{o.order_name || '未命名订单'}</span>
+                        {o.channel && (
+                          <span className="shrink-0 inline-flex items-center justify-center text-white text-[11px] font-medium"
+                            style={{ width: 20, height: 20, borderRadius: 4, background: channelColor(o.channel) }}>
+                            {o.channel.slice(0, 1)}
+                          </span>
+                        )}
                         <button onClick={() => startRename(o)} title="编辑订单名称"
                           className="shrink-0" style={{ color: '#2f7cf6' }}><IconPencil /></button>
                       </div>
@@ -713,6 +719,25 @@ function avatarColor(name) {
   let h = 0;
   for (let i = 0; i < String(name || '').length; i++) h += String(name).charCodeAt(i);
   return AVATAR_BG[h % AVATAR_BG.length];
+}
+
+/* 渠道来源徽标：已知渠道用品牌色，未知渠道 hash 取色 */
+const CHANNEL_COLORS = {
+  '抖音': '#FE2C55',
+  '小红书': '#FF2442',
+  '美团': '#FFB300',
+  '小程序': '#07C160',
+  '客户推荐': '#2DB7F5',
+  '自然进店': '#7ECDBB',
+  '其他来源': '#8C8C8C',
+};
+const CHANNEL_FALLBACK = ['#FE2C55', '#FF2442', '#FFB300', '#07C160', '#2DB7F5', '#7ECDBB', '#9B7ED8', '#5A5A5A'];
+function channelColor(name) {
+  if (!name) return '#8C8C8C';
+  if (CHANNEL_COLORS[name]) return CHANNEL_COLORS[name];
+  let h = 0;
+  for (let i = 0; i < String(name).length; i++) h += String(name).charCodeAt(i);
+  return CHANNEL_FALLBACK[h % CHANNEL_FALLBACK.length];
 }
 
 const IconBack = () => (
@@ -1120,6 +1145,7 @@ function OrderCard({ order, onClick, onShare }) {
   const customerName = order.customer_name || order.order_name || '未知';
   const avatarText = String(customerName).slice(0, 1);
   const bg = avatarColor(customerName);
+  const chName = order.channel || '';
 
   let dateLabel = '拍摄日期';
   let dateValue = Number(order.date_tbd) === 1 ? '日期待定' : (order.shoot_date || '未排期');
@@ -1144,6 +1170,13 @@ function OrderCard({ order, onClick, onShare }) {
             display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, flexShrink: 0
           }}>{avatarText}</div>
           <div style={{ fontSize: 15, color: '#1f2329', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{customerName}</div>
+          {chName && (
+            <span style={{
+              width: 20, height: 20, borderRadius: 4, background: channelColor(chName),
+              color: '#fff', fontSize: 11, fontWeight: 500, flexShrink: 0,
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center'
+            }}>{chName.slice(0, 1)}</span>
+          )}
         </div>
         <div style={{ fontSize: 13, color: '#999', whiteSpace: 'nowrap', marginLeft: 8 }}>{statusText}</div>
       </div>
