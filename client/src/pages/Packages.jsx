@@ -122,6 +122,7 @@ export default function Packages() {
   }, []);
   const [statusOpen, setStatusOpen] = useState(false);
   const [catOpen, setCatOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   // Tab 记忆：状态筛选 + 搜索 + 分类
   const [state, setState] = useViewState('packages', { status: 'all', q: '', category: '' });
@@ -286,7 +287,37 @@ export default function Packages() {
               style={{ border: 'none', background: 'transparent', outline: 'none', fontSize: 14, flex: 1, color: '#333' }}
             />
           </div>
-          <button style={{ background: 'none', border: 'none', padding: 4, color: '#666', fontSize: 16, flexShrink: 0 }}>⋯</button>
+          <button onClick={() => { setMenuOpen(!menuOpen); setStatusOpen(false); setCatOpen(false); }} style={{ background: 'none', border: 'none', padding: 4, color: '#666', fontSize: 16, flexShrink: 0, position: 'relative' }}>⋯</button>
+          {/* 管理折叠菜单 */}
+          {menuOpen && (
+            <div style={{ position: 'absolute', top: 'calc(100% + 4px)', right: 12, background: '#fff', borderRadius: 12, boxShadow: '0 4px 20px rgba(0,0,0,0.12)', zIndex: 50, minWidth: 180, overflow: 'hidden' }}>
+              <button onClick={() => { setMenuOpen(false); alert('套系排序功能开发中'); }} style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '12px 16px', background: 'none', border: 'none', fontSize: 14, color: '#333', textAlign: 'left' }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#999" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 5h10M11 9h7M11 13h4M3 17l3 3 3-3M6 18V4"/></svg>
+                套系排序
+              </button>
+              <button onClick={() => { setMenuOpen(false); alert('显示货币功能开发中'); }} style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '12px 16px', background: 'none', border: 'none', fontSize: 14, color: '#333', textAlign: 'left' }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#999" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                显示货币
+              </button>
+              <button onClick={() => { setMenuOpen(false); alert('分类布局功能开发中'); }} style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '12px 16px', background: 'none', border: 'none', fontSize: 14, color: '#333', textAlign: 'left' }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#999" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+                分类布局
+              </button>
+              <button onClick={() => { setMenuOpen(false); alert('菜单设置功能开发中'); }} style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '12px 16px', background: 'none', border: 'none', fontSize: 14, color: '#333', textAlign: 'left' }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#999" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+                菜单设置
+              </button>
+              <button onClick={() => { setMenuOpen(false); alert('套系海报功能开发中'); }} style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '12px 16px', background: 'none', border: 'none', fontSize: 14, color: '#333', textAlign: 'left' }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#999" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+                套系海报
+              </button>
+              <div style={{ height: 1, background: '#EFEFEF', margin: '0 12px' }} />
+              <button onClick={() => { setMenuOpen(false); nav('/packages/new'); }} style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '12px 16px', background: 'none', border: 'none', fontSize: 14, color: '#2f7cf6', textAlign: 'left', fontWeight: 500 }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2f7cf6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                添加新套系
+              </button>
+            </div>
+          )}
         </div>
 
         {/* 筛选栏 */}
@@ -356,11 +387,6 @@ export default function Packages() {
             })
           )}
         </div>
-
-        {/* 底部悬浮按钮（避开 MobileShell TabBar 56px + safe-area） */}
-        <button onClick={() => nav('/packages/new')} style={{ position: 'fixed', bottom: 'calc(56px + env(safe-area-inset-bottom) + 16px)', right: 16, background: '#FF6B8A', color: '#fff', border: 'none', borderRadius: 24, padding: '12px 20px', fontSize: 14, display: 'flex', alignItems: 'center', gap: 6, boxShadow: '0 4px 12px rgba(255,107,138,0.35)', zIndex: 100 }}>
-          <span style={{ fontSize: 18 }}>+</span> 添加新套系
-        </button>
       </div>
     );
   }
