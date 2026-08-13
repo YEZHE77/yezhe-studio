@@ -920,6 +920,8 @@ function OrderCard({ order, onClick, onShare }) {
   const amount = Number(order.total_amount || 0);
   const paid = Number(order.paid_amount || 0);
   const remain = amount - paid;
+  const depositAmt = Number(order.deposit || 0);
+  const fmtMoney = (n) => '¥' + Number(n || 0).toLocaleString('zh-CN', { maximumFractionDigits: 2 });
   const statusText = stageLabel(order);
   const customerName = order.customer_name || order.order_name || '未知';
   const avatarText = String(customerName).slice(0, 1);
@@ -963,6 +965,14 @@ function OrderCard({ order, onClick, onShare }) {
         )}
       </div>
 
+      {/* 定金 + 尾款 */}
+      {amount > 0 && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 12, fontSize: 13 }}>
+          <span style={{ color: '#999' }}>定金 <span style={{ color: '#1f2329', fontWeight: 500 }}>{fmtMoney(depositAmt)}</span></span>
+          <span style={{ color: remain > 0 ? '#ff7a45' : '#999' }}>尾款 <span style={{ color: remain > 0 ? '#ff7a45' : '#1f2329', fontWeight: 500 }}>{fmtMoney(remain > 0 ? remain : 0)}</span></span>
+        </div>
+      )}
+
       {/* 日期 + 封面 + 分享按钮 */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#999' }}>
@@ -981,9 +991,8 @@ function OrderCard({ order, onClick, onShare }) {
         ) : null}
       </div>
 
-      {/* 备注：编辑入口 */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 12 }}>
-        <span style={{ fontSize: 12, color: '#bbbbbb' }}>{order.remark || '暂无备注'}</span>
+      {/* 备注：编辑入口（左移） */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12 }}>
         <span
           role="button"
           aria-label="编辑备注"
@@ -992,6 +1001,9 @@ function OrderCard({ order, onClick, onShare }) {
         >
           <IconPencil style={{ width: 13, height: 13, color: '#7ECDBB' }} />编辑
         </span>
+        {order.remark ? (
+          <span style={{ fontSize: 12, color: '#666', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{order.remark}</span>
+        ) : null}
       </div>
     </button>
   );
