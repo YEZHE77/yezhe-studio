@@ -764,6 +764,9 @@ function MobileOrderCenterView({ stats, list, listTotal, state, setState, refres
   const [filterAnim, setFilterAnim] = useState(false);
   const openFilter = () => { setFilterOpen(true); requestAnimationFrame(() => setFilterAnim(true)); };
   const closeFilter = () => { setFilterAnim(false); setTimeout(() => setFilterOpen(false), 300); };
+  // 商家管理头像（settings.studio.logo），传给 OrderCard 显示在日期行
+  const [studioLogo, setStudioLogo] = useState('');
+  useEffect(() => { http.get('/api/settings/studio').then((r) => setStudioLogo(r.data?.logo || '')).catch(() => {}); }, []);
   // 抽屉内分区的展开/折叠（默认全部展开，对齐参考图 7504）
   const [filterSections, setFilterSections] = useState({
     sort: true, executor: true, status: true, type: true, shootDate: true, orderDate: true
@@ -870,7 +873,7 @@ function MobileOrderCenterView({ stats, list, listTotal, state, setState, refres
         ) : (
           <>
             {list.map((o) => (
-              <OrderCard key={o.id} order={o} onClick={() => onNavToOrder(o.id)} onShare={openQrPopover} />
+              <OrderCard key={o.id} order={o} studioLogo={studioLogo} onClick={() => onNavToOrder(o.id)} onShare={openQrPopover} />
             ))}
             {list.length < listTotal && (
               <button type="button" onClick={onLoadMore} style={{
@@ -1134,7 +1137,7 @@ function MobileOrderCenterView({ stats, list, listTotal, state, setState, refres
   );
 }
 
-function OrderCard({ order, onClick, onShare }) {
+function OrderCard({ order, studioLogo, onClick, onShare }) {
   const nav = useNavigate();
   const snap = asObj(order.package_snapshot);
   const pkgName = [snap.name, snap.spec && snap.spec.name].filter(Boolean).join('｜') || '未选套系';
@@ -1206,40 +1209,52 @@ function OrderCard({ order, onClick, onShare }) {
         </div>
       </div>
 
-      {/* 日期 + 封面 + 负责人头像（无内部分隔线；日期对齐封面顶部；负责人头像替代二维码） */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '6px 14px 12px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#999', paddingTop: 4 }}>
+      {/* 日期 + 商家管理头像 + 封面（无内部分隔线；日期对齐封面底部；商家管理头像在日期与封面之间） */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', padding: '0 14px 12px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#999', paddingBottom: 6 }}>
           <IconCalendar style={{ width: 14, height: 14, color: '#bbb' }} />
           <span>{dateLabel}：{dateValue}</span>
         </div>
-        {cover ? (
-          <div style={{ position: 'relative', flexShrink: 0, marginLeft: 12 }}>
-            <img src={cover} alt="" style={{ width: 84, height: 84, borderRadius: 6, objectFit: 'cover', display: 'block' }} />
-            {execName ? (
-              execAvatar ? (
-                <img
-                  src={execAvatar}
-                  alt={execName}
-                  title={execName}
-                  style={{
-                    position: 'absolute', left: -10, bottom: -10, width: 32, height: 32,
-                    borderRadius: '50%', border: '2px solid #fff', objectFit: 'cover', display: 'block'
-                  }}
-                />
-              ) : (
-                <div
-                  title={execName}
-                  style={{
-                    position: 'absolute', left: -10, bottom: -10, width: 32, height: 32,
-                    borderRadius: '50%', background: avatarColor(execName), color: '#fff',
-                    border: '2px solid #fff', display: 'flex', alignItems: 'center',
-                    justifyContent: 'center', fontSize: 13, fontWeight: 500
-                  }}
-                >{execName.slice(0, 1)}</div>
-              )
-            ) : null}
-          </div>
-        ) : null}
+        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 10, flexShrink: 0 }}>
+          {/* 商家管理头像（settings.studio.logo） */}
+          {studioLogo ? (
+            <img src={img(studioLogo)} alt="商家管理" title="商家管理"
+              style={{ width: 36, height: 36, borderRadius: '50%', border: '2px solid #fff', objectFit: 'cover', display: 'block', boxShadow: '0 0 0 1px #eee' }} />
+          ) : (
+            <div title="商家管理"
+              style={{ width: 36, height: 36, borderRadius: '50%', background: '#2998EB', color: '#fff',
+                border: '2px solid #fff', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 14, fontWeight: 500, boxShadow: '0 0 0 1px #eee' }}>叶</div>
+          )}
+          {cover ? (
+            <div style={{ position: 'relative', flexShrink: 0 }}>
+              <img src={cover} alt="" style={{ width: 90, height: 90, borderRadius: 6, objectFit: 'cover', display: 'block' }} />
+              {execName ? (
+                execAvatar ? (
+                  <img
+                    src={execAvatar}
+                    alt={execName}
+                    title={execName}
+                    style={{
+                      position: 'absolute', left: -10, bottom: -10, width: 32, height: 32,
+                      borderRadius: '50%', border: '2px solid #fff', objectFit: 'cover', display: 'block'
+                    }}
+                  />
+                ) : (
+                  <div
+                    title={execName}
+                    style={{
+                      position: 'absolute', left: -10, bottom: -10, width: 32, height: 32,
+                      borderRadius: '50%', background: avatarColor(execName), color: '#fff',
+                      border: '2px solid #fff', display: 'flex', alignItems: 'center',
+                      justifyContent: 'center', fontSize: 13, fontWeight: 500
+                    }}
+                  >{execName.slice(0, 1)}</div>
+                )
+              ) : null}
+            </div>
+          ) : null}
+        </div>
       </div>
 
       {/* 备注 + 编辑入口（点击编辑跳 /orders/:id/notes） */}
