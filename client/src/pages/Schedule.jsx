@@ -116,6 +116,7 @@ export default function Schedule() {
   const [personnel, setPersonnel] = useState([]);
   const [pkgList, setPkgList] = useState([]);
   const [lunarMap, setLunarMap] = useState({});
+  const [showLunar, setShowLunar] = useState(false);
   const [selDate, setSelDate] = useState(`${init.getFullYear()}-${pad(init.getMonth() + 1)}-${pad(init.getDate())}`);
   const [isMobileView, setIsMobileView] = useState(() => (window.innerWidth || 1200) < 768);
   const [err, setErr] = useState('');
@@ -406,6 +407,7 @@ export default function Schedule() {
       const isToday = date === todayStr;
       const isClosed = st.kind === 'closed';
       const hasOrder = st.orderRows.length > 0;
+      const lunar = lunarMap[date] || '';
 
       let bg = '#FFFFFF';
       if (isClosed) bg = 'repeating-linear-gradient(-45deg, rgba(150,150,150,0.22) 0px, rgba(150,150,150,0.22) 1px, transparent 1px, transparent 8px), #F7F7F7';
@@ -443,6 +445,9 @@ export default function Schedule() {
             background: isToday ? G_TODAY : 'transparent',
             color: isToday ? '#fff' : (isClosed ? '#999' : '#333')
           }}>{day}</span>
+          {showLunar && lunar && (
+            <span style={{ fontSize: 10, color: '#999', lineHeight: 1, whiteSpace: 'nowrap' }}>{lunar}</span>
+          )}
           {hasOrder && (
             <span style={{
               position: 'absolute',
@@ -485,7 +490,7 @@ export default function Schedule() {
             <div style={{ fontSize: 16, fontWeight: 500, color: '#1f2329' }}>{selDate.replace(/-/g, '.')}</div>
             <div style={{ fontSize: 12, color: '#999', marginTop: 2, display: 'flex', alignItems: 'center', gap: 4 }}>
               <span>{week}</span>
-              {lunar && <span>&lt;农历 {lunar}&gt;</span>}
+              {showLunar && lunar && <span>&lt;农历 {lunar}&gt;</span>}
             </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -549,14 +554,9 @@ export default function Schedule() {
         {/* 顶部栏 */}
         <div style={{ position: 'sticky', top: 0, zIndex: 20, background: '#fff', borderBottom: '1px solid #EFEFEF' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, visibility: 'hidden' }}>
-              <button type="button" style={{ background: 'none', border: 'none', padding: 4 }}>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#666" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
-              </button>
-              <button type="button" style={{ background: 'none', border: 'none', padding: 4 }}>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#666" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
-              </button>
-            </div>
+            <button type="button" onClick={() => nav('/')} style={{ display: 'flex', alignItems: 'center', background: 'none', border: 'none', padding: 4, color: '#333' }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
+            </button>
             {/* 药丸 Tab */}
             <div style={{ display: 'flex', alignItems: 'center', background: '#F2F2F2', borderRadius: 16, padding: 3, gap: 2 }}>
               <button type="button" onClick={() => setMobileMode('calendar')}
@@ -628,11 +628,8 @@ export default function Schedule() {
                   </button>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <button type="button" style={{ fontSize: 12, color: '#666', background: '#F5F5F5', border: 'none', borderRadius: 4, padding: '3px 8px' }}>农</button>
+                  <button type="button" onClick={() => setShowLunar((v) => !v)} style={{ fontSize: 12, color: showLunar ? G_BLUE : '#666', background: showLunar ? '#EAF6FD' : '#F5F5F5', border: 'none', borderRadius: 4, padding: '3px 8px' }}>农</button>
                   <button type="button" onClick={() => gotoDate(todayStr)} style={{ fontSize: 12, color: '#666', background: '#F5F5F5', border: 'none', borderRadius: 4, padding: '3px 8px' }}>今</button>
-                  <button type="button" onClick={() => { /* TODO: 图例展开 */ }} style={{ background: 'none', border: 'none', padding: 2 }}>
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#999" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><line x1="3" y1="6" x2="21" y2="6" stroke="#FF949C"/><line x1="3" y1="12" x2="21" y2="12" stroke="#52C41A"/><line x1="3" y1="18" x2="21" y2="18" stroke="#2DB7F5"/></svg>
-                  </button>
                 </div>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', padding: '6px 0', borderTop: '1px solid #F5F5F5' }}>
@@ -716,7 +713,7 @@ export default function Schedule() {
                 <div key={date}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 16px', background: '#F8F8F8' }}>
                     <div style={{ fontSize: 13, color: '#666' }}>{date} {week.slice(2)}</div>
-                    {lunar && <div style={{ fontSize: 11, color: '#bbb' }}>农历 {lunar}</div>}
+                    {showLunar && lunar && <div style={{ fontSize: 11, color: '#bbb' }}>农历 {lunar}</div>}
                   </div>
                   {dayRows.map((r) => <ListItem key={r.id} r={r} />)}
                 </div>
