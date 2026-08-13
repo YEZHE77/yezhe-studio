@@ -360,6 +360,11 @@ export async function initSchema() {
   await ensureColumn('orders', 'openid', 'TEXT');
   // 订单图片管理：原片 / 精修片 URL 列表（JSON：{raw:[...], retouched:[...]}），选片复用 photo_select
   await ensureColumn('orders', 'order_photos', 'TEXT');
+  // 订单备注分组：生日/纪念日 / 预约备注 / 内部备注 / 外部备注（问卷答案 questionnaire_answers 已在 DDL）
+  await ensureColumn('orders', 'birthday', 'TEXT');
+  await ensureColumn('orders', 'appointment_remark', 'TEXT');
+  await ensureColumn('orders', 'internal_remark', 'TEXT');
+  await ensureColumn('orders', 'external_remark', 'TEXT');
   await ensureColumn('works', 'allow_download', 'INTEGER NOT NULL DEFAULT 0');
   // 相册级配置（客户相册密码 / 自定义文案 / 有效期）——挂在作品维度（作品相册即交付客户的客片相册）
   await ensureColumn('works', 'album_copy', 'TEXT');

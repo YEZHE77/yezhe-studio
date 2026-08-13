@@ -435,6 +435,15 @@ router.put('/:id', authRequired, requireRole(['admin', 'photographer', 'finance'
     const orderPhotosText = b.order_photos === undefined
       ? (cur.order_photos ?? null)
       : (typeof b.order_photos === 'string' ? b.order_photos : JSON.stringify(b.order_photos));
+    // 分组备注字段：生日/纪念日、预约备注、内部备注、外部备注（备注主字段沿用 remark）
+    const birthdayText = b.birthday === undefined ? (cur.birthday ?? null) : (b.birthday || null);
+    const appointmentText = b.appointment_remark === undefined ? (cur.appointment_remark ?? null) : (b.appointment_remark || null);
+    const internalText = b.internal_remark === undefined ? (cur.internal_remark ?? null) : (b.internal_remark || null);
+    const externalText = b.external_remark === undefined ? (cur.external_remark ?? null) : (b.external_remark || null);
+    // 调查问卷答案（已有 questionnaire_answers 列，PUT 时允许前端覆盖）
+    const questionnaireText = b.questionnaire_answers === undefined
+      ? (cur.questionnaire_answers ?? null)
+      : (typeof b.questionnaire_answers === 'string' ? b.questionnaire_answers : JSON.stringify(b.questionnaire_answers));
     // 【订单 ↔ 档期】改拍摄日期前先做冲突检测（验收④）；force=true 由前端二次确认后强行占用
     const oldDate = cur.date_tbd ? '' : (cur.shoot_date || '');
     const newDate = date_tbd ? '' : (shoot_date || '');
@@ -465,14 +474,14 @@ router.put('/:id', authRequired, requireRole(['admin', 'photographer', 'finance'
       `UPDATE orders SET customer_name=?, customer_phone=?, shoot_date=?, executor=?, remark=?, status=?,
         groom_name=?, bride_name=?, address=?,
         order_name=?, phones=?, time_slots=?, extra_items=?, executors=?, channel=?, channel_id=?, date_tbd=?, payment_status=?,
-        order_photos=?
+        order_photos=?, birthday=?, appointment_remark=?, internal_remark=?, external_remark=?, questionnaire_answers=?
        WHERE id=?`,
       [customer_name, firstPhone,
        shoot_date, execText, b.remark ?? cur.remark, status,
        groom, bride, b.address ?? cur.address,
        b.order_name ?? cur.order_name, phonesText, slotsText, extrasText, execsText,
        b.channel ?? cur.channel, b.channel_id ?? cur.channel_id, date_tbd, payment_status,
-       orderPhotosText,
+       orderPhotosText, birthdayText, appointmentText, internalText, externalText, questionnaireText,
        cur.id]
     );
     if (b.status && b.status !== cur.status) {
