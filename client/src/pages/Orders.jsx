@@ -873,7 +873,7 @@ function MobileOrderCenterView({ stats, list, listTotal, state, setState, refres
         ) : (
           <>
             {list.map((o) => (
-              <OrderCard key={o.id} order={o} studioLogo={studioLogo} onClick={() => onNavToOrder(o.id)} onShare={openQrPopover} />
+              <OrderCard key={o.id} order={o} studioLogo={studioLogo} onClick={() => onNavToOrder(o.id)} />
             ))}
             {list.length < listTotal && (
               <button type="button" onClick={onLoadMore} style={{
@@ -1137,7 +1137,7 @@ function MobileOrderCenterView({ stats, list, listTotal, state, setState, refres
   );
 }
 
-function OrderCard({ order, studioLogo, onClick, onShare }) {
+function OrderCard({ order, studioLogo, onClick }) {
   const nav = useNavigate();
   const snap = asObj(order.package_snapshot);
   const pkgName = [snap.name, snap.spec && snap.spec.name].filter(Boolean).join('｜') || '未选套系';
@@ -1187,14 +1187,6 @@ function OrderCard({ order, studioLogo, onClick, onShare }) {
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
           <div style={{ fontSize: 13, color: '#999', whiteSpace: 'nowrap' }}>{statusText}</div>
-          <button
-            onClick={(e) => { e.stopPropagation(); onShare(order, e); }}
-            aria-label="分享订单"
-            style={{
-              width: 24, height: 24, borderRadius: '50%', background: '#f5f5f5',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, flexShrink: 0
-            }}
-          ><IconQr style={{ width: 12, height: 12, color: '#666' }} /></button>
         </div>
       </div>
       <div style={{ height: 1, background: '#F0F0F0' }} />
