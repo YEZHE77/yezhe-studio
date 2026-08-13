@@ -50,6 +50,7 @@ export default function Home() {
     }
   }, [currentBanner]);
   const [storyOpen, setStoryOpen] = useState(false);
+  const [contactOpen, setContactOpen] = useState(false);
   const [toast, setToast] = useState('');
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [syncing, setSyncing] = useState(true);
