@@ -251,41 +251,37 @@ export default function Works() {
   return (
     <div className="min-h-screen bg-[#f7f7f7] pb-24">
       {/* 顶部栏：返回 + 搜索 + 更多（与套系列表页 Packages.jsx 同款：返回 + 搜索容器(灰底圆角) + ⋯） */}
-      <div className="flex items-center gap-2.5 px-3 py-2 bg-white border-b border-gray-100">
-        <button onClick={() => navigate('/')} className="p-1.5 text-gray-700" style={{ background: 'none', border: 'none' }}>
-          <ChevronLeft className="w-6 h-6" />
+      <div style={{ background: '#fff', padding: '8px 12px', display: 'flex', alignItems: 'center', gap: 10, borderBottom: '1px solid #EFEFEF' }}>
+        <button onClick={() => navigate('/')} style={{ background: 'none', border: 'none', padding: 4, display: 'flex', alignItems: 'center', color: '#1f2329', flexShrink: 0 }}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1f2329" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M15 6l-6 6 6 6" /></svg>
         </button>
-        <div className="flex-1 flex items-center bg-[#F5F5F5] rounded-full px-3 py-1.5 gap-1.5">
-          <Search className="w-4 h-4 text-gray-400 shrink-0" />
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', background: '#F5F5F5', borderRadius: 20, padding: '6px 12px', gap: 6 }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#999" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /></svg>
           <input
             value={state.q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="输入您所需要查找的客片名称"
-            className="flex-1 bg-transparent text-sm text-gray-800 outline-none"
+            style={{ border: 'none', background: 'transparent', outline: 'none', fontSize: 14, flex: 1, color: '#333' }}
           />
         </div>
-        <div className="relative">
-          <button onClick={(e) => { e.stopPropagation(); setShowTopMenu((v) => !v); }} className="p-1.5 text-gray-500">
-            <MoreHorizontal className="w-6 h-6" />
-          </button>
-          {showTopMenu && (
-            <div className="absolute right-0 top-full mt-1 w-40 rounded-lg bg-white shadow-lg border border-gray-100 py-1 z-50">
-              {!sortMode ? (
-                <>
-                  <button onClick={() => { setShowTopMenu(false); openNew(); }} className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50">
-                    添加新客片
-                  </button>
-                  <button onClick={() => { setShowTopMenu(false); toggleSortMode(); }} className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50">自定义排序</button>
-                </>
-              ) : (
-                <>
-                  <button onClick={() => { setShowTopMenu(false); saveSortOrder(); }} disabled={savingSort || !allItems.length} className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50">{savingSort ? '保存中…' : '保存排序'}</button>
-                  <button onClick={() => { setShowTopMenu(false); setSortMode(false); reload(); }} disabled={savingSort} className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50">取消排序</button>
-                </>
-              )}
-            </div>
-          )}
-        </div>
+        <button onClick={(e) => { e.stopPropagation(); setShowTopMenu((v) => !v); }} style={{ background: 'none', border: 'none', padding: 4, color: '#666', fontSize: 16, position: 'relative' }}>⋯</button>
+        {showTopMenu && (
+          <div className="absolute right-0 top-full mt-1 w-40 rounded-lg bg-white shadow-lg border border-gray-100 py-1 z-50">
+            {!sortMode ? (
+              <>
+                <button onClick={() => { setShowTopMenu(false); openNew(); }} className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50">
+                  添加新客片
+                </button>
+                <button onClick={() => { setShowTopMenu(false); toggleSortMode(); }} className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50">自定义排序</button>
+              </>
+            ) : (
+              <>
+                <button onClick={() => { setShowTopMenu(false); saveSortOrder(); }} disabled={savingSort || !allItems.length} className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50">{savingSort ? '保存中…' : '保存排序'}</button>
+                <button onClick={() => { setShowTopMenu(false); setSortMode(false); reload(); }} disabled={savingSort} className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50">取消排序</button>
+              </>
+            )}
+          </div>
+        )}
       </div>
 
       {/* 筛选下拉：全部 / 分类 / 排序 */}
