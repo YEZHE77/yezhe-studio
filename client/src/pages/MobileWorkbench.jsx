@@ -224,11 +224,14 @@ export default function MobileWorkbench() {
   }, []);
 
   const pb = stats && stats.pendingBlocks ? stats.pendingBlocks : {};
+  const todo = stats && stats.todo ? stats.todo : {};
   const safe = (v) => (typeof v === 'number' ? v : 0);
-  // 待跟进：所有活跃中的订单（未付定金、已付定金、等待拍摄、选片中、精修中、已交片）
+  // 待办事项角标：所有活跃中的订单（未付定金、已付定金、等待拍摄、选片中、精修中、已交片）
   const followTotal = safe(pb.unpaid) + safe(pb.deposit) + safe(pb.shoot) + safe(pb.selecting) + safe(pb.retouching) + safe(pb.delivered);
-  // 等待拍摄：对应移动端「等待拍摄」Tab（只含 deposit 状态，不含已拍摄的 shoot）
-  const shootCount = safe(pb.deposit);
+  // 已付定金：与订单页「已付定金」Tab 同口径（payment_status='deposit' 的活跃订单数）
+  const depositCount = safe(todo.deposit);
+  // 等待拍摄：与订单页「等待拍摄」Tab 同口径（已付定金且未拍摄 status='deposit'）
+  const shootCount = safe(todo.waitingShoot);
 
   return (
     <div style={{ background: '#fff', minHeight: '100vh', paddingBottom: 28 }}>
@@ -318,13 +321,13 @@ export default function MobileWorkbench() {
             <div style={{ fontSize: 11, color: '#BBBBBB', marginTop: 6 }}>余额</div>
           </div>
           <div style={{ width: 1, background: LINE, margin: '14px 0' }} />
-          {/* 待跟进 */}
+          {/* 已付定金：点击跳待办事项并定位到「已付定金」Tab */}
           <button
             type="button"
-            onClick={() => nav('/orders')}
+            onClick={() => nav('/orders?tab=deposit')}
             style={{ flex: 1, textAlign: 'center', padding: '14px 0 12px', background: 'none', border: 'none' }}
           >
-            <div style={{ fontSize: 24, color: TEXT, lineHeight: 1 }}>{followTotal}</div>
+            <div style={{ fontSize: 24, color: TEXT, lineHeight: 1 }}>{depositCount}</div>
             <div style={{ fontSize: 11, color: '#BBBBBB', marginTop: 6 }}>已付定金</div>
           </button>
           <div style={{ width: 1, background: LINE, margin: '14px 0' }} />

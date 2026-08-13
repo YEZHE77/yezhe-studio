@@ -24,7 +24,7 @@ router.get('/summary', authRequired, async (req, res) => {
       FROM payments`);
     const o = await get(`
       SELECT COALESCE(SUM(deposit),0) AS deposit_sum, COALESCE(SUM(balance),0) AS balance_sum
-      FROM orders WHERE cancelled = 0`);
+      FROM orders WHERE cancelled = 0 AND is_deleted = 0`);
     const receivable = parseFloat(o.deposit_sum) + parseFloat(o.balance_sum);
     const received = parseFloat(p.received) - parseFloat(p.refunded);
     res.json({
