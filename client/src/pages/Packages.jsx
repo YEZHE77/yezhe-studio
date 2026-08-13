@@ -34,12 +34,11 @@ const IconClose = (p) => (
   </svg>
 );
 const IconShare = (p) => (
-  // 统一转发/分享图标：方框 + 箭头飞出
-  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.5"
+  // 向右弯曲箭头分享图形
+  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.8"
     strokeLinecap="round" strokeLinejoin="round" {...p}>
-    <path d="M5 4h14v14H5z" />
-    <path d="M12 8l5-5" />
-    <path d="M17 3v5h-5" />
+    <path d="M10 14c0-3 2.5-5 6-5h2" />
+    <path d="M15 6l5 3-5 3" />
   </svg>
 );
 const IconEdit = (p) => (
