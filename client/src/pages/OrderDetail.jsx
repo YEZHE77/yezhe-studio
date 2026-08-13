@@ -746,7 +746,7 @@ export default function OrderDetail() {
   const curStep = steps.findIndex((s) => s.state !== 'done') === -1 ? ORDER_STEPS_11.length : steps.findIndex((s) => s.state !== 'done');
   const statusText =
     (detail.payment_status === 'unpaid' ? '未付定金' : (PAY_STATUS_LABEL[payKey] || '')) +
-    (detail.status ? '，' + (STATUS_LABEL[detail.status] || '') : '');
+    (detail.status && detail.status !== detail.payment_status ? '，' + (STATUS_LABEL[detail.status] || '') : '');
   const custName = ([detail.groom_name, detail.bride_name].filter(Boolean).join(' & ') || detail.customer_name || '—');
   const custInitial = (custName && custName !== '—') ? custName.slice(0, 1) : '客';
   const offlinePay = detail.pay_method === 'offline' || detail.channel === 'offline' || detail.source === 'offline';
