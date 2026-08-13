@@ -22,7 +22,33 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [banners, setBanners] = useState([]);
   const reqRef = useRef(0);
-  const [contactOpen, setContactOpen] = useState(false);
+  const [currentBanner, setCurrentBanner] = useState(0);
+  const bannerRef = useRef(null);
+  const bannerTimerRef = useRef(null);
+
+  // 轮播图自动播放（与小程序 swiper 等效：interval 4000ms、circular、indicator-dots）
+  useEffect(() => {
+    if (banners.length <= 1) return;
+    const start = () => {
+      bannerTimerRef.current = setInterval(() => {
+        setCurrentBanner((prev) => {
+          const next = (prev + 1) % banners.length;
+          return next;
+        });
+      }, 4000);
+    };
+    start();
+    return () => clearInterval(bannerTimerRef.current);
+  }, [banners.length]);
+
+  useEffect(() => {
+    if (bannerRef.current) {
+      bannerRef.current.scrollTo({
+        left: currentBanner * bannerRef.current.clientWidth,
+        behavior: 'smooth'
+      });
+    }
+  }, [currentBanner]);
   const [storyOpen, setStoryOpen] = useState(false);
   const [toast, setToast] = useState('');
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -145,14 +171,26 @@ export default function Home() {
         </div>
       )}
 
-      {/* 顶部轮播 Banner（16:9 比例） */}
-      <div className="w-full aspect-[16/9] overflow-hidden">
+      {/* 顶部轮播 Banner：自动播放 / 指示器 / 循环，与小程序 swiper 一致 */}
+      <div className="relative w-full aspect-[16/9] overflow-hidden">
         {banners.length ? (
-          <div className="flex h-full overflow-x-auto snap-x snap-mandatory">
-            {banners.map((b, i) => (
-              <img key={i} src={b} alt="" className="h-full w-full flex-shrink-0 object-cover snap-center" />
-            ))}
-          </div>
+          <>
+            <div ref={bannerRef} className="flex h-full overflow-x-auto snap-x snap-mandatory scroll-smooth" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+              {banners.map((b, i) => (
+                <img key={i} src={b} alt="" className="h-full w-full flex-shrink-0 object-cover snap-center" />
+              ))}
+            </div>
+            {/* 指示器 */}
+            <div className="absolute bottom-3 left-0 right-0 flex justify-center gap-2">
+              {banners.map((_, i) => (
+                <span
+                  key={i}
+                  className={`block h-2 w-2 rounded-full transition-all duration-300 ${i === currentBanner ? 'bg-white' : 'bg-white/50'}`}
+                  style={{ width: i === currentBanner ? 16 : 8 }}
+                />
+              ))}
+            </div>
+          </>
         ) : (
           <div className="flex h-full w-full flex-col items-center justify-center" style={{ background: '#111', color: '#fff' }}>
             <div className="text-2xl tracking-[10px] opacity-90">YEZHE STUDIO</div>
@@ -214,28 +252,30 @@ export default function Home() {
           </div>
         </div>
 
-        {/* 作品网格 */}
+        {/* 作品网格：两列瀑布流，封面统一 7:5 横版，标题/标签在图片下方（与小程序一致） */}
         <div className="flex flex-wrap -mx-1.5">
           {works.map((w) => (
-            <div key={w.id} onClick={() => nav('/w/' + w.id)} className="relative mb-4 ml-1.5 mr-1.5 w-[calc(50%-12px)] overflow-hidden rounded-2xl bg-gray-100" style={{ borderRadius: '16px' }}>
-              {w.cover ? (
-                <img src={w.cover} alt="" loading="lazy" className="aspect-[4/5] w-full object-cover"
-                  onError={(e) => { e.currentTarget.style.display = 'none'; }} />
-              ) : (
-                <div className="flex aspect-[4/5] w-full items-center justify-center bg-gray-200">
-                  <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="#ccc" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round">
-                    <rect x="3" y="3" width="18" height="18" rx="2" />
-                    <circle cx="9" cy="9" r="2" />
-                    <path d="M21 15l-5-5L5 21" />
-                  </svg>
-                </div>
-              )}
-              {w.live && (
-                <span className="absolute right-2 top-2 rounded px-2 py-1 text-[10px] text-white" style={{ background: 'rgba(126,204,187,0.95)' }}>图片直播</span>
-              )}
-              <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/55 to-transparent p-3">
-                <div className="truncate text-sm text-white">{(w.customer_name || w.title) || ''}</div>
-                <div className="mt-1 text-xs text-white/85">#{w.category_name || '作品'}</div>
+            <div key={w.id} onClick={() => nav('/w/' + w.id)} className="mb-4 ml-1.5 mr-1.5 w-[calc(50%-12px)] overflow-hidden rounded-2xl bg-gray-100" style={{ borderRadius: '16px' }}>
+              <div className="relative w-full overflow-hidden bg-gray-100" style={{ paddingBottom: '71.43%' }}>
+                {w.cover ? (
+                  <img src={w.cover} alt="" loading="lazy" className="absolute top-0 left-0 w-full h-full object-cover"
+                    onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+                ) : (
+                  <div className="absolute inset-0 flex items-center justify-center bg-gray-200">
+                    <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="#ccc" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="3" y="3" width="18" height="18" rx="2" />
+                      <circle cx="9" cy="9" r="2" />
+                      <path d="M21 15l-5-5L5 21" />
+                    </svg>
+                  </div>
+                )}
+                {w.live && (
+                  <span className="absolute right-2 top-2 rounded px-2 py-1 text-[10px] text-white" style={{ background: 'rgba(126,204,187,0.95)' }}>图片直播</span>
+                )}
+              </div>
+              <div className="p-3">
+                <div className="truncate text-sm font-medium text-[#333]">{(w.customer_name || w.title) || ''}</div>
+                <div className="mt-1 text-xs text-gray-400">#{w.category_name || '作品'}</div>
               </div>
             </div>
           ))}

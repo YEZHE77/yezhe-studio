@@ -11,7 +11,9 @@ const EMPTY = {
   intro: '海口婚礼 / 人像摄影 · YEZHE WORKSHOP',
   // 品牌 Slogan：首页工作室名称下方浅灰小字（为空则不渲染）
   slogan: '拍摄有温度的照片，记录平凡生活中的美好。',
-  contact: { phone: '', wechat: '', address: '' }
+  contact: { phone: '', wechat: '', address: '' },
+  // 客户小程序：qr 为小程序码图片（工作台首页「小程序」入口弹窗展示，微信内长按识别进入）
+  miniProgram: { enabled: false, appid: '', qr: '' }
 };
 
 const inputCls = 'w-full border border-line rounded-lg px-3 py-2 text-sm bg-panel text-fg outline-none focus:border-brand';
@@ -34,6 +36,7 @@ export default function Settings() {
   const coverRef = useRef();
   const heroRef = useRef();
   const serviceQrRef = useRef();
+  const miniQrRef = useRef();
   const [heroBusy, setHeroBusy] = useState(false);
   const [crop, setCrop] = useState(null);
   const [heroDragged, setHeroDragged] = useState(null);
@@ -79,7 +82,12 @@ export default function Settings() {
         serviceQr: d.serviceQr || '',
         intro: d.intro || EMPTY.intro,
         slogan: d.slogan !== undefined ? d.slogan : EMPTY.slogan,
-        contact: { phone: (d.contact && d.contact.phone) || '', wechat: (d.contact && d.contact.wechat) || '', address: (d.contact && d.contact.address) || '' }
+        contact: { phone: (d.contact && d.contact.phone) || '', wechat: (d.contact && d.contact.wechat) || '', address: (d.contact && d.contact.address) || '' },
+        miniProgram: {
+          enabled: !!(d.miniProgram && (d.miniProgram.enabled || d.miniProgram.qr)),
+          appid: (d.miniProgram && d.miniProgram.appid) || '',
+          qr: (d.miniProgram && d.miniProgram.qr) || ''
+        }
       });
       setLoaded(true);
     }).catch(() => setLoaded(true));
@@ -100,6 +108,7 @@ export default function Settings() {
       if (path === 'phone') next.contact = { ...next.contact, phone: val };
       else if (path === 'wechat') next.contact = { ...next.contact, wechat: val };
       else if (path === 'address') next.contact = { ...next.contact, address: val };
+      else if (path === 'miniProgram') next.miniProgram = { ...next.miniProgram, ...val };
       else next[path] = val;
       return next;
     });
@@ -143,6 +152,22 @@ export default function Settings() {
       setTip('二维码上传失败：' + msg);
       setTimeout(() => setTip(''), 5000);
     }
+  }
+
+  // 小程序码：原图直传、不压缩，保证微信长按识别成功
+  async function uploadMiniQr(file) {
+    if (!file) return;
+    try {
+      const r = await uploadImage(file, { category: 'backup', isPublic: true });
+      set('miniProgram', { enabled: true, qr: r.url });
+    } catch (e) {
+      const msg = e.response?.data?.error || e.message || '上传失败';
+      setTip('小程序码上传失败：' + msg);
+      setTimeout(() => setTip(''), 5000);
+    }
+  }
+  function removeMiniQr() {
+    set('miniProgram', { enabled: false, qr: '' });
   }
 
   // 首页轮播图：支持一次选多张，顺序即展示顺序
@@ -299,6 +324,17 @@ export default function Settings() {
               </div>
             </div>
             <p className="text-xs text-muted mt-1 max-md:text-[11px] max-md:leading-relaxed">建议上传正方形微信二维码 PNG/JPG；小程序弹窗内客户<b>长按即可保存图片、扫码添加客服</b>。留空则小程序弹窗提示「暂未配置客服二维码」。</p>
+          </Field>
+          <Field label="小程序码（工作台首页「小程序」入口弹窗展示）">
+            <div className="flex items-center gap-3 max-md:flex-col max-md:items-start">
+              {form.miniProgram.qr && <img src={img(form.miniProgram.qr)} alt="" loading="lazy" decoding="async" className="w-28 h-28 rounded-lg object-contain border border-line bg-panel2 max-md:w-24 max-md:h-24" />}
+              <div className="flex items-center gap-2">
+                <button onClick={() => miniQrRef.current.click()} className="px-3 py-1.5 rounded-lg border border-line text-sm text-muted hover:text-brand hover:border-brand max-md:text-xs">上传小程序码</button>
+                {form.miniProgram.qr && <button onClick={removeMiniQr} className="px-2 py-1.5 rounded-lg border border-line text-sm text-muted hover:text-red-500 hover:border-red-300 max-md:text-xs">移除</button>}
+                <input ref={miniQrRef} type="file" accept="image/*" className="hidden" onChange={(e) => uploadMiniQr(e.target.files[0])} />
+              </div>
+            </div>
+            <p className="text-xs text-muted mt-1 max-md:text-[11px] max-md:leading-relaxed">在微信公众平台「小程序码」处下载二维码图片上传（需发布过的小程序）。客户在工作台首页点击<b>「小程序」</b>时，微信内可<b>长按识别</b>直接进入你的客户小程序；留空则弹窗提示「暂未配置」。</p>
           </Field>
           <Field label={`首页轮播图（多张 · ${form.heroImages.length} 张）`}>
             <div className="flex flex-wrap gap-3 items-start max-md:gap-2">

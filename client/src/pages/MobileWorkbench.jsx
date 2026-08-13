@@ -170,6 +170,7 @@ export default function MobileWorkbench() {
   const [studio, setStudio] = useState(null);
   const [loading, setLoading] = useState(true);
   const [hideBalance, setHideBalance] = useState(false);
+  const [miniOpen, setMiniOpen] = useState(false);
   const fileRef = useRef(null);
   const [uploading, setUploading] = useState(false);
 
@@ -222,6 +223,23 @@ export default function MobileWorkbench() {
       .then((r) => setStudio(r.data))
       .catch(() => setStudio({}));
   }, []);
+
+  // 「小程序」入口：微信内尝试直接跳转客户小程序（H5 处于小程序 web-view 时生效），
+  // 不可用时降级为小程序码弹层（微信内长按识别进入）
+  const handleMiniProgram = () => {
+    const isWechat = /MicroMessenger/i.test(navigator.userAgent || '');
+    if (isWechat) {
+      const wxSdk = window.wx;
+      if (wxSdk && wxSdk.miniProgram && typeof wxSdk.miniProgram.navigateTo === 'function') {
+        try {
+          wxSdk.miniProgram.navigateTo({ url: '/pages/index/index' });
+          return;
+        } catch (e) { /* 降级弹层 */ }
+      }
+    }
+    setMiniOpen(true);
+  };
+  const closeMini = () => setMiniOpen(false);
 
   const pb = stats && stats.pendingBlocks ? stats.pendingBlocks : {};
   const todo = stats && stats.todo ? stats.todo : {};
@@ -404,7 +422,7 @@ export default function MobileWorkbench() {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <button
               type="button"
-              onClick={() => nav('/home')}
+              onClick={handleMiniProgram}
               style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '16px 0', background: '#fff', border: '1px solid ' + LINE, borderRadius: 12 }}
             >
               <Link className="w-5 h-5" strokeWidth={1.5} style={{ color: TEXT }} />
@@ -463,6 +481,57 @@ export default function MobileWorkbench() {
           登录电脑端后台使用
         </div>
       </div>
+
+      {/* 小程序码弹层：进入客户小程序（微信内长按识别，非微信/未配置时展示 H5 备用入口） */}
+      {miniOpen && (
+        <div
+          onClick={closeMini}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 90, padding: 24 }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{ background: '#fff', borderRadius: 16, padding: '24px 20px 20px', width: '100%', maxWidth: 320, textAlign: 'center' }}
+          >
+            <div style={{ fontSize: 16, fontWeight: 600, color: TEXT }}>进入客户小程序</div>
+            {studio && studio.miniProgram && studio.miniProgram.qr ? (
+              <>
+                <img
+                  src={img(studio.miniProgram.qr)}
+                  alt="小程序码"
+                  style={{ width: 190, height: 190, margin: '16px auto 8px', objectFit: 'contain', borderRadius: 10, border: '1px solid ' + LINE }}
+                />
+                <div style={{ fontSize: 13, color: MUTED, lineHeight: 1.7 }}>
+                  在微信中<b style={{ color: TEXT }}>长按识别二维码</b>
+                  <br />
+                  即可进入客户小程序
+                </div>
+              </>
+            ) : (
+              <div style={{ fontSize: 13, color: MUTED, lineHeight: 1.7, margin: '18px 0 6px' }}>
+                尚未上传小程序码
+                <br />
+                请在 B 端「资料设置」→「小程序码」中上传后，即可扫码进入客户小程序
+              </div>
+            )}
+            <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
+              <button
+                type="button"
+                onClick={() => { closeMini(); nav('/home'); }}
+                style={{ flex: 1, padding: '11px 0', borderRadius: 10, border: '1px solid ' + LINE, background: '#fff', fontSize: 14, color: TEXT }}
+              >
+                打开 H5 版
+              </button>
+              <button
+                type="button"
+                onClick={closeMini}
+                style={{ flex: 1, padding: '11px 0', borderRadius: 10, border: 'none', background: CORAL, fontSize: 14, color: '#fff' }}
+              >
+                关闭
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

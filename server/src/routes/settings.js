@@ -40,7 +40,8 @@ const DEFAULT_STUDIO = {
   socials: { wechat: '', weibo: '', phone: '', douyin: '' },
   members: [], // [{ id, name, avatar, sort }]
   website: { enabled: false, domain: '' }, // 我的网站
-  miniProgram: { enabled: false }, // 小程序
+  // 小程序：enabled 是否已配置；appid 客户小程序 AppID；qr 小程序码图片（B 端工作台首页「小程序」入口弹窗展示，微信内长按识别进入）
+  miniProgram: { enabled: false, appid: '', qr: '' },
   agreement: { enabled: false } // 顾客协议
 };
 
