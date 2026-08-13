@@ -129,6 +129,102 @@ function Checkbox({ checked, onChange, label }) {
 }
 
 // 单选按钮组（horizontal：边框胶囊 / vertical：圆点）
+/* ========================================================================
+   移动端专用组件（小程序 1:1 复刻风格）
+   ======================================================================== */
+const MRED = '#FA5151';
+const MGRAY = '#999999';
+const MBORDER = '#F0F0F0';
+const MBAR = '#F5F5F5';
+
+function ChevronRight() {
+  return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#C4C4C4" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 6l6 6-6 6"/></svg>;
+}
+
+// 通用行：左 label + 右 value + chevron
+function MRow({ label, value, onClick, valueColor, extra, disabled, children, noChevron }) {
+  return (
+    <button type="button" onClick={onClick} disabled={disabled}
+      style={{ display: 'flex', alignItems: 'center', minHeight: 50, padding: '0 16px', width: '100%', background: 'none', border: 'none', textAlign: 'left', gap: 10, borderBottom: '1px solid ' + MBORDER }}>
+      <span style={{ fontSize: 15, color: '#333333', flexShrink: 0 }}>{label}</span>
+      {children}
+      {extra && <span style={{ marginLeft: 'auto' }}>{extra}</span>}
+      {value !== undefined && (
+        <span style={{ marginLeft: 'auto', fontSize: 14, color: valueColor || MGRAY, maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textAlign: 'right' }}>{value}</span>
+      )}
+      {!noChevron && <ChevronRight />}
+    </button>
+  );
+}
+
+// 分组标题：灰底 + 红色左竖线
+function MGroup({ title }) {
+  return (
+    <div style={{ background: MBAR, padding: '10px 16px', display: 'flex', alignItems: 'center', gap: 8 }}>
+      <span style={{ width: 3, height: 14, background: MRED, borderRadius: 2 }} />
+      <span style={{ fontSize: 14, fontWeight: 500, color: '#333333' }}>{title}</span>
+    </div>
+  );
+}
+
+// 红色开关（小程序风格）
+function MSwitch({ checked, onChange }) {
+  return (
+    <button type="button" onClick={() => onChange(!checked)} style={{ width: 44, height: 26, borderRadius: 13, background: checked ? MRED : '#E5E5E5', position: 'relative', transition: 'background .2s', border: 'none', flexShrink: 0, cursor: 'pointer' }}>
+      <span style={{ position: 'absolute', top: 2, left: checked ? 20 : 2, width: 22, height: 22, borderRadius: 11, background: '#fff', boxShadow: '0 1px 3px rgba(0,0,0,0.15)', transition: 'left .2s' }} />
+    </button>
+  );
+}
+
+// 红色 radio（横向）
+function MRadio({ value, onChange, options }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
+      {options.map((o) => (
+        <button key={o.v} type="button" onClick={() => onChange(o.v)}
+          style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', fontSize: 14, color: value === o.v ? '#333333' : MGRAY, cursor: 'pointer' }}>
+          <span style={{ width: 16, height: 16, borderRadius: 8, border: `1.5px solid ${value === o.v ? MRED : '#D1D5DB'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            {value === o.v && <span style={{ width: 8, height: 8, borderRadius: 4, background: MRED }} />}
+          </span>
+          {o.t}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+// Pill 切换（模板类型）
+function MPill({ value, onChange, options }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+      {options.map((o) => {
+        const on = value === o.v;
+        return (
+          <button key={o.v} type="button" onClick={() => onChange(o.v)}
+            style={{ padding: '5px 14px', borderRadius: 14, fontSize: 13, border: `1px solid ${on ? MRED : '#D1D5DB'}`, background: on ? '#FFF5F5' : '#fff', color: on ? MRED : '#333333', cursor: 'pointer' }}>
+            {o.t}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+// 底部弹窗 Sheet
+function MSheet({ open, onClose, title, children }) {
+  if (!open) return null;
+  return (
+    <>
+      <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 100 }} onClick={onClose} />
+      <div style={{ position: 'fixed', left: 0, right: 0, bottom: 0, background: '#fff', borderTopLeftRadius: 16, borderTopRightRadius: 16, zIndex: 101, padding: '12px 20px calc(20px + env(safe-area-inset-bottom))', maxHeight: '80vh', overflow: 'auto' }}>
+        <div style={{ width: 36, height: 4, background: '#DDD', borderRadius: 2, margin: '0 auto 14px' }} />
+        <div style={{ fontSize: 16, fontWeight: 500, textAlign: 'center', marginBottom: 16, color: '#333' }}>{title}</div>
+        {children}
+      </div>
+    </>
+  );
+}
+
 function RadioGroup({ value, onChange, options, vertical }) {
   if (vertical) {
     return (
@@ -211,6 +307,14 @@ export default function PackageEdit() {
   const [editRaw, setEditRaw] = useState(false);
   const [editDisc, setEditDisc] = useState(false);
   const [editAgr, setEditAgr] = useState(false);
+
+  // 移动端 Tab：0=价格, 1=详情, 2=选填
+  const [mTab, setMTab] = useState(0);
+  // 移动端 Sheet 弹窗
+  const [sheet, setSheet] = useState(null); // 'name' | 'price' | 'deposit' | 'refund' | 'raw' | 'questionnaire' | 'duration' | 'rawCount' | 'retouch' | 'extraFee' | 'extraDisc' | 'cloth' | 'album' | 'location' | 'warm' | 'visible' | null
+  const [sheetVal, setSheetVal] = useState('');
+  const openSheet = (key, val) => { setSheet(key); setSheetVal(val !== undefined ? String(val) : ''); };
+  const closeSheet = () => { setSheet(null); setSheetVal(''); };
   // 套系封面裁切：选中图存 cropSrc 唤起弹窗；裁切结果存 coverPending（仅保存时上传）
   const [coverPending, setCoverPending] = useState(null);
   const [cropOpen, setCropOpen] = useState(false);
@@ -342,7 +446,12 @@ export default function PackageEdit() {
     const errs = validate();
     if (errs.length) {
       setErrors(errs.map((x) => (x.k === 'cover_url' ? '请上传并裁切套系封面' : x.label)));
-      setTab(errs[0].tabs[0]);
+      if (isMobile) {
+        const mt = { 0: 0, 1: 0, 2: 1, 3: 2 }[errs[0].tabs[0]];
+        if (mt !== undefined) setMTab(mt);
+      } else {
+        setTab(errs[0].tabs[0]);
+      }
       return;
     }
     setErrors([]);
@@ -374,7 +483,430 @@ export default function PackageEdit() {
 
   if (loading) return <div className="p-10 text-muted">加载中…</div>;
 
-  const TABS = ['套系名称', '价格及问卷', '服务及加片', '其他详情'];
+  // ===================== 移动端 1:1 复刻渲染 =====================
+  if (isMobile) {
+    const d = form.details;
+    const catN = catName(form.category_id);
+    const hasCover = coverPending || form.cover_url;
+    const coverSrc = coverPending || img(form.cover_url);
+
+    return (
+      <div style={{ background: '#F8F8F8', minHeight: '100vh', paddingBottom: 20 }}>
+        {/* 顶部导航栏 */}
+        <div style={{ position: 'sticky', top: 0, zIndex: 30, background: '#fff', borderBottom: '1px solid #EFEFEF', display: 'flex', alignItems: 'center', height: 48, padding: '0 12px' }}>
+          <button type="button" onClick={() => nav('/packages')} style={{ background: 'none', border: 'none', padding: '6px 0', flexShrink: 0 }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#999" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 6l-6 6 6 6"/></svg>
+          </button>
+          <div style={{ flex: 1, textAlign: 'center', fontSize: 16, fontWeight: 500, color: '#333' }}>{isEdit ? '编辑套系' : '新建套系'}</div>
+          <button type="button" onClick={submit} disabled={saving} style={{ background: 'none', border: 'none', fontSize: 15, color: MRED, flexShrink: 0, opacity: saving ? 0.6 : 1 }}>
+            {saving ? '保存中' : '保存'}
+          </button>
+        </div>
+
+        {/* 错误提示 */}
+        {errors.length > 0 && (
+          <div style={{ margin: '12px 12px 0', padding: '10px 14px', borderRadius: 8, background: '#FFF5F5', color: '#E53E3E', fontSize: 13, border: '1px solid #FFD6D6' }}>
+            请完善必填项：{errors.join('、')}
+          </div>
+        )}
+
+        {/* 基本信息卡片 */}
+        <div style={{ background: '#fff', margin: '12px 12px 0', borderRadius: 12, overflow: 'hidden' }}>
+          {/* 套系名称 */}
+          <button type="button" onClick={() => openSheet('name', form.name)}
+            style={{ display: 'flex', alignItems: 'center', minHeight: 50, padding: '0 16px', width: '100%', background: 'none', border: 'none', textAlign: 'left', gap: 10, borderBottom: '1px solid ' + MBORDER }}>
+            <span style={{ fontSize: 15, color: '#333', flexShrink: 0 }}>套系名称</span>
+            <span style={{ marginLeft: 'auto', fontSize: 14, color: form.name ? '#333' : MGRAY, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textAlign: 'right' }}>{form.name || '请填写套系名称'}</span>
+            <ChevronRight />
+          </button>
+
+          {/* 选择分类 */}
+          <button type="button" onClick={() => setCatOpen(true)}
+            style={{ display: 'flex', alignItems: 'center', minHeight: 50, padding: '0 16px', width: '100%', background: 'none', border: 'none', textAlign: 'left', gap: 10, borderBottom: '1px solid ' + MBORDER }}>
+            <span style={{ fontSize: 15, color: '#333', flexShrink: 0 }}>选择分类</span>
+            <span style={{ marginLeft: 'auto', fontSize: 14, color: catN ? '#333' : MGRAY }}>{catN || '请选择分类'}</span>
+            <ChevronRight />
+          </button>
+
+          {/* 封面图片区 */}
+          <div style={{ padding: '14px 16px', borderBottom: '1px solid ' + MBORDER }}>
+            <div style={{ fontSize: 15, color: '#333', marginBottom: 10 }}>套系封面</div>
+            <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+              {hasCover && (
+                <div style={{ position: 'relative', width: 96, height: 96, borderRadius: 4, overflow: 'hidden', flexShrink: 0 }}>
+                  <img src={coverSrc} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  <button type="button" onClick={clearCover} style={{ position: 'absolute', top: 4, left: 4, width: 20, height: 20, borderRadius: 10, background: 'rgba(0,0,0,0.5)', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+                  </button>
+                  <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: 'rgba(0,0,0,0.5)', color: '#fff', fontSize: 11, textAlign: 'center', padding: '2px 0' }}>封面</div>
+                </div>
+              )}
+              <label style={{ width: 96, height: 96, borderRadius: 4, border: '1px dashed #D1D5DB', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4, cursor: 'pointer', flexShrink: 0, background: '#FAFAFA' }}
+                onClick={() => coverInputRef.current && coverInputRef.current.click()}>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#999" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+                <span style={{ fontSize: 12, color: '#999' }}>添加图片</span>
+              </label>
+              <input ref={coverInputRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={onCoverSelect} className="hidden" />
+            </div>
+          </div>
+
+          {/* 上传视频 */}
+          <button type="button" onClick={() => { if (!d.video_url) coverInputRef.current?.click(); }}
+            style={{ display: 'flex', alignItems: 'center', minHeight: 50, padding: '0 16px', width: '100%', background: 'none', border: 'none', textAlign: 'left', gap: 10 }}>
+            <span style={{ fontSize: 15, color: '#333', flexShrink: 0 }}>上传视频</span>
+            <span style={{ marginLeft: 'auto', fontSize: 14, color: d.video_url ? '#333' : MGRAY }}>{d.video_url ? '已上传' : '未上传'}</span>
+            <ChevronRight />
+          </button>
+        </div>
+
+        {/* Tab 胶囊切换 */}
+        <div style={{ padding: '12px 0', margin: '0 12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+          {['价格', '详情', '选填'].map((t, i) => (
+            <button key={t} type="button" onClick={() => setMTab(i)}
+              style={{ padding: '7px 28px', borderRadius: 16, fontSize: 14, fontWeight: 500, border: 'none', cursor: 'pointer',
+                background: mTab === i ? MRED : 'transparent',
+                color: mTab === i ? '#fff' : '#333333' }}>
+              {t}
+            </button>
+          ))}
+        </div>
+
+        {/* ====== 详情 Tab ====== */}
+        {mTab === 1 && (
+          <div style={{ background: '#fff', margin: '0 12px 12px', borderRadius: 12, overflow: 'hidden' }}>
+            {/* 显示标准模板 */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', minHeight: 50, padding: '0 16px', borderBottom: '1px solid ' + MBORDER }}>
+              <span style={{ fontSize: 15, color: '#333' }}>显示标准模板</span>
+              <MSwitch checked={d.show_service_content} onChange={(v) => setD({ show_service_content: v })} />
+            </div>
+            {/* 模板类型 */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', minHeight: 50, padding: '0 16px', borderBottom: '1px solid ' + MBORDER }}>
+              <span style={{ fontSize: 15, color: '#333' }}>模板类型</span>
+              <MPill value={d.shoot_template} onChange={(v) => setD({ shoot_template: v })}
+                options={[{ v: 'photo', t: '摄影模板' }, { v: 'video', t: '摄像模板' }]} />
+            </div>
+
+            {/* 标准模板分组 */}
+            <MGroup title="标准模板" />
+            <MRow label="拍摄时长" value={d.duration || '请选择'} onClick={() => openSheet('duration', d.duration)} />
+            <MRow label="原片" value={d.raw_count ? `${d.raw_count}张` : '请选择'} onClick={() => openSheet('rawCount', d.raw_count)} />
+            <MRow label="精修片" value={d.retouch_count ? `${d.retouch_count}张` : '请选择'} onClick={() => openSheet('retouch', d.retouch_count)} />
+            <MRow label="加片费" value={d.extra_photo_fee || '请选择'} onClick={() => openSheet('extraFee', d.extra_photo_fee)} />
+            <MRow label="加片优惠" value={d.extra_photo_discount || '无'} onClick={() => openSheet('extraDisc', d.extra_photo_discount)} />
+            <MRow label="化妆服装" value={`${d.cloth_provide === 'provide' ? '提供服装' : '不提供服装'} ${d.makeup_provide === 'provide' ? '提供化妆' : '不提供化妆'}`}
+              onClick={() => openSheet('cloth', `${d.cloth_provide}|${d.makeup_provide}`)} />
+            <MRow label="提供相册" value={d.album_provide === 'provide' ? '是' : d.album_provide === 'extra' ? '相册另购' : '否'}
+              onClick={() => openSheet('album', d.album_provide)} />
+            <MRow label="服务地点" value={d.service_location || '不显示'} onClick={() => openSheet('location', d.service_location)} />
+
+            {/* 服务详情分组 */}
+            <MGroup title="服务详情" />
+            <div style={{ padding: '14px 16px', color: '#666', fontSize: 13, lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>
+              {d.service_detail_text || (
+                <span style={{ color: MGRAY }}>婚礼跟拍 | 摄影单机位（两台相机拍摄）\n\n拍摄内容：婚礼当天流程、人物、场景等，具体拍摄内容由摄影师根据实际情况拍摄。\n照片数量：承诺拍摄不少于 300 张照片，并从中精选 40 张进行精修。\n照片格式：乙方提供 JPEG 格式的数字照片。\n婚礼预告：婚礼结束后 1—3 日 9 张精修（赠送服务）\n概述：摄影单机位记录画面有限。</span>
+              )}
+            </div>
+            {/* 快捷模板 */}
+            <div style={{ background: '#F8F8F8', padding: '12px 16px' }}>
+              <div style={{ fontSize: 13, color: MGRAY, marginBottom: 10 }}>快捷模板</div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button type="button" onClick={() => setD({ service_detail_text: d.service_detail_text + (d.service_detail_text ? '\n' : '') + '【摄影类】' })}
+                  style={{ padding: '5px 12px', borderRadius: 12, fontSize: 12, border: '1px solid #D1D5DB', background: '#fff', color: '#333' }}>摄影类</button>
+                <button type="button" onClick={() => setD({ service_detail_text: d.service_detail_text + (d.service_detail_text ? '\n' : '') + '【摄像类】' })}
+                  style={{ padding: '5px 12px', borderRadius: 12, fontSize: 12, border: '1px solid #D1D5DB', background: '#fff', color: '#333' }}>摄像类</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ====== 选填 Tab ====== */}
+        {mTab === 2 && (
+          <div style={{ background: '#fff', margin: '0 12px 12px', borderRadius: 12, overflow: 'hidden' }}>
+            <MRow label="温馨提示" value={d.warm_tips ? d.warm_tips.slice(0, 30) + '...' : ''}
+              onClick={() => openSheet('warm', d.warm_tips)} />
+            <MRow label="咨询提醒设置" value="" onClick={() => setD({ consult_reminder: !d.consult_reminder })} />
+            <MRow label="顾客协议" value={d.customer_agreement ? '已启用' : '未启用'}
+              onClick={() => openSheet('agreement', d.customer_agreement)} />
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', minHeight: 50, padding: '0 16px', borderBottom: '1px solid ' + MBORDER }}>
+              <span style={{ fontSize: 15, color: '#333' }}>对外公开</span>
+              <MSwitch checked={d.public_all_visible} onChange={(v) => setD({ public_all_visible: v })} />
+            </div>
+            <MRow label="谁可以看" value={d.public_visible || '全部可见'}
+              onClick={() => openSheet('visible', d.public_visible)} />
+            <div style={{ padding: '8px 16px 12px', fontSize: 12, color: MGRAY }}>
+              *套系将公开展示在小程序和网站中，对所有客户可见
+            </div>
+          </div>
+        )}
+
+        {/* ====== 价格 Tab ====== */}
+        {mTab === 0 && (
+          <div style={{ background: '#fff', margin: '0 12px 12px', borderRadius: 12, overflow: 'hidden' }}>
+            {/* 服务规格 */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', minHeight: 50, padding: '0 16px', borderBottom: '1px solid ' + MBORDER }}>
+              <span style={{ fontSize: 15, color: '#333' }}>服务规格</span>
+              <MRadio value={d.service_params} onChange={(v) => setD({ service_params: v })}
+                options={[{ v: '单规格服务', t: '单规格' }, { v: '多规格服务', t: '多规格' }]} />
+            </div>
+            {/* 总价 */}
+            <button type="button" onClick={() => openSheet('price', form.price)}
+              style={{ display: 'flex', alignItems: 'center', minHeight: 50, padding: '0 16px', width: '100%', background: 'none', border: 'none', textAlign: 'left', gap: 8, borderBottom: '1px solid ' + MBORDER }}>
+              <span style={{ fontSize: 15, color: '#333', flex: 1 }}>总价</span>
+              <span style={{ fontSize: 14, color: MGRAY }}>¥ {form.price || '0.00'}</span>
+              <button type="button" onClick={(e) => { e.stopPropagation(); setD({ hide_price: !d.hide_price }); }}
+                style={{ background: 'none', border: 'none', padding: 2, display: 'flex', alignItems: 'center' }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={d.hide_price ? '#E5E5E5' : '#C4C4C4'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  {d.hide_price
+                    ? <><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><path d="M4 4l16 16"/></>
+                    : <><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></>}
+                </svg>
+              </button>
+              <ChevronRight />
+            </button>
+            {/* 定金 */}
+            <button type="button" onClick={() => openSheet('deposit', form.deposit)}
+              style={{ display: 'flex', alignItems: 'center', minHeight: 50, padding: '0 16px', width: '100%', background: 'none', border: 'none', textAlign: 'left', gap: 8, borderBottom: '1px solid ' + MBORDER }}>
+              <span style={{ fontSize: 15, color: '#333', flex: 1 }}>定金</span>
+              <span style={{ fontSize: 14, color: MGRAY }}>¥ {form.deposit || '0.00'}</span>
+              <button type="button" onClick={(e) => { e.stopPropagation(); setD({ hide_deposit: !d.hide_deposit }); }}
+                style={{ background: 'none', border: 'none', padding: 2, display: 'flex', alignItems: 'center' }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={d.hide_deposit ? '#E5E5E5' : '#C4C4C4'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  {d.hide_deposit
+                    ? <><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><path d="M4 4l16 16"/></>
+                    : <><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></>}
+                </svg>
+              </button>
+              <ChevronRight />
+            </button>
+            {/* 退订政策 */}
+            <button type="button" onClick={() => openSheet('refund', d.refund_policy)}
+              style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', minHeight: 50, padding: '8px 16px', width: '100%', background: 'none', border: 'none', textAlign: 'left', borderBottom: '1px solid ' + MBORDER }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%' }}>
+                <span style={{ fontSize: 15, color: '#333', flex: 1 }}>退订政策</span>
+                <span style={{ fontSize: 14, color: d.hide_refund ? MGRAY : '#333' }}>{d.hide_refund ? '不显示' : d.refund_policy}</span>
+                <ChevronRight />
+              </div>
+              <div style={{ fontSize: 12, color: MGRAY, marginTop: 2, display: 'flex', alignItems: 'center', gap: 4 }}>
+                隐藏后，则默认为"严格"政策
+                <IconHelp />
+              </div>
+            </button>
+            {/* 底片保存设置 */}
+            <button type="button" onClick={() => openSheet('raw', d.raw_storage)}
+              style={{ display: 'flex', alignItems: 'center', minHeight: 50, padding: '0 16px', width: '100%', background: 'none', border: 'none', textAlign: 'left', gap: 8, borderBottom: '1px solid ' + MBORDER }}>
+              <span style={{ fontSize: 15, color: '#333', flexShrink: 0 }}>底片保存设置</span>
+              <span style={{ fontSize: 10, color: '#fff', background: '#FFBB33', borderRadius: 3, padding: '1px 4px', marginLeft: 4, flexShrink: 0 }}>NEW</span>
+              <span style={{ marginLeft: 'auto', fontSize: 14, color: d.raw_storage ? '#333' : MGRAY, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 140, textAlign: 'right' }}>
+                {d.raw_storage || '未设置'}
+              </span>
+              <ChevronRight />
+            </button>
+            {/* 预存支付 */}
+            <button type="button" onClick={() => openSheet('prepay', d.prepay_enabled ? '允许' : '不允许')}
+              style={{ display: 'flex', alignItems: 'center', minHeight: 50, padding: '0 16px', width: '100%', background: 'none', border: 'none', textAlign: 'left', gap: 8, borderBottom: '1px solid ' + MBORDER }}>
+              <span style={{ fontSize: 15, color: '#333', flex: 1 }}>预存支付</span>
+              <span style={{ fontSize: 14, color: d.prepay_enabled ? '#333' : MGRAY }}>{d.prepay_enabled ? '允许' : '不允许'}</span>
+              <ChevronRight />
+            </button>
+            {/* 套系问卷 */}
+            <button type="button" onClick={() => openSheet('questionnaire', d.questionnaire_visibility)}
+              style={{ display: 'flex', alignItems: 'center', minHeight: 50, padding: '0 16px', width: '100%', background: 'none', border: 'none', textAlign: 'left', gap: 8 }}>
+              <span style={{ fontSize: 15, color: '#333', flex: 1 }}>套系问卷</span>
+              <span style={{ fontSize: 14, color: d.questionnaire_visibility === 'none' ? MGRAY : '#333' }}>
+                {d.questionnaire_visibility === 'none' ? '未设置' : d.questionnaire_visibility === 'after_pay' ? '支付后显示' : '预约后显示'}
+              </span>
+              <ChevronRight />
+            </button>
+            {/* 底部说明 */}
+            <div style={{ padding: '8px 16px 12px', fontSize: 13, color: '#FF6B00' }}>*什么是客户调查问卷？</div>
+          </div>
+        )}
+
+        {/* 移动端 Sheet 弹窗 */}
+        <MSheet open={sheet === 'name'} onClose={closeSheet} title="套系名称">
+          <input autoFocus value={sheetVal} onChange={(e) => setSheetVal(e.target.value)} placeholder="请输入套系名称"
+            style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #D1D5DB', fontSize: 15, outline: 'none' }}
+            onKeyDown={(e) => { if (e.key === 'Enter') { setF({ name: sheetVal }); closeSheet(); } }} />
+          <button type="button" onClick={() => { setF({ name: sheetVal }); closeSheet(); }}
+            style={{ width: '100%', marginTop: 16, padding: '12px', borderRadius: 8, background: MRED, color: '#fff', fontSize: 15, border: 'none' }}>确定</button>
+        </MSheet>
+
+        <MSheet open={sheet === 'price'} onClose={closeSheet} title="总价">
+          <input autoFocus type="number" value={sheetVal} onChange={(e) => setSheetVal(e.target.value)} placeholder="0"
+            style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #D1D5DB', fontSize: 15, outline: 'none' }} />
+          <button type="button" onClick={() => { setF({ price: sheetVal }); closeSheet(); }}
+            style={{ width: '100%', marginTop: 16, padding: '12px', borderRadius: 8, background: MRED, color: '#fff', fontSize: 15, border: 'none' }}>确定</button>
+        </MSheet>
+
+        <MSheet open={sheet === 'deposit'} onClose={closeSheet} title="定金">
+          <input autoFocus type="number" value={sheetVal} onChange={(e) => setSheetVal(e.target.value)} placeholder="0"
+            style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #D1D5DB', fontSize: 15, outline: 'none' }} />
+          <button type="button" onClick={() => { setF({ deposit: sheetVal }); closeSheet(); }}
+            style={{ width: '100%', marginTop: 16, padding: '12px', borderRadius: 8, background: MRED, color: '#fff', fontSize: 15, border: 'none' }}>确定</button>
+        </MSheet>
+
+        <MSheet open={sheet === 'refund'} onClose={closeSheet} title="退订政策">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {REFUND_OPTS.map((o) => (
+              <button key={o} type="button" onClick={() => { setD({ refund_policy: o, hide_refund: false }); closeSheet(); }}
+                style={{ padding: '12px 16px', borderRadius: 8, border: '1px solid ' + (d.refund_policy === o && !d.hide_refund ? MRED : '#E5E5E5'), background: d.refund_policy === o && !d.hide_refund ? '#FFF5F5' : '#fff', fontSize: 15, color: '#333', textAlign: 'left' }}>
+                {o}
+              </button>
+            ))}
+            <button type="button" onClick={() => { setD({ hide_refund: true }); closeSheet(); }}
+              style={{ padding: '12px 16px', borderRadius: 8, border: '1px solid ' + (d.hide_refund ? MRED : '#E5E5E5'), background: d.hide_refund ? '#FFF5F5' : '#fff', fontSize: 15, color: '#333', textAlign: 'left' }}>
+              不显示
+            </button>
+          </div>
+        </MSheet>
+
+        <MSheet open={sheet === 'raw'} onClose={closeSheet} title="底片保存设置">
+          <input autoFocus value={sheetVal} onChange={(e) => setSheetVal(e.target.value)} placeholder="如：原片-- 精修片 3年"
+            style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #D1D5DB', fontSize: 15, outline: 'none' }}
+            onKeyDown={(e) => { if (e.key === 'Enter') { setD({ raw_storage: sheetVal }); closeSheet(); } }} />
+          <button type="button" onClick={() => { setD({ raw_storage: sheetVal }); closeSheet(); }}
+            style={{ width: '100%', marginTop: 16, padding: '12px', borderRadius: 8, background: MRED, color: '#fff', fontSize: 15, border: 'none' }}>确定</button>
+        </MSheet>
+
+        <MSheet open={sheet === 'questionnaire'} onClose={closeSheet} title="套系问卷">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {[{ v: 'none', t: '不显示' }, { v: 'after_pay', t: '支付后显示' }, { v: 'after_book', t: '预约后显示' }].map((o) => (
+              <button key={o.v} type="button" onClick={() => { setD({ questionnaire_visibility: o.v }); closeSheet(); }}
+                style={{ padding: '12px 16px', borderRadius: 8, border: '1px solid ' + (d.questionnaire_visibility === o.v ? MRED : '#E5E5E5'), background: d.questionnaire_visibility === o.v ? '#FFF5F5' : '#fff', fontSize: 15, color: '#333', textAlign: 'left' }}>
+                {o.t}
+              </button>
+            ))}
+          </div>
+          <div style={{ marginTop: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Switch checked={d.questionnaire_verify_phone} onChange={(v) => setD({ questionnaire_verify_phone: v })} />
+            <span style={{ fontSize: 14, color: '#666' }}>验证手机号</span>
+          </div>
+        </MSheet>
+
+        <MSheet open={sheet === 'duration'} onClose={closeSheet} title="拍摄时长">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {DURATION_OPTS.map((o) => (
+              <button key={o} type="button" onClick={() => { setD({ duration: o }); closeSheet(); }}
+                style={{ padding: '12px 16px', borderRadius: 8, border: '1px solid ' + (d.duration === o ? MRED : '#E5E5E5'), background: d.duration === o ? '#FFF5F5' : '#fff', fontSize: 15, color: '#333', textAlign: 'left' }}>{o}</button>
+            ))}
+          </div>
+        </MSheet>
+
+        <MSheet open={sheet === 'rawCount'} onClose={closeSheet} title="原片数量">
+          <input autoFocus type="number" value={sheetVal} onChange={(e) => setSheetVal(e.target.value)} placeholder="如 300"
+            style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #D1D5DB', fontSize: 15, outline: 'none' }} />
+          <button type="button" onClick={() => { setD({ raw_count: sheetVal }); closeSheet(); }}
+            style={{ width: '100%', marginTop: 16, padding: '12px', borderRadius: 8, background: MRED, color: '#fff', fontSize: 15, border: 'none' }}>确定</button>
+        </MSheet>
+
+        <MSheet open={sheet === 'retouch'} onClose={closeSheet} title="精修片数量">
+          <input autoFocus type="number" value={sheetVal} onChange={(e) => setSheetVal(e.target.value)} placeholder="如 40"
+            style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #D1D5DB', fontSize: 15, outline: 'none' }} />
+          <button type="button" onClick={() => { setD({ retouch_count: sheetVal }); closeSheet(); }}
+            style={{ width: '100%', marginTop: 16, padding: '12px', borderRadius: 8, background: MRED, color: '#fff', fontSize: 15, border: 'none' }}>确定</button>
+        </MSheet>
+
+        <MSheet open={sheet === 'extraFee'} onClose={closeSheet} title="加片费">
+          <input autoFocus value={sheetVal} onChange={(e) => setSheetVal(e.target.value)} placeholder="如 ¥50.00/张"
+            style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #D1D5DB', fontSize: 15, outline: 'none' }} />
+          <button type="button" onClick={() => { setD({ extra_photo_fee: sheetVal }); closeSheet(); }}
+            style={{ width: '100%', marginTop: 16, padding: '12px', borderRadius: 8, background: MRED, color: '#fff', fontSize: 15, border: 'none' }}>确定</button>
+        </MSheet>
+
+        <MSheet open={sheet === 'extraDisc'} onClose={closeSheet} title="加片优惠">
+          <input autoFocus value={sheetVal} onChange={(e) => setSheetVal(e.target.value)} placeholder="如 满10张9折"
+            style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #D1D5DB', fontSize: 15, outline: 'none' }} />
+          <button type="button" onClick={() => { setD({ extra_photo_discount: sheetVal }); closeSheet(); }}
+            style={{ width: '100%', marginTop: 16, padding: '12px', borderRadius: 8, background: MRED, color: '#fff', fontSize: 15, border: 'none' }}>确定</button>
+        </MSheet>
+
+        <MSheet open={sheet === 'cloth'} onClose={closeSheet} title="化妆服装">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div style={{ fontSize: 14, color: '#666', marginBottom: 4 }}>服装</div>
+            <MRadio value={d.cloth_provide} onChange={(v) => setD({ cloth_provide: v })} options={[{ v: 'not', t: '不提供服装' }, { v: 'provide', t: '提供服装' }]} />
+            <div style={{ fontSize: 14, color: '#666', marginTop: 8, marginBottom: 4 }}>化妆</div>
+            <MRadio value={d.makeup_provide} onChange={(v) => setD({ makeup_provide: v })} options={[{ v: 'not', t: '不提供化妆' }, { v: 'provide', t: '提供化妆' }]} />
+          </div>
+          <button type="button" onClick={closeSheet}
+            style={{ width: '100%', marginTop: 16, padding: '12px', borderRadius: 8, background: MRED, color: '#fff', fontSize: 15, border: 'none' }}>确定</button>
+        </MSheet>
+
+        <MSheet open={sheet === 'album'} onClose={closeSheet} title="提供相册">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {[{ v: 'not', t: '否' }, { v: 'provide', t: '是' }, { v: 'extra', t: '相册另购' }].map((o) => (
+              <button key={o.v} type="button" onClick={() => { setD({ album_provide: o.v }); closeSheet(); }}
+                style={{ padding: '12px 16px', borderRadius: 8, border: '1px solid ' + (d.album_provide === o.v ? MRED : '#E5E5E5'), background: d.album_provide === o.v ? '#FFF5F5' : '#fff', fontSize: 15, color: '#333', textAlign: 'left' }}>{o.t}</button>
+            ))}
+          </div>
+        </MSheet>
+
+        <MSheet open={sheet === 'location'} onClose={closeSheet} title="服务地点">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {LOCATION_OPTS.map((o) => (
+              <button key={o} type="button" onClick={() => { setD({ service_location: o }); closeSheet(); }}
+                style={{ padding: '12px 16px', borderRadius: 8, border: '1px solid ' + (d.service_location === o ? MRED : '#E5E5E5'), background: d.service_location === o ? '#FFF5F5' : '#fff', fontSize: 15, color: '#333', textAlign: 'left' }}>{o}</button>
+            ))}
+            <button type="button" onClick={() => { setD({ service_location: '' }); closeSheet(); }}
+              style={{ padding: '12px 16px', borderRadius: 8, border: '1px solid ' + (!d.service_location ? MRED : '#E5E5E5'), background: !d.service_location ? '#FFF5F5' : '#fff', fontSize: 15, color: '#333', textAlign: 'left' }}>不显示</button>
+          </div>
+        </MSheet>
+
+        <MSheet open={sheet === 'warm'} onClose={closeSheet} title="温馨提示">
+          <textarea autoFocus value={sheetVal} onChange={(e) => setSheetVal(e.target.value)} rows={4} placeholder="请输入温馨提示"
+            style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #D1D5DB', fontSize: 15, outline: 'none', resize: 'none' }} />
+          <button type="button" onClick={() => { setD({ warm_tips: sheetVal }); closeSheet(); }}
+            style={{ width: '100%', marginTop: 16, padding: '12px', borderRadius: 8, background: MRED, color: '#fff', fontSize: 15, border: 'none' }}>确定</button>
+        </MSheet>
+
+        <MSheet open={sheet === 'agreement'} onClose={closeSheet} title="顾客协议">
+          <textarea autoFocus value={sheetVal} onChange={(e) => setSheetVal(e.target.value)} rows={4} placeholder="填写客户需知 / 协议条款"
+            style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #D1D5DB', fontSize: 15, outline: 'none', resize: 'none' }} />
+          <button type="button" onClick={() => { setD({ customer_agreement: sheetVal }); closeSheet(); }}
+            style={{ width: '100%', marginTop: 16, padding: '12px', borderRadius: 8, background: MRED, color: '#fff', fontSize: 15, border: 'none' }}>确定</button>
+        </MSheet>
+
+        <MSheet open={sheet === 'visible'} onClose={closeSheet} title="谁可以看">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {['全部可见', '部分可见', '指定客户'].map((o) => (
+              <button key={o} type="button" onClick={() => { setD({ public_visible: o }); closeSheet(); }}
+                style={{ padding: '12px 16px', borderRadius: 8, border: '1px solid ' + (d.public_visible === o ? MRED : '#E5E5E5'), background: d.public_visible === o ? '#FFF5F5' : '#fff', fontSize: 15, color: '#333', textAlign: 'left' }}>{o}</button>
+            ))}
+          </div>
+        </MSheet>
+
+        {/* 移动端管理分类弹窗（底部 sheet 风格） */}
+        {catOpen && (
+          <>
+            <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 100 }} onClick={() => setCatOpen(false)} />
+            <div style={{ position: 'fixed', left: 0, right: 0, bottom: 0, background: '#fff', borderTopLeftRadius: 16, borderTopRightRadius: 16, zIndex: 101, padding: '12px 20px calc(20px + env(safe-area-inset-bottom))', maxHeight: '70vh', overflow: 'auto' }}>
+              <div style={{ width: 36, height: 4, background: '#DDD', borderRadius: 2, margin: '0 auto 14px' }} />
+              <div style={{ fontSize: 16, fontWeight: 500, textAlign: 'center', marginBottom: 16, color: '#333' }}>选择分类</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {categories.filter(Boolean).map((c) => (
+                  <button key={c.id} type="button" onClick={() => { setF({ category_id: c.id }); setCatOpen(false); }}
+                    style={{ padding: '12px 16px', borderRadius: 8, border: '1px solid ' + (form.category_id === c.id ? MRED : '#E5E5E5'), background: form.category_id === c.id ? '#FFF5F5' : '#fff', fontSize: 15, color: '#333', textAlign: 'left' }}>
+                    {c.name || '未命名'}
+                  </button>
+                ))}
+              </div>
+              <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
+                <input value={catName} onChange={(e) => setCatName(e.target.value)} placeholder="新建分类名称"
+                  style={{ flex: 1, padding: '10px 12px', borderRadius: 8, border: '1px solid #D1D5DB', fontSize: 15, outline: 'none' }}
+                  onKeyDown={(e) => e.key === 'Enter' && addCategory()} />
+                <button type="button" onClick={addCategory}
+                  style={{ padding: '10px 16px', borderRadius: 8, background: MRED, color: '#fff', fontSize: 14, border: 'none' }}>新建</button>
+              </div>
+            </div>
+          </>
+        )}
+
+        {cropOpen && cropSrc && (
+          <CropperModal src={cropSrc} onCancel={handleCropCancel} onConfirm={handleCropConfirm} />
+        )}
+      </div>
+    );
+  }
+
   const d = form.details;
 
   return (
