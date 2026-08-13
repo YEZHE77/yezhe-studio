@@ -1055,14 +1055,23 @@ function OrderSheet({ row, onClose }) {
     ta.style.cssText = 'position:fixed;opacity:0;';
     document.body.appendChild(ta);
     ta.select();
-    try { document.execCommand('copy'); toast('电话已复制'); }
+    try { document.execCommand('copy'); toast('信息已复制'); }
     catch (e) { toast('复制失败'); }
     document.body.removeChild(ta);
   };
-  const copyText = (text) => {
-    if (!text) return toast('暂无联系电话');
+  const copyInfo = () => {
+    const parts = [
+      row.order_customer ? `客户：${row.order_customer}` : '',
+      `状态：${label}`,
+      `日期：${row.date || ''} ${row.period || '全天'}`,
+      `执行人：${row.executor_name || row.photographer || '未分配'}`,
+      phone ? `电话：${phone}` : '',
+      row.note ? `备注：${row.note}` : ''
+    ].filter(Boolean);
+    const text = parts.join('\n');
+    if (!text) return toast('暂无可复制信息');
     if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(text).then(() => toast('电话已复制')).catch(() => fallbackCopy(text));
+      navigator.clipboard.writeText(text).then(() => toast('信息已复制')).catch(() => fallbackCopy(text));
     } else fallbackCopy(text);
   };
   return (
@@ -1093,9 +1102,9 @@ function OrderSheet({ row, onClose }) {
           <button type="button" onClick={() => { if (row.order_id) { onClose(); nav('/orders/' + row.order_id); } }}
             className="flex items-center justify-center"
             style={{ height: 42, borderRadius: 8, border: '1px solid #E5E5E5', background: '#fff', color: '#333', fontSize: 14 }}>查看详情</button>
-          <button type="button" onClick={() => copyText(phone)}
+          <button type="button" onClick={copyInfo}
             className="flex items-center justify-center"
-            style={{ height: 42, borderRadius: 8, border: '1px solid #E5E5E5', background: '#fff', color: '#333', fontSize: 14 }}>复制电话</button>
+            style={{ height: 42, borderRadius: 8, border: '1px solid #E5E5E5', background: '#fff', color: '#333', fontSize: 14 }}>复制信息</button>
           <a href={phone ? 'tel:' + phone.replace(/\s+/g, '') : undefined} onClick={phone ? undefined : (e) => e.preventDefault()}
             className="flex items-center justify-center"
             style={{ height: 42, borderRadius: 8, border: 'none', background: G_BLUE, color: '#fff', fontSize: 14, textDecoration: 'none' }}>拨打电话</a>
