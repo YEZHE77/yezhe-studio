@@ -530,7 +530,8 @@ export default function Schedule() {
       const payMap = { unpaid: '未付款', deposit: '已付定金', paid: '已付全款' };
       const payLabel = payMap[r.order_pay_status] || '';
       return (
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '12px 16px', background: '#fff' }}>
+        <div onClick={() => { if (r.order_id) nav('/orders/' + r.order_id); }} className="hover:bg-gray-50"
+          style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', background: '#fff', cursor: 'pointer' }}>
           <div style={{ fontSize: 14, color: '#666', minWidth: 40, textAlign: 'right', paddingTop: 2 }}>{r.period || '全天'}</div>
           <div style={{ width: 2, flexShrink: 0, alignSelf: 'stretch', background: '#52C41A', borderRadius: 1 }} />
           <div style={{ flex: 1, minWidth: 0 }}>
@@ -546,6 +547,7 @@ export default function Schedule() {
               )}
             </div>
           </div>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#CCC" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6" /></svg>
         </div>
       );
     };
