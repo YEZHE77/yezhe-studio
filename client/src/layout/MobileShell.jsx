@@ -7,7 +7,7 @@ import MobileWorkbench from '../pages/MobileWorkbench.jsx';
 // 复用现有 B 端页面组件（独立懒加载，不触碰桌面 AppShell 路由表）
 const Works = React.lazy(() => import('../pages/Works.jsx'));
 const Categories = React.lazy(() => import('../pages/Categories.jsx'));
-const WorkDetail = React.lazy(() => import('../pages/WorkDetail.jsx'));
+const WorkPreview = React.lazy(() => import('../pages/WorkPreview.jsx'));
 const Packages = React.lazy(() => import('../pages/Packages.jsx'));
 const PackagePreview = React.lazy(() => import('../pages/PackagePreview.jsx'));
 const Schedule = React.lazy(() => import('../pages/Schedule.jsx'));
@@ -170,7 +170,8 @@ function getPageTitle(path) {
   if (path.startsWith('/orders/')) return '订单详情';
   if (path === '/schedule') return '档期管理';
   if (path === '/works') return '作品管理';
-  if (path.startsWith('/works/')) return '作品详情';
+  if (path.startsWith('/works/') && (path.endsWith('/edit') || path === '/works/new')) return '作品编辑';
+  if (path.startsWith('/works/')) return '作品预览';
   if (path === '/packages') return '套系管理';
   if (path === '/packages/new') return '新建套系';
   if (path.startsWith('/packages/') && path.endsWith('/edit')) return '编辑套系';
@@ -223,7 +224,9 @@ export default function MobileShell() {
               {/* 复用现有 B 端页面，保持与桌面端同一套业务逻辑 */}
               <Route path="/works" element={<Works />} />
               <Route path="/categories" element={<Categories />} />
-              <Route path="/works/:id" element={<WorkDetail />} />
+              <Route path="/works/:id/edit" element={<WorkDetail />} />
+              <Route path="/works/new" element={<WorkDetail />} />
+              <Route path="/works/:id" element={<WorkPreview />} />
               <Route path="/packages" element={<Packages />} />
               <Route path="/packages/new" element={<PackageEdit />} />
               <Route path="/packages/:id" element={<PackagePreview />} />

@@ -27,7 +27,7 @@ import Dashboard from './pages/Dashboard.jsx';
 // 路由级懒加载——按需拉取，削减首屏 bundle
 const Works = React.lazy(() => import('./pages/Works.jsx'));
 const Categories = React.lazy(() => import('./pages/Categories.jsx'));
-const WorkDetail = React.lazy(() => import('./pages/WorkDetail.jsx'));
+const WorkPreview = React.lazy(() => import('./pages/WorkPreview.jsx'));
 const Packages = React.lazy(() => import('./pages/Packages.jsx'));
 const PackagePreview = React.lazy(() => import('./pages/PackagePreview.jsx'));
 const Schedule = React.lazy(() => import('./pages/Schedule.jsx'));
@@ -77,7 +77,9 @@ function AppShell() {
                 <Route path="/" element={<Dashboard />} />
                 <Route path="/works" element={<Works />} />
                 <Route path="/categories" element={<Categories />} />
-                <Route path="/works/:id" element={<WorkDetail />} />
+                <Route path="/works/:id/edit" element={<WorkDetail />} />
+                <Route path="/works/new" element={<WorkDetail />} />
+                <Route path="/works/:id" element={<WorkPreview />} />
                 <Route path="/packages" element={<Packages />} />
                 <Route path="/packages/new" element={<PackageEdit />} />
                 <Route path="/packages/:id" element={<PackagePreview />} />
