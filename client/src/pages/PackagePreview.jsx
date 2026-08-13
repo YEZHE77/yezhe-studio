@@ -91,6 +91,9 @@ export default function PackagePreview() {
   const [loading, setLoading] = useState(true);
   const [actionSheetOpen, setActionSheetOpen] = useState(false);
   const [serviceModalOpen, setServiceModalOpen] = useState(false);
+  const [shareModalOpen, setShareModalOpen] = useState(false);
+  const [shareData, setShareData] = useState(null);
+  const [shareBusy, setShareBusy] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -165,6 +168,42 @@ export default function PackagePreview() {
     }
   };
 
+  const handleOn = async () => {
+    setActionSheetOpen(false);
+    if (!window.confirm('确认上架该套系？上架后 C 端可见')) return;
+    try {
+      await http.post('/api/packages/' + id + '/status', { status: 'on' });
+      alert('已上架');
+      // 刷新当前页数据
+      const pkgRes = await http.get('/api/packages/' + id);
+      const p = pkgRes.data || {};
+      const d = { ...defaultDetails(), ...(p.details && typeof p.details === 'object' ? p.details : {}) };
+      setData({ ...p, details: d });
+    } catch (e) {
+      alert(e?.response?.data?.error || '上架失败');
+    }
+  };
+
+  const handleShare = async () => {
+    if (shareData) { setShareModalOpen(true); return; }
+    setShareBusy(true);
+    try {
+      const r = await http.post('/api/shares', { type: 'package', ref_id: parseInt(id, 10) });
+      setShareData(r.data);
+      setShareModalOpen(true);
+    } catch (e) {
+      alert(e?.response?.data?.error || '生成分享失败');
+    } finally {
+      setShareBusy(false);
+    }
+  };
+
+  const copyShareLink = () => {
+    if (!shareData?.share_url) return;
+    navigator.clipboard?.writeText(shareData.share_url);
+    alert('链接已复制');
+  };
+
   const handleDelete = async () => {
     setActionSheetOpen(false);
     if (!window.confirm('确认删除该套系？删除后不可恢复')) return;
@@ -189,7 +228,7 @@ export default function PackagePreview() {
         <button onClick={() => nav('/packages')} style={{ background: 'none', border: 'none', padding: 4, display: 'flex', alignItems: 'center' }}><IconBack /></button>
         <div style={{ flex: 1, textAlign: 'center', fontSize: 16, fontWeight: 500, color: '#333' }}>套系预览</div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <button onClick={() => { /* 分享 */ }} style={{ background: 'none', border: 'none', padding: 4, display: 'flex' }}><IconShare /></button>
+          <button onClick={handleShare} disabled={shareBusy} style={{ background: 'none', border: 'none', padding: 4, display: 'flex', opacity: shareBusy ? 0.5 : 1 }}><IconShare /></button>
           <div style={{ position: 'relative' }}>
             <button onClick={() => setActionSheetOpen(true)} style={{ background: 'none', border: 'none', padding: 4, display: 'flex' }}><IconMore /></button>
           </div>
@@ -329,11 +368,15 @@ export default function PackagePreview() {
                 </div>
                 <span style={{ fontSize: 13, color: '#666' }}>编辑</span>
               </div>
-              <div onClick={handleOff} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+              <div onClick={data.status === 'off' ? handleOn : handleOff} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
                 <div style={{ width: 56, height: 56, borderRadius: '50%', background: '#f5f5f5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#333" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>
+                  {data.status === 'off' ? (
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#333" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
+                  ) : (
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#333" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>
+                  )}
                 </div>
-                <span style={{ fontSize: 13, color: '#666' }}>下架</span>
+                <span style={{ fontSize: 13, color: '#666' }}>{data.status === 'off' ? '上架' : '下架'}</span>
               </div>
               <div onClick={handleDelete} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
                 <div style={{ width: 56, height: 56, borderRadius: '50%', background: '#f5f5f5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -345,6 +388,29 @@ export default function PackagePreview() {
             <button onClick={() => setActionSheetOpen(false)} style={{ display: 'block', width: 'calc(100% - 32px)', margin: '0 16px', padding: '12px 0', borderRadius: 8, border: 'none', background: '#f5f5f5', fontSize: 15, color: '#333', textAlign: 'center' }}>
               取消
             </button>
+          </div>
+        </>
+      )}
+
+      {/* 分享弹窗 */}
+      {shareModalOpen && (
+        <>
+          <div onClick={() => setShareModalOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 120, background: 'rgba(0,0,0,0.5)' }} />
+          <div style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', zIndex: 121, width: 'calc(100% - 48px)', maxWidth: 320, background: '#fff', borderRadius: 16, padding: 24, textAlign: 'center' }}>
+            <div style={{ fontSize: 16, fontWeight: 500, color: '#333', marginBottom: 8 }}>分享套系</div>
+            <div style={{ fontSize: 12, color: '#999', marginBottom: 16 }}>扫码或复制链接分享给客户</div>
+            {shareData?.qr_url ? (
+              <>
+                <img src={shareData.qr_url} alt="分享二维码" style={{ width: 180, height: 180, margin: '0 auto', borderRadius: 8, background: '#fff', padding: 8, border: '1px solid ' + MBORDER }} />
+                <div style={{ fontSize: 12, color: '#666', marginTop: 12, wordBreak: 'break-all' }}>{shareData.share_url}</div>
+                <div style={{ display: 'flex', gap: 8, marginTop: 16, justifyContent: 'center' }}>
+                  <button onClick={copyShareLink} style={{ padding: '8px 16px', borderRadius: 20, border: 'none', background: MRED, color: '#fff', fontSize: 14 }}>复制链接</button>
+                  <button onClick={() => setShareModalOpen(false)} style={{ padding: '8px 16px', borderRadius: 20, border: '1px solid ' + MBORDER, background: '#fff', color: '#333', fontSize: 14 }}>关闭</button>
+                </div>
+              </>
+            ) : (
+              <div style={{ color: '#999', fontSize: 14, padding: 32 }}>生成中…</div>
+            )}
           </div>
         </>
       )}
