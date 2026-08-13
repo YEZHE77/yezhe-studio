@@ -10,6 +10,7 @@ import http, { img } from '../api.js';
 const MRED = '#FA5151';
 const MGRAY = '#999999';
 const MBORDER = '#F0F0F0';
+const MGREEN = '#07C160';
 
 // 内联 SVG 图标
 function IconBack() {
@@ -49,6 +50,26 @@ function IconService() {
   return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#999" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>;
 }
 
+// 新增：服务详情弹窗图标
+function IconScissors() {
+  return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#999" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><line x1="20" y1="4" x2="8.12" y2="15.88"/><line x1="14.47" y1="14.48" x2="20" y2="20"/><line x1="8.12" y1="8.12" x2="12" y2="12"/></svg>;
+}
+function IconDollar() {
+  return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#999" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>;
+}
+function IconMakeup() {
+  return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#999" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2a10 10 0 0 1 10 10c0 5.523-4.477 10-10 10S2 17.523 2 12 2 2 12 2z"/><path d="M9 9h.01"/><path d="M15 9h.01"/><path d="M8 13a4 4 0 0 0 8 0"/></svg>;
+}
+function IconCheckOn() {
+  return <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={MGREEN} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="9 12 12 15 17 9"/></svg>;
+}
+function IconCheckOff() {
+  return <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ddd" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/></svg>;
+}
+function IconCloseX() {
+  return <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#999" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>;
+}
+
 function defaultDetails() {
   return {
     detail_images: [], video_url: '', service_params: '单规格服务', hide_price: false, hide_deposit: false,
@@ -66,18 +87,26 @@ export default function PackagePreview() {
   const { id } = useParams();
   const nav = useNavigate();
   const [data, setData] = useState(null);
+  const [studio, setStudio] = useState(null);
   const [loading, setLoading] = useState(true);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [showMore, setShowMore] = useState(false);
+  const [serviceModalOpen, setServiceModalOpen] = useState(false);
 
   useEffect(() => {
     if (!id) return;
     setLoading(true);
-    http.get('/api/packages/' + id).then((r) => {
-      const p = r.data || {};
+    Promise.all([
+      http.get('/api/packages/' + id),
+      http.get('/api/settings/studio')
+    ]).then(([pkgRes, studioRes]) => {
+      const p = pkgRes.data || {};
       const d = { ...defaultDetails(), ...(p.details && typeof p.details === 'object' ? p.details : {}) };
       setData({ ...p, details: d });
-    }).catch(() => { setData(null); }).finally(() => setLoading(false));
+      setStudio(studioRes.data || null);
+    }).catch(() => {
+      setData(null);
+      setStudio(null);
+    }).finally(() => setLoading(false));
   }, [id]);
 
   if (loading) {
@@ -110,12 +139,27 @@ export default function PackagePreview() {
     label: d.raw_all_included ? '全部原片' : '仅送精修'
   });
   const clothMap = { not: '服装自备', yes: '提供服装', extra: '服装另购' };
-  const makeupMap = { not: '化妆自备', yes: '提供化妆', extra: '化妆另购' };
   gridItems.push({ icon: <IconFace />, label: clothMap[d.cloth_provide] || '服装自备' });
-  // 更多服务作为可点击项
+
+  // 服务详情弹窗数据行
+  const serviceRows = [
+    { icon: <IconClock />, label: '时长', value: d.duration || '未设置' },
+    { icon: <IconImage />, label: '拍摄', value: d.raw_count ? `${d.raw_count}张` : '未设置' },
+    { icon: <IconScissors />, label: '精修', value: d.retouch_count ? `${d.retouch_count}张` : '未设置' },
+    { icon: <IconDollar />, label: '加片费', value: d.extra_photo_fee ? `${d.extra_photo_fee}元/张` : '未设置' },
+    { icon: <IconImage />, label: '仅送精修片', value: d.raw_all_included, type: 'toggle' },
+    { icon: <IconMakeup />, label: '化妆', value: d.makeup_provide !== 'not', type: 'toggle' },
+    { icon: <IconShirt />, label: '服装', value: d.cloth_provide !== 'not', type: 'toggle' },
+  ];
+
+  const contact = studio?.contact || {};
+  const socials = studio?.socials || {};
+  const wechat = socials.wechat || contact.wechat || '';
+  const phone = socials.phone || contact.phone || '';
+  const address = studio?.address || contact.address || '';
 
   return (
-    <div style={{ minHeight: '100vh', background: '#fff', paddingBottom: 'calc(60px + env(safe-area-inset-bottom))' }}>
+    <div style={{ minHeight: '100vh', background: '#fff', overflowY: 'auto', WebkitOverflowScrolling: 'touch', paddingBottom: 'calc(80px + env(safe-area-inset-bottom))' }}>
       {/* 顶部导航 */}
       <div style={{ position: 'sticky', top: 0, zIndex: 50, background: '#fff', height: 48, display: 'flex', alignItems: 'center', padding: '0 12px', borderBottom: '1px solid ' + MBORDER }}>
         <button onClick={() => nav('/packages')} style={{ background: 'none', border: 'none', padding: 4, display: 'flex', alignItems: 'center' }}><IconBack /></button>
@@ -170,7 +214,7 @@ export default function PackagePreview() {
               <div style={{ fontSize: 12, color: '#666' }}>{item.label}</div>
             </div>
           ))}
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+          <div onClick={() => setServiceModalOpen(true)} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
             <div style={{ width: 36, height: 36, borderRadius: '50%', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}><IconMoreService /></div>
             <div style={{ fontSize: 12, color: MRED }}>更多服务</div>
           </div>
@@ -178,34 +222,59 @@ export default function PackagePreview() {
       </div>
 
       {/* 服务详情 */}
-      <div style={{ padding: '0 16px 20px' }}>
-        <div style={{ fontSize: 15, fontWeight: 600, color: '#333', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
+      <div style={{ padding: '0 16px 24px' }}>
+        <div style={{ fontSize: 15, fontWeight: 600, color: '#333', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
           <span style={{ width: 3, height: 14, background: MRED, borderRadius: 2, display: 'inline-block' }} />
-          服务详情
+          服务详情：
         </div>
-        <div style={{ fontSize: 14, color: '#555', lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>
+        <div style={{ fontSize: 14, color: '#555', lineHeight: 1.8, whiteSpace: 'pre-wrap' }}>
           {d.service_detail_text || data.description || '暂无服务详情'}
         </div>
-        {d.service_detail_text && d.service_detail_text.length > 80 && (
-          <button onClick={() => setShowMore(!showMore)} style={{ marginTop: 6, fontSize: 13, color: MRED, background: 'none', border: 'none', padding: 0 }}>
-            {showMore ? '收起' : '展开更多'}
-          </button>
-        )}
       </div>
 
-      {/* 额外信息折叠（更多服务） */}
-      {showMore && (
-        <div style={{ padding: '0 16px 20px' }}>
-          <div style={{ background: '#fafafa', borderRadius: 12, padding: 14, fontSize: 13, color: '#666', lineHeight: 1.8 }}>
-            {d.shoot_template === 'photo' ? '摄影类' : '摄像类'} · {d.service_params}
-            {d.service_location ? ` · 服务地点：${d.service_location}` : ''}
-            {d.album_provide === 'yes' ? ' · 提供相册' : d.album_provide === 'extra' ? ' · 相册另购' : ' · 无相册'}
-            {d.makeup_provide !== 'not' ? ` · ${makeupMap[d.makeup_provide]}` : ''}
-            {d.raw_storage ? ` · 底片保存：${d.raw_storage}` : ''}
-            {d.warm_tips ? `\n温馨提示：${d.warm_tips}` : ''}
+      {/* 温馨提示 */}
+      {d.warm_tips ? (
+        <div style={{ padding: '0 16px 24px' }}>
+          <div style={{ fontSize: 15, fontWeight: 600, color: '#333', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ width: 3, height: 14, background: MRED, borderRadius: 2, display: 'inline-block' }} />
+            温馨提示：
+          </div>
+          <div style={{ fontSize: 14, color: '#555', lineHeight: 1.8, whiteSpace: 'pre-wrap' }}>
+            {d.warm_tips}
           </div>
         </div>
-      )}
+      ) : null}
+
+      {/* 关于我们 */}
+      {studio ? (
+        <div style={{ padding: '24px 16px 40px', borderTop: `1px solid ${MBORDER}` }}>
+          <div style={{ fontSize: 16, fontWeight: 600, color: '#333', textAlign: 'center', marginBottom: 20 }}>关于我们</div>
+          {(studio.serviceQr || studio.logo) ? (
+            <div style={{ textAlign: 'center', marginBottom: 16 }}>
+              <img src={img(studio.serviceQr || studio.logo)} alt="" style={{ width: 120, height: 120, objectFit: 'contain' }} />
+            </div>
+          ) : null}
+          <div style={{ fontSize: 14, color: '#666', textAlign: 'center', marginBottom: 20 }}>{studio.name || '岛像微电影'}</div>
+          {wechat ? (
+            <div style={{ display: 'flex', alignItems: 'center', padding: '10px 0', borderTop: `1px solid ${MBORDER}`, fontSize: 14 }}>
+              <span style={{ color: '#999', width: 60, flexShrink: 0 }}>微信</span>
+              <span style={{ color: '#333', flex: 1 }}>{wechat}</span>
+            </div>
+          ) : null}
+          {phone ? (
+            <div style={{ display: 'flex', alignItems: 'center', padding: '10px 0', borderTop: `1px solid ${MBORDER}`, fontSize: 14 }}>
+              <span style={{ color: '#999', width: 60, flexShrink: 0 }}>电话</span>
+              <span style={{ color: '#333', flex: 1 }}>{phone}</span>
+            </div>
+          ) : null}
+          {address ? (
+            <div style={{ display: 'flex', alignItems: 'center', padding: '10px 0', borderTop: `1px solid ${MBORDER}`, fontSize: 14 }}>
+              <span style={{ color: '#999', width: 60, flexShrink: 0 }}>地址</span>
+              <span style={{ color: '#333', flex: 1 }}>{address}</span>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
 
       {/* 底部固定栏 */}
       <div style={{
@@ -235,6 +304,39 @@ export default function PackagePreview() {
           立即预约
         </button>
       </div>
+
+      {/* 套系服务详情弹窗 */}
+      {serviceModalOpen && (
+        <>
+          <div onClick={() => setServiceModalOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 100, background: 'rgba(0,0,0,0.5)' }} />
+          <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 101, background: '#fff', borderRadius: '16px 16px 0 0', maxHeight: '80vh', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ padding: '16px 0', textAlign: 'center', fontSize: 16, fontWeight: 500, color: '#333', borderBottom: `1px solid ${MBORDER}` }}>套系服务详情</div>
+            <div style={{ overflowY: 'auto', padding: '8px 20px 20px', flex: 1 }}>
+              {serviceRows.map((row, i) => (
+                <div key={i} style={{ display: 'flex', alignItems: 'center', padding: '14px 0', borderBottom: i < serviceRows.length - 1 ? `1px solid ${MBORDER}` : 'none' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1 }}>
+                    {row.icon}
+                    <span style={{ fontSize: 14, color: '#333' }}>{row.label}</span>
+                  </div>
+                  {row.type === 'toggle' ? (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span style={{ fontSize: 13, color: row.value ? MGREEN : '#999' }}>{row.value ? '是' : '否'}</span>
+                      {row.value ? <IconCheckOn /> : <IconCheckOff />}
+                    </div>
+                  ) : (
+                    <span style={{ fontSize: 14, color: '#666' }}>{row.value}</span>
+                  )}
+                </div>
+              ))}
+            </div>
+            <div style={{ padding: '12px 20px calc(16px + env(safe-area-inset-bottom))', display: 'flex', justifyContent: 'center' }}>
+              <button onClick={() => setServiceModalOpen(false)} style={{ width: 44, height: 44, borderRadius: '50%', border: '1px solid #ddd', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <IconCloseX />
+              </button>
+            </div>
+          </div>
+        </>
+      )}
 
       <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
     </div>
