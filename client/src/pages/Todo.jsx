@@ -12,7 +12,7 @@ const LINE = '#F0F0F0';
 
 // 横向 Tab 配置（key 对应后端 statuses / status / payment_status 过滤；color 为下划线色；选中底色固定青绿）
 const TAB_DEFS = [
-  { key: 'unpaid',     label: '未付定金', filterKey: 'payment_status', value: 'unpaid',    accent: '#FE2C55' },
+  { key: 'unpaid',     label: '已付定金', filterKey: 'payment_status', value: 'unpaid',    accent: '#FE2C55' },
   { key: 'waiting',    label: '等待拍摄', filterKey: 'status',         value: 'deposit',   accent: GREEN },
   { key: 'shot',       label: '未交片',   filterKey: 'status',         value: 'shot',      accent: '#FFA940' },
   { key: 'selecting',  label: '待选片',   filterKey: 'status',         value: 'selecting', accent: '#2DB7F5' },
