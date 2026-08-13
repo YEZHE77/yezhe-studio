@@ -276,15 +276,25 @@ export default function Works() {
           <div className="absolute right-3 top-full mt-1 w-40 rounded-lg bg-white shadow-lg border border-gray-100 py-1 z-50">
             {!sortMode ? (
               <>
-                <button onClick={() => { setShowTopMenu(false); openNew(); }} className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50">
+                <button onClick={() => { setShowTopMenu(false); openNew(); }} className="w-full text-left px-3 py-2.5 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2.5">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="text-[#7ecdbb] shrink-0"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
                   添加作品
                 </button>
-                <button onClick={() => { setShowTopMenu(false); toggleSortMode(); }} className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50">编辑排序</button>
+                <button onClick={() => { setShowTopMenu(false); toggleSortMode(); }} className="w-full text-left px-3 py-2.5 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2.5">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="text-[#7ecdbb] shrink-0"><line x1="4" y1="6" x2="14" y2="6"/><line x1="4" y1="12" x2="11" y2="12"/><line x1="4" y1="18" x2="8" y2="18"/><polyline points="17 9 20 6 17 3"/><polyline points="17 15 20 18 17 21"/></svg>
+                  编辑排序
+                </button>
               </>
             ) : (
               <>
-                <button onClick={() => { setShowTopMenu(false); saveSortOrder(); }} disabled={savingSort || !allItems.length} className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50">{savingSort ? '保存中…' : '保存排序'}</button>
-                <button onClick={() => { setShowTopMenu(false); setSortMode(false); reload(); }} disabled={savingSort} className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50">取消排序</button>
+                <button onClick={() => { setShowTopMenu(false); saveSortOrder(); }} disabled={savingSort || !allItems.length} className="w-full text-left px-3 py-2.5 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50 flex items-center gap-2.5">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="text-[#7ecdbb] shrink-0"><polyline points="20 6 9 17 4 12"/></svg>
+                  {savingSort ? '保存中…' : '保存排序'}
+                </button>
+                <button onClick={() => { setShowTopMenu(false); setSortMode(false); reload(); }} disabled={savingSort} className="w-full text-left px-3 py-2.5 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50 flex items-center gap-2.5">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="text-gray-400 shrink-0"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                  取消排序
+                </button>
               </>
             )}
           </div>
