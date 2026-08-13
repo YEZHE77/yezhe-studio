@@ -258,6 +258,12 @@ export default function WorkDetail() {
   const longPressTimerRef = useRef(null);
   // 拖拽刚结束的瞬间拦截误触发预览点击
   const justDraggedRef = useRef(false);
+  // 新建态(/works/new)下选图的内存暂存：{file, name, size, url, zone}
+  // 用户点「保存基本信息」时统一上传并关联到新创建的作品的 albums。
+  // 仅内存：刷新/关闭页面即丢失（用户已接受：未保存则不成功）。
+  const [pendingPhotos, setPendingPhotos] = useState([]);
+  const pendingPhotosRef = useRef([]);
+  useEffect(() => { pendingPhotosRef.current = pendingPhotos; }, [pendingPhotos]);
   // 文案 textarea 自适应高度：内容变化时高度跟随 scrollHeight 扩展
   useEffect(() => {
     const el = albumCopyRef.current;
@@ -348,14 +354,20 @@ export default function WorkDetail() {
     return () => clearTimeout(t);
   }, [form, id, loading, isNew]);
 
-  // 存在未保存草稿时，离开/刷新页面给出浏览器原生提示，避免误丢改动
+  // 存在未保存草稿或新建态有暂存照片时，离开/刷新页面给出浏览器原生提示，避免误丢改动
   useEffect(() => {
-    if (isNew) return;
     function onBeforeUnload(e) {
-      const d = readDraft(id);
-      if (!d) return;
-      e.preventDefault();
-      e.returnValue = '您有未保存的修改，离开页面将丢失。';
+      if (isNew && pendingPhotosRef.current.length) {
+        e.preventDefault();
+        e.returnValue = '您有待保存的照片，离开页面将丢失。';
+        return;
+      }
+      if (!isNew) {
+        const d = readDraft(id);
+        if (!d) return;
+        e.preventDefault();
+        e.returnValue = '您有未保存的修改，离开页面将丢失。';
+      }
     }
     window.addEventListener('beforeunload', onBeforeUnload);
     return () => window.removeEventListener('beforeunload', onBeforeUnload);
@@ -401,8 +413,43 @@ export default function WorkDetail() {
           ...payload,
           cover_url: '', is_private: false, description: '', blessing: '', live: false, customer_name: '', order_id: null
         });
-        alert('作品创建成功，可继续上传照片');
-        navigate('/works/' + r.data.id + '/edit', { replace: true });
+        const newId = r.data.id;
+        // 上传用户在新建态暂存的全部照片（按 zone 分组 → /api/works/:id/albums）
+        // 用户硬规则：未点保存不产生作品+不关联相册；此处只在保存按钮点击后才执行
+        const pending = pendingPhotosRef.current;
+        if (pending.length) {
+          const byZone = {};
+          const failed = [];
+          for (const p of pending) {
+            try {
+              const compressed = await compressImage(p.file, { maxWidth: 1920, maxHeight: 1920, quality: 0.75 });
+              const up = await uploadImage(compressed, {
+                category: ZONE_CAT[p.zone] || 'customer',
+                isPublic: ZONE_PUB[p.zone] || false,
+                metaName: p.name,
+                metaSize: p.size
+              });
+              (byZone[p.zone] = byZone[p.zone] || []).push({ url: up.url, originalName: p.name, size: p.size });
+            } catch (err) {
+              failed.push(p.name);
+            }
+          }
+          for (const [z, items] of Object.entries(byZone)) {
+            if (!items.length) continue;
+            try {
+              await http.post('/api/works/' + newId + '/albums', { zone: z, items });
+            } catch (err) {
+              alert('照片保存到「' + (ZONES.find((zz) => zz.key === z)?.label || z) + '」失败：' + ((err.response && err.response.data && err.response.data.error) || err.message));
+            }
+          }
+          if (failed.length) alert('以下照片上传失败，需在编辑页手动重传：\n' + failed.join('、'));
+        }
+        setPendingPhotos([]);
+        pendingPhotosRef.current = [];
+        const okCount = Object.values(byZone || {}).reduce((s, a) => s + a.length, 0);
+        const msg = pending.length ? `作品创建成功，已上传 ${okCount} 张照片${failed.length ? `，${failed.length} 张失败需在编辑页手动重传` : ''}` : '作品创建成功，可继续上传照片';
+        alert(msg);
+        navigate('/works/' + newId + '/edit', { replace: true });
         return;
       }
       // 编辑：保留作品本身字段（封面 / 关联订单等），仅更新表单字段
@@ -446,15 +493,10 @@ export default function WorkDetail() {
   }
 
   // 选图后：读取每张原图 name+size，打开预览弹窗（不限制重复上传）
+  // 新建态(/works/new)：暂存到内存 pendingPhotos，等用户点保存基本信息时再统一上传并关联 albums
   async function onPickFiles(e) {
     const files = e.target.files;
     if (!files || !files.length) return;
-    // 新建态尚未保存，没有真实作品 ID，禁止上传照片
-    if (isNew) {
-      alert('请先保存基本信息，作品创建成功后再上传照片');
-      if (fileRef.current) fileRef.current.value = '';
-      return;
-    }
     setPreparing(true);
     try {
       const MAX = 15 * 1024 * 1024; // 选文件预检：与后端 multer 一致 15MB；实际压缩后远小于此
@@ -557,6 +599,19 @@ export default function WorkDetail() {
 
   // 确认上传：所有照片（含重复）均可上传；并发 3 张、逐项进度、暂停/继续、单张失败标红+重试、弱网提示
   async function confirmUpload() {
+    // 新建态：暂存到内存，不调后端；用户点保存时再统一上传并关联 albums
+    if (isNew) {
+      const valid = uploadPreviews.filter((p) => !p.error && !p.oversize);
+      uploadPreviews.forEach((p) => URL.revokeObjectURL(p.url));
+      setUploadPreviews([]);
+      setUploadOpen(false);
+      if (!valid.length) return;
+      const zoneKey = zone;
+      const items = valid.map((p) => ({ file: p.file, name: p.name, size: p.size, url: p.url, zone: zoneKey }));
+      setPendingPhotos((arr) => [...arr, ...items]);
+      alert(`已暂存 ${valid.length} 张照片（${ZONES.find((z) => z.key === zoneKey)?.label || zoneKey}），点「保存基本信息」后一并上传。`);
+      return;
+    }
     const toUpload = uploadPreviews.filter((p) => !p.error && !p.oversize);
     if (!toUpload.length) { setUploadOpen(false); return; }
     setUploading(true);
@@ -1150,17 +1205,30 @@ export default function WorkDetail() {
                     <path d="M21 15l-5-5L5 21" />
                   </svg>
                 </div>
-                <p className="text-sm text-gray-400 mb-4">还没有上传照片，添加第一张客片吧</p>
+                <p className="text-sm text-gray-400 mb-4">
+                  {pendingPhotos.length ? `已暂存 ${pendingPhotos.length} 张照片，保存后入库` : '还没有上传照片，添加第一张客片吧'}
+                </p>
                 {/* 用 label 包裹 file input，业内移动端标准做法，绕开 iOS Safari 对 ref.click() 的偶发拦截。*/}
-                {isNew ? (
-                  <span className="px-8 py-2.5 rounded-full text-white text-sm font-medium select-none bg-gray-300 opacity-80">
-                    保存基本信息后可上传照片
-                  </span>
-                ) : (
-                  <label className={'px-8 py-2.5 rounded-full text-white text-sm font-medium cursor-pointer select-none active:opacity-80 bg-[#FF7A8A]' + (uploading || preparing ? ' opacity-60' : '')}>
-                    {uploading ? '上传中…' : preparing ? '准备中…' : '+ 上传照片'}
-                    <input ref={fileRef} type="file" accept="image/*" multiple className="hidden" onChange={onPickFiles} />
-                  </label>
+                <label className={'px-8 py-2.5 rounded-full text-white text-sm font-medium cursor-pointer select-none active:opacity-80 bg-[#FF7A8A]' + (uploading || preparing ? ' opacity-60' : '')}>
+                  {uploading ? '上传中…' : preparing ? '准备中…' : '+ 上传照片'}
+                  <input ref={fileRef} type="file" accept="image/*" multiple className="hidden" onChange={onPickFiles} />
+                </label>
+                {isNew && pendingPhotos.length > 0 && (
+                  <div className="mt-4 w-full max-w-xs">
+                    <div className="grid grid-cols-4 gap-1.5">
+                      {pendingPhotos.map((p, i) => (
+                        <div key={i} className="relative aspect-square rounded-lg overflow-hidden bg-gray-100 group">
+                          <img src={p.url} alt="" className="w-full h-full object-cover" />
+                          <button
+                            onClick={() => setPendingPhotos((arr) => arr.filter((_, j) => j !== i))}
+                            aria-label="移除暂存"
+                            className="absolute top-0.5 right-0.5 w-5 h-5 rounded-full bg-black/60 text-white text-[10px] flex items-center justify-center active:scale-95"
+                          >✕</button>
+                        </div>
+                      ))}
+                    </div>
+                    <p className="text-[11px] text-gray-400 mt-2 text-center">预览缩略图仅显示在当前会话，保存后即入库</p>
+                  </div>
                 )}
               </div>
             </div>
@@ -1206,7 +1274,7 @@ export default function WorkDetail() {
           <div className="bg-panel border border-line rounded-xl2 p-5">
             <div className="flex items-center justify-between flex-wrap gap-2 mb-4">
               <div className="flex items-center gap-2">
-                <button onClick={() => isNew ? alert('请先保存基本信息，作品创建成功后再上传照片') : onUploadClick()} disabled={isNew || uploading || preparing} className="px-3 py-1.5 rounded bg-brand text-white text-xs hover:opacity-90 disabled:opacity-50">+ 添加照片</button>
+                <button onClick={onUploadClick} disabled={uploading || preparing} className="px-3 py-1.5 rounded bg-brand text-white text-xs hover:opacity-90 disabled:opacity-50">+ 添加照片{isNew && pendingPhotos.length ? ` (${pendingPhotos.length})` : ''}</button>
                 <span className="text-xs text-muted">{albums.length}/{albums.length}</span>
               </div>
               <div className="flex items-center gap-2">
@@ -1371,7 +1439,7 @@ export default function WorkDetail() {
               <div className="flex items-center gap-2">
                 <button onClick={openSlide} disabled={!zoneAlbums.length} className="px-4 py-2 rounded border border-line text-sm text-fg hover:text-brand hover:border-brand disabled:opacity-40">▶ 播放幻灯片</button>
                 <input ref={fileRef} type="file" accept="image/*" multiple className="hidden" onChange={onPickFiles} />
-                <button onClick={() => isNew ? alert('请先保存基本信息，作品创建成功后再上传照片') : onUploadClick()} disabled={isNew || uploading || preparing} className="px-4 py-2 rounded bg-brand text-white text-sm hover:opacity-90 disabled:opacity-60">{isNew ? '保存后可上传' : uploading ? `上传中 ${overallPct}%` : preparing ? '准备中…' : '+ 批量上传'}</button>
+                <button onClick={onUploadClick} disabled={uploading || preparing} className="px-4 py-2 rounded bg-brand text-white text-sm hover:opacity-90 disabled:opacity-60">{uploading ? `上传中 ${overallPct}%` : preparing ? '准备中…' : (isNew && pendingPhotos.length ? `+ 批量上传 (${pendingPhotos.length})` : '+ 批量上传')}</button>
                 {uploading && (
                   <button onClick={togglePause} className="px-3 py-2 rounded border border-line text-sm text-muted hover:text-brand">{paused ? '继续' : '暂停'}</button>
                 )}
