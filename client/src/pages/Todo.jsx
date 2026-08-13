@@ -68,6 +68,8 @@ export default function Todo() {
   const [loading, setLoading] = useState(false);
   const [lunar, setLunar] = useState('');
   const abortRef = useRef(null);
+  const tabsScrollRef = useRef(null);
+  const tabRefs = useRef({});
 
   const today = useMemo(() => todayInfo(), []);
 
@@ -130,6 +132,23 @@ export default function Todo() {
 
   useEffect(() => { loadItems(activeKey); }, [activeKey, loadItems]);
 
+  // 切换 Tab 时，将激活 Tab 滚动到视口中央（让整块色块可见，不被裁切）
+  useEffect(() => {
+    const el = tabRefs.current[activeKey];
+    const scroller = tabsScrollRef.current;
+    if (!el || !scroller) return;
+    // 等待布局（list 加载或首次渲染）
+    const id = requestAnimationFrame(() => {
+      const elRect = el.getBoundingClientRect();
+      const scRect = scroller.getBoundingClientRect();
+      const elCenter = elRect.left + elRect.width / 2;
+      const scCenter = scRect.left + scRect.width / 2;
+      const delta = elCenter - scCenter;
+      scroller.scrollBy({ left: delta, behavior: 'smooth' });
+    });
+    return () => cancelAnimationFrame(id);
+  }, [activeKey]);
+
   return (
     <div style={{ minHeight: '100vh', background: '#F7F7F7', display: 'flex', flexDirection: 'column' }}>
       {/* 顶部标题栏（深色背景 + 返回 + 标题） */}
@@ -168,6 +187,7 @@ export default function Todo() {
       {/* 横向滚动分类 Tab（每个 Tab 顶部色条；选中态青绿底白字 + 上方更粗色条） */}
       <div style={{ background: '#fff', borderBottom: '1px solid ' + LINE }}>
         <div
+          ref={tabsScrollRef}
           style={{
             display: 'flex', overflowX: 'auto', WebkitOverflowScrolling: 'touch',
             scrollbarWidth: 'none', msOverflowStyle: 'none'
@@ -179,6 +199,7 @@ export default function Todo() {
             return (
               <button
                 key={t.key}
+                ref={(el) => { tabRefs.current[t.key] = el; }}
                 type="button"
                 onClick={() => setActiveKey(t.key)}
                 style={{
