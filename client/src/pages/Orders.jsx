@@ -1162,8 +1162,8 @@ function OrderCard({ order, onClick, onShare }) {
       width: '100%', background: '#fff', borderRadius: 12, marginBottom: 12,
       border: '1px solid #F0F0F0', textAlign: 'left', display: 'block', overflow: 'hidden'
     }}>
-      {/* 头像 + 客户 + 状态 */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px' }}>
+      {/* 头像 + 客户 + 状态（无内部分隔线，对齐参考图） */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 14px 6px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, flex: 1 }}>
           <div style={{
             width: 28, height: 28, borderRadius: '50%', background: bg, color: '#fff',
@@ -1180,10 +1180,9 @@ function OrderCard({ order, onClick, onShare }) {
         </div>
         <div style={{ fontSize: 13, color: '#999', whiteSpace: 'nowrap', marginLeft: 8 }}>{statusText}</div>
       </div>
-      <div style={{ height: 1, background: '#F0F0F0' }} />
 
       {/* 套系名 + 分类 + 尾款标签（红底白字，对齐截图） */}
-      <div style={{ padding: '10px 14px' }}>
+      <div style={{ padding: '6px 14px' }}>
         <div style={{ fontSize: 15, color: '#1f2329', lineHeight: 1.4, fontWeight: 600, marginBottom: 4 }}>{pkgName}</div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           {pkgCategory ? <span style={{ fontSize: 12, color: '#999' }}>{pkgCategory}</span> : null}
@@ -1192,26 +1191,24 @@ function OrderCard({ order, onClick, onShare }) {
           )}
         </div>
       </div>
-      <div style={{ height: 1, background: '#F0F0F0' }} />
 
-      {/* 日期 + 封面 + 分享按钮（删掉中间「定金+尾款」段，对齐截图紧凑版式） */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 14px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#999' }}>
+      {/* 日期 + 封面 + 二维码（无内部分隔线；日期对齐封面顶部；二维码移至封面左下角） */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '6px 14px 12px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#999', paddingTop: 4 }}>
           <IconCalendar style={{ width: 14, height: 14, color: '#bbb' }} />
           <span>{dateLabel}：{dateValue}</span>
         </div>
         {cover ? (
           <div style={{ position: 'relative', flexShrink: 0, marginLeft: 12 }}>
-            <img src={cover} alt="" style={{ width: 60, height: 60, borderRadius: 6, objectFit: 'cover', display: 'block' }} />
+            <img src={cover} alt="" style={{ width: 84, height: 84, borderRadius: 6, objectFit: 'cover', display: 'block' }} />
             <button onClick={(e) => onShare(order, e)} style={{
-              position: 'absolute', right: -6, bottom: -6, width: 22, height: 22,
+              position: 'absolute', left: -8, bottom: -8, width: 22, height: 22,
               borderRadius: '50%', background: '#1f2329', border: '2px solid #fff',
               display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0
             }}><IconQr /></button>
           </div>
         ) : null}
       </div>
-      <div style={{ height: 1, background: '#F0F0F0' }} />
 
       {/* 备注 + 编辑入口（点击编辑跳 /orders/:id/notes） */}
       <div style={{ display: 'flex', alignItems: 'center', padding: '8px 14px' }}>
