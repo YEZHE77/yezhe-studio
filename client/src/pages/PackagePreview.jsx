@@ -78,6 +78,7 @@ export default function PackagePreview() {
   const { id } = useParams();
   const nav = useNavigate();
   const [data, setData] = useState(null);
+  const [studio, setStudio] = useState(null);
   const [loading, setLoading] = useState(true);
   const [actionSheetOpen, setActionSheetOpen] = useState(false);
   const [serviceModalOpen, setServiceModalOpen] = useState(false);
@@ -88,11 +89,15 @@ export default function PackagePreview() {
   useEffect(() => {
     if (!id) return;
     setLoading(true);
-    http.get('/api/packages/' + id)
-      .then((pkgRes) => {
+    Promise.all([
+      http.get('/api/packages/' + id),
+      http.get('/api/settings/studio').catch(() => null)
+    ])
+      .then(([pkgRes, studioRes]) => {
         const p = pkgRes.data || {};
         const d = { ...defaultDetails(), ...(p.details && typeof p.details === 'object' ? p.details : {}) };
         setData({ ...p, details: d });
+        setStudio(studioRes?.data || null);
       }).catch(() => {
         setData(null);
       }).finally(() => setLoading(false));
@@ -140,16 +145,6 @@ export default function PackagePreview() {
     { icon: <IconMakeup />, label: '化妆', value: d.makeup_provide !== 'not', type: 'toggle' },
     { icon: <IconShirt />, label: '服装', value: d.cloth_provide !== 'not', type: 'toggle' },
   ];
-
-  // 把 1./2./3. 自动替换为带圈数字 ①②③，匹配小程序风格
-  const formatTips = (text) => {
-    if (!text) return '';
-    const circled = ['①','②','③','④','⑤','⑥','⑦','⑧','⑨','⑩','⑪','⑫','⑬','⑭','⑮','⑯','⑰','⑱','⑲','⑳'];
-    return text.split('\n').map(line => line.replace(/^(\s*)(\d+)[.．、]\s*/, (m, space, n) => {
-      const idx = parseInt(n, 10) - 1;
-      return (circled[idx] || n + '.') + ' ';
-    })).join('\n');
-  };
 
   const handleOff = async () => {
     setActionSheetOpen(false);
@@ -217,7 +212,7 @@ export default function PackagePreview() {
   };
 
   return (
-    <div style={{ minHeight: '100vh', background: '#fff', overflowY: 'auto', WebkitOverflowScrolling: 'touch', paddingBottom: 'env(safe-area-inset-bottom)' }}>
+    <div style={{ minHeight: '100vh', background: '#fff', overflowY: 'auto', WebkitOverflowScrolling: 'touch', paddingBottom: 'calc(56px + env(safe-area-inset-bottom))' }}>
       {/* 顶部导航 */}
       <div style={{ position: 'sticky', top: 0, zIndex: 50, background: '#fff', height: 48, display: 'flex', alignItems: 'center', padding: '0 12px', borderBottom: '1px solid ' + MBORDER }}>
         <button onClick={() => nav('/packages')} style={{ background: 'none', border: 'none', padding: 4, display: 'flex', alignItems: 'center' }}><IconBack /></button>
@@ -286,7 +281,7 @@ export default function PackagePreview() {
             温馨提示：
           </div>
           <div style={{ fontSize: 14, color: '#555', lineHeight: 1.8, whiteSpace: 'pre-wrap' }}>
-            {formatTips(d.warm_tips)}
+            {d.warm_tips}
           </div>
         </div>
       ) : null}
@@ -384,6 +379,34 @@ export default function PackagePreview() {
           </div>
         </>
       )}
+
+      {/* 底部固定栏 */}
+      <div style={{
+        position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 50,
+        background: '#fff', borderTop: '1px solid ' + MBORDER,
+        display: 'flex', alignItems: 'center', height: 56,
+        paddingBottom: 'env(safe-area-inset-bottom)'
+      }}>
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 10, paddingLeft: 12, overflow: 'hidden' }}>
+          {studio?.logo ? (
+            <img src={img(studio.logo)} alt="" style={{ width: 36, height: 36, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
+          ) : (
+            <div style={{ width: 36, height: 36, borderRadius: '50%', background: '#eee', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ccc" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            </div>
+          )}
+          <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', overflow: 'hidden' }}>
+            <div style={{ fontSize: 13, fontWeight: 500, color: '#333', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{studio?.name || '岛像工作室'}</div>
+            <div style={{ fontSize: 11, color: '#999', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{studio?.slogan || ''}</div>
+          </div>
+        </div>
+        <button onClick={() => nav('/schedule', { state: { openNew: true } })} style={{
+          width: 140, height: 40, borderRadius: 20, background: MRED, color: '#fff',
+          fontSize: 15, fontWeight: 500, border: 'none', marginRight: 12, display: 'flex', alignItems: 'center', justifyContent: 'center'
+        }}>
+          立即预约
+        </button>
+      </div>
 
       <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
     </div>
