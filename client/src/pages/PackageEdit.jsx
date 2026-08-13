@@ -41,6 +41,8 @@ const PRESET_TAGS = ['婚纱类', '亲子类', '写真类', '旅拍类', '情侣
 const SVC_PARAMS = ['单规格服务', '多规格服务'];
 const REFUND_OPTS = ['严格', '中等', '宽松'];
 const DURATION_OPTS = ['全天', '半天', '指定时长'];
+const CAMERA_OPTS = ['单机位', '双机位', '三机位', '多机位'];
+const DELIVERY_OPTS = ['U盘', '网盘', '邮箱', '线下交付'];
 const LOCATION_OPTS = ['海口', '三亚', '北京', '上海', '广州', '深圳', '杭州', '成都'];
 
 function defaultDetails() {
@@ -61,6 +63,9 @@ function defaultDetails() {
     questionnaire: [],
     shoot_template: 'photo',
     duration: '全天',
+    camera_count: '',
+    video_duration: '',
+    delivery_method: '',
     raw_count: '',
     raw_all_included: false,
     retouch_count: '',
@@ -598,10 +603,20 @@ export default function PackageEdit() {
             {/* 标准模板分组 */}
             <MGroup title="标准模板" />
             <MRow label="拍摄时长" value={d.duration || '请选择'} onClick={() => openSheet('duration', d.duration)} />
-            <MRow label="原片" value={d.raw_count ? `${d.raw_count}张` : '请选择'} onClick={() => openSheet('rawCount', d.raw_count)} />
-            <MRow label="精修片" value={d.retouch_count ? `${d.retouch_count}张` : '请选择'} onClick={() => openSheet('retouch', d.retouch_count)} />
-            <MRow label="加片费" value={d.extra_photo_fee || '请选择'} onClick={() => openSheet('extraFee', d.extra_photo_fee)} />
-            <MRow label="加片优惠" value={d.extra_photo_discount || '无'} onClick={() => openSheet('extraDisc', d.extra_photo_discount)} />
+            {d.shoot_template === 'video' ? (
+              <>
+                <MRow label="拍摄机位" value={d.camera_count || '请选择'} onClick={() => openSheet('camera', d.camera_count)} />
+                <MRow label="成片时长" value={d.video_duration || '请选择'} onClick={() => openSheet('videoDuration', d.video_duration)} />
+                <MRow label="交付方式" value={d.delivery_method || '请选择'} onClick={() => openSheet('delivery', d.delivery_method)} />
+              </>
+            ) : (
+              <>
+                <MRow label="原片" value={d.raw_count ? `${d.raw_count}张` : '请选择'} onClick={() => openSheet('rawCount', d.raw_count)} />
+                <MRow label="精修片" value={d.retouch_count ? `${d.retouch_count}张` : '请选择'} onClick={() => openSheet('retouch', d.retouch_count)} />
+                <MRow label="加片费" value={d.extra_photo_fee || '请选择'} onClick={() => openSheet('extraFee', d.extra_photo_fee)} />
+                <MRow label="加片优惠" value={d.extra_photo_discount || '无'} onClick={() => openSheet('extraDisc', d.extra_photo_discount)} />
+              </>
+            )}
             <MRow label="化妆服装" value={`${d.cloth_provide === 'provide' ? '提供服装' : '不提供服装'} ${d.makeup_provide === 'provide' ? '提供化妆' : '不提供化妆'}`}
               onClick={() => openSheet('cloth', `${d.cloth_provide}|${d.makeup_provide}`)} />
             <MRow label="提供相册" value={d.album_provide === 'provide' ? '是' : d.album_provide === 'extra' ? '相册另购' : '否'}
@@ -620,9 +635,9 @@ export default function PackageEdit() {
               <div style={{ fontSize: 13, color: MGRAY, marginBottom: 10 }}>快捷模板</div>
               <div style={{ display: 'flex', gap: 8 }}>
                 <button type="button" onClick={() => setD({ service_detail_text: d.service_detail_text + (d.service_detail_text ? '\n' : '') + '【摄影类】' })}
-                  style={{ padding: '5px 12px', borderRadius: 12, fontSize: 12, border: '1px solid #D1D5DB', background: '#fff', color: '#333' }}>摄影类</button>
+                  style={{ padding: '5px 12px', borderRadius: 12, fontSize: 12, border: '1px solid #D1D5DB', background: d.shoot_template === 'photo' ? MRED : '#fff', color: d.shoot_template === 'photo' ? '#fff' : '#333' }}>摄影类</button>
                 <button type="button" onClick={() => setD({ service_detail_text: d.service_detail_text + (d.service_detail_text ? '\n' : '') + '【摄像类】' })}
-                  style={{ padding: '5px 12px', borderRadius: 12, fontSize: 12, border: '1px solid #D1D5DB', background: '#fff', color: '#333' }}>摄像类</button>
+                  style={{ padding: '5px 12px', borderRadius: 12, fontSize: 12, border: '1px solid #D1D5DB', background: d.shoot_template === 'video' ? MRED : '#fff', color: d.shoot_template === 'video' ? '#fff' : '#333' }}>摄像类</button>
               </div>
             </div>
           </div>
@@ -827,6 +842,31 @@ export default function PackageEdit() {
             style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #D1D5DB', fontSize: 15, outline: 'none' }} />
           <button type="button" onClick={() => { setD({ extra_photo_discount: sheetVal }); closeSheet(); }}
             style={{ width: '100%', marginTop: 16, padding: '12px', borderRadius: 8, background: MRED, color: '#fff', fontSize: 15, border: 'none' }}>确定</button>
+        </MSheet>
+
+        <MSheet open={sheet === 'camera'} onClose={closeSheet} title="拍摄机位">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {CAMERA_OPTS.map((o) => (
+              <button key={o} type="button" onClick={() => { setD({ camera_count: o }); closeSheet(); }}
+                style={{ padding: '12px 16px', borderRadius: 8, border: '1px solid ' + (d.camera_count === o ? MRED : '#E5E5E5'), background: d.camera_count === o ? '#FFF5F5' : '#fff', fontSize: 15, color: '#333', textAlign: 'left' }}>{o}</button>
+            ))}
+          </div>
+        </MSheet>
+
+        <MSheet open={sheet === 'videoDuration'} onClose={closeSheet} title="成片时长">
+          <input autoFocus value={sheetVal} onChange={(e) => setSheetVal(e.target.value)} placeholder="如 40分钟"
+            style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #D1D5DB', fontSize: 15, outline: 'none' }} />
+          <button type="button" onClick={() => { setD({ video_duration: sheetVal }); closeSheet(); }}
+            style={{ width: '100%', marginTop: 16, padding: '12px', borderRadius: 8, background: MRED, color: '#fff', fontSize: 15, border: 'none' }}>确定</button>
+        </MSheet>
+
+        <MSheet open={sheet === 'delivery'} onClose={closeSheet} title="交付方式">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {DELIVERY_OPTS.map((o) => (
+              <button key={o} type="button" onClick={() => { setD({ delivery_method: o }); closeSheet(); }}
+                style={{ padding: '12px 16px', borderRadius: 8, border: '1px solid ' + (d.delivery_method === o ? MRED : '#E5E5E5'), background: d.delivery_method === o ? '#FFF5F5' : '#fff', fontSize: 15, color: '#333', textAlign: 'left' }}>{o}</button>
+            ))}
+          </div>
         </MSheet>
 
         <MSheet open={sheet === 'cloth'} onClose={closeSheet} title="化妆服装">
