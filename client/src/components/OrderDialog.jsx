@@ -234,7 +234,7 @@ export default function OrderDialog({ orderDlg, personnel, onClose, onSaved, mod
     const d = new Date(ds + 'T00:00:00');
     if (isNaN(d.getTime())) return ds;
     const week = ['日', '一', '二', '三', '四', '五', '六'][d.getDay()];
-    return `${ds} 星期${week}`;
+    return `${ds}星期${week}`;
   };
 
   const isDirty = () => !!(orderName.trim() || customers.some((c) => c.name.trim() || c.phone.trim()) || shootDate || pkgId || pkgPrice || deposit || payStatus !== 'deposit' || remark.trim() || birthdayText.trim() || location.trim() || channelId || executors.length || extras.length || slots.length || dateTbd);
