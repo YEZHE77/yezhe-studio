@@ -310,7 +310,7 @@ export default function PackageEdit() {
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState([]);
   const [uploading, setUploading] = '';
-  const [catOpen, setCatOpen] = useState(false);
+  const [qnaHelpOpen, setQnaHelpOpen] = useState(false);
   // 内联编辑开关（文本展示 + 编辑链接）
   const [editRaw, setEditRaw] = useState(false);
   const [editDisc, setEditDisc] = useState(false);
@@ -742,7 +742,9 @@ export default function PackageEdit() {
               <ChevronRight />
             </button>
             {/* 底部说明 */}
-            <div style={{ padding: '8px 16px 12px', fontSize: 13, color: '#FF6B00' }}>*什么是客户调查问卷？</div>
+            <div onClick={() => setQnaHelpOpen(true)} style={{ padding: '8px 16px 12px', fontSize: 13, color: '#FF6B00', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
+              <span style={{ color: '#FF6B00' }}>*什么是客户调查问卷？</span>
+            </div>
           </div>
         )}
 
@@ -945,6 +947,56 @@ export default function PackageEdit() {
                 <button type="button" onClick={addCategory}
                   style={{ padding: '10px 16px', borderRadius: 8, background: MRED, color: '#fff', fontSize: 14, border: 'none' }}>新建</button>
               </div>
+            </div>
+          </>
+        )}
+
+        {/* 什么是调查问卷？说明弹窗 */}
+        {qnaHelpOpen && (
+          <>
+            <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 200 }} onClick={() => setQnaHelpOpen(false)} />
+            <div style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', zIndex: 201, background: '#fff', borderRadius: 12, width: 'min(340px, 90vw)', padding: '28px 24px 20px', boxShadow: '0 8px 32px rgba(0,0,0,0.2)' }}>
+              <div style={{ fontSize: 17, fontWeight: 500, textAlign: 'center', color: '#333', marginBottom: 28 }}>什么是调查问卷？</div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+                {/* 1. 下单时邀请填写问卷 */}
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+                  <div style={{ width: 44, height: 44, borderRadius: 10, background: '#FFB800', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="3" width="16" height="18" rx="2"/><line x1="8" y1="8" x2="16" y2="8"/><line x1="8" y1="13" x2="14" y2="13"/></svg>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 15, fontWeight: 500, color: '#333', lineHeight: 1.4 }}>下单时邀请填写问卷</div>
+                    <div style={{ fontSize: 12, color: '#999', marginTop: 4, lineHeight: 1.4 }}>可邀请客户填写，或设置问卷弹出时机</div>
+                  </div>
+                </div>
+
+                {/* 2. 自由选配条目 */}
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+                  <div style={{ width: 44, height: 44, borderRadius: 10, background: '#52C41A', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 15, fontWeight: 500, color: '#333', lineHeight: 1.4 }}>自由选配条目</div>
+                    <div style={{ fontSize: 12, color: '#999', marginTop: 4, lineHeight: 1.4 }}>根据拍摄类别选择合适的问卷内容</div>
+                  </div>
+                </div>
+
+                {/* 3. 同步至客户管理 */}
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+                  <div style={{ width: 44, height: 44, borderRadius: 10, background: '#1890FF', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/></svg>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 15, fontWeight: 500, color: '#333', lineHeight: 1.4 }}>同步至客户管理</div>
+                    <div style={{ fontSize: 12, color: '#999', marginTop: 4, lineHeight: 1.4 }}>客户生日云端同步，及时收到生日提醒</div>
+                  </div>
+                </div>
+              </div>
+
+              <button type="button" onClick={() => setQnaHelpOpen(false)}
+                style={{ width: '100%', height: 44, borderRadius: 22, background: MRED, color: '#fff', fontSize: 15, fontWeight: 500, border: 'none', marginTop: 28, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                知道了
+              </button>
             </div>
           </>
         )}
