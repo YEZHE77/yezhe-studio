@@ -525,11 +525,11 @@ export default function PackageEdit() {
           </div>
         )}
 
-        {/* 基本信息卡片 */}
+        {/* 基本信息卡片（块内不画分隔线，靠留白分组） */}
         <div style={{ background: '#fff', margin: '12px 12px 0', borderRadius: 12, overflow: 'hidden' }}>
           {/* 套系名称 */}
           <button type="button" onClick={() => openSheet('name', form.name)}
-            style={{ display: 'flex', alignItems: 'center', minHeight: 50, padding: '0 16px', width: '100%', background: 'none', border: 'none', textAlign: 'left', gap: 10, borderBottom: '1px solid ' + MBORDER }}>
+            style={{ display: 'flex', alignItems: 'center', minHeight: 50, padding: '0 16px', width: '100%', background: 'none', border: 'none', textAlign: 'left', gap: 10 }}>
             <span style={{ fontSize: 15, color: '#333', flexShrink: 0 }}>套系名称</span>
             <span style={{ marginLeft: 'auto', fontSize: 14, color: form.name ? '#333' : MGRAY, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textAlign: 'right' }}>{form.name || '请填写套系名称'}</span>
             <ChevronRight />
@@ -537,14 +537,14 @@ export default function PackageEdit() {
 
           {/* 选择分类 */}
           <button type="button" onClick={() => setCatOpen(true)}
-            style={{ display: 'flex', alignItems: 'center', minHeight: 50, padding: '0 16px', width: '100%', background: 'none', border: 'none', textAlign: 'left', gap: 10, borderBottom: '1px solid ' + MBORDER }}>
+            style={{ display: 'flex', alignItems: 'center', minHeight: 50, padding: '0 16px', width: '100%', background: 'none', border: 'none', textAlign: 'left', gap: 10 }}>
             <span style={{ fontSize: 15, color: '#333', flexShrink: 0 }}>选择分类</span>
             <span style={{ marginLeft: 'auto', fontSize: 14, color: catN ? '#333' : MGRAY }}>{catN || '请选择分类'}</span>
             <ChevronRight />
           </button>
 
           {/* 封面图片区 */}
-          <div style={{ padding: '14px 16px', borderBottom: '1px solid ' + MBORDER }}>
+          <div style={{ padding: '14px 16px' }}>
             <div style={{ fontSize: 15, color: '#333', marginBottom: 10 }}>套系封面</div>
             <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
               {hasCover && (
@@ -574,13 +574,14 @@ export default function PackageEdit() {
           </button>
         </div>
 
-        {/* Tab 胶囊切换 */}
-        <div style={{ padding: '12px 0', margin: '0 12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+        {/* Tab 胶囊切换（与上方卡片留 16px 间距，下方卡片用 margin 间隔） */}
+        <div style={{ padding: '4px 0', margin: '16px 12px 12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
           {['价格', '详情', '选填'].map((t, i) => (
             <button key={t} type="button" onClick={() => setMTab(i)}
               style={{ padding: '7px 28px', borderRadius: 16, fontSize: 14, fontWeight: 500, border: 'none', cursor: 'pointer',
-                background: mTab === i ? MRED : 'transparent',
-                color: mTab === i ? '#fff' : '#333333' }}>
+                background: mTab === i ? MRED : '#fff',
+                color: mTab === i ? '#fff' : '#333333',
+                border: mTab === i ? 'none' : '1px solid #E5E5E5' }}>
               {t}
             </button>
           ))}
@@ -588,7 +589,7 @@ export default function PackageEdit() {
 
         {/* ====== 详情 Tab ====== */}
         {mTab === 1 && (
-          <div style={{ background: '#fff', margin: '0 12px 12px', borderRadius: 12, overflow: 'hidden' }}>
+          <div style={{ background: '#fff', margin: '0 12px 12px', borderRadius: 12, overflow: 'hidden', border: '1px solid #F0F0F0' }}>
             {/* 显示标准模板 */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', minHeight: 50, padding: '0 16px', borderBottom: '1px solid ' + MBORDER }}>
               <span style={{ fontSize: 15, color: '#333' }}>显示标准模板</span>
@@ -646,7 +647,7 @@ export default function PackageEdit() {
 
         {/* ====== 选填 Tab ====== */}
         {mTab === 2 && (
-          <div style={{ background: '#fff', margin: '0 12px 12px', borderRadius: 12, overflow: 'hidden' }}>
+          <div style={{ background: '#fff', margin: '0 12px 12px', borderRadius: 12, overflow: 'hidden', border: '1px solid #F0F0F0' }}>
             <MRow label="温馨提示" value={d.warm_tips ? d.warm_tips.slice(0, 30) + '...' : ''}
               onClick={() => openSheet('warm', d.warm_tips)} />
             <MRow label="咨询提醒设置" value="" onClick={() => setD({ consult_reminder: !d.consult_reminder })} />
@@ -666,7 +667,7 @@ export default function PackageEdit() {
 
         {/* ====== 价格 Tab ====== */}
         {mTab === 0 && (
-          <div style={{ background: '#fff', margin: '0 12px 12px', borderRadius: 12, overflow: 'hidden' }}>
+          <div style={{ background: '#fff', margin: '0 12px 12px', borderRadius: 12, overflow: 'hidden', border: '1px solid #F0F0F0' }}>
             {/* 服务规格 */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', minHeight: 50, padding: '0 16px', borderBottom: '1px solid ' + MBORDER }}>
               <span style={{ fontSize: 15, color: '#333' }}>服务规格</span>
