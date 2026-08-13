@@ -139,7 +139,7 @@ export default function WorkPreview() {
                   background: '#fff', borderRadius: 8, boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
                   minWidth: 140, padding: '6px 0'
                 }}>
-                  <button onClick={() => { setMenuOpen(false); nav('/works/' + id + '/edit'); }} style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '10px 14px', background: 'none', border: 'none', fontSize: 14, color: '#333', textAlign: 'left' }}>
+                  <button onClick={() => { setMenuOpen(false); nav('/works/' + id + '/edit', { state: { from: 'preview' } }); }} style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '10px 14px', background: 'none', border: 'none', fontSize: 14, color: '#333', textAlign: 'left' }}>
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#333" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                     编辑
                   </button>

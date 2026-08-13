@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import http, { img, uploadImage, uploadBatch } from '../api.js';
 import CropperModal from '../components/CropperModal.jsx';
 
@@ -285,7 +285,10 @@ const textareaWide = "w-full px-3 py-3 rounded bg-white border border-[#D1D5DB] 
 export default function PackageEdit() {
   const nav = useNavigate();
   const { id } = useParams();
+  const location = useLocation();
   const isEdit = !!id;
+  // 从预览页（PackagePreview）进入编辑 → 返回上一页即预览；其他入口（新建/直达URL）返回列表
+  const backToPrev = () => { if (location.state?.from === 'preview') nav(-1); else nav('/packages'); };
 
   // 移动端响应式：<768px 时收缩内边距/列数/固定宽度
   const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' ? window.innerWidth < 768 : false);
@@ -494,7 +497,7 @@ export default function PackageEdit() {
       <div style={{ background: '#F8F8F8', minHeight: '100vh', paddingBottom: 20 }}>
         {/* 顶部导航栏 */}
         <div style={{ position: 'sticky', top: 0, zIndex: 30, background: '#fff', borderBottom: '1px solid #EFEFEF', display: 'flex', alignItems: 'center', height: 48, padding: '0 12px' }}>
-          <button type="button" onClick={() => nav('/packages')} style={{ background: 'none', border: 'none', padding: '6px 0', flexShrink: 0 }}>
+          <button type="button" onClick={backToPrev} style={{ background: 'none', border: 'none', padding: '6px 0', flexShrink: 0 }}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#999" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 6l-6 6 6 6"/></svg>
           </button>
           <div style={{ flex: 1, textAlign: 'center', fontSize: 16, fontWeight: 500, color: '#333' }}>{isEdit ? '编辑套系' : '新建套系'}</div>
@@ -1342,7 +1345,7 @@ export default function PackageEdit() {
       {/* 底部固定按钮：取消 / 保存 并排居中 */}
       <div className="sticky bottom-0 z-20 flex items-center justify-center gap-3 px-6 py-3 border-t max-w-[840px] mx-auto w-full"
         style={{ zoom: 0.8, background: PAGE_BG, borderColor: '#e5e5e5' }}>
-        <button type="button" onClick={() => nav('/packages')}
+        <button type="button" onClick={backToPrev}
           className="h-[34px] px-4 rounded text-sm hover:opacity-90" style={{ background: '#FFFFFF', border: '1px solid #D1D5DB', color: '#333333' }}>取消</button>
         <button type="button" onClick={submit} disabled={saving}
           className="h-[34px] px-[18px] rounded text-sm text-white disabled:opacity-60" style={{ background: SAVE_BTN }}>

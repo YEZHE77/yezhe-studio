@@ -507,7 +507,9 @@ export default function WorkDetail() {
     } else {
       draftCleanedRef.current = true;
     }
-    navigate('/works');
+    // 从预览页（WorkPreview）进入编辑 → 返回上一页即预览；其他入口（新建/直达URL）返回列表
+    if (location.state?.from === 'preview') navigate(-1);
+    else navigate('/works');
   }
 
   // 同步关键 state 到 ref，供组件卸载 cleanup 读取（state 不可访问）

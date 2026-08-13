@@ -319,7 +319,7 @@ export default function PackagePreview() {
           <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 111, background: '#fff', borderRadius: '16px 16px 0 0', paddingBottom: 'calc(12px + env(safe-area-inset-bottom))' }}>
             <div style={{ padding: '16px 0', textAlign: 'center', fontSize: 15, fontWeight: 500, color: '#333', borderBottom: `1px solid ${MBORDER}` }}>编辑</div>
             <div style={{ display: 'flex', justifyContent: 'center', gap: 40, padding: '24px 20px' }}>
-              <div onClick={() => { setActionSheetOpen(false); nav('/packages/' + id + '/edit'); }} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+              <div onClick={() => { setActionSheetOpen(false); nav('/packages/' + id + '/edit', { state: { from: 'preview' } }); }} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
                 <div style={{ width: 56, height: 56, borderRadius: '50%', background: '#f5f5f5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#333" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                 </div>
