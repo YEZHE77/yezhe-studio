@@ -211,6 +211,10 @@
     online: ONLINE_ROOT
   };
   var curEnv = isOnline ? 'online' : 'local';
+  // 优先使用用户上次切换的环境；从未切换过则默认线上版（确保数据与手机一致）
+  var savedEnv = localStorage.getItem('simulator_env');
+  if (savedEnv === 'local' || savedEnv === 'online') curEnv = savedEnv;
+  else curEnv = 'online'; // 默认线上，避免本地脏数据/旧代码导致效果不一致
   var currentTarget = targets[curEnv];
 
   function isLandscape() { return !!screen.dataset.landscape; }
@@ -249,6 +253,7 @@
 
   envToggle.addEventListener('click', function () {
     curEnv = curEnv === 'local' ? 'online' : 'local';
+    localStorage.setItem('simulator_env', curEnv);
     currentTarget = targets[curEnv];
     envToggle.textContent = curEnv === 'local' ? '🌐 线上版' : '💻 本地版';
     envTag.textContent = curEnv === 'local' ? '本地 dev' : '线上 pages.dev';
@@ -547,7 +552,7 @@
   /* 初始化 */
   deviceSel.value = 0;
   applyDevice();
-  var env = isOnline ? 'online' : 'local';
+  var env = curEnv;
   envTag.textContent = env === 'online' ? '线上 pages.dev' : '本地 dev';
   envTag.className = 'env-tag ' + env;
   envToggle.textContent = env === 'online' ? '💻 本地版' : '🌐 线上版';
