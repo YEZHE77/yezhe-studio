@@ -280,10 +280,10 @@ export default function Orders() {
   };
 
   /* ------------------------------ 渲染 ------------------------------ */
-  // 移动端：复刻「待办事项」独立页面（顶部日期条 + 横向状态 Tab + 订单列表）
+  // 移动端：1:1 复刻「订单中心」截图（顶部导航 + 三筛 + 卡片列表 + 悬浮新建）
   if (isMobile) {
     return (
-      <MobileTodoView
+      <MobileOrderCenterView
         stats={stats}
         list={list}
         listTotal={listTotal}
@@ -292,6 +292,11 @@ export default function Orders() {
         refreshOrderList={refreshOrderList}
         onNavToOrder={(id) => nav('/orders/' + id)}
         onLoadMore={() => refreshOrderList({ reset: false })}
+        onCreate={() => setShowForm(true)}
+        pkgs={pkgs}
+        personnel={personnel}
+        trash={trash}
+        setTrash={setTrash}
       />
     );
   }
@@ -643,234 +648,330 @@ export default function Orders() {
 }
 
 /* ==========================================================================
-   移动端待办事项视图（1:1 复刻截图 IMG_7445）
+   移动端订单中心（1:1 复刻截图 IMG_7497）
    ========================================================================== */
 
-const TAB_STATUS = {
-  deposit: 'deposit_paid', // 已付定金 Tab → 列表按 payment_status='deposit' 过滤
-  waitingShoot: 'deposit',
-  unDelivered: 'shot',
-  selecting: 'selecting',
-  retouching: 'retouching'
-};
-const STATUS_TAB = Object.fromEntries(Object.entries(TAB_STATUS).map(([k, v]) => [v, k]));
-
-const TODO_TABS = [
-  { key: 'deposit', label: '已付定金', color: '#FF8A8A', lineColor: '#FF8A8A' },
-  { key: 'waitingShoot', label: '等待拍摄', color: '#7ECDBB', lineColor: '#7ECDBB' },
-  { key: 'unDelivered', label: '未交片', color: '#F5A623', lineColor: '#F5A623' },
-  { key: 'selecting', label: '待选片', color: '#2DB7F5', lineColor: '#2DB7F5' },
-  { key: 'retouching', label: '待精修', color: '#F5A623', lineColor: '#F5A623' }
+const ORDER_STATUS_OPTIONS = [
+  { value: '', label: '全部订单' },
+  { value: 'unpaid', label: '未付定金' },
+  { value: 'deposit', label: '已付定金' },
+  { value: 'shot', label: '已拍摄' },
+  { value: 'selecting', label: '选片中' },
+  { value: 'retouching', label: '精修中' },
+  { value: 'delivered', label: '已交付' },
+  { value: 'completed', label: '已完成' },
+  { value: 'cancelled', label: '已作废' },
+  { value: '__trash', label: '回收站' }
 ];
 
-const WEEK_DAYS = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+const SORT_OPTIONS = [
+  { value: 'recent', label: '最近操作' },
+  { value: 'shoot_date', label: '拍摄时间' },
+  { value: 'amount', label: '订单金额' }
+];
 
-function pad2(n) { return String(n).padStart(2, '0'); }
+const AVATAR_BG = ['#7ECDBB', '#F5A623', '#2DB7F5', '#FF8A8A', '#9B7ED8', '#5A5A5A'];
+function avatarColor(name) {
+  let h = 0;
+  for (let i = 0; i < String(name || '').length; i++) h += String(name).charCodeAt(i);
+  return AVATAR_BG[h % AVATAR_BG.length];
+}
 
-function MobileTodoView({ stats, list, listTotal, state, setState, refreshOrderList, onNavToOrder, onLoadMore }) {
-  const [lunarMap, setLunarMap] = useState({});
+const IconBack = () => (
+  <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#1f2329" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
+);
+const IconSearch = () => (
+  <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#1f2329" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /></svg>
+);
+const IconSetting = () => (
+  <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#1f2329" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" /></svg>
+);
+const IconQr = () => (
+  <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" /><rect x="14" y="14" width="7" height="7" /><rect x="3" y="14" width="7" height="7" /></svg>
+);
+const IconClose = () => (
+  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#999" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+);
 
-  useEffect(() => {
-    const now = new Date();
-    const month = `${now.getFullYear()}-${pad2(now.getMonth() + 1)}`;
-    http.get('/api/schedules/lunar?month=' + encodeURIComponent(month))
-      .then((r) => setLunarMap(r.data || {}))
-      .catch(() => {});
-  }, []);
+function MobileOrderCenterView({ stats, list, listTotal, state, setState, refreshOrderList, onNavToOrder, onLoadMore, onCreate, personnel, trash, setTrash }) {
+  const nav = useNavigate();
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [qInput, setQInput] = useState(state.q || '');
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const [sheetType, setSheetType] = useState(''); // 'status' | 'sort'
+  const [qrPopover, setQrPopover] = useState(null);
 
-  const activeKey = STATUS_TAB[state.status] || 'deposit';
+  const doSearch = () => { setState((s) => ({ ...s, q: qInput })); setSearchOpen(false); };
+  const setFilter = (k, v) => setState((s) => ({ ...s, [k]: v }));
 
-  const onTabChange = (key) => {
-    const status = TAB_STATUS[key];
-    if (status && status !== state.status) {
-      setState((s) => ({ ...s, status }));
+  const openSheet = (type) => { setSheetType(type); setSheetOpen(true); };
+  const selectStatus = (v) => {
+    if (v === '__trash') { setTrash(true); setState((s) => ({ ...s, status: '' })); }
+    else { setTrash(false); setState((s) => ({ ...s, status: v })); }
+    setSheetOpen(false);
+  };
+  const selectSort = (v) => { setFilter('sort', v); setSheetOpen(false); };
+
+  const openQrPopover = async (o, e) => {
+    e.stopPropagation();
+    const btn = e.currentTarget;
+    const rect = btn.getBoundingClientRect();
+    setQrPopover({ orderId: o.id, qrUrl: '', loading: true, error: '', rect });
+    try {
+      const r = await http.post('/api/orders/' + o.id + '/mini-qr');
+      setQrPopover((prev) => (prev && prev.orderId === o.id ? { ...prev, loading: false, qrUrl: r.data.qr_url, error: '' } : prev));
+    } catch (err) {
+      setQrPopover((prev) => (prev && prev.orderId === o.id ? { ...prev, loading: false, qrUrl: '', error: err.response?.data?.error || '二维码生成失败' } : prev));
     }
   };
+  const closeQrPopover = () => setQrPopover(null);
 
-  const today = new Date();
-  const todayStr = `${today.getFullYear()}-${pad2(today.getMonth() + 1)}-${pad2(today.getDate())}`;
-  const lunarToday = lunarMap[todayStr] || '';
+  const activeStatusLabel = ORDER_STATUS_OPTIONS.find((x) => x.value === (trash ? '__trash' : state.status))?.label || '全部订单';
+  const activeSortLabel = SORT_OPTIONS.find((x) => x.value === state.sort)?.label || '最近操作';
 
   return (
-    <div style={{ minHeight: '100vh', background: '#F8F8F8' }}>
-      {/* 深色日期条（顶部导航由 MobileShell TopBack 统一承载：返回 + 标题“待办事项”） */}
+    <div style={{ minHeight: '100vh', background: '#F8F8F8', paddingBottom: 'calc(24px + env(safe-area-inset-bottom))' }}>
+      {/* 顶部导航 */}
       <div style={{
-        background: '#4A4A4A',
-        padding: '16px 20px',
-        display: 'flex',
-        alignItems: 'center',
-        color: '#fff'
+        position: 'sticky', top: 0, zIndex: 50,
+        height: 48, background: '#fff', borderBottom: '1px solid #EFEFEF',
+        display: 'flex', alignItems: 'center', padding: '0 12px'
       }}>
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 14, flexShrink: 0 }}>
-          <rect x="3" y="4" width="18" height="18" rx="2" />
-          <path d="M16 2v4M8 2v4M3 10h18" />
-        </svg>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', minWidth: 44 }}>
-            <span style={{ fontSize: 38, fontWeight: 500, lineHeight: 1 }}>{today.getDate()}</span>
-            <span style={{ fontSize: 11, textTransform: 'uppercase', opacity: 0.8, letterSpacing: 0.5 }}>
-              {today.toLocaleDateString('en-US', { month: 'long' })}
-            </span>
-          </div>
-          <div style={{ width: 1, height: 42, background: 'rgba(255,255,255,0.22)' }} />
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-            {lunarToday && <span style={{ fontSize: 13 }}>农历{lunarToday}</span>}
-            <span style={{ fontSize: 13, opacity: 0.85 }}>{WEEK_DAYS[today.getDay()]}</span>
-          </div>
+        <button onClick={() => nav('/')} style={{ background: 'none', border: 'none', padding: 4, display: 'flex', alignItems: 'center' }}><IconBack /></button>
+        <div style={{ flex: 1, textAlign: 'center', fontSize: 16, color: '#1f2329' }}>订单中心</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <button onClick={() => setSearchOpen(true)} style={{ background: 'none', border: 'none', padding: 4, display: 'flex', alignItems: 'center' }}><IconSearch /></button>
+          <button onClick={() => setFilterOpen(true)} style={{ background: 'none', border: 'none', padding: 4, display: 'flex', alignItems: 'center' }}><IconSetting /></button>
         </div>
       </div>
 
-      {/* 横向状态 Tab */}
+      {/* 搜索栏 */}
+      {searchOpen && (
+        <div style={{ background: '#fff', padding: '8px 12px', borderBottom: '1px solid #EFEFEF', display: 'flex', gap: 8 }}>
+          <input
+            autoFocus
+            value={qInput}
+            onChange={(e) => setQInput(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && doSearch()}
+            placeholder="姓名、套系名称、备注..."
+            style={{ flex: 1, border: 'none', background: '#F5F5F5', borderRadius: 18, padding: '8px 14px', fontSize: 14, outline: 'none' }}
+          />
+          <button onClick={() => { setSearchOpen(false); }} style={{ background: 'none', border: 'none', fontSize: 14, color: '#666' }}>取消</button>
+        </div>
+      )}
+
+      {/* 筛选栏 */}
       <div style={{
-        background: '#fff',
-        display: 'flex',
-        overflowX: 'auto',
-        scrollbarWidth: 'none',
-        msOverflowStyle: 'none',
-        borderBottom: '1px solid #EFEFEF'
+        background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'space-around',
+        padding: '10px 0', borderBottom: '1px solid #EFEFEF'
       }}>
-        {TODO_TABS.map((t) => {
-          const count = stats?.todo?.[t.key] ?? 0;
-          const active = activeKey === t.key;
-          return (
-            <button
-              key={t.key}
-              type="button"
-              onClick={() => onTabChange(t.key)}
-              style={{
-                flex: '0 0 auto',
-                minWidth: 82,
-                padding: '12px 14px 10px',
-                background: 'none',
-                border: 'none',
-                textAlign: 'center',
-                position: 'relative',
-                WebkitTapHighlightColor: 'transparent'
-              }}
-            >
-              {active && (
-                <div style={{
-                  position: 'absolute',
-                  inset: '8px 5px',
-                  background: t.color,
-                  borderRadius: 8,
-                  zIndex: 0
-                }} />
-              )}
-              <div style={{
-                fontSize: 22,
-                fontWeight: 600,
-                color: active ? '#fff' : '#1f2329',
-                lineHeight: 1,
-                position: 'relative',
-                zIndex: 1
-              }}>{count}</div>
-              <div style={{
-                fontSize: 12,
-                color: active ? '#fff' : '#999999',
-                marginTop: 6,
-                position: 'relative',
-                zIndex: 1
-              }}>{t.label}</div>
-              {!active && (
-                <div style={{
-                  position: 'absolute',
-                  bottom: 0,
-                  left: '18%',
-                  right: '18%',
-                  height: 2,
-                  background: t.lineColor,
-                  borderRadius: 1,
-                  zIndex: 1
-                }} />
-              )}
-            </button>
-          );
-        })}
+        <button onClick={() => openSheet('status')} style={{ background: 'none', border: 'none', fontSize: 14, color: '#333', display: 'flex', alignItems: 'center', gap: 4 }}>
+          {activeStatusLabel}<span style={{ fontSize: 10, color: '#999' }}>▼</span>
+        </button>
+        <button onClick={() => openSheet('sort')} style={{ background: 'none', border: 'none', fontSize: 14, color: '#333', display: 'flex', alignItems: 'center', gap: 4 }}>
+          {activeSortLabel}<span style={{ fontSize: 10, color: '#999' }}>▼</span>
+        </button>
+        <button onClick={() => setFilterOpen(true)} style={{ background: 'none', border: 'none', fontSize: 14, color: '#333', display: 'flex', alignItems: 'center', gap: 4 }}>
+          筛选<span style={{ fontSize: 10, color: '#999' }}>▼</span>
+        </button>
       </div>
 
       {/* 订单列表 */}
-      <div style={{ padding: 12 }}>
+      <div style={{ padding: '12px 16px' }}>
         {list.length === 0 ? (
           <div style={{ textAlign: 'center', color: '#BBBBBB', fontSize: 14, padding: '100px 0' }}>暂无数据</div>
         ) : (
           <>
             {list.map((o) => (
-              <TodoOrderCard key={o.id} order={o} onClick={() => onNavToOrder(o.id)} />
+              <OrderCard key={o.id} order={o} onClick={() => onNavToOrder(o.id)} onShare={openQrPopover} />
             ))}
             {list.length < listTotal && (
-              <button
-                type="button"
-                onClick={onLoadMore}
-                style={{
-                  width: '100%',
-                  padding: '12px 0',
-                  background: '#fff',
-                  border: 'none',
-                  borderRadius: 10,
-                  marginTop: 10,
-                  color: '#666666',
-                  fontSize: 13
-                }}
-              >加载更多（{list.length}/{listTotal}）</button>
+              <button type="button" onClick={onLoadMore} style={{
+                width: '100%', padding: '12px 0', background: '#fff', border: 'none', borderRadius: 10,
+                marginTop: 10, color: '#666666', fontSize: 13
+              }}>加载更多（{list.length}/{listTotal}）</button>
             )}
           </>
         )}
       </div>
+
+      {/* + 添加新订单 */}
+      <button onClick={onCreate} style={{
+        position: 'fixed', right: 16,
+        bottom: 'calc(24px + env(safe-area-inset-bottom))',
+        zIndex: 40,
+        height: 44, padding: '0 20px', borderRadius: 22,
+        background: '#FA5151', color: '#fff', border: 'none',
+        fontSize: 15, display: 'flex', alignItems: 'center', gap: 6,
+        boxShadow: '0 6px 18px rgba(250,81,81,0.35)'
+      }}>
+        <span style={{ fontSize: 18 }}>+</span>添加新订单
+      </button>
+
+      {/* 底部弹窗：状态 / 排序 */}
+      {sheetOpen && (
+        <div className="fixed inset-0 z-[60]" style={{ background: 'rgba(0,0,0,0.35)' }} onClick={() => setSheetOpen(false)}>
+          <div onClick={(e) => e.stopPropagation()} style={{
+            position: 'absolute', bottom: 0, left: 0, right: 0,
+            background: '#fff', borderTopLeftRadius: 16, borderTopRightRadius: 16,
+            padding: '16px 0 calc(20px + env(safe-area-inset-bottom))'
+          }}>
+            <div style={{ textAlign: 'center', fontSize: 15, color: '#999', marginBottom: 8 }}>{sheetType === 'status' ? '订单状态' : '排序方式'}</div>
+            {(sheetType === 'status' ? ORDER_STATUS_OPTIONS : SORT_OPTIONS).map((opt) => {
+              const active = sheetType === 'status' ? (trash ? '__trash' : state.status) === opt.value : state.sort === opt.value;
+              return (
+                <button key={opt.value} onClick={() => sheetType === 'status' ? selectStatus(opt.value) : selectSort(opt.value)} style={{
+                  width: '100%', padding: '14px 20px', border: 'none', background: 'none',
+                  textAlign: 'left', fontSize: 15, color: active ? '#FA5151' : '#333', display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+                }}>
+                  {opt.label}
+                  {active && <span style={{ color: '#FA5151' }}>✓</span>}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* 筛选抽屉：执行者 + 拍摄日期 + 清除 */}
+      {filterOpen && (
+        <div className="fixed inset-0 z-[60]" style={{ background: 'rgba(0,0,0,0.35)' }} onClick={() => setFilterOpen(false)}>
+          <div onClick={(e) => e.stopPropagation()} style={{
+            position: 'absolute', top: 0, right: 0, bottom: 0, width: 280, background: '#fff',
+            padding: '16px', paddingTop: 'calc(16px + env(safe-area-inset-top))', display: 'flex', flexDirection: 'column'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+              <span style={{ fontSize: 16, color: '#1f2329' }}>筛选</span>
+              <button onClick={() => setFilterOpen(false)} style={{ background: 'none', border: 'none', padding: 4 }}><IconClose /></button>
+            </div>
+            <div style={{ fontSize: 14, color: '#666', marginBottom: 8 }}>执行者</div>
+            <select value={state.executor} onChange={(e) => setFilter('executor', e.target.value)} style={{
+              width: '100%', padding: '10px', borderRadius: 8, border: '1px solid #E5E5E5', fontSize: 14, marginBottom: 16
+            }}>
+              <option value="">所有人</option>
+              {personnel.map((p) => (<option key={p.id} value={p.id}>{p.name}</option>))}
+            </select>
+            <div style={{ fontSize: 14, color: '#666', marginBottom: 8 }}>拍摄日期</div>
+            <input type="date" value={state.shootFrom} onChange={(e) => setFilter('shootFrom', e.target.value)} style={{
+              width: '100%', padding: '10px', borderRadius: 8, border: '1px solid #E5E5E5', fontSize: 14, marginBottom: 8
+            }} />
+            <input type="date" value={state.shootTo} onChange={(e) => setFilter('shootTo', e.target.value)} style={{
+              width: '100%', padding: '10px', borderRadius: 8, border: '1px solid #E5E5E5', fontSize: 14, marginBottom: 16
+            }} />
+            <div style={{ flex: 1 }} />
+            <button onClick={() => { setFilter('executor', ''); setFilter('shootFrom', ''); setFilter('shootTo', ''); }} style={{
+              width: '100%', padding: '12px 0', borderRadius: 8, border: '1px solid #E5E5E5',
+              background: '#fff', color: '#666', fontSize: 14, marginBottom: 10
+            }}>清除筛选</button>
+            <button onClick={() => setFilterOpen(false)} style={{
+              width: '100%', padding: '12px 0', borderRadius: 8, border: 'none',
+              background: '#FA5151', color: '#fff', fontSize: 14
+            }}>确定</button>
+          </div>
+        </div>
+      )}
+
+      {/* 订单二维码悬浮弹窗 */}
+      {qrPopover && (
+        <div className="fixed inset-0 z-[70]" style={{ background: 'rgba(0,0,0,0.35)' }} onClick={closeQrPopover}>
+          {(() => {
+            const { rect } = qrPopover;
+            const popW = 280;
+            const left = Math.max(16, Math.min(window.innerWidth - popW - 16, rect.left + rect.width / 2 - popW / 2));
+            const top = rect.top - 260 - 8;
+            const adjustedTop = top < 16 ? rect.bottom + 8 : top;
+            return (
+              <div onClick={(e) => e.stopPropagation()} style={{
+                position: 'absolute', left, top: adjustedTop, width: popW,
+                background: '#fff', borderRadius: 12, padding: 16, boxShadow: '0 12px 40px rgba(0,0,0,0.16)'
+              }}>
+                <div style={{ fontSize: 14, color: '#1f2329', marginBottom: 12, textAlign: 'center' }}>订单二维码</div>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 200 }}>
+                  {qrPopover.loading ? <span style={{ fontSize: 12, color: '#999' }}>二维码生成中…</span>
+                    : qrPopover.error ? <span style={{ fontSize: 12, color: '#e53e3e', textAlign: 'center' }}>{qrPopover.error}</span>
+                      : qrPopover.qrUrl ? <img src={qrPopover.qrUrl} alt="订单二维码" style={{ width: 220, height: 220 }} onError={() => setQrPopover((p) => p ? { ...p, error: '二维码加载失败' } : p)} /> : null}
+                </div>
+              </div>
+            );
+          })()}
+        </div>
+      )}
     </div>
   );
 }
 
-function TodoOrderCard({ order, onClick }) {
+function OrderCard({ order, onClick, onShare }) {
   const snap = asObj(order.package_snapshot);
   const pkgName = [snap.name, snap.spec && snap.spec.name].filter(Boolean).join('｜') || '未选套系';
+  const pkgCategory = snap.category_name || String(snap.name || '').split('｜')[0] || '';
+  const cover = snap.cover_url ? img(snap.cover_url) : '';
   const amount = Number(order.total_amount || 0);
-  const execs = asArr(order.executors);
-  const execNames = execs.map((e) => e.name).filter(Boolean).join('、') || '未分配';
-  const statusLabel = {
-    unpaid: '未付定金',
-    deposit: '等待拍摄',
-    shot: '未交片',
-    selecting: '待选片',
-    retouching: '待精修'
-  }[order.status] || (stageLabel(order));
+  const paid = Number(order.paid_amount || 0);
+  const remain = amount - paid;
+  const statusText = stageLabel(order);
+  const customerName = order.customer_name || order.order_name || '未知';
+  const avatarText = String(customerName).slice(0, 1);
+  const bg = avatarColor(customerName);
+
+  let dateLabel = '拍摄日期';
+  let dateValue = Number(order.date_tbd) === 1 ? '日期待定' : (order.shoot_date || '未排期');
+  if (order.status === 'cancelled') {
+    dateLabel = '订单关闭';
+    dateValue = fmtDate(order.closed_at || order.updated_at || order.created_at);
+  } else if (order.status === 'completed') {
+    dateLabel = '完成日期';
+    dateValue = fmtDate(order.completed_at || order.updated_at || order.created_at);
+  }
 
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      style={{
-        width: '100%',
-        background: '#fff',
-        borderRadius: 12,
-        padding: '14px 16px',
-        marginBottom: 10,
-        border: 'none',
-        textAlign: 'left',
-        display: 'block'
-      }}
-    >
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-        <div style={{ minWidth: 0, flex: 1 }}>
-          <div style={{ fontSize: 15, color: '#1f2329', fontWeight: 500 }}>{order.order_name || '未命名订单'}</div>
-          <div style={{ fontSize: 12, color: '#999999', marginTop: 4 }}>{pkgName}</div>
+    <button type="button" onClick={onClick} style={{
+      width: '100%', background: '#fff', borderRadius: 12, padding: 16, marginBottom: 12,
+      border: 'none', textAlign: 'left', display: 'block', boxShadow: '0 1px 4px rgba(0,0,0,0.04)'
+    }}>
+      {/* 头像 + 客户 + 状态 */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, flex: 1 }}>
+          <div style={{
+            width: 32, height: 32, borderRadius: '50%', background: bg, color: '#fff',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, flexShrink: 0
+          }}>{avatarText}</div>
+          <div style={{ fontSize: 14, color: '#333', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{customerName}</div>
         </div>
-        <div style={{ fontSize: 15, color: '#FF4D4F', fontWeight: 500, marginLeft: 8, whiteSpace: 'nowrap' }}>
-          ¥{amount.toLocaleString()}
-        </div>
+        <div style={{ fontSize: 14, color: '#999', whiteSpace: 'nowrap', marginLeft: 8 }}>{statusText}</div>
       </div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 12 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: '#999999' }}>
-          <span>{order.customer_name || '—'}</span>
-          <span style={{ color: '#2DB7F5' }}>{statusLabel}</span>
-        </div>
-        <div style={{ fontSize: 12, color: '#999999' }}>
-          {Number(order.date_tbd) === 1 ? '日期待定' : (order.shoot_date || '未排期')}
-        </div>
+
+      {/* 套系名 */}
+      <div style={{ fontSize: 16, color: '#1f2329', lineHeight: 1.4, marginBottom: 8 }}>{pkgName}</div>
+
+      {/* 分类 + 尾款标签 */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+        {pkgCategory ? <span style={{ fontSize: 12, color: '#999' }}>{pkgCategory}</span> : null}
+        {remain > 0 && order.status !== 'completed' && order.status !== 'cancelled' && (
+          <span style={{ fontSize: 11, color: '#6b5744', background: '#e2d2c2', padding: '2px 6px', borderRadius: 4 }}>未结算尾款</span>
+        )}
       </div>
-      {execNames && (
-        <div style={{ fontSize: 11, color: '#BBBBBB', marginTop: 8 }}>执行人：{execNames}</div>
-      )}
+
+      {/* 日期 + 封面 + 分享按钮 */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#999' }}>
+          <IconCalendar style={{ width: 14, height: 14, color: '#bbb' }} />
+          <span>{dateLabel}：{dateValue}</span>
+        </div>
+        {cover ? (
+          <div style={{ position: 'relative', flexShrink: 0, marginLeft: 12 }}>
+            <img src={cover} alt="" style={{ width: 64, height: 64, borderRadius: 8, objectFit: 'cover', display: 'block' }} />
+            <button onClick={(e) => onShare(order, e)} style={{
+              position: 'absolute', right: -6, bottom: -6, width: 24, height: 24,
+              borderRadius: '50%', background: '#1f2329', border: '2px solid #fff',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0
+            }}><IconQr /></button>
+          </div>
+        ) : null}
+      </div>
+
+      {/* 备注 */}
+      <div style={{ fontSize: 12, color: '#bbbbbb', marginTop: 12 }}>{order.remark || '无'}</div>
     </button>
   );
 }
