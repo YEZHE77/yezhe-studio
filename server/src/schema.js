@@ -275,6 +275,34 @@ CREATE TABLE IF NOT EXISTS channels (
   created_at TEXT DEFAULT CURRENT_TIMESTAMP
 );`;
 
+// 作品访问记录（谁看了预览页）
+const PG_WORK_VISITS = `
+CREATE TABLE IF NOT EXISTS work_visits (
+  id SERIAL PRIMARY KEY, work_id INTEGER NOT NULL,
+  visitor_name TEXT, visitor_phone TEXT, source TEXT,
+  created_at TIMESTAMPTZ DEFAULT now()
+);`;
+const SQLITE_WORK_VISITS = `
+CREATE TABLE IF NOT EXISTS work_visits (
+  id INTEGER PRIMARY KEY AUTOINCREMENT, work_id INTEGER NOT NULL,
+  visitor_name TEXT, visitor_phone TEXT, source TEXT,
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP
+);`;
+
+// 作品评论（客户留言）
+const PG_WORK_COMMENTS = `
+CREATE TABLE IF NOT EXISTS work_comments (
+  id SERIAL PRIMARY KEY, work_id INTEGER NOT NULL,
+  author_name TEXT, content TEXT NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT now()
+);`;
+const SQLITE_WORK_COMMENTS = `
+CREATE TABLE IF NOT EXISTS work_comments (
+  id INTEGER PRIMARY KEY AUTOINCREMENT, work_id INTEGER NOT NULL,
+  author_name TEXT, content TEXT NOT NULL,
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP
+);`;
+
 async function colsOf(table) {
   if (dialect === 'pg') {
     const r = await query(`SELECT column_name FROM information_schema.columns WHERE table_name = $1`, [table]);
@@ -319,6 +347,10 @@ export async function initSchema() {
 
   // 渠道来源表（新增订单弹窗「渠道来源」下拉的数据源，后端可配置）
   for (const s of (dialect === 'pg' ? PG_CHANNELS : SQLITE_CHANNELS).split(';').map((x) => x.trim()).filter(Boolean)) await run(s);
+
+  // 作品访问记录 + 评论
+  for (const s of (dialect === 'pg' ? PG_WORK_VISITS : SQLITE_WORK_VISITS).split(';').map((x) => x.trim()).filter(Boolean)) await run(s);
+  for (const s of (dialect === 'pg' ? PG_WORK_COMMENTS : SQLITE_WORK_COMMENTS).split(';').map((x) => x.trim()).filter(Boolean)) await run(s);
 
   // orders 增量补列
   for (const [col, def] of ORDERS_NEW_COLUMNS) await ensureColumn('orders', col, def);

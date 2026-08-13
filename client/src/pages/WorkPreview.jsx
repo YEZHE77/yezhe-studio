@@ -30,6 +30,9 @@ function IconComment() {
 function IconChart() {
   return <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#999" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>;
 }
+function IconVisitor() {
+  return <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#999" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>;
+}
 function IconPlay() {
   return <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#999" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg>;
 }
@@ -47,6 +50,11 @@ export default function WorkPreview() {
   const [slideOpen, setSlideOpen] = useState(false);
   const [slideIdx, setSlideIdx] = useState(0);
   const [slidePaused, setSlidePaused] = useState(false);
+  // 访客记录 + 评论弹窗
+  const [visitsModalOpen, setVisitsModalOpen] = useState(false);
+  const [commentsModalOpen, setCommentsModalOpen] = useState(false);
+  const [visitsList, setVisitsList] = useState([]);
+  const [commentsList, setCommentsList] = useState([]);
 
   useEffect(() => {
     if (!id) return;
@@ -170,6 +178,25 @@ export default function WorkPreview() {
     alert('链接已复制');
   };
 
+  // 加载访客记录
+  const loadVisits = async () => {
+    try {
+      const r = await http.get('/api/works/' + id + '/visits');
+      setVisitsList(r.data?.list || []);
+    } catch (e) { /* ignore */ }
+  };
+
+  // 加载评论
+  const loadComments = async () => {
+    try {
+      const r = await http.get('/api/works/' + id + '/comments');
+      setCommentsList(r.data?.list || []);
+    } catch (e) { /* ignore */ }
+  };
+
+  const openVisits = () => { loadVisits(); setVisitsModalOpen(true); };
+  const openComments = () => { loadComments(); setCommentsModalOpen(true); };
+
   return (
     <div style={{ minHeight: '100vh', background: '#fff', paddingBottom: 'calc(70px + env(safe-area-inset-bottom))' }}>
       {/* 顶部导航（透明背景，悬浮在图片上） */}
@@ -221,7 +248,7 @@ export default function WorkPreview() {
             <span style={{ width: 3, height: 14, background: MRED, borderRadius: 2, display: 'inline-block' }} />
             作品相册
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: showGrid ? 'repeat(3, 1fr)' : 'repeat(2, 1fr)', gap: 4 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 4 }}>
             {albums.map((a, i) => (
               <div key={a.id || i} style={{ aspectRatio: '1', background: '#f5f5f5', borderRadius: 4, overflow: 'hidden' }}>
                 <img src={img(a.thumb_url || a.photo_url)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} loading="lazy" />
@@ -282,8 +309,12 @@ export default function WorkPreview() {
           </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexShrink: 0 }}>
-          <IconComment />
-          <IconChart />
+          <button onClick={openComments} style={{ background: 'none', border: 'none', padding: 0, display: 'flex' }}>
+            <IconComment />
+          </button>
+          <button onClick={openVisits} style={{ background: 'none', border: 'none', padding: 0, display: 'flex' }}>
+            <IconVisitor />
+          </button>
           <button onClick={startSlide} disabled={slidePhotos.length === 0} style={{ background: 'none', border: 'none', padding: 0, display: 'flex', opacity: slidePhotos.length === 0 ? 0.4 : 1 }}>
             <IconPlay />
           </button>
@@ -383,6 +414,58 @@ export default function WorkPreview() {
             ) : (
               <div style={{ color: '#999', fontSize: 14, padding: 32 }}>生成中…</div>
             )}
+          </div>
+        </>
+      )}
+
+      {/* 访客记录弹窗 */}
+      {visitsModalOpen && (
+        <>
+          <div onClick={() => setVisitsModalOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 120, background: 'rgba(0,0,0,0.5)' }} />
+          <div style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', zIndex: 121, width: 'calc(100% - 48px)', maxWidth: 360, background: '#fff', borderRadius: 16, padding: '20px 0', maxHeight: '70vh', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ fontSize: 16, fontWeight: 500, color: '#333', textAlign: 'center', marginBottom: 12, padding: '0 20px' }}>访问客户</div>
+            <div style={{ flex: 1, overflowY: 'auto', padding: '0 20px' }}>
+              {visitsList.length === 0 ? (
+                <div style={{ textAlign: 'center', color: '#999', fontSize: 13, padding: '24px 0' }}>暂无访问记录</div>
+              ) : (
+                visitsList.map((v) => (
+                  <div key={v.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: '1px solid ' + MBORDER }}>
+                    <div>
+                      <div style={{ fontSize: 14, color: '#333' }}>{v.visitor_name || '匿名访客'}</div>
+                      {v.visitor_phone ? <div style={{ fontSize: 12, color: '#999', marginTop: 2 }}>{v.visitor_phone}</div> : null}
+                    </div>
+                    <div style={{ fontSize: 12, color: '#999' }}>{v.created_at ? new Date(v.created_at).toLocaleString('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''}</div>
+                  </div>
+                ))
+              )}
+            </div>
+            <button onClick={() => setVisitsModalOpen(false)} style={{ display: 'block', width: 'calc(100% - 40px)', margin: '12px 20px 0', padding: '10px 0', borderRadius: 8, border: 'none', background: '#f5f5f5', fontSize: 15, color: '#333', textAlign: 'center' }}>关闭</button>
+          </div>
+        </>
+      )}
+
+      {/* 评论弹窗 */}
+      {commentsModalOpen && (
+        <>
+          <div onClick={() => setCommentsModalOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 120, background: 'rgba(0,0,0,0.5)' }} />
+          <div style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', zIndex: 121, width: 'calc(100% - 48px)', maxWidth: 360, background: '#fff', borderRadius: 16, padding: '20px 0', maxHeight: '70vh', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ fontSize: 16, fontWeight: 500, color: '#333', textAlign: 'center', marginBottom: 12, padding: '0 20px' }}>评论</div>
+            <div style={{ flex: 1, overflowY: 'auto', padding: '0 20px' }}>
+              {commentsList.length === 0 ? (
+                <div style={{ textAlign: 'center', color: '#999', fontSize: 13, padding: '24px 0' }}>暂无评论</div>
+              ) : (
+                commentsList.map((c) => (
+                  <div key={c.id} style={{ padding: '10px 0', borderBottom: '1px solid ' + MBORDER }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                      <span style={{ fontSize: 13, fontWeight: 500, color: '#333' }}>{c.author_name || '匿名'}</span>
+                      <span style={{ fontSize: 11, color: '#999' }}>{c.created_at ? new Date(c.created_at).toLocaleString('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''}</span>
+                    </div>
+                    <div style={{ fontSize: 13, color: '#555', lineHeight: 1.6 }}>{c.content}</div>
+                  </div>
+                ))
+              )}
+            </div>
+            <button onClick={() => setCommentsModalOpen(false)} style={{ display: 'block', width: 'calc(100% - 40px)', margin: '12px 20px 0', padding: '10px 0', borderRadius: 8, border: 'none', background: '#f5f5f5', fontSize: 15, color: '#333', textAlign: 'center' }}>关闭</button>
           </div>
         </>
       )}

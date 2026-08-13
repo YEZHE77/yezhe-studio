@@ -370,4 +370,55 @@ router.post('/reorder', authRequired, async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// 作品访问记录（C 端公开写入 / B 端管理读）
+router.post('/:id/visits', async (req, res) => {
+  try {
+    const workId = parseInt(req.params.id, 10);
+    const { visitor_name, visitor_phone, source } = req.body || {};
+    await run(
+      'INSERT INTO work_visits (work_id, visitor_name, visitor_phone, source) VALUES (?, ?, ?, ?)',
+      [workId, visitor_name || null, visitor_phone || null, source || 'share']
+    );
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+router.get('/:id/visits', authRequired, async (req, res) => {
+  try {
+    const workId = parseInt(req.params.id, 10);
+    const rows = await query(
+      'SELECT * FROM work_visits WHERE work_id = ? ORDER BY created_at DESC',
+      [workId]
+    );
+    res.json({ list: rows });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// 作品评论（C 端公开写入 / B 端管理读）
+router.post('/:id/comments', async (req, res) => {
+  try {
+    const workId = parseInt(req.params.id, 10);
+    const { author_name, content } = req.body || {};
+    if (!content || !String(content).trim()) {
+      return res.status(400).json({ error: '评论内容不能为空' });
+    }
+    const id = await insert(
+      'INSERT INTO work_comments (work_id, author_name, content) VALUES (?, ?, ?)',
+      [workId, author_name || null, String(content).trim()]
+    );
+    res.json({ ok: true, id });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+router.get('/:id/comments', authRequired, async (req, res) => {
+  try {
+    const workId = parseInt(req.params.id, 10);
+    const rows = await query(
+      'SELECT * FROM work_comments WHERE work_id = ? ORDER BY created_at DESC',
+      [workId]
+    );
+    res.json({ list: rows });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 export default router;
