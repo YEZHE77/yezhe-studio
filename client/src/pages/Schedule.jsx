@@ -502,7 +502,11 @@ export default function Schedule() {
 
     const MobileMenu = () => (
       <div ref={menuRef} className="absolute right-0 mt-2 bg-white rounded-lg" style={{ boxShadow: '0 2px 12px rgba(0,0,0,0.12)', minWidth: 160, zIndex: 50 }}>
-        <button onClick={() => { setMenuOpen(false); setBooking({ open: true, openDays: [0,1,2,3,4,5,6] }); }} className="w-full text-left flex items-center gap-3 px-4 py-3 hover:bg-gray-50" style={{ fontSize: 14, color: '#333' }}>
+        <button onClick={() => { setMenuOpen(false); openNew(); }} className="w-full text-left flex items-center gap-3 px-4 py-3 hover:bg-gray-50" style={{ fontSize: 14, color: '#333' }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#999" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+          添加档期
+        </button>
+        <button onClick={() => { setMenuOpen(false); setBooking({ open: true, openDays: [0,1,2,3,4,5,6] }); }} className="w-full text-left flex items-center gap-3 px-4 py-3 hover:bg-gray-50" style={{ fontSize: 14, color: '#333', borderTop: '1px solid #F2F2F2' }}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#999" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
           高级设置
         </button>
@@ -725,16 +729,6 @@ export default function Schedule() {
             })}
           </div>
         )}
-
-        {/* 红色悬浮 + 按钮 */}
-        <button type="button" onClick={() => openNew()}
-          style={{
-            position: 'fixed', right: 16, bottom: 'calc(24px + env(safe-area-inset-bottom))',
-            width: 52, height: 52, borderRadius: '50%', background: '#FF4D4F',
-            border: 'none', color: '#fff', fontSize: 28, display: 'flex',
-            alignItems: 'center', justifyContent: 'center', zIndex: 50,
-            boxShadow: '0 2px 8px rgba(255,77,79,0.35)'
-          }}>+</button>
 
         {/* 弹窗挂载 */}
         {dlg && <ScheduleDialog dlg={dlg} personnel={personnel} onClose={() => setDlg(null)} onSaved={() => { setDlg(null); load(); }} />}
