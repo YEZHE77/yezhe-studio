@@ -560,10 +560,15 @@ export default function Schedule() {
       <div style={{ minHeight: '100%', background: '#F8F8F8', paddingBottom: 40 }}>
         {/* 顶部栏 */}
         <div style={{ position: 'sticky', top: 0, zIndex: 20, background: '#fff', borderBottom: '1px solid #EFEFEF' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 12px' }}>
-            <button type="button" onClick={() => nav(-1)} style={{ background: 'none', border: 'none', padding: 4 }}>
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#333" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
-            </button>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, visibility: 'hidden' }}>
+              <button type="button" style={{ background: 'none', border: 'none', padding: 4 }}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#666" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+              </button>
+              <button type="button" style={{ background: 'none', border: 'none', padding: 4 }}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#666" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
+              </button>
+            </div>
             {/* 药丸 Tab */}
             <div style={{ display: 'flex', alignItems: 'center', background: '#F2F2F2', borderRadius: 16, padding: 3, gap: 2 }}>
               <button type="button" onClick={() => setMobileMode('calendar')}
