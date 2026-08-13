@@ -403,15 +403,21 @@ export default function PackageEdit() {
   const removeTag = (t) => setD({ tags: form.details.tags.filter((x) => x !== t) });
 
   // ---- 管理分类弹窗 ----
-  const [catName, setCatName] = useState('');
+  const [catInput, setCatInput] = useState('');
+  // 分类 id → 名称（categories 列表来自 GET /api/categories）
+  const getCatName = (cid) => {
+    if (!cid) return '';
+    const c = (categories || []).find((x) => x && String(x.id) === String(cid));
+    return c ? c.name : '';
+  };
   const addCategory = async () => {
-    const name = catName.trim();
+    const name = catInput.trim();
     if (!name) return;
     try {
       const r = await http.post('/api/categories', { name, kind: 'work' });
       await loadCategories();
       setForm((f) => ({ ...f, category_id: r.data.id }));
-      setCatName('');
+      setCatInput('');
     } catch (err) { alert('分类创建失败：' + (err.response?.data?.error || err.message || err)); }
   };
 
@@ -489,7 +495,7 @@ export default function PackageEdit() {
   // ===================== 移动端 1:1 复刻渲染 =====================
   if (isMobile) {
     const d = form.details;
-    const catN = catName(form.category_id);
+    const catN = getCatName(form.category_id);
     const hasCover = coverPending || form.cover_url;
     const coverSrc = coverPending || img(form.cover_url);
 
@@ -893,7 +899,7 @@ export default function PackageEdit() {
                 ))}
               </div>
               <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
-                <input value={catName} onChange={(e) => setCatName(e.target.value)} placeholder="新建分类名称"
+                <input value={catInput} onChange={(e) => setCatInput(e.target.value)} placeholder="新建分类名称"
                   style={{ flex: 1, padding: '10px 12px', borderRadius: 8, border: '1px solid #D1D5DB', fontSize: 15, outline: 'none' }}
                   onKeyDown={(e) => e.key === 'Enter' && addCategory()} />
                 <button type="button" onClick={addCategory}
@@ -1373,7 +1379,7 @@ export default function PackageEdit() {
               ))}
             </div>
             <div className="flex items-center gap-2 border-t border-line pt-3 flex-wrap">
-              <input className={inputCls} value={catName} onChange={(e) => setCatName(e.target.value)}
+              <input className={inputCls} value={catInput} onChange={(e) => setCatInput(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && addCategory()} placeholder="新建分类名称" />
               <button type="button" onClick={addCategory}
                 className="px-3 py-2 rounded-md text-sm text-white whitespace-nowrap" style={{ background: LINK }}>新建</button>
