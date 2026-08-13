@@ -245,6 +245,7 @@ export default function WorkDetail() {
   const formTitleRef = useRef('');
   const formIsPublicRef = useRef(false);
   const formAlbumCopyRef = useRef('');
+  const formCoverUrlRef = useRef('');
   // 单击预览（Lightbox）
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewIndex, setPreviewIndex] = useState(0);
@@ -346,7 +347,7 @@ export default function WorkDetail() {
       const r = await http.post('/api/works', {
         title: '未命名作品',
         category_ids: [],
-        is_public: true,
+        is_public: false,
         allow_download: false,
         tags: [],
         album_copy: '',
@@ -470,12 +471,12 @@ export default function WorkDetail() {
     } finally { setSaving(false); }
   }
 
-  // 空草稿判定（无照片 + 标题未改 + 文案为空）；is_public 不参与判定，
-  // 因为 createDraft 默认会创建 is_public=true 的作品，刚进 /works/new 就该被识别为空草稿
+  // 空草稿判定（无照片 + 无封面 + 文案为空）；标题/是否公开不参与判定，
+  // 因为用户可能随手改了标题但没上传照片，此时仍应被识别为空草稿自动清理。
   function isEmptyDraft() {
     if (!draftIdRef.current) return false;
     return albumsLenRef.current === 0
-      && formTitleRef.current === '未命名作品'
+      && !formCoverUrlRef.current
       && !formAlbumCopyRef.current;
   }
 
@@ -514,6 +515,7 @@ export default function WorkDetail() {
   useEffect(() => { formTitleRef.current = form.title; }, [form.title]);
   useEffect(() => { formIsPublicRef.current = !!form.is_public; }, [form.is_public]);
   useEffect(() => { formAlbumCopyRef.current = form.album_copy || ''; }, [form.album_copy]);
+  useEffect(() => { formCoverUrlRef.current = work?.cover_url || pendingCoverUrl || ''; }, [work?.cover_url, pendingCoverUrl]);
 
   // 组件卸载 cleanup：处理「底部 TabBar 切换 / 关闭 tab / App 内路由跳转」等场景的空草稿清理
   useEffect(() => {

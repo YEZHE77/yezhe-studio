@@ -80,7 +80,7 @@ router.get('/', async (req, res) => {
 router.get('/public', async (req, res) => {
   try {
     const { category, q, page = 1, pageSize = 12 } = req.query;
-    const where = ['w.is_public = 1', "w.cover_url IS NOT NULL AND TRIM(w.cover_url) != ''"];
+    const where = ['w.is_public = 1', "w.cover_url IS NOT NULL AND TRIM(w.cover_url) != ''", '(SELECT COUNT(*) FROM albums WHERE work_id = w.id) > 0'];
     const params = [];
     if (category) {
       where.push(`(w.category_id = ? OR ',' || COALESCE(w.category_ids,'') || ',' LIKE '%,' || ? || ',%')`);

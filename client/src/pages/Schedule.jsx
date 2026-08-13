@@ -124,6 +124,8 @@ export default function Schedule() {
   const [orderDlg, setOrderDlg] = useState(null);
   const [booking, setBooking] = useState(null);
   const [share, setShare] = useState(null);
+  // 手机端订单卡底部操作面板（选中档期行）
+  const [orderSheet, setOrderSheet] = useState(null);
   // 日历单元格 Tooltip 悬浮气泡（spec：200ms 延迟显示 / 300ms 淡出 / 边缘箭头翻转）
   // hoverTooltip: { date, rect, visible } —— visible=false 时仍渲染但 opacity=0（淡出动画）
   const [hoverTooltip, setHoverTooltip] = useState(null);
@@ -352,11 +354,12 @@ export default function Schedule() {
     );
   };
 
-  // ========== 手机端档期视图（工作台「待拍摄」进入）==========
+  // ========== 手机端档期视图（工作台「档期」进入）==========
   function MobileView() {
     const cells = buildMonth(y, m - 1);
     const selRows = rowsOf(selDate);
     const selPends = pendsOf(selDate);
+    const isCurMonth = state.month === todayStr.slice(0, 7);
 
     const mobileCell = (date) => {
       const day = Number(date.slice(8));
@@ -434,36 +437,34 @@ export default function Schedule() {
     );
 
     return (
-      <div style={{ minHeight: '100vh', background: '#F8F8F8', paddingBottom: 90 }}>
-        {/* 月份切换 */}
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: '12px 16px',
-          background: '#fff',
-          borderBottom: '1px solid #EFEFEF'
-        }}>
-          <button type="button" onClick={() => shiftMonth(-1)} style={{ background: 'none', border: 'none', padding: 6 }}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#666" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
-          </button>
-          <div style={{ fontSize: 17, fontWeight: 500, color: '#1f2329' }}>{y}年{m}月</div>
-          <button type="button" onClick={() => shiftMonth(1)} style={{ background: 'none', border: 'none', padding: 6 }}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#666" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6" /></svg>
-          </button>
-        </div>
-
-        {/* 星期表头 */}
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(7, 1fr)',
-          background: '#fff',
-          padding: '8px 0',
-          borderBottom: '1px solid #EFEFEF'
-        }}>
-          {WEEK.map((w) => (
-            <div key={w} style={{ textAlign: 'center', fontSize: 13, color: '#666' }}>{w}</div>
-          ))}
+      <div style={{ minHeight: '100%', background: '#F8F8F8', paddingBottom: 40 }}>
+        {/* 月份切换 + 星期表头（sticky：翻月/滚动列表后顶部仍可操作） */}
+        <div style={{ position: 'sticky', top: 0, zIndex: 20, background: '#fff', borderBottom: '1px solid #EFEFEF' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 8px 8px 16px' }}>
+            <button type="button" onClick={() => shiftMonth(-1)} style={{ background: 'none', border: 'none', padding: 6 }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#666" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
+            </button>
+            <div className="flex items-center" style={{ gap: 10 }}>
+              <div style={{ fontSize: 17, fontWeight: 500, color: '#1f2329' }}>{y}年{m}月</div>
+              {!isCurMonth && (
+                <button type="button" onClick={() => gotoDate(todayStr)}
+                  style={{ fontSize: 12, color: '#fff', background: G_BLUE, border: 'none', borderRadius: 12, padding: '3px 12px' }}>回今天</button>
+              )}
+            </div>
+            <button type="button" onClick={() => shiftMonth(1)} style={{ background: 'none', border: 'none', padding: 6 }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#666" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6" /></svg>
+            </button>
+          </div>
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(7, 1fr)',
+            padding: '6px 0',
+            borderTop: '1px solid #F5F5F5'
+          }}>
+            {WEEK.map((w) => (
+              <div key={w} style={{ textAlign: 'center', fontSize: 13, color: '#666' }}>{w}</div>
+            ))}
+          </div>
         </div>
 
         {/* 月历 */}
@@ -498,10 +499,19 @@ export default function Schedule() {
             <div style={{ marginBottom: 12 }}>
               <div style={{ fontSize: 12, color: '#F0A020', marginBottom: 6, fontWeight: 500 }}>待确认预约 {selPends.length} 条</div>
               {selPends.map((a) => (
-                <div key={a.id} style={{ background: '#fff', borderRadius: 10, padding: '12px 14px', marginBottom: 8 }}>
-                  <div style={{ fontSize: 14, color: '#1f2329' }}>{a.customer_name || '未知客户'}</div>
+                <button
+                  key={a.id}
+                  type="button"
+                  onClick={() => nav('/appointments')}
+                  style={{ width: '100%', textAlign: 'left', background: '#fff', borderRadius: 10, padding: '12px 14px', marginBottom: 8, border: '1px solid #FFE9C7' }}
+                >
+                  <div style={{ fontSize: 14, color: '#1f2329' }}>{a.name || a.customer_name || '未知客户'}</div>
                   <div style={{ fontSize: 12, color: '#999', marginTop: 4 }}>{a.hope_time || '时间待定'} · {a.package_name || '未选套系'}</div>
-                </div>
+                  <div className="flex items-center justify-between" style={{ marginTop: 8 }}>
+                    <span style={{ fontSize: 12, color: '#F0A020' }}>待确认</span>
+                    <span style={{ fontSize: 12, color: G_BLUE }}>去处理 ›</span>
+                  </div>
+                </button>
               ))}
             </div>
           )}
@@ -517,12 +527,12 @@ export default function Schedule() {
               <button
                 key={r.id}
                 type="button"
-                onClick={() => { if (r.order_id) nav('/orders/' + r.order_id); }}
+                onClick={() => setOrderSheet(r)}
                 style={{
                   width: '100%',
                   background: '#fff',
                   borderRadius: 12,
-                  padding: '14px 16px',
+                  padding: '14px 16px 10px',
                   marginBottom: 10,
                   border: 'none',
                   textAlign: 'left'
@@ -539,10 +549,20 @@ export default function Schedule() {
                   {r.period || '全天'} · {r.executor_name || r.photographer || '未分配'}
                 </div>
                 {r.note && <div style={{ fontSize: 12, color: '#999', marginTop: 4 }}>备注：{r.note}</div>}
+                <div className="flex items-center justify-between" style={{ borderTop: '1px solid #F2F2F2', marginTop: 10, paddingTop: 8 }}>
+                  <span style={{ fontSize: 11, color: '#BBB' }}>{r.order_no}</span>
+                  <span style={{ fontSize: 12, color: G_BLUE }}>查看详情 ›</span>
+                </div>
               </button>
             );
           })}
         </div>
+
+        {/* 手机端弹窗挂载（isMobileView 提前 return，弹窗须在此渲染才可用） */}
+        {dlg && <ScheduleDialog dlg={dlg} personnel={personnel} onClose={() => setDlg(null)} onSaved={() => { setDlg(null); load(); }} />}
+        {orderDlg && <OrderDialog orderDlg={orderDlg} personnel={personnel} onClose={() => setOrderDlg(null)} onSaved={() => { setOrderDlg(null); load(); }} />}
+        {booking && <BookingDialog onClose={() => setBooking(null)} />}
+        {orderSheet && <OrderSheet row={orderSheet} onClose={() => setOrderSheet(null)} />}
       </div>
     );
   }
@@ -879,6 +899,69 @@ function StatusLegend() {
 }
 
 
+/* ============ 手机端档期订单操作面板（底部抽屉，替代直接跳订单页） ============ */
+function OrderSheet({ row, onClose }) {
+  const nav = useNavigate();
+  const sk = statusKeyOf(row);
+  const label = G_STATUS_MAP[sk]?.label || '等待拍摄';
+  const color = G_STATUS_MAP[sk]?.color || '#ccc';
+  const phone = orderPhones(row);
+  const fallbackCopy = (text) => {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.cssText = 'position:fixed;opacity:0;';
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand('copy'); toast('电话已复制'); }
+    catch (e) { toast('复制失败'); }
+    document.body.removeChild(ta);
+  };
+  const copyText = (text) => {
+    if (!text) return toast('暂无联系电话');
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(() => toast('电话已复制')).catch(() => fallbackCopy(text));
+    } else fallbackCopy(text);
+  };
+  return (
+    <div className="fixed inset-0" style={{ background: 'rgba(0,0,0,0.4)', zIndex: 60, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }} onClick={onClose}>
+      <div onClick={(e) => e.stopPropagation()} style={{ background: '#fff', borderTopLeftRadius: 16, borderTopRightRadius: 16, padding: '20px 16px calc(20px + env(safe-area-inset-bottom))' }}>
+        {/* 头部：客户名 + 状态 */}
+        <div className="flex items-center justify-between" style={{ marginBottom: 14 }}>
+          <div className="flex items-center" style={{ gap: 8, minWidth: 0 }}>
+            <span style={{ fontSize: 16, fontWeight: 600, color: '#1f2329', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{row.order_customer || '未知客户'}</span>
+            <span className="inline-flex items-center shrink-0" style={{ gap: 5, fontSize: 11, padding: '2px 8px', borderRadius: 10, background: color }}>
+              <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#fff' }} />
+              {label}
+            </span>
+          </div>
+          <button type="button" onClick={onClose} aria-label="关闭" style={{ background: 'none', border: 'none', fontSize: 22, lineHeight: 1, color: '#999', padding: 4 }}>×</button>
+        </div>
+
+        {/* 订单信息 */}
+        <div style={{ fontSize: 13, color: '#666', lineHeight: 2 }}>
+          <div>日期：{row.date} {row.period || '全天'}</div>
+          <div>执行人：{row.executor_name || row.photographer || '未分配'}</div>
+          {phone && <div>电话：{phone}</div>}
+          {row.note && <div>备注：{row.note}</div>}
+        </div>
+
+        {/* 操作按钮 */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginTop: 18 }}>
+          <button type="button" onClick={() => { if (row.order_id) { onClose(); nav('/orders/' + row.order_id); } }}
+            className="flex items-center justify-center"
+            style={{ height: 42, borderRadius: 8, border: '1px solid #E5E5E5', background: '#fff', color: '#333', fontSize: 14 }}>查看详情</button>
+          <button type="button" onClick={() => copyText(phone)}
+            className="flex items-center justify-center"
+            style={{ height: 42, borderRadius: 8, border: '1px solid #E5E5E5', background: '#fff', color: '#333', fontSize: 14 }}>复制电话</button>
+          <a href={phone ? 'tel:' + phone.replace(/\s+/g, '') : undefined} onClick={phone ? undefined : (e) => e.preventDefault()}
+            className="flex items-center justify-center"
+            style={{ height: 42, borderRadius: 8, border: 'none', background: G_BLUE, color: '#fff', fontSize: 14, textDecoration: 'none' }}>拨打电话</a>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ============ 新增订单弹窗（原「添加档期」入口） ============ */
 const PHONE_RE = /^1[3-9]\d{9}$/;
 function toast(msg) {
@@ -896,6 +979,7 @@ function toast(msg) {
 }
 
 function OrderDialog({ orderDlg, personnel, onClose, onSaved }) {
+  const isMobile = (window.innerWidth || 1200) < 768; // 手机端：贴底抽屉形态
   const [pkgList, setPkgList] = useState([]);
   const [chList, setChList] = useState([]);
   const [execPop, setExecPop] = useState(false);
@@ -1084,13 +1168,17 @@ function OrderDialog({ orderDlg, personnel, onClose, onSaved }) {
   const Star = () => <span style={{ color: MODAL_RED, marginRight: 2 }}>*</span>;
 
   return (
-    <div className="fixed inset-0" style={{ background: 'rgba(0,0,0,0.45)', zIndex: 999, overflowY: 'auto' }}>
+    <div className="fixed inset-0" style={{ background: 'rgba(0,0,0,0.45)', zIndex: 999, overflowY: 'auto', display: 'flex', justifyContent: 'center', alignItems: isMobile ? 'flex-end' : 'flex-start' }}>
       <div
         onClick={(e) => e.stopPropagation()}
         style={{
-          width: '100%', maxWidth: 560, maxHeight: '88vh', margin: '40px auto',
-          borderRadius: 6, boxShadow: '0 4px 18px rgba(0,0,0,0.18)',
-          padding: '20px 20px 28px', position: 'relative', zIndex: 1000,
+          width: '100%', maxWidth: 560,
+          maxHeight: isMobile ? '94dvh' : '88vh',
+          margin: isMobile ? 0 : '40px auto',
+          borderRadius: isMobile ? '16px 16px 0 0' : 6,
+          boxShadow: '0 4px 18px rgba(0,0,0,0.18)',
+          padding: isMobile ? '18px 16px calc(20px + env(safe-area-inset-bottom))' : '20px 20px 28px',
+          position: 'relative', zIndex: 1000,
           background: '#F7F7F7', overflowY: 'auto'
         }}
       >
@@ -1360,8 +1448,8 @@ function OrderDialog({ orderDlg, personnel, onClose, onSaved }) {
 
         {localErr && <div style={{ marginTop: 12, fontSize: 12, color: REQ_RED }}>{localErr}</div>}
 
-        {/* ===== 底部保存 ===== */}
-        <div className="flex justify-center" style={{ marginTop: 36 }}>
+        {/* ===== 底部保存（手机端 sticky 常驻，长表单不必滚到底） ===== */}
+        <div className="flex justify-center" style={{ marginTop: 36, position: 'sticky', bottom: 0, background: '#F7F7F7', padding: '12px 0 4px', borderTop: '1px solid #EEEEEE' }}>
           <button onClick={save} className="text-white hover:opacity-90 transition-opacity"
             style={{ width: 100, height: 40, background: MODAL_BLUE, borderRadius: 2, fontSize: 16 }}>保存</button>
         </div>
@@ -1487,6 +1575,7 @@ function PackagePicker({ pkgList, value, onPick }) {
 
 /* ============ 编辑档期弹窗（保留原档期业务逻辑，不改动） ============ */
 function ScheduleDialog({ dlg, personnel, onClose, onSaved }) {
+  const isMobile = (window.innerWidth || 1200) < 768; // 手机端：贴底抽屉形态
   const [date, setDate] = useState(dlg.date || '');
   const [chooseSession, setChooseSession] = useState((dlg.periods || []).length > 0);
   const [dateTbd, setDateTbd] = useState(!!dlg.date_tbd);
@@ -1524,8 +1613,8 @@ function ScheduleDialog({ dlg, personnel, onClose, onSaved }) {
   };
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center z-50 p-4" style={{ background: 'rgba(0,0,0,0.4)' }}>
-      <div onClick={(e) => e.stopPropagation()} style={{ width: '100%', maxWidth: 560, maxHeight: '88vh', background: '#F7F7F7', borderRadius: 6, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+    <div className="fixed inset-0 flex justify-center z-50" style={{ background: 'rgba(0,0,0,0.4)', alignItems: isMobile ? 'flex-end' : 'center', padding: isMobile ? 0 : 16 }}>
+      <div onClick={(e) => e.stopPropagation()} style={{ width: '100%', maxWidth: 560, maxHeight: isMobile ? '94dvh' : '88vh', background: '#F7F7F7', borderRadius: isMobile ? '16px 16px 0 0' : 6, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         <div className="flex items-center justify-between shrink-0" style={{ padding: '18px 20px', borderBottom: '1px solid #EEEEEE' }}>
           <div style={{ fontSize: 15, color: '#333333' }}>{dlg.id ? '编辑档期' : '添加档期'}</div>
           <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: 18, lineHeight: 1, color: '#999999', cursor: 'pointer', padding: 2 }}>×</button>
