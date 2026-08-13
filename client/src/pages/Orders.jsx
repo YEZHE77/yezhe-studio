@@ -1202,14 +1202,14 @@ function OrderCard({ order, studioLogo, onClick }) {
         </div>
       </div>
 
-      {/* 日期 + 商家管理头像 + 封面（无内部分隔线；日期对齐封面底部；商家管理头像在日期与封面之间） */}
+      {/* 日期 + 商家管理头像 + 封面（无内部分隔线；日期对齐封面底部；商家管理头像在日期与封面之间；无封面时占位以保证卡片等高） */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', padding: '0 14px 12px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#999', paddingBottom: 6 }}>
           <IconCalendar style={{ width: 14, height: 14, color: '#bbb' }} />
           <span>{dateLabel}：{dateValue}</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'flex-end', gap: 10, flexShrink: 0 }}>
-          {/* 商家管理头像（settings.studio.logo） */}
+          {/* 商家管理头像（settings.studio.logo），永远渲染保证卡片等高 */}
           {studioLogo ? (
             <img src={img(studioLogo)} alt="商家管理" title="商家管理"
               style={{ width: 36, height: 36, borderRadius: '50%', border: '2px solid #fff', objectFit: 'cover', display: 'block', boxShadow: '0 0 0 1px #eee' }} />
@@ -1219,6 +1219,7 @@ function OrderCard({ order, studioLogo, onClick }) {
                 border: '2px solid #fff', display: 'flex', alignItems: 'center', justifyContent: 'center',
                 fontSize: 14, fontWeight: 500, boxShadow: '0 0 0 1px #eee' }}>叶</div>
           )}
+          {/* 封面或占位（90×90 等高占位，无封面时显示浅灰圆角矩形） */}
           {cover ? (
             <div style={{ position: 'relative', flexShrink: 0 }}>
               <img src={cover} alt="" style={{ width: 90, height: 90, borderRadius: 6, objectFit: 'cover', display: 'block' }} />
@@ -1246,7 +1247,9 @@ function OrderCard({ order, studioLogo, onClick }) {
                 )
               ) : null}
             </div>
-          ) : null}
+          ) : (
+            <div style={{ width: 90, height: 90, borderRadius: 6, background: '#F5F5F5', flexShrink: 0 }} />
+          )}
         </div>
       </div>
       <div style={{ height: 1, background: '#F0F0F0' }} />
