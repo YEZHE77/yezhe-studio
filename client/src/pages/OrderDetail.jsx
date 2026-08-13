@@ -911,7 +911,7 @@ export default function OrderDetail() {
                 { k: '下单时间', v: created, chevron: false }
               ];
               return rows.map((r, i) => (
-                <div key={r.k} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderBottom: i < rows.length - 1 ? '1px solid #F2F2F2' : 'none' }}>
+                <div key={r.k} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '13px 16px' }}>
                   <span style={{ fontSize: 14, color: '#1f2329' }}>{r.k}</span>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                     <span style={{ fontSize: 14, color: r.v === '未填写' || r.v === '未排期' ? '#bbb' : '#666' }}>{r.v}</span>
@@ -936,7 +936,7 @@ export default function OrderDetail() {
                 { k: '其他消费', v: extraList.length ? `¥${extraSum.toLocaleString()}` : '无', chevron: true }
               ];
               return rows.map((r, i) => (
-                <div key={r.k} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderBottom: i < rows.length - 1 ? '1px solid #F2F2F2' : 'none' }}>
+                <div key={r.k} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '13px 16px' }}>
                   <span style={{ fontSize: 14, color: '#1f2329' }}>{r.k}</span>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                     <span style={{ fontSize: 14, color: r.v === '—' || r.v === '无' ? '#bbb' : '#666' }}>{r.v}</span>
@@ -945,7 +945,7 @@ export default function OrderDetail() {
                 </div>
               ));
             })()}
-            <div style={{ textAlign: 'center', padding: '10px 0', borderTop: '1px solid #F2F2F2' }}>
+            <div style={{ textAlign: 'center', padding: '10px 0' }}>
               <button type="button" onClick={() => {}} style={{ background: 'none', border: 'none', color: '#999', fontSize: 13 }}>更多服务详情</button>
             </div>
           </div>
@@ -959,8 +959,8 @@ export default function OrderDetail() {
               return [
                 { k: '已加片', v: `${selPhotos}张`, red: false },
                 { k: '已付加片费', v: `¥ ${extraTotal.toFixed(2)}`, red: true }
-              ].map((r, i) => (
-                <div key={r.k} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderBottom: i < 1 ? '1px solid #F2F2F2' : 'none' }}>
+              ].map((r) => (
+                <div key={r.k} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '13px 16px' }}>
                   <span style={{ fontSize: 14, color: '#1f2329' }}>{r.k}</span>
                   <span style={{ fontSize: 14, color: r.red ? '#FA5151' : '#666' }}>{r.v}</span>
                 </div>
@@ -977,7 +977,7 @@ export default function OrderDetail() {
                 { k: '员工备注', v: detail?.internal_remark || '未填写' }
               ];
               return rows.map((r, i) => (
-                <div key={r.k} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderBottom: i < rows.length - 1 ? '1px solid #F2F2F2' : 'none' }}>
+                <div key={r.k} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '13px 16px' }}>
                   <span style={{ fontSize: 14, color: '#1f2329' }}>{r.k}</span>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                     <span style={{ fontSize: 14, color: r.v === '无' || r.v === '未填写' ? '#bbb' : '#666' }}>{r.v}</span>
@@ -986,7 +986,7 @@ export default function OrderDetail() {
                 </div>
               ));
             })()}
-            <div style={{ textAlign: 'center', padding: '10px 0', borderTop: '1px solid #F2F2F2' }}>
+            <div style={{ textAlign: 'center', padding: '10px 0' }}>
               <button type="button" onClick={() => nav('/orders/' + detail?.id + '/notes')} style={{ background: 'none', border: 'none', color: '#7ECDBB', fontSize: 13 }}>展开备注</button>
             </div>
           </div>
