@@ -37,6 +37,7 @@ export default function Works() {
   const [draggedId, setDraggedId] = useState(null);
   const [dragOverId, setDragOverId] = useState(null);
   const [savingSort, setSavingSort] = useState(false);
+  const [creating, setCreating] = useState(false); // 点击「添加新客片」后创建草稿中
 
   // 移动端筛选/排序/菜单状态
   const [openFilter, setOpenFilter] = useState(null); // 'vis' | 'cat' | 'sort'
@@ -150,8 +151,19 @@ export default function Works() {
     }
   }
 
-  // 新流程：点击「+ 新建作品组」不再弹窗，直接进入作品详情编辑页（页面式新建）
-  const openNew = () => navigate('/works/new');
+  // 新流程：点击「添加新客片」先在列表页异步创建草稿，再跳编辑页。
+  // 避免先跳到 /works/new 再创建草稿导致的双重加载与白屏等待。
+  async function openNew() {
+    if (creating) return;
+    setCreating(true);
+    try {
+      const r = await http.post('/api/works', { title: '未命名作品' });
+      navigate('/works/' + r.data.id + '/edit');
+    } catch (e) {
+      alert((e.response && e.response.data && e.response.data.error) || '创建作品失败');
+      setCreating(false);
+    }
+  }
 
   async function remove(w, e) {
     e.stopPropagation();
@@ -269,8 +281,8 @@ export default function Works() {
           <div className="absolute right-3 top-full mt-1 w-40 rounded-lg bg-white shadow-lg border border-gray-100 py-1 z-50">
             {!sortMode ? (
               <>
-                <button onClick={() => { setShowTopMenu(false); openNew(); }} className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50">
-                  添加新客片
+                <button disabled={creating} onClick={() => { setShowTopMenu(false); openNew(); }} className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50">
+                  {creating ? '创建作品中…' : '添加新客片'}
                 </button>
                 <button onClick={() => { setShowTopMenu(false); toggleSortMode(); }} className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50">自定义排序</button>
               </>
@@ -333,10 +345,20 @@ export default function Works() {
         </div>
       </div>
 
-      {/* 排序模式提示 */}
+      {/* 排序模式提示与快捷操作 */}
       {sortMode && (
-        <div className="mx-4 mt-3 text-xs text-gray-500 bg-white border border-gray-100 rounded-lg p-3">
-          💡 排序模式：拖拽作品卡片可调整顺序，保存后会同步到公开列表（小程序/H5 首页）。未保存前点击「更多 → 取消排序」退出。
+        <div className="mx-4 mt-3">
+          <div className="text-xs text-gray-500 bg-white border border-gray-100 rounded-lg p-3">
+            💡 排序模式：拖拽作品卡片可调整顺序，保存后会同步到公开列表（小程序/H5 首页）。
+          </div>
+          <div className="flex gap-3 mt-3">
+            <button disabled={savingSort || !allItems.length} onClick={saveSortOrder} className="flex-1 py-2.5 rounded-lg text-sm font-medium text-white disabled:opacity-50" style={{ background: CORAL }}>
+              {savingSort ? '保存中…' : '保存排序'}
+            </button>
+            <button disabled={savingSort} onClick={() => { setSortMode(false); reload(); }} className="flex-1 py-2.5 rounded-lg text-sm font-medium text-gray-700 bg-white border border-gray-200 disabled:opacity-50">
+              取消排序
+            </button>
+          </div>
         </div>
       )}
 

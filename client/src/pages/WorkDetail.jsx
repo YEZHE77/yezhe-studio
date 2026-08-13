@@ -942,11 +942,12 @@ export default function WorkDetail() {
   }
 
   if (loading) {
+    const loadingText = isNew ? '正在创建作品…' : '加载中…';
     if (isMobile) {
       return (
         <div className="min-h-screen flex flex-col items-center justify-center text-gray-400 text-sm bg-[#f7f7f7]">
           <span className="inline-block w-5 h-5 border-2 border-gray-300 border-t-[#FF7A8A] rounded-full animate-spin mb-2" />
-          加载中…
+          {loadingText}
         </div>
       );
     }
