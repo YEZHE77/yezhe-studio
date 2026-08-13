@@ -325,7 +325,7 @@ export default function MobileWorkbench() {
             style={{ flex: 1, textAlign: 'center', padding: '14px 0 12px', background: 'none', border: 'none' }}
           >
             <div style={{ fontSize: 24, color: TEXT, lineHeight: 1 }}>{followTotal}</div>
-            <div style={{ fontSize: 11, color: '#BBBBBB', marginTop: 6 }}>待跟进</div>
+            <div style={{ fontSize: 11, color: '#BBBBBB', marginTop: 6 }}>已付定金</div>
           </button>
           <div style={{ width: 1, background: LINE, margin: '14px 0' }} />
           {/* 待拍摄：跳转待办事项页并自动定位到「等待拍摄」Tab */}
@@ -335,7 +335,7 @@ export default function MobileWorkbench() {
             style={{ flex: 1, textAlign: 'center', padding: '14px 0 12px', background: 'none', border: 'none' }}
           >
             <div style={{ fontSize: 24, color: TEXT, lineHeight: 1 }}>{shootCount}</div>
-            <div style={{ fontSize: 11, color: '#BBBBBB', marginTop: 6 }}>待拍摄</div>
+            <div style={{ fontSize: 11, color: '#BBBBBB', marginTop: 6 }}>等待拍摄</div>
           </button>
         </div>
       </div>
