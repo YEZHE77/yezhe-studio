@@ -41,6 +41,11 @@ export default function WorkPreview() {
   const [loading, setLoading] = useState(true);
   const [menuOpen, setMenuOpen] = useState(false);
   const [showGrid, setShowGrid] = useState(false);
+  const [studio, setStudio] = useState(null);
+  // 幻灯片播放
+  const [slideOpen, setSlideOpen] = useState(false);
+  const [slideIdx, setSlideIdx] = useState(0);
+  const [slidePaused, setSlidePaused] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -49,6 +54,21 @@ export default function WorkPreview() {
       setData(r.data || null);
     }).catch(() => { setData(null); }).finally(() => setLoading(false));
   }, [id]);
+
+  // 工作室资料（底部品牌栏：头像 logo + 名称 + Slogan，接口驱动不写死）
+  useEffect(() => {
+    http.get('/api/settings/studio').then((r) => {
+      setStudio(r.data || null);
+    }).catch(() => { /* 无数据不渲染品牌行，不 fallback 假数据 */ });
+  }, []);
+
+  // 幻灯片照片总数（顶层无条件计算，hooks 规则：禁止放在条件 return 之后）
+  const slideCount = (data?.albums || []).filter((a) => a.zone === 'sample' && a.photo_url).length;
+  useEffect(() => {
+    if (!slideOpen || slidePaused || slideCount < 2) return;
+    const t = setInterval(() => setSlideIdx((i) => (i + 1) % slideCount), 3000);
+    return () => clearInterval(t);
+  }, [slideOpen, slidePaused, slideCount]);
 
   if (loading) {
     return (
@@ -67,9 +87,19 @@ export default function WorkPreview() {
   }
 
   const w = data.work || {};
-  const albums = (data.albums || []).filter((a) => a.zone === 'sample');
+  // 当前相册照片：sample 分区的真实照片（字段 photo_url / thumb_url）
+  const albums = (data.albums || []).filter((a) => a.zone === 'sample' && a.photo_url);
   const cover = w.cover_url;
   const catName = w.category_name || (w.category_id ? '作品' : '');
+  // 品牌栏：头像 logo / 名称 / Slogan 全部来自设置接口
+  const brandName = studio?.name || '';
+  const brandSlogan = studio?.slogan || '';
+  const brandLogo = studio?.logo || '';
+
+  // 幻灯片照片源 = 当前相册
+  const slidePhotos = albums.map((a) => img(a.photo_url));
+
+  const startSlide = () => { setSlideIdx(0); setSlidePaused(false); setSlideOpen(true); };
 
   return (
     <div style={{ minHeight: '100vh', background: '#fff', paddingBottom: 'calc(70px + env(safe-area-inset-bottom))' }}>
@@ -122,7 +152,7 @@ export default function WorkPreview() {
         {cover ? (
           <img src={img(cover)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
         ) : albums[0] ? (
-          <img src={img(albums[0].url)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          <img src={img(albums[0].photo_url)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
         ) : (
           <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#666', fontSize: 14 }}>暂无封面</div>
         )}
@@ -149,7 +179,7 @@ export default function WorkPreview() {
           <div style={{ display: 'grid', gridTemplateColumns: showGrid ? 'repeat(3, 1fr)' : 'repeat(2, 1fr)', gap: 4 }}>
             {albums.map((a, i) => (
               <div key={a.id || i} style={{ aspectRatio: '1', background: '#f5f5f5', borderRadius: 4, overflow: 'hidden' }}>
-                <img src={img(a.thumbnail_url || a.url, 'thumb')} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} loading="lazy" />
+                <img src={img(a.thumb_url || a.photo_url)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} loading="lazy" />
               </div>
             ))}
           </div>
@@ -163,21 +193,60 @@ export default function WorkPreview() {
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         padding: '10px 16px', paddingBottom: 'calc(10px + env(safe-area-inset-bottom))'
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{ width: 36, height: 36, borderRadius: '50%', background: '#1a1a1a', overflow: 'hidden' }}>
-            {w.cover_url ? <img src={img(w.cover_url, 'thumb')} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : null}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, minWidth: 0 }}>
+          <div style={{ width: 36, height: 36, borderRadius: '50%', background: '#f2f2f2', overflow: 'hidden', flexShrink: 0 }}>
+            {brandLogo ? <img src={img(brandLogo)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : null}
           </div>
-          <div>
-            <div style={{ fontSize: 13, fontWeight: 500, color: '#333' }}>岛像微电影</div>
-            <div style={{ fontSize: 11, color: '#999' }}>婚纱照 · 婚礼跟拍 · 人物肖像</div>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontSize: 13, fontWeight: 500, color: '#333', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{brandName}</div>
+            {brandSlogan ? <div style={{ fontSize: 11, color: '#999', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{brandSlogan}</div> : null}
           </div>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexShrink: 0 }}>
           <IconComment />
           <IconChart />
-          <IconPlay />
+          <button onClick={startSlide} disabled={slidePhotos.length === 0} style={{ background: 'none', border: 'none', padding: 0, display: 'flex', opacity: slidePhotos.length === 0 ? 0.4 : 1 }}>
+            <IconPlay />
+          </button>
         </div>
       </div>
+
+      {/* 全屏幻灯片播放（点击播放按钮进入，3s 自动切换） */}
+      {slideOpen && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 300, background: '#000' }}>
+          {/* 顶部控制条：关闭 + 序号 + 暂停/继续 */}
+          <div style={{
+            position: 'absolute', top: 0, left: 0, right: 0, zIndex: 10,
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            padding: '12px 16px', paddingTop: 'calc(12px + env(safe-area-inset-top))',
+            background: 'linear-gradient(to bottom, rgba(0,0,0,0.55), transparent)'
+          }}>
+            <button onClick={() => setSlideOpen(false)} style={{ background: 'none', border: 'none', padding: 4, display: 'flex' }}>
+              <IconBack />
+            </button>
+            <span style={{ color: '#fff', fontSize: 13 }}>{slideIdx + 1} / {slidePhotos.length}</span>
+            <button onClick={() => setSlidePaused(!slidePaused)} style={{ width: 32, height: 32, borderRadius: '50%', background: 'rgba(255,255,255,0.2)', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 13 }}>
+              {slidePaused ? '▶' : '❚❚'}
+            </button>
+          </div>
+          {/* 主图：点击切换 暂停/继续 */}
+          <div
+            onClick={() => setSlidePaused(!slidePaused)}
+            style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+          >
+            <img src={slidePhotos[slideIdx]} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+          </div>
+          {/* 底部进度点 */}
+          <div style={{
+            position: 'absolute', bottom: 'calc(24px + env(safe-area-inset-bottom))', left: 0, right: 0,
+            display: 'flex', justifyContent: 'center', gap: 6
+          }}>
+            {slidePhotos.map((_, i) => (
+              <span key={i} style={{ width: 6, height: 6, borderRadius: '50%', background: i === slideIdx ? '#fff' : 'rgba(255,255,255,0.35)', transition: 'background 0.2s' }} />
+            ))}
+          </div>
+        </div>
+      )}
 
       <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
     </div>
