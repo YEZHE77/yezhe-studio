@@ -270,11 +270,8 @@ export default function Packages() {
   if (isMobile) {
     return (
       <div style={{ background: '#F8F8F8', minHeight: '100vh', paddingBottom: 100 }}>
-        {/* 顶部搜索栏 */}
+        {/* 顶部搜索栏（返回按钮由 MobileShell TopBack 提供，避免双返回） */}
         <div style={{ background: '#fff', padding: '10px 16px', display: 'flex', alignItems: 'center', gap: 10, borderBottom: '1px solid #EFEFEF' }}>
-          <button onClick={() => nav(-1)} style={{ background: 'none', border: 'none', padding: 4, display: 'flex', alignItems: 'center' }}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#666" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
-          </button>
           <div style={{ flex: 1, display: 'flex', alignItems: 'center', background: '#F5F5F5', borderRadius: 20, padding: '6px 12px', gap: 6 }}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#999" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /></svg>
             <input
@@ -357,8 +354,8 @@ export default function Packages() {
           )}
         </div>
 
-        {/* 底部悬浮按钮 */}
-        <button onClick={() => nav('/packages/new')} style={{ position: 'fixed', bottom: 24, right: 16, background: '#FF6B8A', color: '#fff', border: 'none', borderRadius: 24, padding: '12px 20px', fontSize: 14, display: 'flex', alignItems: 'center', gap: 6, boxShadow: '0 4px 12px rgba(255,107,138,0.35)', zIndex: 100 }}>
+        {/* 底部悬浮按钮（避开 MobileShell TabBar 56px + safe-area） */}
+        <button onClick={() => nav('/packages/new')} style={{ position: 'fixed', bottom: 'calc(56px + env(safe-area-inset-bottom) + 16px)', right: 16, background: '#FF6B8A', color: '#fff', border: 'none', borderRadius: 24, padding: '12px 20px', fontSize: 14, display: 'flex', alignItems: 'center', gap: 6, boxShadow: '0 4px 12px rgba(255,107,138,0.35)', zIndex: 100 }}>
           <span style={{ fontSize: 18 }}>+</span> 添加新套系
         </button>
       </div>
