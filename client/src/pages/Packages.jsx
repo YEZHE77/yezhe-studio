@@ -275,9 +275,8 @@ export default function Packages() {
         {/* 顶部搜索栏（返回 + 搜索 + 更多，与 MobileShell TopBack 同一行） */}
         {/* 必须有 position:relative，否则气泡弹窗 absolute 定位会相对视口跑到屏幕外 */}
         <div style={{ background: '#fff', padding: '8px 12px', display: 'flex', alignItems: 'center', gap: 10, borderBottom: '1px solid #EFEFEF', position: 'sticky', top: 0, zIndex: 5 }}>
-          <button onClick={() => nav('/')} style={{ background: 'none', border: 'none', padding: 0, display: 'flex', alignItems: 'center', color: '#1f2329', flexShrink: 0 }}>
+          <button onClick={() => nav('/')} style={{ background: 'none', border: 'none', padding: 4, display: 'flex', alignItems: 'center', color: '#1f2329', flexShrink: 0 }}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1f2329" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M15 6l-6 6 6 6" /></svg>
-            <span style={{ fontSize: 14, marginLeft: 2 }}>返回</span>
           </button>
           <div style={{ flex: 1, display: 'flex', alignItems: 'center', background: '#F5F5F5', borderRadius: 20, padding: '6px 12px', gap: 6 }}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#999" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /></svg>
