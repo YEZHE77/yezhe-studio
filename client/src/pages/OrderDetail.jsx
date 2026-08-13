@@ -799,7 +799,7 @@ export default function OrderDetail() {
             </div>
           </div>
 
-          {/* 状态卡 + 4 节点 stepper */}
+          {/* 状态卡 + 实时状态进度条（左右滑动） */}
           <div style={{ margin: '12px 12px 0', background: '#fff', borderRadius: 8, padding: '16px 12px 12px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
             <div style={{ textAlign: 'center', fontSize: 14, color: '#1f2329', marginBottom: 14 }}>
               {detail?.payment_status === 'paid' ? '已付全款' : '已付定金'}，
@@ -812,28 +812,41 @@ export default function OrderDetail() {
                 : '等待拍摄'}
             </div>
             {(() => {
-              // 4 节点 stepper：提交 / 支付 / 已拍摄 / 完成
-              const stepIndex = detail?.status === 'cancelled' ? -1
-                : detail?.status === 'completed' ? 3
-                : (detail?.status === 'shot' || detail?.status === 'selecting' || detail?.status === 'retouching' || detail?.status === 'delivered') ? 2
-                : detail?.payment_status === 'paid' ? 1
-                : detail?.payment_status === 'deposit' ? 1
-                : 0; // unpaid
-              const labels = ['提交', '支付', '已拍摄', '完成'];
+              // 实时订单状态进度条：基于 detail.logs，每条日志一个节点
+              const logs = Array.isArray(detail?.logs) ? detail.logs : [];
+              const fmtTime = (t) => {
+                const d = new Date(t);
+                if (isNaN(d.getTime())) return '';
+                return `${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+              };
+              if (logs.length === 0) {
+                return (
+                  <div style={{ textAlign: 'center', padding: '12px 0', color: '#bbb', fontSize: 13 }}>暂无状态记录</div>
+                );
+              }
+              const lastIdx = logs.length - 1;
               return (
-                <div style={{ position: 'relative', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
-                  <div style={{ position: 'absolute', left: '12%', right: '12%', top: 7, height: 2, background: '#E5E5E5', zIndex: 0 }} />
-                  <div style={{ position: 'absolute', left: '12%', top: 7, width: `${(stepIndex / 3) * 76}%`, maxWidth: '76%', height: 2, background: '#FA5151', zIndex: 1, transition: 'width .2s' }} />
-                  {labels.map((lb, i) => {
-                    const done = i < stepIndex;
-                    const current = i === stepIndex;
-                    return (
-                      <div key={lb} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'relative', zIndex: 2, flex: 1 }}>
-                        <div style={{ width: 16, height: 16, borderRadius: '50%', background: done || current ? '#FA5151' : '#D8D8D8', border: done || current ? '2px solid #fff' : '2px solid #fff', boxShadow: '0 0 0 1px ' + (done || current ? '#FA5151' : '#D8D8D8') }} />
-                        <div style={{ fontSize: 13, color: done || current ? '#1f2329' : '#999', marginTop: 8 }}>{lb}</div>
-                      </div>
-                    );
-                  })}
+                <div style={{ position: 'relative' }}>
+                  {/* 水平滚动容器：可左右滑动查看历史状态 */}
+                  <div style={{ display: 'flex', overflowX: 'auto', overflowY: 'hidden', padding: '4px 0 6px', WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none', msOverflowStyle: 'none' }} className="hide-scrollbar">
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 0, padding: '0 4px', position: 'relative' }}>
+                      {/* 连线：贯穿所有节点的灰色底 + 当前已完成段的红色 */}
+                      <div style={{ position: 'absolute', left: 12, right: 12, top: 7, height: 2, background: '#E5E5E5', zIndex: 0 }} />
+                      {logs.length > 1 && (
+                        <div style={{ position: 'absolute', left: 12, top: 7, width: `${(lastIdx / (logs.length - 1)) * (100 - 24 / Math.max(1, (logs.length - 1)) * 0)}%`, height: 2, background: '#FA5151', zIndex: 1, maxWidth: 'calc(100% - 24px)' }} />
+                      )}
+                      {logs.map((lg, i) => {
+                        const isLast = i === lastIdx;
+                        return (
+                          <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', minWidth: 90, flexShrink: 0, position: 'relative', zIndex: 2 }}>
+                            <div style={{ width: 16, height: 16, borderRadius: '50%', background: '#FA5151', border: '2px solid #fff', boxShadow: '0 0 0 1px #FA5151' }} />
+                            <div style={{ fontSize: 12, color: isLast ? '#FA5151' : '#666', marginTop: 8, textAlign: 'center', maxWidth: 84, lineHeight: 1.35, fontWeight: isLast ? 500 : 400 }}>{lg.text || '状态更新'}</div>
+                            <div style={{ fontSize: 10, color: '#999', marginTop: 3, textAlign: 'center' }}>{fmtTime(lg.t)}</div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
                 </div>
               );
             })()}

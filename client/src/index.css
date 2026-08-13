@@ -23,6 +23,9 @@ body {
 * { box-sizing: border-box; }
 ::-webkit-scrollbar { width: 8px; height: 8px; }
 ::-webkit-scrollbar-thumb { background: #d0d5dd; border-radius: 8px; }
+/* 隐藏滚动条但保留滚动能力（用于订单详情实时状态进度条左右滑动） */
+.hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+.hide-scrollbar::-webkit-scrollbar { display: none; }
 
 @layer base {
   /* 浅色主题迁移：
