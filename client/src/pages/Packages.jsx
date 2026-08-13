@@ -568,31 +568,101 @@ export default function Packages() {
         <PackageSortModal
           list={list}
           onClose={() => setSortOpen(false)}
-          onMoved={load}
+          onSaved={() => { setSortOpen(false); load(); }}
         />
       )}
     </div>
   );
 }
 
-// 套系排序弹窗：显示当前列表，上下箭头调整顺序，调用 POST /api/packages/:id/move
-function PackageSortModal({ list, onClose, onMoved }) {
-  const [items, setItems] = useState(list);
-  const [moving, setMoving] = useState(false);
+// 套系排序弹窗：本地编辑顺序 + 一次性保存（POST /api/packages/reorder）
+// 上下箭头（移动端友好）+ HTML5 拖拽（桌面端友好）+ 长按拖拽（移动端辅助）
+// 改动只在本地 items 数组，「保存」才落库；「取消」放弃变更
+function PackageSortModal({ list, onClose, onSaved }) {
+  const [items, setItems] = useState(() => list.slice());
+  const [saving, setSaving] = useState(false);
+  const [draggedIdx, setDraggedIdx] = useState(null);
+  const [dragOverIdx, setDragOverIdx] = useState(null);
+  const [longPressTimer, setLongPressTimer] = useState(null);
 
-  useEffect(() => { setItems(list); }, [list]);
+  // 上下移：本地数组交换（不动后端）
+  const moveLocal = (idx, dir) => {
+    setItems((arr) => {
+      const next = arr.slice();
+      const swap = dir === 'up' ? idx - 1 : idx + 1;
+      if (swap < 0 || swap >= next.length) return arr;
+      [next[idx], next[swap]] = [next[swap], next[idx]];
+      return next;
+    });
+  };
 
-  const move = async (id, dir) => {
-    if (moving) return;
-    setMoving(true);
-    try {
-      await http.post('/api/packages/' + id + '/move', { dir });
-      onMoved();
-    } catch (e) {
-      alert((e.response && e.response.data && e.response.data.error) || '移动失败');
-    } finally {
-      setMoving(false);
+  // HTML5 拖拽（桌面端）：dragstart/dragover/drop
+  const onDragStart = (e, idx) => {
+    setDraggedIdx(idx);
+    e.dataTransfer.effectAllowed = 'move';
+    try { e.dataTransfer.setData('text/plain', String(idx)); } catch {}
+  };
+  const onDragOverRow = (e, idx) => {
+    e.preventDefault();
+    if (idx !== draggedIdx) setDragOverIdx(idx);
+  };
+  const onDropRow = (e, dropIdx) => {
+    e.preventDefault();
+    const raw = e.dataTransfer.getData('text/plain');
+    const dragIdx = parseInt(raw, 10);
+    setDraggedIdx(null);
+    setDragOverIdx(null);
+    if (Number.isNaN(dragIdx) || dragIdx === dropIdx) return;
+    setItems((arr) => {
+      const next = arr.slice();
+      const [moved] = next.splice(dragIdx, 1);
+      next.splice(dropIdx, 0, moved);
+      return next;
+    });
+  };
+
+  // 移动端长按拖拽（500ms 后激活，参照 Works.jsx 移动端长按拖拽的实现）
+  const onPointerDownRow = (e, idx) => {
+    const t = setTimeout(() => {
+      setDraggedIdx(idx);
+    }, 500);
+    setLongPressTimer(t);
+  };
+  const onPointerMoveRow = (e) => {
+    if (draggedIdx === null || draggedIdx === undefined) return;
+    const el = document.elementFromPoint(e.clientX, e.clientY);
+    const row = el && el.closest('[data-pkg-sort-idx]');
+    if (row) {
+      const overIdx = parseInt(row.getAttribute('data-pkg-sort-idx'), 10);
+      if (!Number.isNaN(overIdx) && overIdx !== draggedIdx) setDragOverIdx(overIdx);
+    } else {
+      setDragOverIdx(null);
     }
+  };
+  const onPointerUpRow = () => {
+    if (longPressTimer) { clearTimeout(longPressTimer); setLongPressTimer(null); }
+    if (draggedIdx !== null && draggedIdx !== undefined && dragOverIdx !== null && dragOverIdx !== undefined && draggedIdx !== dragOverIdx) {
+      setItems((arr) => {
+        const next = arr.slice();
+        const [moved] = next.splice(draggedIdx, 1);
+        next.splice(dragOverIdx, 0, moved);
+        return next;
+      });
+    }
+    setDraggedIdx(null);
+    setDragOverIdx(null);
+  };
+
+  const dirty = items.map((p) => p.id).join(',') !== list.map((p) => p.id).join(',');
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      await http.post('/api/packages/reorder', { orders: items.map((p) => p.id) });
+      onSaved();
+    } catch (e) {
+      alert((e.response && e.response.data && e.response.data.error) || '保存排序失败');
+    } finally { setSaving(false); }
   };
 
   return (
@@ -600,24 +670,56 @@ function PackageSortModal({ list, onClose, onMoved }) {
       <div onClick={(e) => e.stopPropagation()} style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: '#fff', borderRadius: '16px 16px 0 0', maxHeight: '85vh', display: 'flex', flexDirection: 'column' }}>
         <div style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid #F0F0F0' }}>
           <span style={{ fontSize: 16, fontWeight: 600, color: '#333' }}>套系排序</span>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: 14, color: '#999' }}>完成</button>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button onClick={onClose} disabled={saving} style={{ background: 'none', border: 'none', fontSize: 14, color: '#999', padding: '4px 12px' }}>取消</button>
+            <button onClick={save} disabled={saving || !dirty} style={{ background: dirty ? '#FF7A8A' : '#F5F5F5', color: dirty ? '#fff' : '#999', border: 'none', borderRadius: 14, padding: '6px 14px', fontSize: 14, fontWeight: 500 }}>{saving ? '保存中…' : '保存排序'}</button>
+          </div>
         </div>
         <div style={{ overflowY: 'auto', padding: '8px 20px calc(16px + env(safe-area-inset-bottom))', flex: 1 }}>
-          {items.map((p, idx) => (
-            <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0', borderBottom: idx < items.length - 1 ? '1px solid #F5F5F5' : 'none' }}>
-              <div style={{ width: 48, height: 48, borderRadius: 6, overflow: 'hidden', background: '#f5f5f5', flexShrink: 0 }}>
-                {p.cover_url ? <img src={img(p.cover_url, 'thumb')} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : null}
+          {dirty && (
+            <div style={{ padding: '8px 0', fontSize: 12, color: '#FF7A8A' }}>已调整顺序，点击「保存排序」生效</div>
+          )}
+          {items.map((p, idx) => {
+            const isDragging = draggedIdx === idx;
+            const isDragOver = dragOverIdx === idx;
+            return (
+              <div
+                key={p.id}
+                data-pkg-sort-idx={idx}
+                draggable
+                onDragStart={(e) => onDragStart(e, idx)}
+                onDragOver={(e) => onDragOverRow(e, idx)}
+                onDrop={(e) => onDropRow(e, idx)}
+                onDragEnd={() => { setDraggedIdx(null); setDragOverIdx(null); }}
+                onPointerDown={(e) => onPointerDownRow(e, idx)}
+                onPointerMove={onPointerMoveRow}
+                onPointerUp={onPointerUpRow}
+                onPointerCancel={onPointerUpRow}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0',
+                  borderBottom: idx < items.length - 1 ? '1px solid #F5F5F5' : 'none',
+                  touchAction: 'none',
+                  opacity: isDragging ? 0.4 : 1,
+                  background: isDragOver ? '#FFF5F7' : 'transparent',
+                  borderRadius: isDragOver ? 8 : 0,
+                  transition: 'background 0.15s'
+                }}
+              >
+                <div style={{ width: 48, height: 48, borderRadius: 6, overflow: 'hidden', background: '#f5f5f5', flexShrink: 0 }}>
+                  {p.cover_url ? <img src={img(p.cover_url, 'thumb')} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : null}
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 14, color: '#333', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</div>
+                  <div style={{ fontSize: 12, color: '#999', marginTop: 2 }}>¥{Number(p.price || 0).toLocaleString()}</div>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flexShrink: 0 }}>
+                  <button onClick={() => moveLocal(idx, 'up')} disabled={idx === 0} style={{ background: 'none', border: '1px solid #E5E5E5', borderRadius: 4, padding: '4px 8px', fontSize: 12, color: idx === 0 ? '#ccc' : '#666' }}>上移</button>
+                  <button onClick={() => moveLocal(idx, 'down')} disabled={idx === items.length - 1} style={{ background: 'none', border: '1px solid #E5E5E5', borderRadius: 4, padding: '4px 8px', fontSize: 12, color: idx === items.length - 1 ? '#ccc' : '#666' }}>下移</button>
+                </div>
+                <div style={{ color: '#ccc', fontSize: 14, flexShrink: 0, padding: '0 4px' }} aria-hidden>≡</div>
               </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 14, color: '#333', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</div>
-                <div style={{ fontSize: 12, color: '#999', marginTop: 2 }}>¥{Number(p.price || 0).toLocaleString()}</div>
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flexShrink: 0 }}>
-                <button onClick={() => move(p.id, 'up')} disabled={idx === 0 || moving} style={{ background: 'none', border: '1px solid #E5E5E5', borderRadius: 4, padding: '4px 8px', fontSize: 12, color: idx === 0 || moving ? '#ccc' : '#666' }}>上移</button>
-                <button onClick={() => move(p.id, 'down')} disabled={idx === items.length - 1 || moving} style={{ background: 'none', border: '1px solid #E5E5E5', borderRadius: 4, padding: '4px 8px', fontSize: 12, color: idx === items.length - 1 || moving ? '#ccc' : '#666' }}>下移</button>
-              </div>
-            </div>
-          ))}
+            );
+          })}
           {items.length === 0 && (
             <div style={{ textAlign: 'center', padding: 40, color: '#999', fontSize: 14 }}>暂无套系</div>
           )}

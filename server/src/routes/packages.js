@@ -212,6 +212,28 @@ router.post('/:id/move', authRequired, requireRole(['admin', 'photographer']), a
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// 套系列表自定义排序：接收套系 id 的有序数组，按顺序重写 sort
+// 对齐 works 的 /api/works/reorder 行为：拖拽/重排后端一次性提交，避免单步 move 的 N 次往返
+router.post('/reorder', authRequired, requireRole(['admin', 'photographer']), async (req, res) => {
+  try {
+    const { orders } = req.body || {};
+    if (!Array.isArray(orders) || orders.some((id) => typeof id !== 'number')) {
+      return res.status(400).json({ error: 'orders 必须为数字 id 数组' });
+    }
+    // 校验所有 id 真实存在 + 不在请求中出现重复
+    const placeholders = orders.map(() => '?').join(',');
+    const rows = await query(`SELECT id FROM packages WHERE id IN (${placeholders})`, orders);
+    if (rows.length !== new Set(orders).size) {
+      return res.status(400).json({ error: '存在非法或重复的套系 id' });
+    }
+    // 按传入顺序逐条更新 sort（避免并发写同一 sort 字段的歧义，循环最稳）
+    for (let i = 0; i < orders.length; i++) {
+      await run('UPDATE packages SET sort = ? WHERE id = ?', [i, orders[i]]);
+    }
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // 统计该套系被多少订单引用（package_id 关联 或 历史快照 package_snapshot 内含该 id）
 async function usedByOrders(pkgId) {
   const id = Number(pkgId);
