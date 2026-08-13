@@ -36,6 +36,7 @@ const Schedule = React.lazy(() => import('./pages/Schedule.jsx'));
 const ScheduleNewOrder = React.lazy(() => import('./pages/ScheduleNewOrder.jsx'));
 const Orders = React.lazy(() => import('./pages/Orders.jsx'));
 const OrderDetail = React.lazy(() => import('./pages/OrderDetail.jsx'));
+const OrderNotes = React.lazy(() => import('./pages/OrderNotes.jsx'));
 const Finance = React.lazy(() => import('./pages/Finance.jsx'));
 const Appointments = React.lazy(() => import('./pages/Appointments.jsx'));
 const Reviews = React.lazy(() => import('./pages/Reviews.jsx'));
@@ -91,6 +92,7 @@ function AppShell() {
                 <Route path="/schedule/new" element={<ScheduleNewOrder />} />
                 <Route path="/orders" element={<Orders />} />
                 <Route path="/orders/:id" element={<OrderDetail />} />
+                <Route path="/orders/:id/notes" element={<OrderNotes />} />
                 <Route path="/appointments" element={<Appointments />} />
                 <Route path="/reviews" element={<Reviews />} />
                 <Route path="/settings" element={<Settings />} />

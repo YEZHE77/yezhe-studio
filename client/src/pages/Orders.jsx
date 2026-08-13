@@ -698,6 +698,9 @@ function MobileOrderCenterView({ stats, list, listTotal, state, setState, refres
   const [searchOpen, setSearchOpen] = useState(false);
   const [qInput, setQInput] = useState(state.q || '');
   const [filterOpen, setFilterOpen] = useState(false);
+  const [filterAnim, setFilterAnim] = useState(false);
+  const openFilter = () => { setFilterOpen(true); requestAnimationFrame(() => setFilterAnim(true)); };
+  const closeFilter = () => { setFilterAnim(false); setTimeout(() => setFilterOpen(false), 300); };
   const [sheetOpen, setSheetOpen] = useState(false);
   const [sheetType, setSheetType] = useState(''); // 'status' | 'sort'
   const [qrPopover, setQrPopover] = useState(null);
@@ -742,7 +745,7 @@ function MobileOrderCenterView({ stats, list, listTotal, state, setState, refres
         <div style={{ flex: 1, textAlign: 'center', fontSize: 16, color: '#1f2329' }}>订单中心</div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <button onClick={() => setSearchOpen(true)} style={{ background: 'none', border: 'none', padding: 4, display: 'flex', alignItems: 'center' }}><IconSearch /></button>
-          <button onClick={() => setFilterOpen(true)} style={{ background: 'none', border: 'none', padding: 4, display: 'flex', alignItems: 'center' }}><IconSetting /></button>
+          <button onClick={openFilter} style={{ background: 'none', border: 'none', padding: 4, display: 'flex', alignItems: 'center' }}><IconSetting /></button>
         </div>
       </div>
 
@@ -772,7 +775,7 @@ function MobileOrderCenterView({ stats, list, listTotal, state, setState, refres
         <button onClick={() => openSheet('sort')} style={{ background: 'none', border: 'none', fontSize: 14, color: '#333', display: 'flex', alignItems: 'center', gap: 4 }}>
           {activeSortLabel}<span style={{ fontSize: 10, color: '#999' }}>▼</span>
         </button>
-        <button onClick={() => setFilterOpen(true)} style={{ background: 'none', border: 'none', fontSize: 14, color: '#333', display: 'flex', alignItems: 'center', gap: 4 }}>
+        <button onClick={openFilter} style={{ background: 'none', border: 'none', fontSize: 14, color: '#333', display: 'flex', alignItems: 'center', gap: 4 }}>
           筛选<span style={{ fontSize: 10, color: '#999' }}>▼</span>
         </button>
       </div>
@@ -834,40 +837,47 @@ function MobileOrderCenterView({ stats, list, listTotal, state, setState, refres
         </div>
       )}
 
-      {/* 筛选抽屉：执行者 + 拍摄日期 + 清除 */}
+      {/* 筛选抽屉：从右向左滑出，内部可滚动 */}
       {filterOpen && (
-        <div className="fixed inset-0 z-[60]" style={{ background: 'rgba(0,0,0,0.35)' }} onClick={() => setFilterOpen(false)}>
+        <div className="fixed inset-0 z-[60]" style={{ background: 'rgba(0,0,0,0.35)' }} onClick={closeFilter}>
           <div onClick={(e) => e.stopPropagation()} style={{
             position: 'absolute', top: 0, right: 0, bottom: 0, width: 280, background: '#fff',
-            padding: '16px', paddingTop: 'calc(16px + env(safe-area-inset-top))', display: 'flex', flexDirection: 'column'
+            display: 'flex', flexDirection: 'column',
+            transform: filterAnim ? 'translateX(0)' : 'translateX(100%)', transition: 'transform 300ms ease',
+            boxShadow: '-4px 0 20px rgba(0,0,0,0.12)'
           }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
-              <span style={{ fontSize: 16, color: '#1f2329' }}>筛选</span>
-              <button onClick={() => setFilterOpen(false)} style={{ background: 'none', border: 'none', padding: 4 }}><IconClose /></button>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px', paddingTop: 'calc(16px + env(safe-area-inset-top))', borderBottom: '1px solid #F5F5F5', flexShrink: 0 }}>
+              <span style={{ fontSize: 16, color: '#1f2329', fontWeight: 500 }}>筛选</span>
+              <button onClick={closeFilter} style={{ background: 'none', border: 'none', padding: 4 }}><IconClose /></button>
             </div>
-            <div style={{ fontSize: 14, color: '#666', marginBottom: 8 }}>执行者</div>
-            <select value={state.executor} onChange={(e) => setFilter('executor', e.target.value)} style={{
-              width: '100%', padding: '10px', borderRadius: 8, border: '1px solid #E5E5E5', fontSize: 14, marginBottom: 16
-            }}>
-              <option value="">所有人</option>
-              {personnel.map((p) => (<option key={p.id} value={p.id}>{p.name}</option>))}
-            </select>
-            <div style={{ fontSize: 14, color: '#666', marginBottom: 8 }}>拍摄日期</div>
-            <input type="date" value={state.shootFrom} onChange={(e) => setFilter('shootFrom', e.target.value)} style={{
-              width: '100%', padding: '10px', borderRadius: 8, border: '1px solid #E5E5E5', fontSize: 14, marginBottom: 8
-            }} />
-            <input type="date" value={state.shootTo} onChange={(e) => setFilter('shootTo', e.target.value)} style={{
-              width: '100%', padding: '10px', borderRadius: 8, border: '1px solid #E5E5E5', fontSize: 14, marginBottom: 16
-            }} />
-            <div style={{ flex: 1 }} />
-            <button onClick={() => { setFilter('executor', ''); setFilter('shootFrom', ''); setFilter('shootTo', ''); }} style={{
-              width: '100%', padding: '12px 0', borderRadius: 8, border: '1px solid #E5E5E5',
-              background: '#fff', color: '#666', fontSize: 14, marginBottom: 10
-            }}>清除筛选</button>
-            <button onClick={() => setFilterOpen(false)} style={{
-              width: '100%', padding: '12px 0', borderRadius: 8, border: 'none',
-              background: '#FA5151', color: '#fff', fontSize: 14
-            }}>确定</button>
+            <div style={{ flex: 1, overflowY: 'auto', padding: '16px' }}>
+              <div style={{ fontSize: 14, color: '#666', marginBottom: 8 }}>执行者</div>
+              <select value={state.executor} onChange={(e) => setFilter('executor', e.target.value)} style={{
+                width: '100%', padding: '10px', borderRadius: 8, border: '1px solid #E5E5E5', fontSize: 14, marginBottom: 16
+              }}>
+                <option value="">所有人</option>
+                {personnel.map((p) => (<option key={p.id} value={p.id}>{p.name}</option>))}
+              </select>
+              <div style={{ fontSize: 14, color: '#666', marginBottom: 8 }}>拍摄日期</div>
+              <input type="date" value={state.shootFrom} onChange={(e) => setFilter('shootFrom', e.target.value)} style={{
+                width: '100%', padding: '10px', borderRadius: 8, border: '1px solid #E5E5E5', fontSize: 14, marginBottom: 8
+              }} />
+              <input type="date" value={state.shootTo} onChange={(e) => setFilter('shootTo', e.target.value)} style={{
+                width: '100%', padding: '10px', borderRadius: 8, border: '1px solid #E5E5E5', fontSize: 14, marginBottom: 16
+              }} />
+              {/* 占位扩展区域：保证长内容可向下滚动 */}
+              <div style={{ height: 1 }} />
+            </div>
+            <div style={{ padding: '12px 16px calc(12px + env(safe-area-inset-bottom))', borderTop: '1px solid #F5F5F5', flexShrink: 0, background: '#fff' }}>
+              <button onClick={() => { setFilter('executor', ''); setFilter('shootFrom', ''); setFilter('shootTo', ''); }} style={{
+                width: '100%', padding: '12px 0', borderRadius: 8, border: '1px solid #E5E5E5',
+                background: '#fff', color: '#666', fontSize: 14, marginBottom: 10
+              }}>清除筛选</button>
+              <button onClick={closeFilter} style={{
+                width: '100%', padding: '12px 0', borderRadius: 8, border: 'none',
+                background: '#FA5151', color: '#fff', fontSize: 14
+              }}>确定</button>
+            </div>
           </div>
         </div>
       )}
@@ -902,6 +912,7 @@ function MobileOrderCenterView({ stats, list, listTotal, state, setState, refres
 }
 
 function OrderCard({ order, onClick, onShare }) {
+  const nav = useNavigate();
   const snap = asObj(order.package_snapshot);
   const pkgName = [snap.name, snap.spec && snap.spec.name].filter(Boolean).join('｜') || '未选套系';
   const pkgCategory = snap.category_name || String(snap.name || '').split('｜')[0] || '';
@@ -970,8 +981,18 @@ function OrderCard({ order, onClick, onShare }) {
         ) : null}
       </div>
 
-      {/* 备注 */}
-      <div style={{ fontSize: 12, color: '#bbbbbb', marginTop: 12 }}>{order.remark || '无'}</div>
+      {/* 备注：编辑入口 */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 12 }}>
+        <span style={{ fontSize: 12, color: '#bbbbbb' }}>{order.remark || '暂无备注'}</span>
+        <span
+          role="button"
+          aria-label="编辑备注"
+          onClick={(e) => { e.stopPropagation(); nav('/orders/' + order.id + '/notes'); }}
+          style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12, color: '#7ECDBB', padding: '2px 6px' }}
+        >
+          <IconPencil style={{ width: 13, height: 13, color: '#7ECDBB' }} />编辑
+        </span>
+      </div>
     </button>
   );
 }
