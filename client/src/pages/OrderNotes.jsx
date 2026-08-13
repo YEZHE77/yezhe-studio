@@ -74,7 +74,6 @@ export default function OrderNotes() {
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState('order'); // order=预约备注 / staff=员工备注
-  const [editing, setEditing] = useState({}); // { birthday:true, internal:true, external:true }
   const [saving, setSaving] = useState(false);
   const [fields, setFields] = useState({
     birthday: '',
@@ -101,11 +100,6 @@ export default function OrderNotes() {
   }, [id]);
 
   const setField = (k, v) => setFields((p) => ({ ...p, [k]: v }));
-  const startEdit = (k) => setEditing((p) => ({ ...p, [k]: true }));
-  const cancelEdit = (k) => {
-    setFields((p) => ({ ...p, [k]: order?.[k] || '' }));
-    setEditing((p) => ({ ...p, [k]: false }));
-  };
 
   const saveAll = async () => {
     if (!order) return;
@@ -120,7 +114,6 @@ export default function OrderNotes() {
       };
       await http.put('/api/orders/' + id, payload);
       setOrder((o) => ({ ...o, ...payload }));
-      setEditing({});
       toast('保存成功');
     } catch (e) {
       toast(e.response?.data?.error || '保存失败');
@@ -151,31 +144,19 @@ export default function OrderNotes() {
     );
   }
 
-  const Section = ({ title, subtitle, action, value, onChange, editingNow, onEdit, onCancel, placeholder, multiline = true, actionIcon }) => (
+  const Section = ({ title, subtitle, value, onChange, placeholder, multiline = true }) => (
     <div style={{ padding: '20px 16px', borderBottom: '1px solid #F5F5F5' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+      <div style={{ display: 'flex', alignItems: 'center', marginBottom: 12 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <div style={{ width: 3, height: 16, borderRadius: 2, background: ORANGE }} />
           <span style={{ fontSize: 15, color: '#1f2329', fontWeight: 500 }}>{title}</span>
           {subtitle ? <span style={{ fontSize: 12, color: '#999' }}>{subtitle}</span> : null}
         </div>
-        {action && (
-          <button onClick={editingNow ? onCancel : onEdit}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', fontSize: 13, color: TEAL, padding: 0 }}>
-            {actionIcon || <IconPencil />}
-            <span>{editingNow ? '取消' : action}</span>
-          </button>
-        )}
       </div>
-      {editingNow ? (
-        <textarea value={value} onChange={(e) => onChange(e.target.value)}
-          rows={multiline ? 4 : 2}
-          style={{ width: '100%', minHeight: 80, border: `1px dashed ${BOX_BORDER}`, borderRadius: 8, padding: 12, fontSize: 14, background: BOX_BG, color: '#333', outline: 'none', resize: 'vertical' }} />
-      ) : (
-        <div style={{ minHeight: 60, border: `1px dashed ${BOX_BORDER}`, borderRadius: 8, padding: 12, fontSize: 14, background: BOX_BG, color: value ? '#333' : '#BBBBBB', lineHeight: 1.6, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-          {value || placeholder}
-        </div>
-      )}
+      <textarea value={value || ''} onChange={(e) => onChange(e.target.value)}
+        rows={multiline ? 4 : 2}
+        placeholder={placeholder}
+        style={{ width: '100%', minHeight: 80, border: `1px dashed ${BOX_BORDER}`, borderRadius: 8, padding: 12, fontSize: 14, background: BOX_BG, color: '#333', outline: 'none', resize: 'vertical' }} />
     </div>
   );
 
@@ -218,10 +199,6 @@ export default function OrderNotes() {
             title="生日/纪念日"
             value={fields.birthday}
             onChange={(v) => setField('birthday', v)}
-            editingNow={editing.birthday}
-            onEdit={() => startEdit('birthday')}
-            onCancel={() => cancelEdit('birthday')}
-            action="编辑"
             placeholder="未设置"
           />
           <Section
@@ -229,10 +206,6 @@ export default function OrderNotes() {
             subtitle={<span title="客户在下单时可填写预约要求">?</span>}
             value={fields.appointment_remark}
             onChange={(v) => setField('appointment_remark', v)}
-            editingNow={editing.appointment_remark}
-            onEdit={() => startEdit('appointment_remark')}
-            onCancel={() => cancelEdit('appointment_remark')}
-            action="编辑"
             placeholder="客户未填写"
           />
           <Section
@@ -240,11 +213,6 @@ export default function OrderNotes() {
             subtitle={<span title="调查问卷可在套系管理中配置">?</span>}
             value={fields.questionnaire_answers}
             onChange={(v) => setField('questionnaire_answers', v)}
-            editingNow={editing.questionnaire_answers}
-            onEdit={() => startEdit('questionnaire_answers')}
-            onCancel={() => cancelEdit('questionnaire_answers')}
-            action="设置"
-            actionIcon={<IconSetting />}
             placeholder="未设置调查问卷"
           />
         </div>
@@ -257,10 +225,6 @@ export default function OrderNotes() {
             subtitle={<span style={{ color: '#999' }}>(该备注对客户不可见)</span>}
             value={fields.internal_remark}
             onChange={(v) => setField('internal_remark', v)}
-            editingNow={editing.internal_remark}
-            onEdit={() => startEdit('internal_remark')}
-            onCancel={() => cancelEdit('internal_remark')}
-            action="编辑"
             placeholder="未填写"
           />
           <Section
@@ -268,10 +232,6 @@ export default function OrderNotes() {
             subtitle={<span style={{ color: '#999' }}>(该备注客户可见并支持打印)</span>}
             value={fields.external_remark}
             onChange={(v) => setField('external_remark', v)}
-            editingNow={editing.external_remark}
-            onEdit={() => startEdit('external_remark')}
-            onCancel={() => cancelEdit('external_remark')}
-            action="编辑"
             placeholder="未填写"
           />
         </div>
