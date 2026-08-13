@@ -89,7 +89,7 @@ export default function PackagePreview() {
   const [data, setData] = useState(null);
   const [studio, setStudio] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [menuOpen, setMenuOpen] = useState(false);
+  const [actionSheetOpen, setActionSheetOpen] = useState(false);
   const [serviceModalOpen, setServiceModalOpen] = useState(false);
 
   useEffect(() => {
@@ -158,6 +158,35 @@ export default function PackagePreview() {
   const phone = socials.phone || contact.phone || '';
   const address = studio?.address || contact.address || '';
 
+  const handleOff = async () => {
+    setActionSheetOpen(false);
+    if (!window.confirm('确认下架该套系？下架后 C 端不可见')) return;
+    try {
+      await http.post('/api/packages/' + id + '/status', { status: 'off' });
+      alert('已下架');
+      nav('/packages');
+    } catch (e) {
+      alert(e?.response?.data?.error || '下架失败');
+    }
+  };
+
+  const handleDelete = async () => {
+    setActionSheetOpen(false);
+    if (!window.confirm('确认删除该套系？删除后不可恢复')) return;
+    try {
+      await http.delete('/api/packages/' + id);
+      alert('已删除');
+      nav('/packages');
+    } catch (e) {
+      const err = e?.response?.data;
+      if (err?.code === 'PACKAGE_IN_USE') {
+        alert('该套系已被订单关联，不能直接删除。如需隐藏，请使用「下架」。');
+      } else {
+        alert(err?.error || '删除失败');
+      }
+    }
+  };
+
   return (
     <div style={{ minHeight: '100vh', background: '#fff', overflowY: 'auto', WebkitOverflowScrolling: 'touch', paddingBottom: 'calc(80px + env(safe-area-inset-bottom))' }}>
       {/* 顶部导航 */}
@@ -167,22 +196,7 @@ export default function PackagePreview() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <button onClick={() => { /* 分享 */ }} style={{ background: 'none', border: 'none', padding: 4, display: 'flex' }}><IconShare /></button>
           <div style={{ position: 'relative' }}>
-            <button onClick={() => setMenuOpen(!menuOpen)} style={{ background: 'none', border: 'none', padding: 4, display: 'flex' }}><IconMore /></button>
-            {menuOpen && (
-              <>
-                <div onClick={() => setMenuOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 40 }} />
-                <div style={{ position: 'absolute', top: 'calc(100% + 6px)', right: 0, zIndex: 50, background: '#fff', borderRadius: 8, boxShadow: '0 4px 16px rgba(0,0,0,0.12)', minWidth: 140, padding: '6px 0' }}>
-                  <button onClick={() => { setMenuOpen(false); nav('/packages/' + id + '/edit'); }} style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '10px 14px', background: 'none', border: 'none', fontSize: 14, color: '#333', textAlign: 'left' }}>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#333" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                    编辑
-                  </button>
-                  <button onClick={() => { setMenuOpen(false); /* 复制/其他 */ }} style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '10px 14px', background: 'none', border: 'none', fontSize: 14, color: '#333', textAlign: 'left' }}>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#333" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-                    复制套系
-                  </button>
-                </div>
-              </>
-            )}
+            <button onClick={() => setActionSheetOpen(true)} style={{ background: 'none', border: 'none', padding: 4, display: 'flex' }}><IconMore /></button>
           </div>
         </div>
       </div>
@@ -334,6 +348,39 @@ export default function PackagePreview() {
                 <IconCloseX />
               </button>
             </div>
+          </div>
+        </>
+      )}
+
+      {/* 右上角操作弹窗（Action Sheet） */}
+      {actionSheetOpen && (
+        <>
+          <div onClick={() => setActionSheetOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 110, background: 'rgba(0,0,0,0.5)' }} />
+          <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 111, background: '#fff', borderRadius: '16px 16px 0 0', paddingBottom: 'calc(12px + env(safe-area-inset-bottom))' }}>
+            <div style={{ padding: '16px 0', textAlign: 'center', fontSize: 15, fontWeight: 500, color: '#333', borderBottom: `1px solid ${MBORDER}` }}>编辑</div>
+            <div style={{ display: 'flex', justifyContent: 'center', gap: 40, padding: '24px 20px' }}>
+              <div onClick={() => { setActionSheetOpen(false); nav('/packages/' + id + '/edit'); }} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                <div style={{ width: 56, height: 56, borderRadius: '50%', background: '#f5f5f5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#333" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                </div>
+                <span style={{ fontSize: 13, color: '#666' }}>编辑</span>
+              </div>
+              <div onClick={handleOff} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                <div style={{ width: 56, height: 56, borderRadius: '50%', background: '#f5f5f5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#333" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>
+                </div>
+                <span style={{ fontSize: 13, color: '#666' }}>下架</span>
+              </div>
+              <div onClick={handleDelete} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                <div style={{ width: 56, height: 56, borderRadius: '50%', background: '#f5f5f5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#333" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+                </div>
+                <span style={{ fontSize: 13, color: '#666' }}>删除</span>
+              </div>
+            </div>
+            <button onClick={() => setActionSheetOpen(false)} style={{ display: 'block', width: 'calc(100% - 32px)', margin: '0 16px', padding: '12px 0', borderRadius: 8, border: 'none', background: '#f5f5f5', fontSize: 15, color: '#333', textAlign: 'center' }}>
+              取消
+            </button>
           </div>
         </>
       )}
