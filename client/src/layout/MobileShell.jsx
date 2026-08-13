@@ -9,7 +9,7 @@ const Works = React.lazy(() => import('../pages/Works.jsx'));
 const Categories = React.lazy(() => import('../pages/Categories.jsx'));
 const WorkDetail = React.lazy(() => import('../pages/WorkDetail.jsx'));
 const Packages = React.lazy(() => import('../pages/Packages.jsx'));
-const PackageEdit = React.lazy(() => import('../pages/PackageEdit.jsx'));
+const PackagePreview = React.lazy(() => import('../pages/PackagePreview.jsx'));
 const Schedule = React.lazy(() => import('../pages/Schedule.jsx'));
 const Orders = React.lazy(() => import('../pages/Orders.jsx'));
 const OrderDetail = React.lazy(() => import('../pages/OrderDetail.jsx'));
@@ -172,7 +172,9 @@ function getPageTitle(path) {
   if (path === '/works') return '作品管理';
   if (path.startsWith('/works/')) return '作品详情';
   if (path === '/packages') return '套系管理';
-  if (path.startsWith('/packages/')) return '套系详情';
+  if (path === '/packages/new') return '新建套系';
+  if (path.startsWith('/packages/') && path.endsWith('/edit')) return '编辑套系';
+  if (path.startsWith('/packages/')) return '套系预览';
   if (path === '/customers') return '客资管理';
   if (path === '/datacharts') return '数据统计';
   if (path === '/card') return '名片';
@@ -192,9 +194,8 @@ export default function MobileShell() {
   const tabRoots = ['/', '/m/site', '/m/notice', '/m/msg'];
   const hideTopBackRoutes = ['/works'];
   const isTab = tabRoots.includes(location.pathname);
-  // /works/:id 与 /works/new 等子路由由页面内自带顶部导航，避免双层 TopBack
-  // /packages 手机端自带顶部搜索栏（返回+搜索+更多），也跳过 MobileShell TopBack
-  const hideTopBack = hideTopBackRoutes.includes(location.pathname) || location.pathname.startsWith('/works/') || location.pathname === '/packages';
+  // /packages/* 所有子路由由页面内自带顶部导航，避免双层 TopBack
+  const hideTopBack = hideTopBackRoutes.includes(location.pathname) || location.pathname.startsWith('/works/') || location.pathname.startsWith('/packages/');
   const pageTitle = getPageTitle(location.pathname);
   const activeKey = (() => {
     if (location.pathname === '/') return 'home';
@@ -225,6 +226,7 @@ export default function MobileShell() {
               <Route path="/works/:id" element={<WorkDetail />} />
               <Route path="/packages" element={<Packages />} />
               <Route path="/packages/new" element={<PackageEdit />} />
+              <Route path="/packages/:id" element={<PackagePreview />} />
               <Route path="/packages/:id/edit" element={<PackageEdit />} />
               <Route path="/schedule" element={<Schedule />} />
               <Route path="/orders" element={<Orders />} />

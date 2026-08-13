@@ -370,7 +370,7 @@ export default function Packages() {
             list.map((p) => {
               const off = p.status === 'off';
               return (
-                <div key={p.id} onClick={() => nav('/packages/' + p.id + '/edit')} style={{ background: '#fff', borderRadius: 12, padding: '12px 14px', marginBottom: 10, display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                <div key={p.id} onClick={() => nav('/packages/' + p.id)} style={{ background: '#fff', borderRadius: 12, padding: '12px 14px', marginBottom: 10, display: 'flex', gap: 12, alignItems: 'flex-start' }}>
                   <div style={{ width: 80, height: 80, borderRadius: 8, background: '#f5f5f5', overflow: 'hidden', flexShrink: 0, position: 'relative' }}>
                     {p.cover_url ? <img src={img(p.cover_url)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : null}
                     {off && <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.45)', color: '#fff', fontSize: 12 }}>已下架</div>}
