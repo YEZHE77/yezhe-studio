@@ -228,10 +228,10 @@ export default function MobileWorkbench() {
   const safe = (v) => (typeof v === 'number' ? v : 0);
   // 待办事项角标：所有活跃中的订单（未付定金、已付定金、等待拍摄、选片中、精修中、已交片）
   const followTotal = safe(pb.unpaid) + safe(pb.deposit) + safe(pb.shoot) + safe(pb.selecting) + safe(pb.retouching) + safe(pb.delivered);
-  // 已付定金：与订单页「已付定金」Tab 同口径（payment_status='deposit' 的活跃订单数）
-  const depositCount = safe(todo.deposit);
-  // 等待拍摄：与订单页「等待拍摄」Tab 同口径（已付定金且未拍摄 status='deposit'）
-  const shootCount = safe(todo.waitingShoot);
+  // 已付定金：优先与订单页「已付定金」Tab 同口径（stats.todo），后端未更新时回退到旧待办总数量
+  const depositCount = (stats && typeof todo.deposit === 'number') ? todo.deposit : followTotal;
+  // 等待拍摄：优先与订单页「等待拍摄」Tab 同口径（stats.todo），后端未更新时回退到旧 pendingBlocks.deposit
+  const shootCount = (stats && typeof todo.waitingShoot === 'number') ? todo.waitingShoot : (pb.deposit || 0);
 
   return (
     <div style={{ background: '#fff', minHeight: '100vh', paddingBottom: 28 }}>
