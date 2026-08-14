@@ -193,7 +193,7 @@ export default function OrderDetail() {
   const [pay, setPay] = useState(null);
   const [err, setErr] = useState('');
   const [edit, setEdit] = useState(false);
-  const [editForm, setEditForm] = useState({ order_name: '', groom_name: '', bride_name: '', customer_phone: '', address: '', shoot_date: '', executor: '', remark: '', status: '', time_slots: [], period: 'full', extra_items: [] });
+  const [editForm, setEditForm] = useState({ order_name: '', groom_name: '', bride_name: '', customer_phone: '', address: '', shoot_date: '', executor: '', remark: '', status: '', time_slots: [], period: 'full', extra_items: [], custom_time: '' });
   const [share, setShare] = useState(null);
   const [shareModal, setShareModal] = useState(false);
   const [shareBusy, setShareBusy] = useState(false);
@@ -1815,10 +1815,11 @@ export default function OrderDetail() {
         <AddScheduleModal
           initialDate={editForm.shoot_date}
           initialSlots={editForm.time_slots}
+          initialCustomTime={editForm.custom_time}
           packageName={(pkgInfo && pkgInfo.name) || detail.order_package || ''}
           totalAmount={detail.total_amount || detail.package_price || 0}
           onClose={() => setAddSched(false)}
-          onConfirm={(date, slots, period) => { setEditForm((f) => ({ ...f, shoot_date: date, time_slots: slots, period: period || 'full' })); setSlotOpen(false); setAddSched(false); }}
+          onConfirm={(date, slots, period, customTime) => { setEditForm((f) => ({ ...f, shoot_date: date, time_slots: slots, period: period || 'full', custom_time: customTime || '' })); setSlotOpen(false); setAddSched(false); }}
         />
       )}
 
@@ -2501,17 +2502,21 @@ const filterBtnStyle = { height: 32, padding: '0 16px', borderRadius: 2, border:
 const modalInputStyle = { width: '100%', padding: '8px 12px', borderRadius: 4, border: '1px solid ' + DIV, color: '#222222', fontSize: 14, outline: 'none', background: '#fff' };
 
 /* 添加档期弹窗（1:1 复刻拾光盒子「新增订单」弹窗：选择场次 24 时段 + 半天全天 + 日期待定 + 套系名称） */
-function AddScheduleModal({ initialDate = '', initialSlots = [], initialPeriod = 'full', packageName = '', totalAmount = 0, onClose, onConfirm }) {
+function AddScheduleModal({ initialDate = '', initialSlots = [], initialPeriod = 'full', initialCustomTime = '', packageName = '', totalAmount = 0, onClose, onConfirm }) {
   const [date, setDate] = useState(initialDate || '');
   const [slots, setSlots] = useState(Array.isArray(initialSlots) ? initialSlots : []);
   const [period, setPeriod] = useState(initialPeriod || 'full');
   const [tbd, setTbd] = useState(false);
   const [err, setErr] = useState('');
+  // 自定义时间（文字输入，如「早上6:00-晚上21:00」）
+  const [customTime, setCustomTime] = useState(initialCustomTime || '');
+  const [customInput, setCustomInput] = useState('');
+  const [customOpen, setCustomOpen] = useState(false);
   const toggle = (h) => setSlots((s) => s.includes(h) ? s.filter((x) => x !== h) : [...s, h]);
   // 选择「半天/全天」时清空 slots
   const pickPeriod = (p) => { setPeriod(p); setSlots([]); };
   const confirm = () => {
-    onConfirm(date, slots, period);
+    onConfirm(date, slots, period, customTime);
   };
   return (
     <div className="fixed inset-0 z-[95] flex items-end" style={{ background: 'rgba(0,0,0,0.45)' }} onClick={onClose}>
@@ -2525,11 +2530,14 @@ function AddScheduleModal({ initialDate = '', initialSlots = [], initialPeriod =
         </div>
         {/* 内容区：可滚动 */}
         <div className="flex-1 overflow-y-auto" style={{ padding: '0 16px 16px' }}>
-          {/* 自定义时间 */}
-          <div style={{ background: '#fff', borderRadius: 8, marginBottom: 12, padding: '14px 14px', fontSize: 14, color: '#333', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          {/* 自定义时间（点击弹嵌套底部上滑弹窗输入文字） */}
+          <button type="button" onClick={() => { setCustomInput(customTime); setCustomOpen(true); }}
+            style={{ width: '100%', background: '#fff', borderRadius: 8, marginBottom: 12, padding: '14px 14px', fontSize: 14, color: '#333', display: 'flex', alignItems: 'center', justifyContent: 'space-between', border: 'none', cursor: 'pointer', textAlign: 'left' }}>
             <span>自定义时间</span>
-            <span style={{ color: '#bbb' }}>›</span>
-          </div>
+            <span style={{ color: customTime ? '#222' : '#bbb', maxWidth: '60%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {customTime || '›'}
+            </span>
+          </button>
           {/* 可选场次 24 时段网格 + 半天/全天 */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 4px 12px' }}>
             <span style={{ fontSize: 14, color: '#333' }}>可选场次</span>
@@ -2559,6 +2567,27 @@ function AddScheduleModal({ initialDate = '', initialSlots = [], initialPeriod =
         <div className="flex justify-center shrink-0" style={{ padding: '12px 16px calc(16px + env(safe-area-inset-bottom))', background: '#fff', borderTop: '1px solid #F0F0F0' }}>
           <button type="button" onClick={confirm} style={{ width: '100%', padding: '12px 16px', background: '#FA5151', color: '#fff', fontSize: 15, border: 'none', borderRadius: 6, cursor: 'pointer' }}>确认</button>
         </div>
+
+        {/* 自定义时间嵌套弹窗（底部上滑小弹窗） */}
+        {customOpen && (
+          <div className="fixed inset-0 z-[100] flex items-end" style={{ background: 'rgba(0,0,0,0.45)' }} onClick={() => setCustomOpen(false)}>
+            <div onClick={(e) => e.stopPropagation()} style={{ width: '100%', maxWidth: 480, margin: '0 auto', background: '#fff', borderTopLeftRadius: 16, borderTopRightRadius: 16, padding: '20px 16px calc(16px + env(safe-area-inset-bottom))', boxShadow: '0 -6px 24px rgba(0,0,0,0.18)' }}>
+              <div style={{ fontSize: 16, color: '#222', fontWeight: 500, textAlign: 'center', marginBottom: 6 }}>自定义时间</div>
+              <div style={{ fontSize: 12, color: '#999', textAlign: 'center', marginBottom: 14 }}>输入拍摄时间文字描述，如「早上6:00-晚上21:00」</div>
+              <input
+                autoFocus
+                value={customInput}
+                onChange={(e) => setCustomInput(e.target.value)}
+                placeholder="早上6:00-晚上21:00"
+                style={{ width: '100%', padding: '12px 14px', border: '1px solid #D1D5DB', borderRadius: 6, fontSize: 14, color: '#222', outline: 'none', background: '#fff', boxSizing: 'border-box' }}
+              />
+              <div style={{ display: 'flex', gap: 12, marginTop: 14 }}>
+                <button type="button" onClick={() => setCustomOpen(false)} style={{ flex: 1, padding: '12px', background: '#fff', border: '1px solid #D1D5DB', borderRadius: 6, color: '#666', fontSize: 14 }}>取消</button>
+                <button type="button" onClick={() => { setCustomTime(customInput); setCustomOpen(false); }} style={{ flex: 1, padding: '12px', background: '#FA5151', color: '#fff', border: 'none', borderRadius: 6, fontSize: 14, fontWeight: 500 }}>确定</button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
