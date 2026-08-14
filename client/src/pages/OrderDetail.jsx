@@ -1019,13 +1019,13 @@ export default function OrderDetail() {
           {/* 固定底部：关闭订单 + 完成拍摄 */}
           <div style={{ position: 'fixed', left: 0, right: 0, bottom: 0, display: 'flex', zIndex: 40, background: '#fff', boxShadow: '0 -2px 8px rgba(0,0,0,0.05)' }}>
             <button type="button" onClick={cancel} disabled={detail?.cancelled}
-              style={{ flex: 1, padding: '14px 0 calc(14px + env(safe-area-inset-bottom))', background: '#B5B5B5', color: '#fff', fontSize: 16, border: 'none', opacity: detail?.cancelled ? 0.4 : 1 }}>关闭订单</button>
+              style={{ flex: 1, padding: '12px 0 calc(12px + env(safe-area-inset-bottom))', background: '#B5B5B5', color: '#fff', fontSize: 15, border: 'none', opacity: detail?.cancelled ? 0.4 : 1 }}>关闭订单</button>
             <button type="button" onClick={finishShoot} disabled={detail?.cancelled}
-              style={{ flex: 1, padding: '14px 0 calc(14px + env(safe-area-inset-bottom))', background: '#FA5151', color: '#fff', fontSize: 16, border: 'none', opacity: detail?.cancelled ? 0.4 : 1 }}>完成拍摄</button>
+              style={{ flex: 1, padding: '12px 0 calc(12px + env(safe-area-inset-bottom))', background: '#FA5151', color: '#fff', fontSize: 15, border: 'none', opacity: detail?.cancelled ? 0.4 : 1 }}>完成拍摄</button>
           </div>
         </div>
       ) : (
-        <div style={{ background: '#f7f7f7', minHeight: '100vh', padding: isMobile ? `0 0 calc(64px + env(safe-area-inset-bottom))` : '0 16px 24px', maxWidth: 1280, width: '100%', margin: '0 auto', boxSizing: 'border-box' }}>
+        <div style={{ background: '#f7f7f7', minHeight: '100vh', padding: isMobile ? `0 0 calc(72px + env(safe-area-inset-bottom))` : '0 16px 24px', maxWidth: 1280, width: '100%', margin: '0 auto', boxSizing: 'border-box' }}>
       {/* ============ Module 3：订单状态卡片（白色卡片 + 左侧操作 + 右侧 4 步进度条，复刻第3张） ============ */}
       <section style={{ margin: isMobile ? '8px 12px 0' : '8px 24px 0', background: '#FFFFFF', border: '1px solid ' + CARD_BORDER, borderTop: '3px solid ' + TEAL, borderRadius: 4, boxShadow: '0 1px 5px rgba(0,0,0,0.04)' }}>
         <div className="flex items-stretch" style={{ minHeight: 132, flexWrap: isMobile ? 'wrap' : 'nowrap' }}>
