@@ -810,7 +810,7 @@ export default function OrderDetail() {
           </div>
 
           {/* 状态卡 + 业务流进度条（后台 12 步，横向滑动） */}
-          <div style={{ margin: '12px 12px 0', background: '#fff', borderRadius: 8, padding: '12px 12px 14px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)', borderBottom: '1px solid #EEEEEE' }}>
+          <div style={{ margin: '12px 12px 0', background: '#fff', borderRadius: 8, padding: '12px 12px 14px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
             {/* 卡片顶部：左上「上一步」+ 右上「下一步」（与桌面态按钮共用 stepPrev/stepNext，逐格推进/回退进度条节点） */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
               <button type="button" onClick={stepPrev} disabled={detail?.cancelled}
@@ -858,6 +858,9 @@ export default function OrderDetail() {
               <button type="button" onClick={() => setLogModal(true)} style={{ background: 'none', border: 'none', color: '#FA5151', fontSize: 12, padding: 0 }}>状态变更记录 ›</button>
             </div>
           </div>
+
+          {/* 状态卡与下方套餐卡之间的 1px 分隔线（横贯全屏宽，左右 indent 12px） */}
+          <div style={{ height: 1, background: '#EEEEEE', margin: '0 12px' }} />
 
           {/* 客户 + 套系 + 价格 */}
           <div style={{ margin: '12px 12px 0', background: '#fff', borderRadius: 8, padding: '14px 14px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
