@@ -939,10 +939,12 @@ function MobileOrderCenterView({ stats, list, listTotal, state, setState, refres
           const arr = d[k] || [];
           return { ...d, [k]: arr.includes(v) ? arr.filter((x) => x !== v) : [...arr, v] };
         });
-        const resetDraft = () => setFilterDraft({
-          sort: 'recent', executorIds: [], statuses: [], types: [],
-          shootFrom: '', shootTo: '', orderFrom: '', orderTo: ''
-        });
+        const resetDraft = () => {
+          const empty = { sort: 'recent', executorIds: [], statuses: [], types: [], shootFrom: '', shootTo: '', orderFrom: '', orderTo: '' };
+          setFilterDraft(empty);
+          // 「重置」立即生效：同时清空列表过滤（否则只清草稿、列表不刷新，用户以为没清除）
+          setState((s) => ({ ...s, ...empty }));
+        };
         const applyDraft = () => {
           setState((s) => ({
             ...s,
