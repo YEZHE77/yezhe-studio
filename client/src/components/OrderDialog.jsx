@@ -55,7 +55,7 @@ function buildMonth(year, month0) {
   return cells;
 }
 
-export default function OrderDialog({ orderDlg, personnel, onClose, onSaved, mode = 'modal' }) {
+export default function OrderDialog({ orderDlg, personnel, onClose, onSaved, mode = 'modal', topTitle = '新增订单' }) {
   const nav = useNavigate();
   const isPage = mode === 'page';
   const isMobile = isPage || (window.innerWidth || 1200) < 768;
@@ -818,7 +818,7 @@ export default function OrderDialog({ orderDlg, personnel, onClose, onSaved, mod
         }}
       >
         <div className="relative" style={{ marginBottom: 24 }}>
-          <div className="text-center" style={{ fontSize: 16, fontWeight: 500, color: '#333333' }}>新增订单</div>
+          <div className="text-center" style={{ fontSize: 16, fontWeight: 500, color: '#333333' }}>{topTitle}</div>
           <button onClick={requestClose} aria-label="关闭"
             className="absolute top-0 hover:text-[#333333] transition-colors"
             style={{ right: 0, fontSize: 24, lineHeight: 1, color: '#999999' }}>×</button>

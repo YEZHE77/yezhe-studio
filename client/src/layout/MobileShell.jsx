@@ -110,7 +110,7 @@ const QUICK_CREATE = [
   { label: '新建作品', icon: 'photo', to: '/works/new' },
   { label: '新建套系', icon: 'package', to: '/packages/new' },
   { label: '新建订单', icon: 'order', to: '/orders/new' },
-  { label: '新建档期', icon: 'calendar', to: '/schedule' }
+  { label: '新建档期', icon: 'calendar', to: '/schedule/new', state: { topTitle: '新建档期' } }
 ];
 
 function ActionSheet({ open, onClose }) {
@@ -122,7 +122,7 @@ function ActionSheet({ open, onClose }) {
         <div style={{ fontSize: 13, color: MUTED, textAlign: 'center', marginBottom: 12 }}>快捷新建</div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', background: '#fff', borderRadius: 12, border: '1px solid #EFEFEF' }}>
           {QUICK_CREATE.map((q) => (
-            <button key={q.label} type="button" onClick={() => { onClose(); nav(q.to); }} className="flex flex-col items-center justify-center" style={{ padding: '16px 4px' }}>
+            <button key={q.label} type="button" onClick={() => { onClose(); nav(q.to, { state: q.state || {} }); }} className="flex flex-col items-center justify-center" style={{ padding: '16px 4px' }}>
               <span style={{ width: 44, height: 44, borderRadius: 12, background: 'rgba(96,196,170,0.10)', color: GREEN_DARK, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <Icon name={q.icon} className="w-6 h-6" />
               </span>
