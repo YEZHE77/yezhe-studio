@@ -864,7 +864,7 @@ export default function OrderDetail() {
 
           {/* 客户 + 套系 + 价格 */}
           <div style={{ margin: '12px 12px 0', background: '#fff', borderRadius: 8, padding: '14px 14px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <div style={{ width: 30, height: 30, borderRadius: '50%', background: pickAvatarColor(custName), color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, flexShrink: 0 }}>{custInitial}</div>
                 <span style={{ fontSize: 15, color: '#1f2329' }}>{custName}</span>
@@ -879,6 +879,8 @@ export default function OrderDetail() {
                 <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm0 2c-3 0-8 1.5-8 4.5V21h16v-2.5c0-3-5-4.5-8-4.5z" /></svg>
               </div>
             </div>
+            {/* 客户行与套餐行之间的 1px 分隔线（横贯卡片全宽） */}
+            <div style={{ height: 1, background: '#EEEEEE', margin: '14px -14px 14px' }} />
             <div style={{ display: 'flex', gap: 12 }}>
               {pkgInfo?.cover_url && (
                 <img src={img(pkgInfo.cover_url)} alt="" style={{ width: 96, height: 96, borderRadius: 6, objectFit: 'cover', flexShrink: 0 }} />
