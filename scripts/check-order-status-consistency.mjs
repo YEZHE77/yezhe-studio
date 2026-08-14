@@ -1,18 +1,20 @@
 #!/usr/bin/env node
 /* ==========================================================================
    check-order-status-consistency.mjs — 订单状态/路由「跨端一致性」校验
-   —— 防止四类反复出现的错位事故：
+   —— 防止五类反复出现的错位事故：
      ① 双壳路由漏注册：B 端业务路由只在 AppShell 注册、漏了 MobileShell（手机端点新建→跳"订单不存在"）
      ② 状态关键词分叉：后端 stats/orders 的 LIKE 关键词与前端 OrderDetail 的 ORDER_STEPS_11 kws 不一致
         （详情页进度条显示「等待拍摄」，后端待办 Tab 却查不到 → 计数为 0）
      ③ 渲染层一刀切映射：STATUS_LABEL.deposit 被映射为「等待拍摄」而非「已付定金」
         （「已付定金」筛选/Tab 里的订单却显示「等待拍摄」）
      ④ 非法 status 枚举：STEP_ACTIONS 用了不存在的 status 值（合法仅 6 阶段），各端不认识该状态
+     ⑤ 边界值偏移：STATUS_BOUNDARY_11 的值偏离「该状态 current 步骤 index」，导致进度条节点与状态错位
    —— 用法：node scripts/check-order-status-consistency.mjs（在 monorepo 根目录执行）
    —— 规则：
      路由不一致 = 硬失败（会真实 404/白屏）
      deposit 一刀切映射 = 硬失败（语义与后端过滤分叉）
      非法 status 枚举 = 硬失败（各端不认识该状态）
+     STATUS_BOUNDARY_11 边界值偏离 = 硬失败（进度条节点错位）
      关键词不一致 = 警告（提示人工复核，可能是有意用 label 或历史兼容）
    ========================================================================== */
 import fs from 'node:fs';
@@ -126,8 +128,34 @@ if (illegal.length) {
   console.log('✓ STEP_ACTIONS status 枚举合法');
 }
 
+// ========== 检查 5：STATUS_BOUNDARY_11 边界值语义校验（硬失败） ==========
+// boundary 语义 = 该 status 阶段在 11 步进度条上的「current 步骤 index」
+// （boundary=6 表示步骤 0..5 已完成、步骤 6 是 current，与 build11Steps 的 within = (i+1) <= boundary 一致）
+// 正确映射：
+//   deposit: 2     → current = 生成合同 (i=2)
+//   shot: 6        → current = 选片中 (i=6)
+//   selecting: 6   → current = 选片中 (i=6)
+//   retouching: 7  → current = 精修中 (i=7)
+//   delivered: 11  → current = 订单完结 (i=11)
+//   completed: 12  → 全部完成
+const EXPECTED_BOUNDARY = { deposit: 2, shot: 6, selecting: 6, retouching: 7, delivered: 11, completed: 12 };
+const boundaryMatch = detailSrc.match(/STATUS_BOUNDARY_11\s*=\s*\{([^}]+)\}/);
+if (boundaryMatch) {
+  const parsed = {};
+  for (const m of boundaryMatch[1].matchAll(/(\w+):\s*(\d+)/g)) parsed[m[1]] = Number(m[2]);
+  for (const [k, v] of Object.entries(EXPECTED_BOUNDARY)) {
+    if (parsed[k] !== v) {
+      console.error(`✗ STATUS_BOUNDARY_11.${k} 应为 ${v}（current 步骤 index），当前 ${parsed[k]}，会导致进度条节点与状态错位`);
+      failed = true;
+    }
+  }
+  if (!failed) console.log('✓ STATUS_BOUNDARY_11 边界值正确');
+} else {
+  console.warn('⚠ 未找到 STATUS_BOUNDARY_11 定义，跳过边界值校验');
+}
+
 if (failed) {
-  console.error('\n校验失败：存在双壳路由漏注册 / deposit 一刀切映射 / 非法 status 枚举，提交前必须修复！');
+  console.error('\n校验失败：存在双壳路由漏注册 / deposit 一刀切映射 / 非法 status 枚举 / STATUS_BOUNDARY_11 边界值偏移，提交前必须修复！');
   process.exit(1);
 }
 console.log('\n校验通过 ✔');
