@@ -789,15 +789,14 @@ export default function OrderDetail() {
               <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#1f2329" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
             </button>
             <div style={{ fontSize: 16, color: '#1f2329' }}>{(() => {
-              const phase = detail?.status === 'cancelled' ? '已关闭'
-                : detail?.status === 'completed' ? '已完成'
-                : detail?.status === 'shot' ? '已拍摄'
-                : detail?.status === 'selecting' ? '选片中'
-                : detail?.status === 'retouching' ? '精修中'
-                : detail?.status === 'delivered' ? '已交付'
-                : detail?.payment_status === 'unpaid' ? '待付定金'
-                : '等待拍摄';
-              return phase;
+              // 与下方 build11Steps 一致：从 logs 推断当前阶段标签，不依赖 status 字段
+              // （避免 STEP_ACTIONS 没更新 status 时，文案与进度条节点错位）
+              const cur = steps.find((s) => s.state === 'current');
+              if (cur) return cur.label;
+              if (detail?.status === 'cancelled') return '已关闭';
+              if (detail?.status === 'completed') return '已完成';
+              if (detail?.status === 'delivered') return '已交付';
+              return detail?.payment_status === 'unpaid' ? '待付定金' : '等待拍摄';
             })()}</div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <button type="button" onClick={printOrder} style={{ background: 'none', border: 'none', padding: 4, display: 'flex', alignItems: 'center' }}>
@@ -820,13 +819,15 @@ export default function OrderDetail() {
             </div>
             <div style={{ textAlign: 'center', fontSize: 14, color: '#1f2329', marginBottom: 14 }}>
               {detail?.payment_status === 'paid' ? '已付全款' : '已付定金'}，
-              {detail?.status === 'cancelled' ? '订单已关闭'
-                : detail?.status === 'completed' ? '订单已完成'
-                : detail?.status === 'shot' ? '等待选片'
-                : detail?.status === 'selecting' ? '选片中'
-                : detail?.status === 'retouching' ? '精修中'
-                : detail?.status === 'delivered' ? '已交付'
-                : '等待拍摄'}
+              {(() => {
+                // 与下方 build11Steps 一致：从 logs 推断当前阶段标签
+                const cur = steps.find((s) => s.state === 'current');
+                if (cur) return cur.label;
+                if (detail?.status === 'cancelled') return '订单已关闭';
+                if (detail?.status === 'completed') return '订单已完成';
+                if (detail?.status === 'delivered') return '已交付';
+                return '等待拍摄';
+              })()}
             </div>
             {/* 业务流进度条：11 步横向滑动（节点下仅文字无日期；完成=蓝勾/当前=蓝实心/未达=灰空心） */}
             <div style={{ overflowX: 'auto', overflowY: 'hidden', WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none', msOverflowStyle: 'none' }} className="hide-scrollbar">
