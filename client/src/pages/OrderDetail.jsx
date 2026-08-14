@@ -2515,7 +2515,6 @@ function AddScheduleModal({ initialDate = '', initialSlots = [], initialPeriod =
   // 选择「半天/全天」时清空 slots
   const pickPeriod = (p) => { setPeriod(p); setSlots([]); };
   const confirm = () => {
-    if (!tbd && !date) return setErr('请选择拍摄日期');
     onConfirm(date, slots, period);
   };
   return (
@@ -2530,47 +2529,8 @@ function AddScheduleModal({ initialDate = '', initialSlots = [], initialPeriod =
         <button type="button" onClick={confirm} style={{ background: 'none', border: 'none', color: '#1f2329', fontSize: 15, cursor: 'pointer', padding: 4 }}>保存</button>
       </div>
       <div style={{ flex: 1, overflowY: 'auto', padding: '0 16px 16px' }}>
-          {/* 拍摄设置：日期 / 时间 / 地点 */}
-          <div style={{ fontSize: 13, color: '#999999', padding: '12px 4px 6px' }}>拍摄设置</div>
-          <div style={{ background: '#fff', borderRadius: 8, overflow: 'hidden' }}>
-            {/* 拍摄日期 */}
-            <button type="button" onClick={() => {/* 由 native date picker 触发 */}} style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 14px', background: 'none', border: 'none', borderBottom: '1px solid #F2F2F2', fontSize: 14, color: '#333', textAlign: 'left', cursor: 'pointer' }}>
-              <span>拍摄日期</span>
-              <span style={{ color: '#222', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                {tbd ? '日期待定' : (date ? date.replace(/-/g, ' 年 ').replace(/^(\d{4}) 年 (\d{2}) 月 (\d{2})/, '$1 年 $2 月 $3 日') : '请选择')} <span style={{ color: '#999' }}>›</span>
-              </span>
-            </button>
-            {/* 拍摄时间（按 period / slots 末位回填；参考图显示「下午 23:00」） */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 14px', borderBottom: '1px solid #F2F2F2', fontSize: 14, color: '#333' }}>
-              <span>拍摄时间</span>
-              <span style={{ color: '#999' }}>
-                {period === 'full' ? '全天' : period === 'half' ? '半天' : (slots.length ? '下午 ' + (slots[slots.length - 1] || '') : '请选择场次')}
-              </span>
-            </div>
-            {/* 拍摄地点（暂为展示） */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 14px', fontSize: 14, color: '#333' }}>
-              <span>拍摄地点</span>
-              <span style={{ color: '#999' }}>待定</span>
-            </div>
-          </div>
-          {/* 价格设置（套系名称 + 总价） */}
-          <div style={{ fontSize: 13, color: '#999999', padding: '16px 4px 6px' }}>价格设置</div>
-          <div style={{ background: '#fff', borderRadius: 8, overflow: 'hidden' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 14px', borderBottom: '1px solid #F2F2F2', fontSize: 14, color: '#333' }}>
-              <span>预定套系</span>
-              <span style={{ color: '#222' }}>{packageName || '—'}</span>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 14px', fontSize: 14, color: '#333' }}>
-              <span>总价</span>
-              <span style={{ color: '#222' }}>¥ {Number(totalAmount || 0).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-            </div>
-          </div>
-          {/* 当前已选日期（参考图展示：2026 年 08 月 10 日） */}
-          {!tbd && date && (
-            <div style={{ fontSize: 13, color: '#999999', padding: '20px 4px 8px' }}>{date.replace(/-/g, ' 年 ').replace(/(\d{2}) 年 (\d{2}) 月 (\d{2})/, '$1 年 $2 月 $3 日')}</div>
-          )}
           {/* 自定义时间 */}
-          <div style={{ background: '#fff', borderRadius: 8, marginBottom: 16, padding: '14px 14px', fontSize: 14, color: '#333', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ background: '#fff', borderRadius: 8, marginTop: 16, marginBottom: 16, padding: '14px 14px', fontSize: 14, color: '#333', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <span>自定义时间</span>
             <span style={{ color: '#bbb' }}>›</span>
           </div>
