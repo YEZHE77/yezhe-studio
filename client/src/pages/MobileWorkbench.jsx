@@ -339,10 +339,10 @@ export default function MobileWorkbench() {
             <div style={{ fontSize: 11, color: '#BBBBBB', marginTop: 6 }}>余额</div>
           </div>
           <div style={{ width: 1, background: LINE, margin: '14px 0' }} />
-          {/* 已付定金：点击跳待办事项并定位到「等待拍摄」Tab（deposit=已付定金=等待拍摄） */}
+          {/* 已付定金：点击跳待办事项并定位到「已付定金」Tab（进度条未到等待拍摄节点） */}
           <button
             type="button"
-            onClick={() => nav('/todo?tab=waiting')}
+            onClick={() => nav('/todo?tab=deposit')}
             style={{ flex: 1, textAlign: 'center', padding: '14px 0 12px', background: 'none', border: 'none' }}
           >
             <div style={{ fontSize: 24, color: TEXT, lineHeight: 1 }}>{depositCount}</div>

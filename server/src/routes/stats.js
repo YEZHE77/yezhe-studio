@@ -46,11 +46,13 @@ router.get('/', authRequired, async (req, res) => {
       delivered: pending.delivered || 0 // 未交片
     };
 
-    // 待办事项 Tab 计数（与 /api/orders/stats 完全同口径，供首页「已付定金/等待拍摄」卡片对齐）
+    // 待办事项 Tab 计数（与 /api/orders/stats 完全同口径）
+    // 口径：已付定金 = 已付定金且未拍摄、且进度条还没推进到「等待拍摄」节点；
+    //       等待拍摄 = 已付定金且未拍摄、且进度条已推进到「等待拍摄」节点（logs 含「等待拍摄」/「拍摄执行」）
     const todoWhere = 'WHERE cancelled = 0 AND is_deleted = 0';
     const [depositRow, waitingShootRow, unDeliveredRow, selectingRow, retouchingRow] = await Promise.all([
-      get(`SELECT COUNT(*) AS c FROM orders ${todoWhere} AND payment_status = 'deposit'`),
-      get(`SELECT COUNT(*) AS c FROM orders ${todoWhere} AND payment_status = 'deposit' AND status = 'deposit'`),
+      get(`SELECT COUNT(*) AS c FROM orders ${todoWhere} AND payment_status = 'deposit' AND status = 'deposit' AND (logs IS NULL OR logs = '' OR (logs NOT LIKE '%等待拍摄%' AND logs NOT LIKE '%拍摄执行%'))`),
+      get(`SELECT COUNT(*) AS c FROM orders ${todoWhere} AND payment_status = 'deposit' AND status = 'deposit' AND (logs LIKE '%等待拍摄%' OR logs LIKE '%拍摄执行%')`),
       get(`SELECT COUNT(*) AS c FROM orders ${todoWhere} AND status = 'shot'`),
       get(`SELECT COUNT(*) AS c FROM orders ${todoWhere} AND status = 'selecting'`),
       get(`SELECT COUNT(*) AS c FROM orders ${todoWhere} AND status = 'retouching'`)

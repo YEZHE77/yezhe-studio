@@ -82,7 +82,8 @@ router.get('/', authRequired, async (req, res) => {
         else if (s === 'tbd_date') { ors.push('date_tbd = 1'); }
         else if (s === 'unpaid_deposit') { ors.push('payment_status = ?'); params.push('unpaid'); }
         else if (s === 'has_balance') { ors.push('balance > 0'); }
-        else if (s === 'waiting_shoot') { ors.push('status = ?'); params.push('deposit'); }
+        else if (s === 'waiting_shoot') { ors.push("payment_status = 'deposit' AND status = 'deposit' AND (logs LIKE '%等待拍摄%' OR logs LIKE '%拍摄执行%')"); }
+        else if (s === 'deposit_pending') { ors.push("payment_status = 'deposit' AND status = 'deposit' AND (logs IS NULL OR logs = '' OR (logs NOT LIKE '%等待拍摄%' AND logs NOT LIKE '%拍摄执行%'))"); }
         else if (s === 'waiting_raw') { ors.push('status = ?'); params.push('shot'); }
         else if (s === 'selecting') { ors.push('status = ?'); params.push('selecting'); }
         else if (s === 'waiting_retouch') { ors.push('status = ?'); params.push('retouching'); }
@@ -188,11 +189,12 @@ router.get('/stats', authRequired, async (req, res) => {
     // 订单总数（筛选栏「所有订单 (N)」用，后端动态返回，前端禁止硬编码）
     const tot = await get('SELECT COUNT(*) AS c FROM orders WHERE cancelled = 0 AND is_deleted = 0');
 
-    // 工作台「待办事项」分类统计（deposit=已付定金含后续各阶段，waitingShoot=已付定金且未拍摄）
+    // 工作台「待办事项」分类统计
+    // 口径：已付定金 = 已付定金且未拍摄、进度条未到「等待拍摄」节点；等待拍摄 = 进度条已到「等待拍摄」节点
     const todoWhere = 'WHERE cancelled = 0 AND is_deleted = 0';
     const [depositRow, waitingShootRow, unDeliveredRow, selectingRow, retouchingRow] = await Promise.all([
-      get(`SELECT COUNT(*) AS c FROM orders ${todoWhere} AND payment_status = 'deposit'`),
-      get(`SELECT COUNT(*) AS c FROM orders ${todoWhere} AND payment_status = 'deposit' AND status = 'deposit'`),
+      get(`SELECT COUNT(*) AS c FROM orders ${todoWhere} AND payment_status = 'deposit' AND status = 'deposit' AND (logs IS NULL OR logs = '' OR (logs NOT LIKE '%等待拍摄%' AND logs NOT LIKE '%拍摄执行%'))`),
+      get(`SELECT COUNT(*) AS c FROM orders ${todoWhere} AND payment_status = 'deposit' AND status = 'deposit' AND (logs LIKE '%等待拍摄%' OR logs LIKE '%拍摄执行%')`),
       get(`SELECT COUNT(*) AS c FROM orders ${todoWhere} AND status = 'shot'`),
       get(`SELECT COUNT(*) AS c FROM orders ${todoWhere} AND status = 'selecting'`),
       get(`SELECT COUNT(*) AS c FROM orders ${todoWhere} AND status = 'retouching'`)
