@@ -933,11 +933,11 @@ export default function OrderDetail() {
                 { k: '下单时间', v: created, chevron: false }
               ];
               return rows.map((r, i) => (
-                <div key={r.k} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '13px 16px', borderTop: i === 0 ? 'none' : '1px solid #F2F2F2' }}>
+                <div key={r.k} onClick={r.chevron ? openEdit : undefined} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '13px 16px', borderTop: i === 0 ? 'none' : '1px solid #F2F2F2', cursor: r.chevron ? 'pointer' : 'default' }}>
                   <span style={{ fontSize: 14, color: '#1f2329' }}>{r.k}</span>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                     <span style={{ fontSize: 14, color: r.v === '未填写' || r.v === '未排期' ? '#bbb' : '#666' }}>{r.v}</span>
-                    {r.chevron && <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#CCCCCC" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6" /></svg>}
+                    {r.chevron && <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#7ECDBB" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6" /></svg>}
                   </div>
                 </div>
               ));
@@ -958,11 +958,11 @@ export default function OrderDetail() {
                 { k: '其他消费', v: extraList.length ? `¥${extraSum.toLocaleString()}` : '无', chevron: true }
               ];
               return rows.map((r, i) => (
-                <div key={r.k} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '13px 16px' }}>
+                <div key={r.k} onClick={r.chevron ? openEdit : undefined} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '13px 16px', cursor: r.chevron ? 'pointer' : 'default' }}>
                   <span style={{ fontSize: 14, color: '#1f2329' }}>{r.k}</span>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                     <span style={{ fontSize: 14, color: r.v === '—' || r.v === '无' ? '#bbb' : '#666' }}>{r.v}</span>
-                    {r.chevron && <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#CCCCCC" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6" /></svg>}
+                    {r.chevron && <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#7ECDBB" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6" /></svg>}
                   </div>
                 </div>
               ));
