@@ -17,7 +17,7 @@ import OrderCreateModal from '../components/OrderCreateModal.jsx';
    ========================================================================== */
 
 const STATUS_LABEL = {
-  deposit: '等待拍摄', shot: '已拍摄', selecting: '选片中',
+  deposit: '已付定金', shot: '已拍摄', selecting: '选片中',
   retouching: '精修中', delivered: '已交付', completed: '已完成', cancelled: '已关闭'
 };
 

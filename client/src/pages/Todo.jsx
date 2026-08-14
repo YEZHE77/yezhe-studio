@@ -22,7 +22,7 @@ const TAB_DEFS = [
 // 状态文本映射（与 Orders.jsx 卡片 STATUS_LABEL 同步）
 const STATUS_LABEL = {
   unpaid: '未付定金',
-  deposit: '等待拍摄',
+  deposit: '已付定金',
   shot: '已拍摄',
   selecting: '选片中',
   retouching: '精修中',
