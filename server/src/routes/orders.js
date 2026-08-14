@@ -88,8 +88,8 @@ router.get('/', authRequired, async (req, res) => {
         else if (s === 'selecting') { ors.push('status = ?'); params.push('selecting'); }
         else if (s === 'todo_selecting') { ors.push("status IN ('shot', 'selecting')"); }
         else if (s === 'retouching') { ors.push('status = ?'); params.push('retouching'); }
-        else if (s === 'todo_retouch') { ors.push("status = 'retouching' AND (logs IS NULL OR logs = '' OR (logs NOT LIKE '%精修完成%' AND logs NOT LIKE '%全部精修完成%' AND logs NOT LIKE '%原片打包%'))"); }
-        else if (s === 'todo_deliver') { ors.push("status = 'retouching' AND (logs LIKE '%精修完成%' OR logs LIKE '%全部精修完成%' OR logs LIKE '%原片打包%')"); }
+        else if (s === 'todo_retouch') { ors.push("status = 'retouching' AND (logs IS NULL OR logs = '' OR (logs NOT LIKE '%精修完成%' AND logs NOT LIKE '%全部精修完成%' AND logs NOT LIKE '%底片打包%' AND logs NOT LIKE '%原片打包%'))"); }
+        else if (s === 'todo_deliver') { ors.push("status = 'retouching' AND (logs LIKE '%精修完成%' OR logs LIKE '%全部精修完成%' OR logs LIKE '%底片打包%' OR logs LIKE '%原片打包%')"); }
         else if (s === 'waiting_retouch') { ors.push('status = ?'); params.push('retouching'); }
         else if (s === 'downloading') { ors.push('status = ?'); params.push('delivered'); }
         else if (s === 'pending_review') { ors.push('status = ?'); params.push('completed'); }
@@ -194,14 +194,14 @@ router.get('/stats', authRequired, async (req, res) => {
     const tot = await get('SELECT COUNT(*) AS c FROM orders WHERE cancelled = 0 AND is_deleted = 0');
 
     // 工作台「待办事项」分类统计（按订单详情进度条节点区分）
-    //   待选片 = shot/selecting；精修中 = retouching 且未精修完成；待交付 = retouching 且已精修完成/原片打包
+    //   待选片 = shot/selecting；精修中 = retouching 且未精修完成；待交付 = retouching 且已精修完成/底片打包
     const todoWhere = 'WHERE cancelled = 0 AND is_deleted = 0';
     const [depositRow, waitingShootRow, selectingRow, retouchingRow, toDeliverRow] = await Promise.all([
       get(`SELECT COUNT(*) AS c FROM orders ${todoWhere} AND payment_status = 'deposit' AND status = 'deposit' AND (logs IS NULL OR logs = '' OR (logs NOT LIKE '%等待拍摄%' AND logs NOT LIKE '%拍摄执行%'))`),
       get(`SELECT COUNT(*) AS c FROM orders ${todoWhere} AND payment_status = 'deposit' AND status = 'deposit' AND (logs LIKE '%等待拍摄%' OR logs LIKE '%拍摄执行%')`),
       get(`SELECT COUNT(*) AS c FROM orders ${todoWhere} AND status IN ('shot', 'selecting')`),
-      get(`SELECT COUNT(*) AS c FROM orders ${todoWhere} AND status = 'retouching' AND (logs IS NULL OR logs = '' OR (logs NOT LIKE '%精修完成%' AND logs NOT LIKE '%全部精修完成%' AND logs NOT LIKE '%原片打包%'))`),
-      get(`SELECT COUNT(*) AS c FROM orders ${todoWhere} AND status = 'retouching' AND (logs LIKE '%精修完成%' OR logs LIKE '%全部精修完成%' OR logs LIKE '%原片打包%')`)
+      get(`SELECT COUNT(*) AS c FROM orders ${todoWhere} AND status = 'retouching' AND (logs IS NULL OR logs = '' OR (logs NOT LIKE '%精修完成%' AND logs NOT LIKE '%全部精修完成%' AND logs NOT LIKE '%底片打包%' AND logs NOT LIKE '%原片打包%'))`),
+      get(`SELECT COUNT(*) AS c FROM orders ${todoWhere} AND status = 'retouching' AND (logs LIKE '%精修完成%' OR logs LIKE '%全部精修完成%' OR logs LIKE '%底片打包%' OR logs LIKE '%原片打包%')`)
     ]);
 
     res.json({
