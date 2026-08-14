@@ -2131,13 +2131,13 @@ export default function OrderDetail() {
         </>
       )}
 
-      {/* 打印单据内容（仅打印时可见，屏幕隐藏） */}
-      <div className="print-order-sheet" style={{ display: 'none' }}>
+      {/* 打印单据内容（屏幕外定位避免 display:none 优先级问题；打印时 @media print 覆盖到 (0,0)） */}
+      <div className="print-order-sheet" style={{ position: 'fixed', left: -10000, top: 0, width: '100%', padding: '20mm 15mm' }}>
         <style>{`
           @media print {
             body * { visibility: hidden; }
             .print-order-sheet, .print-order-sheet * { visibility: visible; }
-            .print-order-sheet { display: block !important; position: absolute; left: 0; top: 0; width: 100%; padding: 20mm 15mm; }
+            .print-order-sheet { position: absolute !important; left: 0 !important; top: 0 !important; width: 100% !important; padding: 20mm 15mm !important; }
             @page { size: A4; margin: 0; }
           }
         `}</style>
