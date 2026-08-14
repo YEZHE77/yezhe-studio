@@ -1192,8 +1192,8 @@ function OrderCard({ order, studioLogo, onClick }) {
       </div>
       <div style={{ height: 1, background: '#F0F0F0' }} />
 
-      {/* 套系名 + 分类 + 尾款标签（padding 10/12 加大对齐参考图） */}
-      <div style={{ padding: '10px 14px 12px' }}>
+      {/* 套系名 + 分类 + 尾款标签（padding-bottom 20 加大套系与日期间空白） */}
+      <div style={{ padding: '10px 14px 20px' }}>
         <div style={{ fontSize: 15, color: '#1f2329', lineHeight: 1.4, fontWeight: 600, marginBottom: 6 }}>{pkgName}</div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           {pkgCategory ? <span style={{ fontSize: 12, color: '#999' }}>{pkgCategory}</span> : null}
