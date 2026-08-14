@@ -560,7 +560,15 @@ export default function Orders() {
             return (
               <div key={o.id} className="flex items-center gap-3 px-4 py-3 border-t border-line bg-white text-sm flex-wrap">
                 <span className="flex-1 min-w-[160px]">
-                  <span className="text-fg block truncate">订单：{o.customer_name || o.order_name || '未命名订单'}</span>
+                  <span className="text-fg block truncate">
+                    订单：{o.customer_name || o.order_name || '未命名订单'}
+                    {o.channel && (
+                      <span className="shrink-0 inline-flex items-center justify-center text-white text-[11px] font-medium"
+                        style={{ width: 20, height: 20, borderRadius: 4, background: channelColor(o.channel), marginLeft: 6, verticalAlign: 'middle' }}>
+                        {o.channel.slice(0, 1)}
+                      </span>
+                    )}
+                  </span>
                   <span className="text-[11px] text-faint">订单编号：{o.order_no}</span>
                 </span>
                 <span className="w-40 text-muted truncate hidden md:block">{pkgName}</span>
