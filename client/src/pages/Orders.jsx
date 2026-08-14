@@ -344,7 +344,7 @@ export default function Orders() {
       <div className="flex items-center gap-3 px-3 py-5 rounded-lg flex-wrap" style={{ background: '#2c2c2c' }}>
         <button onClick={() => setShowForm(true)}
           className="px-4 py-1.5 rounded text-sm whitespace-nowrap"
-          style={{ background: '#2DB7F5', color: '#fff', fontSize: 14 }}>+ 添加新订单</button>
+          style={{ background: '#2DB7F5', color: '#fff', fontSize: 14 }}>+ 新建订单</button>
 
         <div className="hidden sm:block flex-1" />
 
@@ -886,7 +886,7 @@ function MobileOrderCenterView({ stats, list, listTotal, state, setState, refres
         )}
       </div>
 
-      {/* + 添加新订单（红色 FAB） */}
+      {/* + 新建订单（红色 FAB） */}
       <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowCreate(true); }} style={{
         position: 'fixed', right: 16,
         bottom: 'calc(24px + env(safe-area-inset-bottom))',
@@ -896,7 +896,7 @@ function MobileOrderCenterView({ stats, list, listTotal, state, setState, refres
         fontSize: 15, display: 'flex', alignItems: 'center', gap: 6,
         boxShadow: '0 6px 18px rgba(250,81,81,0.35)'
       }}>
-        <span style={{ fontSize: 18 }}>+</span>添加新订单
+        <span style={{ fontSize: 18 }}>+</span>新建订单
       </button>
 
       {/* 新建订单弹窗：仅点击按钮才打开，融入网页版后台添加订单逻辑（OrderCreateModal） */}
