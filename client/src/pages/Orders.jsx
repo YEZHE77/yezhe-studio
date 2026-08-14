@@ -689,28 +689,24 @@ const SORT_OPTIONS = [
   { value: 'recent', label: '最近操作' }
 ];
 
-// 筛选抽屉 pill 选项（与参考图 1:1 对齐）
+// 筛选抽屉 pill 选项（仅保留婚礼/人像摄影工作室实际会用到的状态）
+// 去掉电商/流程中状态：pending_confirm/tbd_date/waiting_raw/waiting_retouch/downloading/pending_review
 const STATUS_PILLS = [
   { value: 'all', label: '所有订单' },
-  { value: 'pending_confirm', label: '尚未确认预约' },
-  { value: 'tbd_date', label: '档期待定' },
-  { value: 'unpaid_deposit', label: '未支付定金' },
-  { value: 'has_balance', label: '未结算尾款' },
+  { value: 'unpaid_deposit', label: '未付定金' },
   { value: 'waiting_shoot', label: '等待拍摄' },
-  { value: 'waiting_raw', label: '等待上传原片' },
-  { value: 'selecting', label: '等待选片' },
-  { value: 'waiting_retouch', label: '等待上传精修' },
-  { value: 'downloading', label: '客户下载中' },
-  { value: 'pending_review', label: '待评价' },
-  { value: 'completed', label: '订单已完成' },
-  { value: 'cancelled', label: '订单已取消' }
+  { value: 'has_balance', label: '未结算尾款' },
+  { value: 'selecting', label: '选片中' },
+  { value: 'retouching', label: '精修中' },
+  { value: 'delivered', label: '已交付' },
+  { value: 'completed', label: '已完成' },
+  { value: 'cancelled', label: '已关闭' },
+  { value: '__trash', label: '回收站' }
 ];
 
+// 订单类型：婚礼/人像摄影工作室不区分「普通/促销/拼团」，只保留全部订单
 const TYPE_PILLS = [
-  { value: 'all', label: '全部订单' },
-  { value: 'normal', label: '普通订单' },
-  { value: 'promo', label: '促销订单' },
-  { value: 'group', label: '拼团订单' }
+  { value: 'all', label: '全部订单' }
 ];
 
 const AVATAR_BG = ['#7ECDBB', '#F5A623', '#2DB7F5', '#FF8A8A', '#9B7ED8', '#5A5A5A'];
