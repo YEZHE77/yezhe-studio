@@ -358,11 +358,8 @@ export default function OrderCreateModal({ visible, packages, initialPackageId, 
         {/* 可滚动内容区 */}
         <div className="flex-1 overflow-y-auto">
 
-          {/* ① 顾客信息 */}
-          <div className="flex gap-3 p-5 border-b" style={{ borderColor: '#EEEEEE' }}>
-            <div className="shrink-0 w-12 h-12 rounded-full flex items-center justify-center" style={{ background: '#F2F2F2', color: TEXT_MUTED }}>
-              <IconPerson className="w-6 h-6" />
-            </div>
+          {/* ① 顾客信息（删除左侧头像，input 直接从左边延伸） */}
+          <div className="flex items-start gap-3 px-4 py-5 border-b" style={{ borderColor: '#EEEEEE' }}>
             <div className="flex-1 min-w-0">
               {/* 第一行：订单名称 */}
               <input
