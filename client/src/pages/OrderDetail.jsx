@@ -518,6 +518,8 @@ export default function OrderDetail() {
     try {
       if (act.status) await http.put('/api/orders/' + detail.id, { status: act.status });
       else await http.post('/api/orders/' + detail.id + '/logs', { text: act.log });
+      // 通知 Todo 页等监听者刷新计数
+      try { window.dispatchEvent(new Event('order-status-changed')); } catch {}
       reload();
     } catch (e2) { alert((e2.response && e2.response.data && e2.response.data.error) || '操作失败'); }
   }
@@ -537,6 +539,7 @@ export default function OrderDetail() {
       } else {
         await http.post('/api/orders/' + detail.id + '/logs/undo');
       }
+      try { window.dispatchEvent(new Event('order-status-changed')); } catch {}
       reload();
     } catch (e2) { alert((e2.response && e2.response.data && e2.response.data.error) || '操作失败'); }
   }

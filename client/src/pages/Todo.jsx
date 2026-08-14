@@ -73,10 +73,10 @@ export default function Todo() {
 
   const today = useMemo(() => todayInfo(), []);
 
-  // 拉取计数
-  useEffect(() => {
+  // 拉取计数（轮询 + 事件触发，确保与订单状态进度条实时同步）
+  const fetchCounts = useCallback(() => {
     let alive = true;
-    http.get('/api/stats')
+    return http.get('/api/stats')
       .then((r) => {
         if (!alive) return;
         const d = r.data || {};
@@ -92,8 +92,24 @@ export default function Todo() {
         });
       })
       .catch(() => {});
-    return () => { alive = false; };
   }, []);
+
+  useEffect(() => {
+    fetchCounts();
+    // 8s 轮询（轻量接口，避免移动端耗电）
+    const timer = setInterval(fetchCounts, 8000);
+    // 监听订单状态变化（OrderDetail stepNext/stepPrev 后触发事件）
+    const onChange = () => fetchCounts();
+    window.addEventListener('order-status-changed', onChange);
+    // App 切回前台时立即刷新
+    const onVisibility = () => { if (document.visibilityState === 'visible') fetchCounts(); };
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener('order-status-changed', onChange);
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
+  }, [fetchCounts]);
 
   // 拉取今日农历（按月拉映射表，再取当天 key）
   useEffect(() => {
