@@ -79,7 +79,7 @@ export default function OrderDialog({ orderDlg, personnel, onClose, onSaved, mod
   const [priceMissing, setPriceMissing] = useState(false);
 
   const [orderName, setOrderName] = useState('');
-  const [customers, setCustomers] = useState([{ name: '', phone: '' }]);
+  const [customers, setCustomers] = useState([{ name: '', phone: '' }, { name: '', phone: '' }]);
   const [chooseSession, setChooseSession] = useState(false);
   const [dateTbd, setDateTbd] = useState(false);
   const [shootDate, setShootDate] = useState(orderDlg?.date || '');
