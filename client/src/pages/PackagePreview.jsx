@@ -82,6 +82,8 @@ export default function PackagePreview() {
   const [loading, setLoading] = useState(true);
   const [actionSheetOpen, setActionSheetOpen] = useState(false);
   const [serviceModalOpen, setServiceModalOpen] = useState(false);
+  const [serviceDetailOpen, setServiceDetailOpen] = useState(false);
+  const [refundOpen, setRefundOpen] = useState(false);
   const [shareModalOpen, setShareModalOpen] = useState(false);
   const [shareData, setShareData] = useState(null);
   const [shareBusy, setShareBusy] = useState(false);
@@ -287,37 +289,83 @@ export default function PackagePreview() {
       ) : null}
 
 
-      {/* 套系服务详情弹窗 */}
+      {/* 套系服务详情全屏页（校 IMG_7532） */}
       {serviceModalOpen && (
-        <>
-          <div onClick={() => setServiceModalOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 100, background: 'rgba(0,0,0,0.5)' }} />
-          <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 101, background: '#fff', borderRadius: '16px 16px 0 0', maxHeight: '80vh', display: 'flex', flexDirection: 'column' }}>
-            <div style={{ padding: '16px 0', textAlign: 'center', fontSize: 16, fontWeight: 500, color: '#333', borderBottom: `1px solid ${MBORDER}` }}>套系服务详情</div>
-            <div style={{ overflowY: 'auto', padding: '8px 20px 20px', flex: 1 }}>
-              {serviceRows.map((row, i) => (
-                <div key={i} style={{ display: 'flex', alignItems: 'center', padding: '14px 0', borderBottom: i < serviceRows.length - 1 ? `1px solid ${MBORDER}` : 'none' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1 }}>
-                    {row.icon}
-                    <span style={{ fontSize: 14, color: '#333' }}>{row.label}</span>
-                  </div>
-                  {row.type === 'toggle' ? (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <span style={{ fontSize: 13, color: row.value ? MGREEN : '#999' }}>{row.value ? '是' : '否'}</span>
-                      {row.value ? <IconCheckOn /> : <IconCheckOff />}
-                    </div>
-                  ) : (
-                    <span style={{ fontSize: 14, color: '#666' }}>{row.value}</span>
-                  )}
+        <div style={{ position: 'fixed', inset: 0, zIndex: 101, background: '#fff', display: 'flex', flexDirection: 'column' }}>
+          {/* 顶部标题栏（safe-area-top + 标题居中） */}
+          <div style={{ paddingTop: 'env(safe-area-inset-top, 0px)', height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', borderBottom: `1px solid ${MBORDER}`, flexShrink: 0 }}>
+            <span style={{ fontSize: 16, fontWeight: 500, color: '#333' }}>套系服务详情</span>
+          </div>
+          {/* 滚动内容区 */}
+          <div style={{ overflowY: 'auto', flex: 1, padding: '8px 20px' }}>
+            {/* 服务项列表（移除加片费，6项对齐参考图） */}
+            {[
+              { icon: <IconClock />, label: '时长', value: d.duration || '未设置' },
+              { icon: <IconImage />, label: '拍摄', value: d.raw_count ? `${d.raw_count}张` : '未设置' },
+              { icon: <IconScissors />, label: '精修', value: d.retouch_count ? `${d.retouch_count}张` : '未设置' },
+              { icon: <IconImage />, label: '仅送精修', value: d.raw_all_included, type: 'toggle' },
+              { icon: <IconMakeup />, label: '化妆', value: d.makeup_provide !== 'not', type: 'toggle' },
+              { icon: <IconShirt />, label: '服装', value: d.cloth_provide !== 'not', type: 'toggle' },
+            ].map((row, i, arr) => (
+              <div key={i} style={{ display: 'flex', alignItems: 'center', padding: '14px 0', borderBottom: i < arr.length - 1 ? `1px solid ${MBORDER}` : 'none' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1 }}>
+                  {row.icon}
+                  <span style={{ fontSize: 14, color: '#333' }}>{row.label}</span>
                 </div>
-              ))}
+                {row.type === 'toggle' ? (
+                  row.value ? <IconCheckOn /> : <IconCheckOff />
+                ) : (
+                  <span style={{ fontSize: 14, color: '#666' }}>{row.value}</span>
+                )}
+              </div>
+            ))}
+
+            {/* 细分隔线 */}
+            <div style={{ height: 1, background: MBORDER, margin: '12px -20px' }} />
+
+            {/* 服务详情（可展开/收起） */}
+            <div style={{ padding: '14px 0' }}>
+              <div onClick={() => setServiceDetailOpen((v) => !v)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}>
+                <span style={{ fontSize: 14, color: '#333' }}>服务详情</span>
+                <span style={{ fontSize: 14, color: MGREEN }}>{serviceDetailOpen ? '收起' : '展开'}</span>
+              </div>
+              {serviceDetailOpen && (
+                <div style={{ marginTop: 10, fontSize: 13, color: '#666', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
+                  {d.service_detail_text || data.description || '暂无服务详情'}
+                </div>
+              )}
             </div>
-            <div style={{ padding: '12px 20px calc(16px + env(safe-area-inset-bottom))', display: 'flex', justifyContent: 'center' }}>
-              <button onClick={() => setServiceModalOpen(false)} style={{ width: 44, height: 44, borderRadius: '50%', border: '1px solid #ddd', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <IconCloseX />
-              </button>
+
+            {/* 退订政策（可展开；hide_refund=true 显示提示语） */}
+            <div style={{ padding: '14px 0', borderTop: `1px solid ${MBORDER}` }}>
+              <div onClick={() => setRefundOpen((v) => !v)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}>
+                <span style={{ fontSize: 14, color: '#333' }}>退订政策</span>
+                <span style={{ fontSize: 14, color: d.hide_refund ? '#999' : MGREEN }}>{d.hide_refund ? '该套系已设置为隐藏退订政策' : (refundOpen ? '收起' : '展开')}</span>
+              </div>
+              {!d.hide_refund && refundOpen && (
+                <div style={{ marginTop: 10, fontSize: 13, color: '#666', lineHeight: 1.6 }}>{d.refund_policy || '未设置'}</div>
+              )}
+            </div>
+
+            {/* 选片提示 */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 0', borderTop: `1px solid ${MBORDER}` }}>
+              <span style={{ fontSize: 14, color: '#333' }}>选片提示</span>
+              <span style={{ fontSize: 14, color: '#999' }}>未开启</span>
+            </div>
+
+            {/* 提示信息（💡 修改订单同步更新） */}
+            <div style={{ marginTop: 24, padding: '10px 14px', background: '#f5f9fa', borderRadius: 6, fontSize: 12, color: '#999', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span>💡</span>
+              <span>修改订单将同步更新以上数据</span>
             </div>
           </div>
-        </>
+          {/* 底部 X 圆形关闭按钮 */}
+          <div style={{ padding: '20px 20px calc(20px + env(safe-area-inset-bottom))', display: 'flex', justifyContent: 'center', borderTop: `1px solid ${MBORDER}`, flexShrink: 0 }}>
+            <button onClick={() => { setServiceModalOpen(false); setServiceDetailOpen(false); setRefundOpen(false); }} style={{ width: 44, height: 44, borderRadius: '50%', border: '1px solid #ddd', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <IconCloseX />
+            </button>
+          </div>
+        </div>
       )}
 
       {/* 右上角操作弹窗（Action Sheet） */}
