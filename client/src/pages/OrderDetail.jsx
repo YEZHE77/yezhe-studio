@@ -805,7 +805,14 @@ export default function OrderDetail() {
           </div>
 
           {/* 状态卡 + 业务流进度条（后台 11 步，横向滑动） */}
-          <div style={{ margin: '12px 12px 0', background: '#fff', borderRadius: 8, padding: '16px 12px 12px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+          <div style={{ margin: '12px 12px 0', background: '#fff', borderRadius: 8, padding: '12px 12px 12px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+            {/* 卡片顶部：左上「上一步」+ 右上「下一步」（与桌面态按钮共用 stepPrev/stepNext，逐格推进/回退进度条节点） */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+              <button type="button" onClick={stepPrev} disabled={detail?.cancelled}
+                style={{ padding: '4px 12px', borderRadius: 4, border: '1px solid ' + (detail?.cancelled ? '#E5E5E5' : DIV), background: '#fff', color: detail?.cancelled ? TEXT_WEAK : BLUE, fontSize: 13, cursor: detail?.cancelled ? 'not-allowed' : 'pointer', opacity: detail?.cancelled ? 0.5 : 1 }}>‹ 上一步</button>
+              <button type="button" onClick={stepNext} disabled={detail?.cancelled}
+                style={{ padding: '4px 12px', borderRadius: 4, border: '1px solid ' + BLUE, background: BLUE, color: '#fff', fontSize: 13, cursor: detail?.cancelled ? 'not-allowed' : 'pointer', opacity: detail?.cancelled ? 0.5 : 1 }}>下一步 ›</button>
+            </div>
             <div style={{ textAlign: 'center', fontSize: 14, color: '#1f2329', marginBottom: 14 }}>
               {detail?.payment_status === 'paid' ? '已付全款' : '已付定金'}，
               {detail?.status === 'cancelled' ? '订单已关闭'
