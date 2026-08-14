@@ -163,7 +163,7 @@ export default function Todo() {
   }, [activeKey]);
 
   return (
-    <div style={{ minHeight: '100vh', background: '#F7F7F7', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ minHeight: '100vh', background: '#F7F7F7', display: 'flex', flexDirection: 'column', width: '100%', maxWidth: 720, margin: '0 auto', boxShadow: '0 0 30px rgba(0,0,0,0.04)' }}>
       {/* 顶部标题栏（深色背景 + 返回 + 标题） */}
       <div style={{
         position: 'sticky', top: 0, zIndex: 20,

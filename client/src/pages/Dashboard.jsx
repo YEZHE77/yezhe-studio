@@ -3,13 +3,13 @@ import { useNavigate } from 'react-router-dom';
 import http, { formatBytes } from '../api.js';
 import Icon from '../components/Icon.jsx';
 
-// 待处理订单：5 灰块（参考拾光盒子，数字 28px/500，块间无间距，底部 5px 彩色线，悬停色块上扩填满+文字变白；首块=已支付定金并跳转已付定金订单）
+// 待处理订单：5 灰块（与待办事项页 5 个 Tab 同口径，按订单详情进度条节点区分）
 const PENDING = [
-  { key: 'deposit', label: '已支付定金', line: '#FA7D77' },
-  { key: 'shoot', label: '等待拍摄', line: '#49C5AE' },
-  { key: 'delivered', label: '未交片', line: '#FAC054' },
-  { key: 'selecting', label: '待选片', line: '#6DB3E2' },
-  { key: 'retouching', label: '待精修', line: '#FAC054' }
+  { key: 'deposit', label: '已付定金', line: '#FE2C55', tab: 'deposit' },
+  { key: 'waitingShoot', label: '等待拍摄', line: '#49C5AE', tab: 'waiting' },
+  { key: 'selecting', label: '待选片', line: '#6DB3E2', tab: 'selecting' },
+  { key: 'retouching', label: '精修中', line: '#FAC054', tab: 'retouching' },
+  { key: 'toDeliver', label: '待交付', line: '#9B7ED8', tab: 'delivered' }
 ];
 
 // 快捷链接（参考图：教程黑 / 资料青 / 作品蓝 / 套系金）
@@ -238,12 +238,12 @@ export default function Dashboard() {
         <div className="text-[16px] mb-6" style={{ color: '#333333', fontWeight: 400 }}>待处理订单</div>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-[1px]">
           {PENDING.map((b) => {
-            const n = stats && stats.pendingBlocks ? (stats.pendingBlocks[b.key] || 0) : '—';
+            const n = stats && stats.todo ? (stats.todo[b.key] || 0) : '—';
             return (
               <button
                 key={b.key}
                 type="button"
-                onClick={() => nav('/orders?status=' + (b.key === 'unpaid' ? 'unpaid' : b.key))}
+                onClick={() => nav('/todo?tab=' + b.tab)}
                 className="relative text-center overflow-hidden group cursor-pointer flex flex-col items-center justify-center"
                 style={{ background: '#F6F6F6', height: 110 }}
               >
