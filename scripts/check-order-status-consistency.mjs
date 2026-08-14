@@ -1,16 +1,18 @@
 #!/usr/bin/env node
 /* ==========================================================================
    check-order-status-consistency.mjs — 订单状态/路由「跨端一致性」校验
-   —— 防止三类反复出现的错位事故：
+   —— 防止四类反复出现的错位事故：
      ① 双壳路由漏注册：B 端业务路由只在 AppShell 注册、漏了 MobileShell（手机端点新建→跳"订单不存在"）
      ② 状态关键词分叉：后端 stats/orders 的 LIKE 关键词与前端 OrderDetail 的 ORDER_STEPS_11 kws 不一致
         （详情页进度条显示「等待拍摄」，后端待办 Tab 却查不到 → 计数为 0）
      ③ 渲染层一刀切映射：STATUS_LABEL.deposit 被映射为「等待拍摄」而非「已付定金」
         （「已付定金」筛选/Tab 里的订单却显示「等待拍摄」）
+     ④ 非法 status 枚举：STEP_ACTIONS 用了不存在的 status 值（合法仅 6 阶段），各端不认识该状态
    —— 用法：node scripts/check-order-status-consistency.mjs（在 monorepo 根目录执行）
    —— 规则：
      路由不一致 = 硬失败（会真实 404/白屏）
      deposit 一刀切映射 = 硬失败（语义与后端过滤分叉）
+     非法 status 枚举 = 硬失败（各端不认识该状态）
      关键词不一致 = 警告（提示人工复核，可能是有意用 label 或历史兼容）
    ========================================================================== */
 import fs from 'node:fs';
@@ -109,8 +111,23 @@ for (const file of walkJsx('client/src')) {
   }
 }
 
+// ========== 检查 4：STEP_ACTIONS 的 status 枚举合法性（硬失败） ==========
+// status 只有 6 个合法阶段值。若 STEP_ACTIONS / STATUS_BOUNDARY_11 出现不存在的值（如 retouch_done），
+// 会导致前端进度条与后端 stats/待办 Tab 全部错位（各端不认识该 status）。
+const LEGAL_STATUS = new Set(['deposit', 'shot', 'selecting', 'retouching', 'delivered', 'completed']);
+const usedStatus = new Set();
+// 负向后顾：排除 payment_status / paymentStatus 等（前面是 _ 或字母则不是订单 status 字段）
+for (const m of detailSrc.matchAll(/(?<![a-zA-Z_])status:\s*['"]([^'"]+)['"]/g)) usedStatus.add(m[1]);
+const illegal = [...usedStatus].filter((s) => !LEGAL_STATUS.has(s));
+if (illegal.length) {
+  console.error(`✗ OrderDetail.jsx 出现非法的 status 值: ${illegal.join(', ')}（合法: ${[...LEGAL_STATUS].join('/')}）`);
+  failed = true;
+} else {
+  console.log('✓ STEP_ACTIONS status 枚举合法');
+}
+
 if (failed) {
-  console.error('\n校验失败：存在双壳路由漏注册或 deposit 一刀切映射，提交前必须修复！');
+  console.error('\n校验失败：存在双壳路由漏注册 / deposit 一刀切映射 / 非法 status 枚举，提交前必须修复！');
   process.exit(1);
 }
 console.log('\n校验通过 ✔');

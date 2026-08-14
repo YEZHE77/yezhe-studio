@@ -69,8 +69,8 @@ const STEP_ACTIONS = [
   { status: 'shot' },      // 5 拍摄结束
   { status: 'selecting' }, // 6 选片精修
   { status: 'retouching', log: '阶段推进：进入精修阶段' },  // 7 预告片（跨入精修阶段，status 必须切换为 retouching）
-  { log: '精修完成' },      // 8
-  { log: '底片打包' },      // 9
+  { log: '精修完成' },      // 8 精修完成（retouching 阶段内子步骤，status 仍为 retouching，无需切换；靠 logs 区分「待交付」）
+  { log: '底片打包' },      // 9 底片打包（retouching 阶段内子步骤，status 仍为 retouching，无需切换；靠 logs 区分「待交付」）
   { status: 'delivered' }, // 10 统一交付
   { status: 'completed' }  // 11 订单完结
 ];
