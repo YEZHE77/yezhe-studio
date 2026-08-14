@@ -105,11 +105,11 @@ const TABS = [
   { key: 'msg', label: '消息', icon: 'bell', to: '/m/msg', badge: 2 }
 ];
 
-// + 快捷新建
+// + 快捷新建（全部跳转对应新建页面，无弹窗）
 const QUICK_CREATE = [
-  { label: '新建作品', icon: 'photo', to: '/works' },
+  { label: '新建作品', icon: 'photo', to: '/works/new' },
   { label: '新建套系', icon: 'package', to: '/packages/new' },
-  { label: '新建订单', icon: 'order', to: '/orders' },
+  { label: '新建订单', icon: 'order', to: '/schedule/new' },
   { label: '新建档期', icon: 'calendar', to: '/schedule' }
 ];
 
