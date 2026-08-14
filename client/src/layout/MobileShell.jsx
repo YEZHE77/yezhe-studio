@@ -35,8 +35,6 @@ const Home = React.lazy(() => import('../pages/Home.jsx'));
 
 const GREEN = '#7ECDBB';
 const GREEN_DARK = '#5FBBA6';
-const PINK = '#FF7A8A';
-const PINK_DARK = '#FF6B6B';
 const TEXT = '#1f2329';
 const MUTED = '#999999';
 const BAR_BG = '#ffffff';
@@ -144,14 +142,14 @@ function TabBar({ active, onTab, onPlus }) {
         if (t.key === 'plus') {
           return (
             <button key={t.key} type="button" onClick={onPlus} style={{ flex: 1, background: 'none', border: 'none', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', paddingTop: 10 }}>
-              <span style={{ width: 38, height: 38, borderRadius: 10, background: PINK, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(255,122,138,0.4)' }}>
+              <span style={{ width: 38, height: 38, borderRadius: 10, background: GREEN, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(126,205,187,0.4)' }}>
                 <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12h14" /></svg>
               </span>
             </button>
           );
         }
         const isActive = active === t.key;
-        const color = isActive ? PINK : MUTED;
+        const color = isActive ? GREEN : MUTED;
         return (
           <button key={t.key} type="button" onClick={() => onTab(t.to)} className="flex-1 flex flex-col items-center justify-center" style={{ background: 'none', border: 'none', position: 'relative' }}>
             <Icon name={t.icon} className="w-5 h-5" strokeWidth={1.6} style={{ color }} />
