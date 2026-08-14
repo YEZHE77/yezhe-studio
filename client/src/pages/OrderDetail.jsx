@@ -799,7 +799,7 @@ export default function OrderDetail() {
             </div>
             {/* 状态文字行已删除——与桌面端一致，进度条上方仅保留两个按钮 */}
             {/* 业务流进度条：11 步横向滑动（节点下仅文字无日期；完成=蓝勾/当前=蓝实心/未达=灰空心） */}
-            <div style={{ overflowX: 'auto', overflowY: 'hidden', WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none', msOverflowStyle: 'none' }} className="hide-scrollbar">
+            <div style={{ overflowX: 'auto', overflowY: 'hidden', WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none', msOverflowStyle: 'none', touchAction: 'pan-x' }} className="hide-scrollbar">
               <div className="flex items-start" style={{ gap: 0, minWidth: steps.length * 70 + (steps.length - 1) * 20 }}>
                 {steps.map((st, i) => (
                   <React.Fragment key={st.key}>
