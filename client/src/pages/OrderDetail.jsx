@@ -923,17 +923,20 @@ export default function OrderDetail() {
           <div style={{ margin: '12px 12px 0', background: '#fff', borderRadius: 8, overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
             {(() => {
               const shootDate = detail?.shoot_date || '';
-              const shootTime = Array.isArray(detail?.time_slots) ? detail.time_slots[0] : '';
+              const shootTimeText = detail?.period === 'full' ? '全天'
+                : detail?.period === 'half' ? '半天'
+                : (Array.isArray(detail?.time_slots) ? detail.time_slots.join(' ') : '');
               const createdAt = detail?.created_at ? new Date(detail.created_at) : null;
               const created = createdAt ? `${createdAt.getFullYear()}-${String(createdAt.getMonth() + 1).padStart(2, '0')}-${String(createdAt.getDate()).padStart(2, '0')} ${String(createdAt.getHours()).padStart(2, '0')}:${String(createdAt.getMinutes()).padStart(2, '0')}` : '';
               const rows = [
                 { k: '订单编号', v: detail?.order_no || '—', chevron: false },
-                { k: '拍摄时间', v: shootDate ? `${shootDate}${shootTime ? ' ' + shootTime : ''}` : '未排期', chevron: true },
+                { k: '拍摄日期', v: shootDate || '未排期', chevron: true },
+                { k: '拍摄时间', v: shootTimeText || '未排期', chevron: true },
                 { k: '拍摄地点', v: detail?.address || '未填写', chevron: true },
                 { k: '下单时间', v: created, chevron: false }
               ];
               return rows.map((r, i) => (
-                <div key={r.k} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '13px 16px' }}>
+                <div key={r.k} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '13px 16px', borderTop: i === 0 ? 'none' : '1px solid #F2F2F2' }}>
                   <span style={{ fontSize: 14, color: '#1f2329' }}>{r.k}</span>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                     <span style={{ fontSize: 14, color: r.v === '未填写' || r.v === '未排期' ? '#bbb' : '#666' }}>{r.v}</span>
