@@ -1212,20 +1212,20 @@ function OrderCard({ order, studioLogo, onClick }) {
           {/* 商家管理头像（settings.studio.logo），永远渲染保证卡片等高 */}
           {studioLogo ? (
             <img src={img(studioLogo)} alt="商家管理" title="商家管理"
-              style={{ width: 36, height: 36, borderRadius: '50%', border: '2px solid #fff', objectFit: 'cover', display: 'block', boxShadow: '0 0 0 1px #eee' }} />
+              style={{ width: 30, height: 30, borderRadius: '50%', border: '2px solid #fff', objectFit: 'cover', display: 'block', boxShadow: '0 0 0 1px #eee' }} />
           ) : (
             <div title="商家管理"
-              style={{ width: 36, height: 36, borderRadius: '50%', background: '#2998EB', color: '#fff',
+              style={{ width: 30, height: 30, borderRadius: '50%', background: '#2998EB', color: '#fff',
                 border: '2px solid #fff', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 14, fontWeight: 500, boxShadow: '0 0 0 1px #eee' }}>叶</div>
+                fontSize: 12, fontWeight: 500, boxShadow: '0 0 0 1px #eee' }}>叶</div>
           )}
-          {/* 封面（无内嵌头像层叠；参考图 IMG_7527 中封面为纯图） */}
+          {/* 封面（无内嵌头像层叠；参考图 IMG_7528 中封面为纯图） */}
           {cover ? (
             <div style={{ position: 'relative', flexShrink: 0 }}>
-              <img src={cover} alt="" style={{ width: 90, height: 90, borderRadius: 6, objectFit: 'cover', display: 'block' }} />
+              <img src={cover} alt="" style={{ width: 76, height: 76, borderRadius: 6, objectFit: 'cover', display: 'block' }} />
             </div>
           ) : (
-            <div style={{ width: 90, height: 90, borderRadius: 6, background: '#F5F5F5', flexShrink: 0 }} />
+            <div style={{ width: 76, height: 76, borderRadius: 6, background: '#F5F5F5', flexShrink: 0 }} />
           )}
         </div>
       </div>
