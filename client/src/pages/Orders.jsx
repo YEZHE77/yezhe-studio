@@ -930,8 +930,8 @@ function MobileOrderCenterView({ stats, list, listTotal, state, setState, refres
 
       {/* 筛选抽屉：右滑动画 + 6 个可折叠分区（订单排序/执行人/订单状态/订单类型/拍摄日期/下单时间） */}
       {filterOpen && filterDraft && (() => {
-        const PINK = '#FA5151';
-        const PINK_BG = '#FFF0EF';
+        const PINK = '#7ECDBB';           // 统一为品牌主色青绿（订单中心强调/选中态不再用红色 #FA5151）
+        const PINK_BG = '#EAF7F4';     // 浅青绿背景，与品牌色匹配
         const toggleArr = (k, v) => setFilterDraft((d) => {
           const arr = d[k] || [];
           return { ...d, [k]: arr.includes(v) ? arr.filter((x) => x !== v) : [...arr, v] };
