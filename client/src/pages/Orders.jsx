@@ -1193,8 +1193,8 @@ function OrderCard({ order, studioLogo, onClick }) {
       width: '100%', background: '#fff', borderRadius: 12, marginBottom: 12,
       border: '1px solid #F0F0F0', textAlign: 'left', display: 'block', overflow: 'hidden'
     }}>
-      {/* 头像 + 客户 + 状态（无内部分隔线，对齐参考图） */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 14px 6px' }}>
+      {/* 头像 + 客户 + 状态（padding 14/8 对齐参考图） */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 14px 8px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, flex: 1 }}>
           <div style={{
             width: 28, height: 28, borderRadius: '50%', background: bg, color: '#fff',
@@ -1216,9 +1216,9 @@ function OrderCard({ order, studioLogo, onClick }) {
       </div>
       <div style={{ height: 1, background: '#F0F0F0' }} />
 
-      {/* 套系名 + 分类 + 尾款标签（红底白字，对齐截图） */}
-      <div style={{ padding: '6px 14px' }}>
-        <div style={{ fontSize: 15, color: '#1f2329', lineHeight: 1.4, fontWeight: 600, marginBottom: 4 }}>{pkgName}</div>
+      {/* 套系名 + 分类 + 尾款标签（padding 10/12 加大对齐参考图） */}
+      <div style={{ padding: '10px 14px 12px' }}>
+        <div style={{ fontSize: 15, color: '#1f2329', lineHeight: 1.4, fontWeight: 600, marginBottom: 6 }}>{pkgName}</div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           {pkgCategory ? <span style={{ fontSize: 12, color: '#999' }}>{pkgCategory}</span> : null}
           {remain > 0 && order.status !== 'completed' && order.status !== 'cancelled' && (
@@ -1233,30 +1233,30 @@ function OrderCard({ order, studioLogo, onClick }) {
           <IconCalendar style={{ width: 14, height: 14, color: '#bbb' }} />
           <span>{dateLabel}：{dateValue}</span>
         </div>
-        {/* 封面：85×95 比宽稍高，绝对定位 right:14 bottom:12 让顶端上移到套系行区域 */}
+        {/* 封面：80×95 比宽稍高，绝对定位 right:14 bottom:12 让顶端上移到套系行区域 */}
         {cover ? (
-          <div style={{ position: 'absolute', right: 14, bottom: 12, width: 85, height: 95 }}>
+          <div style={{ position: 'absolute', right: 14, bottom: 12, width: 80, height: 95 }}>
             <img src={cover} alt="" style={{ width: '100%', height: '100%', borderRadius: 6, objectFit: 'cover', display: 'block' }} />
             {/* 商家管理头像：absolute 叠在封面左下角（30×30 不缩尺寸） */}
             {studioLogo ? (
               <img src={img(studioLogo)} alt="商家管理" title="商家管理"
-                style={{ position: 'absolute', left: -15, bottom: 0, width: 30, height: 30,
+                style={{ position: 'absolute', left: -12, bottom: 4, width: 30, height: 30,
                   borderRadius: '50%', border: '2px solid #fff', objectFit: 'cover', display: 'block' }} />
             ) : (
               <div title="商家管理"
-                style={{ position: 'absolute', left: -15, bottom: 0, width: 30, height: 30, borderRadius: '50%', background: '#2998EB', color: '#fff',
+                style={{ position: 'absolute', left: -12, bottom: 4, width: 30, height: 30, borderRadius: '50%', background: '#2998EB', color: '#fff',
                   border: '2px solid #fff', display: 'flex', alignItems: 'center', justifyContent: 'center',
                   fontSize: 12, fontWeight: 500 }}>叶</div>
             )}
           </div>
         ) : (
-          <div style={{ position: 'absolute', right: 14, bottom: 12, width: 85, height: 95, borderRadius: 6, background: '#F5F5F5' }} />
+          <div style={{ position: 'absolute', right: 14, bottom: 12, width: 80, height: 95, borderRadius: 6, background: '#F5F5F5' }} />
         )}
       </div>
       <div style={{ height: 1, background: '#F0F0F0' }} />
 
       {/* 备注 + 编辑入口（点击编辑跳 /orders/:id/notes） */}
-      <div style={{ display: 'flex', alignItems: 'center', padding: '8px 14px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', padding: '6px 14px 10px' }}>
         <span
           onClick={(e) => { e.stopPropagation(); nav('/orders/' + order.id + '/notes'); }}
           style={{ fontSize: 12, color: '#2f7cf6', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 3, flexShrink: 0 }}
