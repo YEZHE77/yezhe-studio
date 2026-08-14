@@ -1818,6 +1818,7 @@ export default function OrderDetail() {
           initialDate={editForm.shoot_date}
           initialSlots={editForm.time_slots}
           packageName={(pkgInfo && pkgInfo.name) || detail.order_package || ''}
+          totalAmount={detail.total_amount || detail.package_price || 0}
           onClose={() => setAddSched(false)}
           onConfirm={(date, slots, period) => { setEditForm((f) => ({ ...f, shoot_date: date, time_slots: slots, period: period || 'full' })); setSlotOpen(false); setAddSched(false); }}
         />
@@ -2502,7 +2503,7 @@ const filterBtnStyle = { height: 32, padding: '0 16px', borderRadius: 2, border:
 const modalInputStyle = { width: '100%', padding: '8px 12px', borderRadius: 4, border: '1px solid ' + DIV, color: '#222222', fontSize: 14, outline: 'none', background: '#fff' };
 
 /* 添加档期弹窗（1:1 复刻拾光盒子「新增订单」弹窗：选择场次 24 时段 + 半天全天 + 日期待定 + 套系名称） */
-function AddScheduleModal({ initialDate = '', initialSlots = [], initialPeriod = 'full', packageName = '', onClose, onConfirm }) {
+function AddScheduleModal({ initialDate = '', initialSlots = [], initialPeriod = 'full', packageName = '', totalAmount = 0, onClose, onConfirm }) {
   const [date, setDate] = useState(initialDate || '');
   const [slots, setSlots] = useState(Array.isArray(initialSlots) ? initialSlots : []);
   const [period, setPeriod] = useState(initialPeriod || 'full');
@@ -2559,7 +2560,7 @@ function AddScheduleModal({ initialDate = '', initialSlots = [], initialPeriod =
             </div>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 14px', fontSize: 14, color: '#333' }}>
               <span>总价</span>
-              <span style={{ color: '#222' }}>¥ {form?.price || '0.00'}</span>
+              <span style={{ color: '#222' }}>¥ {Number(totalAmount || 0).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
             </div>
           </div>
           {/* 当前已选日期（参考图展示：2026 年 08 月 10 日） */}
