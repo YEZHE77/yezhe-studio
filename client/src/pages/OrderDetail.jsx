@@ -881,12 +881,12 @@ export default function OrderDetail() {
             </div>
             {/* 客户行与套餐行之间的 1px 分隔线（横贯卡片全宽） */}
             <div style={{ height: 1, background: '#EEEEEE', margin: '14px -14px 14px' }} />
-            <div style={{ display: 'flex', gap: 12 }}>
+            <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
               {pkgInfo?.cover_url && (
                 <img src={img(pkgInfo.cover_url)} alt="" style={{ width: 96, height: 96, borderRadius: 6, objectFit: 'cover', flexShrink: 0 }} />
               )}
-              <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-                <div style={{ fontSize: 15, color: '#1f2329', lineHeight: 1.35, marginBottom: 6 }}>{pkgInfo?.name || '未选套系'}</div>
+              <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 8, justifyContent: 'center' }}>
+                <div style={{ fontSize: 15, color: '#1f2329', lineHeight: 1.35 }}>{pkgInfo?.name || '未选套系'}</div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#666', flexWrap: 'wrap' }}>
                   <span>定金</span>
                   <span style={{ background: TAG_OFFLINE, color: '#fff', padding: '1px 8px', borderRadius: 3, fontSize: 11 }}>线下收取</span>
@@ -896,10 +896,10 @@ export default function OrderDetail() {
                   <span style={{ background: TAG_UNSETTLED, color: '#fff', padding: '1px 8px', borderRadius: 3, fontSize: 11 }}>未结算</span>
                 </div>
               </div>
-              <div style={{ flexShrink: 0, textAlign: 'right', fontSize: 13 }}>
+              <div style={{ flexShrink: 0, textAlign: 'right', fontSize: 13, display: 'flex', flexDirection: 'column', gap: 8, justifyContent: 'center' }}>
                 <div style={{ color: '#999' }}>¥ <span style={{ color: '#1f2329', fontSize: 15 }}>{Number(pkgInfo?.list_price || pkgInfo?.price || 0).toLocaleString()}</span></div>
-                <div style={{ color: '#999', marginTop: 2 }}>¥ <span style={{ color: '#1f2329', fontSize: 15 }}>{Number(detail?.deposit || 0).toLocaleString()}</span></div>
-                <div style={{ color: '#999', marginTop: 2 }}>¥ <span style={{ color: '#1f2329', fontSize: 15 }}>{Number(remain || 0).toLocaleString()}</span></div>
+                <div style={{ color: '#999' }}>¥ <span style={{ color: '#1f2329', fontSize: 15 }}>{Number(detail?.deposit || 0).toLocaleString()}</span></div>
+                <div style={{ color: '#999' }}>¥ <span style={{ color: '#1f2329', fontSize: 15 }}>{Number(remain || 0).toLocaleString()}</span></div>
               </div>
             </div>
           </div>
