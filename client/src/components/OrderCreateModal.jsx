@@ -337,27 +337,25 @@ export default function OrderCreateModal({ visible, packages, initialPackageId, 
 
   return (
     <div
-      className="fixed inset-0 z-[60] flex items-start justify-center p-4 overflow-auto"
-      style={{ background: 'rgba(0,0,0,0.45)' }}
-      onClick={onClose}
+      className="fixed inset-0 z-[60] flex flex-col overflow-hidden"
+      style={{ background: '#F8F8F8' }}
     >
       <form
         onSubmit={submit}
-        onClick={(e) => e.stopPropagation()}
-        className="w-full my-4 sm:my-6 bg-white shadow-xl overflow-hidden flex flex-col"
-        style={{ maxWidth: 920, borderRadius: 12, maxHeight: 'calc(100vh - 2rem)' }}
+        className="w-full h-full bg-white flex flex-col"
+        style={{ maxWidth: 720, margin: '0 auto', borderRadius: 0 }}
       >
-        {/* 标题栏：居中标题 + 右上角 × 关闭 */}
+        {/* 标题栏：居中标题 + 左侧 ‹ 返回关闭 + 右侧空白 */}
         <div className="relative flex items-center justify-center px-5 py-4 border-b shrink-0" style={{ borderColor: '#EEEEEE' }}>
-          <div className="text-base" style={{ color: TEXT_BODY }}>新增订单</div>
-          <button type="button" onClick={onClose} aria-label="关闭"
-            className="absolute right-4 top-1/2 -translate-y-1/2 w-8 h-8 rounded-md flex items-center justify-center hover:bg-[#f5f7fa]"
+          <button type="button" onClick={onClose} aria-label="返回"
+            className="absolute left-4 top-1/2 -translate-y-1/2 w-8 h-8 rounded-md flex items-center justify-center hover:bg-[#f5f7fa]"
             style={{ color: TEXT_MUTED }}>
-            <IconClose className="w-4 h-4" />
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6" /></svg>
           </button>
+          <div className="text-base" style={{ color: TEXT_BODY }}>新增订单</div>
         </div>
 
-        {/* 可滚动内容区（移动端内部滚动） */}
+        {/* 可滚动内容区 */}
         <div className="flex-1 overflow-y-auto">
 
           {/* ① 顾客信息 */}
