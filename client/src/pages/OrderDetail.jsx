@@ -532,26 +532,15 @@ export default function OrderDetail() {
       reload();
     } catch (e2) { alert((e2.response && e2.response.data && e2.response.data.error) || '操作失败'); }
   }
-  // 进度条：上一步（撤销最后完成的节点；状态步回退状态机，日志步撤销最后一条日志）
+  // 进度条：上一步（直接按 detail.status 查 STATUS_REVERT 回退，不依赖 build11Steps 的 firstPending——避免 logs 与 status 错位时无反应）
   async function stepPrev() {
     if (!detail || detail.cancelled) return;
-    const firstPending = steps.findIndex((s) => s.state !== 'done');
-    const cur = firstPending === -1 ? ORDER_STEPS_11.length : firstPending;
-    if (cur <= 1) return;
-    const j = cur - 1;
+    const rev = STATUS_REVERT[detail.status];
+    if (!rev) return;
     try {
-      const act = STEP_ACTIONS[j];
-      if (act && act.status) {
-        const rev = STATUS_REVERT[act.status];
-        if (!rev) return;
-        await http.put('/api/orders/' + detail.id, { status: rev });
-        // 乐观更新：本地立即回退 status
-        setDetail((d) => (d ? { ...d, status: rev } : d));
-      } else {
-        await http.post('/api/orders/' + detail.id + '/logs/undo');
-        // 乐观更新：本地移除最后一条日志
-        setDetail((d) => (d ? { ...d, logs: (Array.isArray(d.logs) ? d.logs.slice(0, -1) : d.logs) } : d));
-      }
+      await http.put('/api/orders/' + detail.id, { status: rev });
+      // 乐观更新：本地立即回退 status，进度条秒响应
+      setDetail((d) => (d ? { ...d, status: rev } : d));
       try { window.dispatchEvent(new Event('order-status-changed')); } catch {}
       reload();
     } catch (e2) { alert((e2.response && e2.response.data && e2.response.data.error) || '操作失败'); }
