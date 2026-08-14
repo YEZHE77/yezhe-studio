@@ -697,7 +697,7 @@ export default function Orders() {
 const ORDER_STATUS_OPTIONS = [
   { value: '', label: '全部订单' },
   { value: 'unpaid', label: '未付定金' },
-  { value: 'deposit', label: '已付定金' },
+  { value: 'deposit_pending', label: '已付定金' },
   { value: 'waiting_shoot', label: '等待拍摄' },
   { value: 'shot', label: '已拍摄' },
   { value: 'selecting', label: '选片中' },
