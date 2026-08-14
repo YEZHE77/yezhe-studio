@@ -259,7 +259,17 @@ export default function Todo() {
               const name = (o.customer_name || o.name || '客户').toString();
               const first = name.slice(0, 1);
               const statusKey = o.status || '';
-              const statusText = STATUS_LABEL[statusKey] || (o.payment_status === 'unpaid' ? '未付定金' : '等待拍摄');
+              // deposit 状态细分：logs 含「沟通确认」=「等待拍摄」（已和客户敲定拍摄细节），否则 =「已付定金」（仅定金到账、尚未沟通）
+              // 与后端 stats / orders 的 waiting_shoot 分界一致，消除卡片显示与 Tab 名错位
+              let statusText;
+              if (statusKey === 'deposit') {
+                let logsArr = [];
+                try { logsArr = Array.isArray(o.logs) ? o.logs : (typeof o.logs === 'string' ? JSON.parse(o.logs || '[]') : []); } catch {}
+                const hasConfirm = logsArr.some((l) => (l && l.text || '').includes('沟通确认'));
+                statusText = hasConfirm ? '等待拍摄' : '已付定金';
+              } else {
+                statusText = STATUS_LABEL[statusKey] || (o.payment_status === 'unpaid' ? '未付定金' : '等待拍摄');
+              }
               const dateStr = o.shoot_date || o.order_date || '';
               const timeStr = (o.time_slots && o.time_slots[0]) || '';
               const dt = (dateStr || '') + (timeStr ? ' ' + timeStr : '');
