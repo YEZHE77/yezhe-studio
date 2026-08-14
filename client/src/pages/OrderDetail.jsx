@@ -255,6 +255,10 @@ export default function OrderDetail() {
   const [logModalTab, setLogModalTab] = useState('status');
   // 调查问卷弹窗
   const [questionnaireModal, setQuestionnaireModal] = useState(false);
+  // 更多服务详情全屏页
+  const [svcDetailOpen, setSvcDetailOpen] = useState(false);
+  const [svcDetailExpanded, setSvcDetailExpanded] = useState(false);
+  const [svcRefundExpanded, setSvcRefundExpanded] = useState(false);
 
   const loadSel = useCallback((oid) => {
     http.get('/api/admin/photo-select/' + oid).then((r) => setSel(r.data)).catch(() => setSel(null));
@@ -959,7 +963,7 @@ export default function OrderDetail() {
               ));
             })()}
             <div style={{ textAlign: 'center', padding: '10px 0' }}>
-              <button type="button" onClick={() => {}} style={{ background: 'none', border: 'none', color: '#999', fontSize: 13 }}>更多服务详情</button>
+              <button type="button" onClick={() => { setSvcDetailOpen(true); setSvcDetailExpanded(false); setSvcRefundExpanded(false); }} style={{ background: 'none', border: 'none', color: '#999', fontSize: 13 }}>更多服务详情</button>
             </div>
           </div>
 
@@ -2372,6 +2376,86 @@ export default function OrderDetail() {
                 </div>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* 更多服务详情全屏页（校 IMG_7532） */}
+      {svcDetailOpen && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 80, background: '#fff', display: 'flex', flexDirection: 'column' }}>
+          <div style={{ paddingTop: 'env(safe-area-inset-top, 0px)', height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', borderBottom: '1px solid ' + DIV, flexShrink: 0, position: 'relative' }}>
+            <button type="button" onClick={() => setSvcDetailOpen(false)} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#999', fontSize: 20, padding: 4 }} aria-label="返回">‹</button>
+            <span style={{ fontSize: 16, fontWeight: 500, color: '#222' }}>套系服务详情</span>
+          </div>
+          <div style={{ overflowY: 'auto', flex: 1, padding: '8px 20px' }}>
+            {(() => {
+              const dd = (pkgInfo && pkgInfo.details) || {};
+              const rows = [
+                { label: '时长', value: dd.duration || pkgInfo?.duration || '未设置' },
+                { label: '拍摄', value: dd.raw_count ? `${dd.raw_count}张` : '未设置' },
+                { label: '精修', value: dd.retouch_count ? `${dd.retouch_count}张` : '未设置' },
+                { label: '仅送精修', value: !!(dd.raw_all_included), toggle: true },
+                { label: '化妆', value: dd.makeup_provide !== 'not', toggle: true },
+                { label: '服装', value: dd.cloth_provide !== 'not', toggle: true },
+              ];
+              return rows.map((row, i, arr) => (
+                <div key={i} style={{ display: 'flex', alignItems: 'center', padding: '14px 0', borderBottom: i < arr.length - 1 ? `1px solid ${DIV}` : 'none' }}>
+                  <span style={{ fontSize: 14, color: '#333', flex: 1 }}>{row.label}</span>
+                  {row.toggle ? (
+                    row.value ? (
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#82C8AE" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="9 12 12 15 17 9"/></svg>
+                    ) : (
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ddd" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/></svg>
+                    )
+                  ) : (
+                    <span style={{ fontSize: 14, color: '#666' }}>{row.value}</span>
+                  )}
+                </div>
+              ));
+            })()}
+
+            <div style={{ height: 1, background: DIV, margin: '12px -20px' }} />
+
+            {/* 服务详情（可展开） */}
+            <div style={{ padding: '14px 0' }}>
+              <div onClick={() => setSvcDetailExpanded((v) => !v)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}>
+                <span style={{ fontSize: 14, color: '#333' }}>服务详情</span>
+                <span style={{ fontSize: 14, color: '#82C8AE' }}>{svcDetailExpanded ? '收起' : '展开'}</span>
+              </div>
+              {svcDetailExpanded && (
+                <div style={{ marginTop: 10, fontSize: 13, color: '#666', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
+                  {(pkgInfo?.details?.service_detail_text) || pkgInfo?.description || '暂无服务详情'}
+                </div>
+              )}
+            </div>
+
+            {/* 退订政策 */}
+            <div style={{ padding: '14px 0', borderTop: `1px solid ${DIV}` }}>
+              <div onClick={() => setSvcRefundExpanded((v) => !v)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}>
+                <span style={{ fontSize: 14, color: '#333' }}>退订政策</span>
+                <span style={{ fontSize: 14, color: (pkgInfo?.details?.hide_refund) ? '#999' : '#82C8AE' }}>{(pkgInfo?.details?.hide_refund) ? '该套系已设置为隐藏退订政策' : (svcRefundExpanded ? '收起' : '展开')}</span>
+              </div>
+              {!pkgInfo?.details?.hide_refund && svcRefundExpanded && (
+                <div style={{ marginTop: 10, fontSize: 13, color: '#666', lineHeight: 1.6 }}>{pkgInfo?.details?.refund_policy || '未设置'}</div>
+              )}
+            </div>
+
+            {/* 选片提示 */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 0', borderTop: `1px solid ${DIV}` }}>
+              <span style={{ fontSize: 14, color: '#333' }}>选片提示</span>
+              <span style={{ fontSize: 14, color: '#999' }}>未开启</span>
+            </div>
+
+            {/* 提示信息 */}
+            <div style={{ marginTop: 24, padding: '10px 14px', background: '#f5f9fa', borderRadius: 6, fontSize: 12, color: '#999', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span>💡</span>
+              <span>修改订单将同步更新以上数据</span>
+            </div>
+          </div>
+          <div style={{ padding: '20px 20px calc(20px + env(safe-area-inset-bottom))', display: 'flex', justifyContent: 'center', borderTop: `1px solid ${DIV}`, flexShrink: 0 }}>
+            <button onClick={() => setSvcDetailOpen(false)} style={{ width: 44, height: 44, borderRadius: '50%', border: '1px solid #ddd', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#999" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
           </div>
         </div>
       )}
