@@ -306,7 +306,6 @@ export default function Orders() {
         refreshOrderList={refreshOrderList}
         onNavToOrder={(id) => nav('/orders/' + id)}
         onLoadMore={() => refreshOrderList({ reset: false })}
-        onCreate={() => setShowForm(true)}
         pkgs={pkgs}
         personnel={personnel}
         trash={trash}
