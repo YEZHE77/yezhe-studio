@@ -75,7 +75,7 @@ const STEP_ACTIONS = [
   { status: 'completed' }  // 11 订单完结
 ];
 // 状态步回退映射（上一步）
-const STATUS_REVERT = { shot: 'deposit', selecting: 'shot', retouching: 'selecting', delivered: 'selecting', completed: 'delivered' };
+const STATUS_REVERT = { shot: 'deposit', selecting: 'shot', retouching: 'selecting', delivered: 'retouching', completed: 'delivered' };
 // 作废订单：按日志倒推已推进到哪一步（禁止写死）
 function boundaryFromLogs(logs) {
   const has = (kw) => (logs || []).some((l) => (l.text || '').includes(kw));

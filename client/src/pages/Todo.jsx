@@ -254,13 +254,19 @@ export default function Todo() {
               const first = avatarText(name);
               const statusKey = o.status || '';
               // deposit 状态细分：logs 含「沟通确认」=「等待拍摄」（已和客户敲定拍摄细节），否则 =「已付定金」（仅定金到账、尚未沟通）
-              // 与后端 stats / orders 的 waiting_shoot 分界一致，消除卡片显示与 Tab 名错位
+              // 与后端 stats / orders 的 waiting_shoot / todo_retouch / todo_deliver 分界一致，消除卡片显示与 Tab 名错位
               let statusText;
-              if (statusKey === 'deposit') {
+              if (statusKey === 'deposit' || statusKey === 'retouching') {
                 let logsArr = [];
                 try { logsArr = Array.isArray(o.logs) ? o.logs : (typeof o.logs === 'string' ? JSON.parse(o.logs || '[]') : []); } catch {}
-                const hasConfirm = logsArr.some((l) => (l && l.text || '').includes('沟通确认'));
-                statusText = hasConfirm ? '等待拍摄' : '已付定金';
+                if (statusKey === 'deposit') {
+                  const hasConfirm = logsArr.some((l) => (l && l.text || '').includes('沟通确认'));
+                  statusText = hasConfirm ? '等待拍摄' : '已付定金';
+                } else {
+                  // retouching 细分：logs 含「精修完成/全部精修完成/底片打包/原片打包」=「待交付」
+                  const hasFinish = logsArr.some((l) => (l && l.text || '').match(/精修完成|全部精修完成|底片打包|原片打包/));
+                  statusText = hasFinish ? '待交付' : '精修中';
+                }
               } else {
                 statusText = STATUS_LABEL[statusKey] || (o.payment_status === 'unpaid' ? '未付定金' : '等待拍摄');
               }
