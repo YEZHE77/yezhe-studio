@@ -47,16 +47,16 @@ router.get('/', authRequired, async (req, res) => {
     };
 
     // 待办事项 Tab 计数（与 /api/orders/stats 完全同口径）
-    // 口径（按订单详情进度条节点区分）：
-    //   已付定金 = 已付定金且未拍摄、进度条未到「等待拍摄」节点
-    //   等待拍摄 = 已付定金且未拍摄、进度条已到「等待拍摄」节点
-    //   待选片   = 进度条到「拍摄结束 / 选片精修」节点（status = shot 或 selecting）
+    // 口径（与详情页 build11Steps 一致：以「沟通确认」是否已完成为分界）：
+    //   已付定金 = 已付定金但「沟通确认」未完成
+    //   等待拍摄 = 已付定金且「沟通确认」已完成（拍摄前的所有准备阶段），尚未拍摄结束
+    //   待选片   = 已拍摄或选片中（status = shot 或 selecting）
     //   精修中   = status = retouching 且日志未到「精修完成 / 底片打包」
     //   待交付   = status = retouching 且日志已到「精修完成 / 底片打包」（统一交付前）
     const todoWhere = 'WHERE cancelled = 0 AND is_deleted = 0';
     const [depositRow, waitingShootRow, selectingRow, retouchingRow, toDeliverRow] = await Promise.all([
-      get(`SELECT COUNT(*) AS c FROM orders ${todoWhere} AND payment_status = 'deposit' AND status = 'deposit' AND (logs IS NULL OR logs = '' OR (logs NOT LIKE '%等待拍摄%' AND logs NOT LIKE '%拍摄执行%'))`),
-      get(`SELECT COUNT(*) AS c FROM orders ${todoWhere} AND payment_status = 'deposit' AND status = 'deposit' AND (logs LIKE '%等待拍摄%' OR logs LIKE '%拍摄执行%')`),
+      get(`SELECT COUNT(*) AS c FROM orders ${todoWhere} AND payment_status = 'deposit' AND status = 'deposit' AND (logs IS NULL OR logs = '' OR (logs NOT LIKE '%沟通确认%' AND logs NOT LIKE '%等待拍摄%' AND logs NOT LIKE '%拍摄执行%'))`),
+      get(`SELECT COUNT(*) AS c FROM orders ${todoWhere} AND payment_status = 'deposit' AND status = 'deposit' AND (logs LIKE '%沟通确认%' OR logs LIKE '%等待拍摄%' OR logs LIKE '%拍摄执行%')`),
       get(`SELECT COUNT(*) AS c FROM orders ${todoWhere} AND status IN ('shot', 'selecting')`),
       get(`SELECT COUNT(*) AS c FROM orders ${todoWhere} AND status = 'retouching' AND (logs IS NULL OR logs = '' OR (logs NOT LIKE '%精修完成%' AND logs NOT LIKE '%全部精修完成%' AND logs NOT LIKE '%底片打包%' AND logs NOT LIKE '%原片打包%'))`),
       get(`SELECT COUNT(*) AS c FROM orders ${todoWhere} AND status = 'retouching' AND (logs LIKE '%精修完成%' OR logs LIKE '%全部精修完成%' OR logs LIKE '%底片打包%' OR logs LIKE '%原片打包%')`)
