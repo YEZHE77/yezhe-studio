@@ -453,7 +453,7 @@ export default function Orders() {
                         className="w-full px-2 py-1 rounded border border-line bg-white text-fg text-sm outline-none" />
                     ) : (
                       <div className="flex items-center gap-1.5 min-w-0">
-                        <span className="text-fg text-sm truncate">订单：{o.order_name || '未命名订单'}</span>
+                        <span className="text-fg text-sm truncate">订单：{o.customer_name || o.order_name || '未命名订单'}</span>
                         {o.channel && (
                           <span className="shrink-0 inline-flex items-center justify-center text-white text-[11px] font-medium"
                             style={{ width: 20, height: 20, borderRadius: 4, background: channelColor(o.channel) }}>
@@ -560,7 +560,7 @@ export default function Orders() {
             return (
               <div key={o.id} className="flex items-center gap-3 px-4 py-3 border-t border-line bg-white text-sm flex-wrap">
                 <span className="flex-1 min-w-[160px]">
-                  <span className="text-fg block truncate">订单：{o.order_name || '未命名订单'}</span>
+                  <span className="text-fg block truncate">订单：{o.customer_name || o.order_name || '未命名订单'}</span>
                   <span className="text-[11px] text-faint">订单编号：{o.order_no}</span>
                 </span>
                 <span className="w-40 text-muted truncate hidden md:block">{pkgName}</span>
@@ -1153,7 +1153,7 @@ function OrderCard({ order, studioLogo, onClick }) {
   const remain = Number(order.total_amount || 0) - Number(order.paid_amount || 0);
   const statusText = stageLabel(order);
   const customerName = order.customer_name || order.order_name || '未知';
-  const orderName = order.order_name || order.customer_name || '未知';
+  const orderName = order.customer_name || order.order_name || '未知';
   const avatarTextVal = avatarText(customerName);
   const bg = avatarColor(customerName);
   const chName = order.channel || '';
