@@ -446,9 +446,9 @@ export default function Orders() {
                       <div className="flex items-center gap-1.5 min-w-0">
                         <span className="text-fg text-sm truncate">订单：{o.order_name || '未命名订单'}</span>
                         {o.channel && (
-                          <span className="shrink-0 inline-flex items-center justify-center text-white text-[11px] font-medium"
+                          <span className="shrink-0 inline-flex items-center justify-center"
                             style={{ width: 20, height: 20, borderRadius: 4, background: channelColor(o.channel) }}>
-                            {o.channel.slice(0, 1)}
+                            <ChannelIcon name={o.channel} size={13} />
                           </span>
                         )}
                         <button onClick={() => startRename(o)} title="编辑订单名称"
@@ -738,6 +738,29 @@ function channelColor(name) {
   let h = 0;
   for (let i = 0; i < String(name).length; i++) h += String(name).charCodeAt(i);
   return CHANNEL_FALLBACK[h % CHANNEL_FALLBACK.length];
+}
+
+/* 渠道图标（等比例缩放到徽标内，替代首字；校 IMG_7522 渠道卡 logo） */
+const CHANNEL_ICON_PATHS = {
+  '抖音': <><path d="M9 18V5l12-2v13" /><circle cx="6" cy="18" r="3" /><circle cx="18" cy="16" r="3" /></>,
+  '小红书': <><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" /><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" /></>,
+  '美团': <><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" /><path d="M3 6h18" /><path d="M16 10a4 4 0 0 1-8 0" /></>,
+  '小程序': <><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" /><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" /></>,
+  '客户推荐': <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />,
+  '自然进店': <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />,
+  '其他来源': <><rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect x="14" y="14" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" /></>,
+};
+
+function ChannelIcon({ name, size = 12 }) {
+  const paths = CHANNEL_ICON_PATHS[name];
+  if (!paths) {
+    return <span style={{ fontSize: size * 0.65, color: '#fff', fontWeight: 500, lineHeight: 1 }}>{String(name || '').slice(0, 1)}</span>;
+  }
+  return (
+    <svg viewBox="0 0 24 24" width={size} height={size} fill="none" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+      {paths}
+    </svg>
+  );
 }
 
 const IconBack = () => (
@@ -1181,9 +1204,10 @@ function OrderCard({ order, studioLogo, onClick }) {
           {chName && (
             <span style={{
               width: 20, height: 20, borderRadius: 4, background: channelColor(chName),
-              color: '#fff', fontSize: 11, fontWeight: 500, flexShrink: 0,
-              display: 'inline-flex', alignItems: 'center', justifyContent: 'center'
-            }}>{chName.slice(0, 1)}</span>
+              flexShrink: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center'
+            }}>
+              <ChannelIcon name={chName} size={13} />
+            </span>
           )}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
