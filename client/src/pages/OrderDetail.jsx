@@ -1079,13 +1079,13 @@ export default function OrderDetail() {
               <button type="button" onClick={stepNext} disabled={detail.cancelled || curStep >= ORDER_STEPS_11.length}
                 style={{ height: 24, padding: '0 12px', borderRadius: 3, border: '1px solid ' + BLUE, background: BLUE, color: '#fff', fontSize: 12, cursor: detail.cancelled || curStep >= ORDER_STEPS_11.length ? 'not-allowed' : 'pointer', opacity: detail.cancelled || curStep >= ORDER_STEPS_11.length ? 0.4 : 1 }}>下一步 ›</button>
             </div>
-            <div style={{ overflowX: 'auto', overflowY: 'hidden' }}>
-              <div className="flex items-start" style={{ gap: 0, minWidth: steps.length * 78 + (steps.length - 1) * 22 }}>
+            <div style={{ overflowX: 'auto', overflowY: 'hidden', WebkitOverflowScrolling: 'touch' }}>
+              <div className="flex items-start" style={{ gap: 0, minWidth: steps.length * 70 + (steps.length - 1) * 20 }}>
                 {steps.map((st, i) => (
                   <React.Fragment key={st.key}>
-                    <div className="flex flex-col items-center" style={{ width: 78, flexShrink: 0 }}>
+                    <div className="flex flex-col items-center" style={{ width: 70, flexShrink: 0 }}>
                       <div style={{
-                        width: 30, height: 30, borderRadius: '50%',
+                        width: 26, height: 26, borderRadius: '50%',
                         background: st.state === 'done' ? '#EAF6FD' : st.state === 'current' ? BLUE : '#FFFFFF',
                         border: st.state === 'done' || st.state === 'current' ? ('1px solid ' + BLUE) : '1px solid rgba(0,0,0,0.25)',
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -1093,13 +1093,12 @@ export default function OrderDetail() {
                       }}>
                         {st.state === 'done'
                           ? <CheckIcon />
-                          : <span style={{ fontSize: 13, fontWeight: 400, color: st.state === 'current' ? '#FFFFFF' : 'rgba(0,0,0,0.25)' }}>{i + 1}</span>}
+                          : <span style={{ fontSize: 12, fontWeight: 400, color: st.state === 'current' ? '#FFFFFF' : 'rgba(0,0,0,0.25)' }}>{i + 1}</span>}
                       </div>
-                      <span style={{ fontSize: 12, marginTop: 7, textAlign: 'center', whiteSpace: 'nowrap', color: st.state === 'pending' ? 'rgba(0,0,0,0.25)' : st.state === 'current' ? '#555555' : 'rgba(0,0,0,0.65)' }}>{st.label}</span>
-                      {st.time ? <span style={{ marginTop: 5, fontSize: 11, textAlign: 'center', color: 'rgba(0,0,0,0.45)' }}>{st.time}</span> : null}
+                      <span style={{ fontSize: 12, marginTop: 6, textAlign: 'center', whiteSpace: 'nowrap', color: st.state === 'pending' ? 'rgba(0,0,0,0.25)' : st.state === 'current' ? '#555555' : 'rgba(0,0,0,0.65)' }}>{st.label}</span>
                     </div>
                     {i < steps.length - 1 && (
-                      <div style={{ flex: 1, height: 1, minWidth: 22, marginTop: 15, background: (st.state === 'done' && steps[i + 1].state === 'done') ? BLUE : '#E5E5E5' }} />
+                      <div style={{ flex: 1, height: 1, minWidth: 20, marginTop: 13, background: (st.state === 'done' && steps[i + 1].state === 'done') ? BLUE : '#E5E5E5' }} />
                     )}
                   </React.Fragment>
                 ))}
