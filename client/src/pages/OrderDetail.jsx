@@ -2516,9 +2516,8 @@ function AddScheduleModal({ initialDate = '', initialSlots = [], initialPeriod =
   return (
     <div className="fixed inset-0 z-[95] flex items-end" style={{ background: 'rgba(0,0,0,0.45)' }} onClick={onClose}>
       <div onClick={(e) => e.stopPropagation()} style={{ width: '100%', maxWidth: 480, margin: '0 auto', maxHeight: '82vh', background: '#F4F4F4', borderTopLeftRadius: 16, borderTopRightRadius: 16, display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 -6px 30px rgba(0,0,0,0.18)' }}>
-        {/* 顶部 Header：日期显示（左侧）+ 右侧 × 关闭 */}
-        <div className="flex items-center justify-between shrink-0" style={{ padding: '14px 16px', background: '#F4F4F4' }}>
-          <span style={{ fontSize: 14, color: '#999', fontWeight: 400 }}>{date ? date.replace(/-/g, ' 年 ').replace(/^(\d{4}) 年 (\d{2}) 月 (\d{2})/, '$1 年 $2 月 $3 日') : '选择拍摄日期'}</span>
+        {/* 顶部 Header：右侧 × 关闭（左侧日期已移除） */}
+        <div className="flex items-center justify-end shrink-0" style={{ padding: '10px 14px', background: '#F4F4F4' }}>
           <button type="button" onClick={onClose} aria-label="关闭"
             style={{ background: 'none', border: 'none', fontSize: 22, lineHeight: 1, color: '#999', cursor: 'pointer', padding: 2 }}>
             ×
