@@ -58,7 +58,7 @@ const ORDER_STEPS_11 = [
   { key: 'complete',   label: '订单完结',   kws: ['已完成', '订单完结'] }
 ];
 // 后端 status（6 阶段）→ 已完成的最后一步（1 起）
-const STATUS_BOUNDARY_11 = { deposit: 2, shot: 6, selecting: 7, retouching: 7, delivered: 11, completed: 12 };
+const STATUS_BOUNDARY_11 = { deposit: 2, shot: 6, selecting: 7, retouching: 8, delivered: 11, completed: 12 };
 // 进度条 上一步/下一步：每步的推进动作（状态步走 PUT 状态；日志步走追加操作日志）
 const STEP_ACTIONS = [
   null,                    // 0 已支付定金（建单即完成）
@@ -68,14 +68,14 @@ const STEP_ACTIONS = [
   { log: '等待拍摄' },      // 4 等待拍摄（原 log「拍摄执行」）
   { status: 'shot' },      // 5 拍摄结束
   { status: 'selecting' }, // 6 选片精修
-  { log: '预告片' },        // 7
+  { status: 'retouching', log: '阶段推进：进入精修阶段' },  // 7 预告片（跨入精修阶段，status 必须切换为 retouching）
   { log: '精修完成' },      // 8
   { log: '底片打包' },      // 9
   { status: 'delivered' }, // 10 统一交付
   { status: 'completed' }  // 11 订单完结
 ];
 // 状态步回退映射（上一步）
-const STATUS_REVERT = { shot: 'deposit', selecting: 'shot', delivered: 'selecting', completed: 'delivered' };
+const STATUS_REVERT = { shot: 'deposit', selecting: 'shot', retouching: 'selecting', delivered: 'selecting', completed: 'delivered' };
 // 作废订单：按日志倒推已推进到哪一步（禁止写死）
 function boundaryFromLogs(logs) {
   const has = (kw) => (logs || []).some((l) => (l.text || '').includes(kw));

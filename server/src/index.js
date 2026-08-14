@@ -3,6 +3,7 @@ import './env.js';
 import express from 'express';
 import cors from 'cors';
 import multer from 'multer';
+import QRCode from 'qrcode';
 import path from 'node:path';
 import fs from 'node:fs';
 import { dialect, dataDir } from './db.js';
@@ -95,6 +96,20 @@ app.post('/api/upload-multiple', authRequired, upload.array('files', 500), async
     }
     // 同步模式：saveImage 内部已逐张完成「存储 + hash + 媒资登记」，接口直接返回所有 url
     res.json({ urls });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// 生成分享二维码（公开）：GET /api/qrcode?text=URL 或 ?albumId=ID → 返回 PNG dataURL
+// 三端共用（小程序 qrcode 页 + 网页 AlbumGrid 分享），逻辑与 /api/settings/qrcode 一致
+app.get('/api/qrcode', async (req, res) => {
+  try {
+    let text = (req.query.text || '').toString();
+    if (!text && req.query.albumId) {
+      text = 'https://yezhe-studio.pages.dev/w/' + req.query.albumId;
+    }
+    if (!text) return res.status(400).json({ error: 'missing text or albumId' });
+    const dataUrl = await QRCode.toDataURL(text, { width: 480, margin: 2, color: { dark: '#1a1a1a', light: '#ffffff' } });
+    res.json({ dataUrl });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
