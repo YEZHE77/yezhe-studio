@@ -1650,7 +1650,7 @@ export default function OrderDetail() {
                 <button type="button" onClick={() => setEditForm((f) => ({ ...f, extra_items: [...(f.extra_items || []), { name: '', amount: '' }] }))} style={{ background: 'none', border: '1px dashed #D8D8D8', borderRadius: 3, color: BLUE, fontSize: 12, padding: '5px 14px', cursor: 'pointer' }}>+ 添加</button>
               </div>
               <div style={{ marginBottom: 16 }}>
-                <div style={{ fontSize: 13, color: '#666666', marginBottom: 8 }}>拍摄时间</div>
+                <div style={{ fontSize: 13, color: '#666666', marginBottom: 8 }}>拍摄日期与时段</div>
                 <div className="flex items-center" style={{ gap: 10, marginBottom: 8, flexWrap: 'wrap' }}>
                   <input value={editForm.shoot_date} onChange={(e) => setEditForm({ ...editForm, shoot_date: e.target.value })} type="date" style={{ ...modalInputStyle, fontSize: 13, maxWidth: '100%' }} />
                   <span style={{ fontSize: 11, color: '#999999' }}>修改日期将释放旧档期并占用新日期；冲突时会先提示。</span>
@@ -1678,13 +1678,13 @@ export default function OrderDetail() {
                 </div>
                 <button type="button" onClick={() => setAddSched(true)}
                   style={{ marginTop: 8, background: BLUE, color: '#fff', border: 'none', borderRadius: 3, fontSize: 12, padding: '6px 14px', cursor: 'pointer' }}>＋ 添加档期</button>
-                {/* 拍摄时长：全天/半天 单选下拉（与 detail.period 联动，保存到 orders.period） */}
+                {/* 拍摄时间：全天/半天 单选下拉（与 detail.period 联动；label 强制显示中文，避免移动端浏览器渲染 value） */}
                 <div style={{ marginTop: 10 }}>
-                  <div style={{ fontSize: 13, color: '#666666', marginBottom: 6 }}>拍摄时长</div>
+                  <div style={{ fontSize: 13, color: '#666666', marginBottom: 6 }}>拍摄时间</div>
                   <select value={editForm.period} onChange={(e) => setEditForm({ ...editForm, period: e.target.value })}
                     style={{ ...modalInputStyle, fontSize: 13, maxWidth: '100%' }}>
-                    <option value="full">全天</option>
-                    <option value="half">半天</option>
+                    <option value="full" label="全天">全天</option>
+                    <option value="half" label="半天">半天</option>
                   </select>
                 </div>
               </div>
