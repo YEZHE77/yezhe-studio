@@ -1209,24 +1209,24 @@ function OrderCard({ order, studioLogo, onClick }) {
           <IconCalendar style={{ width: 14, height: 14, color: '#bbb' }} />
           <span>{dateLabel}：{dateValue}</span>
         </div>
-        {/* 商家管理头像：与日期同行，绝对定位在封面左侧（封面 right:14+width:80+gap:16=110） */}
+        {/* 商家管理头像：与日期同行，绝对定位在封面左侧（封面 right:14+width:90+gap:16=120） */}
         {studioLogo ? (
           <img src={img(studioLogo)} alt="商家管理" title="商家管理"
-            style={{ position: 'absolute', right: 110, bottom: 14, width: 30, height: 30,
+            style={{ position: 'absolute', right: 120, bottom: 14, width: 30, height: 30,
               borderRadius: '50%', border: '2px solid #fff', objectFit: 'cover', display: 'block' }} />
         ) : (
           <div title="商家管理"
-            style={{ position: 'absolute', right: 110, bottom: 14, width: 30, height: 30, borderRadius: '50%', background: '#2998EB', color: '#fff',
+            style={{ position: 'absolute', right: 120, bottom: 14, width: 30, height: 30, borderRadius: '50%', background: '#2998EB', color: '#fff',
               border: '2px solid #fff', display: 'flex', alignItems: 'center', justifyContent: 'center',
               fontSize: 12, fontWeight: 500 }}>叶</div>
         )}
-        {/* 封面：80×95 比宽稍高，绝对定位 right:14 bottom:12 顶端上移到套系名同一行 */}
+        {/* 封面：90×90 正方形，绝对定位 right:14 bottom:12 顶端上移到套系名同一行 */}
         {cover ? (
-          <div style={{ position: 'absolute', right: 14, bottom: 12, width: 80, height: 95 }}>
+          <div style={{ position: 'absolute', right: 14, bottom: 12, width: 90, height: 90 }}>
             <img src={cover} alt="" style={{ width: '100%', height: '100%', borderRadius: 6, objectFit: 'cover', display: 'block' }} />
           </div>
         ) : (
-          <div style={{ position: 'absolute', right: 14, bottom: 12, width: 80, height: 95, borderRadius: 6, background: '#F5F5F5' }} />
+          <div style={{ position: 'absolute', right: 14, bottom: 12, width: 90, height: 90, borderRadius: 6, background: '#F5F5F5' }} />
         )}
       </div>
       <div style={{ height: 1, background: '#F0F0F0' }} />
