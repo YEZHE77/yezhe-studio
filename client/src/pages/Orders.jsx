@@ -1195,10 +1195,10 @@ function OrderCard({ order, studioLogo, onClick }) {
       {/* 套系名 + 分类 + 尾款标签（padding-bottom 20 加大套系与日期间空白） */}
       <div style={{ padding: '10px 14px 20px' }}>
         <div style={{ fontSize: 15, color: '#1f2329', lineHeight: 1.4, fontWeight: 600, marginBottom: 6 }}>{pkgName}</div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
           {pkgCategory ? <span style={{ fontSize: 12, color: '#999' }}>{pkgCategory}</span> : null}
           {remain > 0 && order.status !== 'completed' && order.status !== 'cancelled' && (
-            <span style={{ fontSize: 11, color: '#fff', background: '#ff3333', padding: '1px 8px', borderRadius: 8 }}>未结算尾款</span>
+            <span style={{ fontSize: 10, color: '#fff', background: '#ff3333', padding: '1px 6px', borderRadius: 4 }}>未结算尾款</span>
           )}
         </div>
       </div>
