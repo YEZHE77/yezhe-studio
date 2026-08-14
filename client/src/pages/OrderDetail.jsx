@@ -1025,7 +1025,7 @@ export default function OrderDetail() {
           </div>
         </div>
       ) : (
-        <div style={{ background: '#f7f7f7', minHeight: '100vh', padding: isMobile ? '0 0 24px' : '0 16px 24px', maxWidth: 1280, width: '100%', margin: '0 auto', boxSizing: 'border-box' }}>
+        <div style={{ background: '#f7f7f7', minHeight: '100vh', padding: isMobile ? `0 0 calc(64px + env(safe-area-inset-bottom))` : '0 16px 24px', maxWidth: 1280, width: '100%', margin: '0 auto', boxSizing: 'border-box' }}>
       {/* ============ Module 3：订单状态卡片（白色卡片 + 左侧操作 + 右侧 4 步进度条，复刻第3张） ============ */}
       <section style={{ margin: isMobile ? '8px 12px 0' : '8px 24px 0', background: '#FFFFFF', border: '1px solid ' + CARD_BORDER, borderTop: '3px solid ' + TEAL, borderRadius: 4, boxShadow: '0 1px 5px rgba(0,0,0,0.04)' }}>
         <div className="flex items-stretch" style={{ minHeight: 132, flexWrap: isMobile ? 'wrap' : 'nowrap' }}>

@@ -450,7 +450,7 @@ export default function PackagePreview() {
         </div>
         <button onClick={() => nav('/schedule', { state: { openNew: true } })} style={{
           width: 140, height: 40, borderRadius: 20, background: MRED, color: '#fff',
-          fontSize: 15, fontWeight: 500, border: 'none', marginRight: 12, display: 'flex', alignItems: 'center', justifyContent: 'center'
+          fontSize: 15, fontWeight: 500, border: 'none', marginRight: 12, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center'
         }}>
           立即预约
         </button>
