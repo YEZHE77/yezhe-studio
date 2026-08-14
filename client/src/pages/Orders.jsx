@@ -21,9 +21,18 @@ const STATUS_LABEL = {
   retouching: '精修中', delivered: '已交付', completed: '已完成', cancelled: '已关闭'
 };
 
-// 首阶段 status 恒为 deposit（订单已建立），收款未到时展示为「等待拍摄」（与取消态展示统一为灰色文案）
+// deposit 状态细分：logs 含「沟通确认」=「等待拍摄」（已和客户敲定拍摄细节），否则 =「已付定金」（仅定金到账、尚未沟通）
+// 与后端 stats / orders 的 waiting_shoot 分界保持一致（消除卡片显示与筛选语义错位）
 function stageLabel(o) {
-  return STATUS_LABEL[o && o.status] || '历史订单';
+  if (!o) return '历史订单';
+  const s = o.status;
+  if (s === 'deposit') {
+    let logsArr = [];
+    try { logsArr = Array.isArray(o.logs) ? o.logs : (typeof o.logs === 'string' ? JSON.parse(o.logs || '[]') : []); } catch {}
+    const hasConfirm = logsArr.some((l) => (l && l.text || '').includes('沟通确认'));
+    return hasConfirm ? '等待拍摄' : '已付定金';
+  }
+  return STATUS_LABEL[s] || '历史订单';
 }
 
 // JSON 列容错解析：后端已 JSON.parse，但旧数据/异常情况下可能仍是字符串
@@ -674,6 +683,7 @@ const ORDER_STATUS_OPTIONS = [
   { value: '', label: '全部订单' },
   { value: 'unpaid', label: '未付定金' },
   { value: 'deposit', label: '已付定金' },
+  { value: 'waiting_shoot', label: '等待拍摄' },
   { value: 'shot', label: '已拍摄' },
   { value: 'selecting', label: '选片中' },
   { value: 'retouching', label: '精修中' },
