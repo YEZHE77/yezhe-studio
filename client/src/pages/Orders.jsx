@@ -1146,6 +1146,7 @@ function OrderCard({ order, studioLogo, onClick }) {
   const remain = Number(order.total_amount || 0) - Number(order.paid_amount || 0);
   const statusText = stageLabel(order);
   const customerName = order.customer_name || order.order_name || '未知';
+  const orderName = order.order_name || order.customer_name || '未知';
   const avatarText = String(customerName).slice(0, 1);
   const bg = avatarColor(customerName);
   const chName = order.channel || '';
@@ -1176,7 +1177,7 @@ function OrderCard({ order, studioLogo, onClick }) {
             width: 28, height: 28, borderRadius: '50%', background: bg, color: '#fff',
             display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, flexShrink: 0
           }}>{avatarText}</div>
-          <div style={{ fontSize: 15, color: '#1f2329', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{customerName}</div>
+          <div style={{ fontSize: 15, color: '#1f2329', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{orderName}</div>
           {chName && (
             <span style={{
               width: 20, height: 20, borderRadius: 4, background: channelColor(chName),
