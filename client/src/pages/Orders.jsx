@@ -789,8 +789,7 @@ function MobileOrderCenterView({ stats, list, listTotal, state, setState, refres
   const [sheetOpen, setSheetOpen] = useState(false);
   const [sheetType, setSheetType] = useState(''); // 'status' | 'sort'
   const [qrPopover, setQrPopover] = useState(null);
-  // 新建订单弹窗（自管状态，避免父子组件 prop 传递陷阱）
-  const [showCreate, setShowCreate] = useState(false);
+  // 新建订单入口已统一为跳转 /orders/new → OrdersNew 全屏页（移动端 FAB + 主页「+」都用同一路由）
 
   const doSearch = () => { setState((s) => ({ ...s, q: qInput })); setSearchOpen(false); };
   const setFilter = (k, v) => setState((s) => ({ ...s, [k]: v }));
@@ -886,27 +885,20 @@ function MobileOrderCenterView({ stats, list, listTotal, state, setState, refres
         )}
       </div>
 
-      {/* + 新建订单（红色 FAB） */}
-      <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowCreate(true); }} style={{
+      {/* + 新建订单（青绿 FAB，跳 OrdersNew 全屏页） */}
+      <button type="button" onClick={() => nav('/orders/new')} style={{
         position: 'fixed', right: 16,
         bottom: 'calc(24px + env(safe-area-inset-bottom))',
         zIndex: 40,
         height: 44, padding: '0 20px', borderRadius: 22,
         background: '#7ECDBB', color: '#fff', border: 'none',
         fontSize: 15, display: 'flex', alignItems: 'center', gap: 6,
-        boxShadow: '0 6px 18px rgba(250,81,81,0.35)'
+        boxShadow: '0 6px 18px rgba(126,205,187,0.35)'
       }}>
         <span style={{ fontSize: 18 }}>+</span>新建订单
       </button>
 
-      {/* 新建订单弹窗：仅点击按钮才打开，融入网页版后台添加订单逻辑（OrderCreateModal） */}
-      <OrderCreateModal
-        visible={showCreate}
-        packages={pkgs}
-        initialPackageId={null}
-        onClose={() => setShowCreate(false)}
-        onAfterCreate={() => { setShowCreate(false); refreshOrderList({ reset: true }); }}
-      />
+      {/* 移动端 OrderCreateModal 已移除：FAB 跳转 /orders/new → OrdersNew 全屏页（统一体验） */}
 
       {/* 底部弹窗：状态 / 排序 */}
       {sheetOpen && (
