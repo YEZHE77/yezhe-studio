@@ -2514,26 +2514,27 @@ function AddScheduleModal({ initialDate = '', initialSlots = [], initialPeriod =
     onConfirm(date, slots, period);
   };
   return (
-    <div className="fixed inset-0 z-[95] flex flex-col" style={{ background: '#F2F2F2' }}>
-      {/* 顶部导航（白底 + 黑色标题 + 左侧返回 + 右侧保存） */}
-      <div className="flex items-center justify-between shrink-0" style={{ padding: '14px 16px', background: '#fff', borderBottom: '1px solid #E8E8E8' }}>
-        <button type="button" onClick={onClose} aria-label="返回"
-          style={{ background: 'none', border: 'none', padding: 4, cursor: 'pointer', display: 'inline-flex', alignItems: 'center' }}>
-          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#1f2329" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6" /></svg>
-        </button>
-        <span style={{ fontSize: 16, color: '#1f2329', fontWeight: 500 }}>编辑订单</span>
-        <button type="button" onClick={confirm} style={{ background: 'none', border: 'none', color: '#1f2329', fontSize: 15, cursor: 'pointer', padding: 4 }}>保存</button>
-      </div>
-      <div style={{ flex: 1, overflowY: 'auto', padding: '0 16px 16px' }}>
+    <div className="fixed inset-0 z-[95] flex items-end" style={{ background: 'rgba(0,0,0,0.45)' }} onClick={onClose}>
+      <div onClick={(e) => e.stopPropagation()} style={{ width: '100%', maxWidth: 480, margin: '0 auto', maxHeight: '82vh', background: '#F4F4F4', borderTopLeftRadius: 16, borderTopRightRadius: 16, display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 -6px 30px rgba(0,0,0,0.18)' }}>
+        {/* 顶部 Header：日期显示（左侧）+ 右侧 × 关闭 */}
+        <div className="flex items-center justify-between shrink-0" style={{ padding: '14px 16px', background: '#F4F4F4' }}>
+          <span style={{ fontSize: 14, color: '#999', fontWeight: 400 }}>{date ? date.replace(/-/g, ' 年 ').replace(/^(\d{4}) 年 (\d{2}) 月 (\d{2})/, '$1 年 $2 月 $3 日') : '选择拍摄日期'}</span>
+          <button type="button" onClick={onClose} aria-label="关闭"
+            style={{ background: 'none', border: 'none', fontSize: 22, lineHeight: 1, color: '#999', cursor: 'pointer', padding: 2 }}>
+            ×
+          </button>
+        </div>
+        {/* 内容区：可滚动 */}
+        <div className="flex-1 overflow-y-auto" style={{ padding: '0 16px 16px' }}>
           {/* 自定义时间 */}
-          <div style={{ background: '#fff', borderRadius: 8, marginTop: 16, marginBottom: 16, padding: '14px 14px', fontSize: 14, color: '#333', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ background: '#fff', borderRadius: 8, marginBottom: 12, padding: '14px 14px', fontSize: 14, color: '#333', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <span>自定义时间</span>
             <span style={{ color: '#bbb' }}>›</span>
           </div>
           {/* 可选场次 24 时段网格 + 半天/全天 */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 4px 12px' }}>
             <span style={{ fontSize: 14, color: '#333' }}>可选场次</span>
-            <button type="button" onClick={() => setSlots(slots.length ? [] : HOURS.slice(0, 1))} style={{ background: 'none', border: 'none', color: '#999', fontSize: 12, padding: 0, cursor: 'pointer' }}>编辑</button>
+            <button type="button" onClick={() => setSlots(slots.length ? [] : HOURS.slice(0, 1))} style={{ background: 'none', border: 'none', color: '#999', fontSize: 13, padding: 0, cursor: 'pointer' }}>编辑</button>
           </div>
           <div style={{ background: '#fff', borderRadius: 8, padding: 14 }}>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 10 }}>
@@ -2541,7 +2542,7 @@ function AddScheduleModal({ initialDate = '', initialSlots = [], initialPeriod =
                 const on = slots.includes(h);
                 return (
                   <button key={h} type="button" onClick={() => toggle(h)}
-                    style={{ height: 30, fontSize: 12, padding: 0, border: 'none', borderRadius: 14, cursor: 'pointer', background: on ? '#82C8AE' : '#A6E1CC', color: on ? '#fff' : '#fff', fontWeight: on ? 500 : 400, position: 'relative' }}>
+                    style={{ height: 30, fontSize: 12, padding: 0, border: 'none', borderRadius: 14, cursor: 'pointer', background: on ? '#82C8AE' : '#A6E1CC', color: '#fff', fontWeight: on ? 500 : 400, position: 'relative' }}>
                     {on && <span style={{ position: 'absolute', left: 4, top: '50%', transform: 'translateY(-50%)' }}>✓</span>}
                     {h}
                   </button>
@@ -2555,9 +2556,10 @@ function AddScheduleModal({ initialDate = '', initialSlots = [], initialPeriod =
             {err && <div style={{ fontSize: 12, color: '#F53F3F', marginTop: 8 }}>{err}</div>}
           </div>
         </div>
-      {/* 底部确认按钮（红底白字 + safe-area） */}
-      <div className="flex justify-center shrink-0" style={{ padding: '12px 16px calc(16px + env(safe-area-inset-bottom))', background: '#fff' }}>
-        <button type="button" onClick={confirm} style={{ width: '100%', padding: '12px 16px', background: '#FA5151', color: '#fff', fontSize: 15, border: 'none', borderRadius: 6, cursor: 'pointer' }}>确认</button>
+        {/* 底部确认按钮（红底白字 + safe-area） */}
+        <div className="flex justify-center shrink-0" style={{ padding: '12px 16px calc(16px + env(safe-area-inset-bottom))', background: '#fff', borderTop: '1px solid #F0F0F0' }}>
+          <button type="button" onClick={confirm} style={{ width: '100%', padding: '12px 16px', background: '#FA5151', color: '#fff', fontSize: 15, border: 'none', borderRadius: 6, cursor: 'pointer' }}>确认</button>
+        </div>
       </div>
     </div>
   );
