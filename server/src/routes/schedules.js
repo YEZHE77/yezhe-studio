@@ -155,6 +155,7 @@ router.get('/', authRequired, async (req, res) => {
       `SELECT s.*, o.id AS order_id, o.customer_name AS order_customer, o.payment_status AS order_pay_status, o.status AS order_status,
               o.package_id AS order_package_id, p.name AS order_package,
               o.customer_phone AS order_phone, o.phones AS order_phones, o.balance AS order_balance,
+              o.total_amount AS order_price, o.deposit AS order_deposit,
               o.time_slots AS order_time_slots, o.executors AS order_executors
        FROM schedules s
        LEFT JOIN orders o ON o.order_no = s.order_no

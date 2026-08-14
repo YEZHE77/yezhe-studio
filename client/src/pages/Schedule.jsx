@@ -502,10 +502,14 @@ export default function Schedule() {
       const sk = statusKeyOf(r);
       const payMap = { unpaid: '未付款', deposit: '已付定金', paid: '已付全款' };
       const payLabel = payMap[r.order_pay_status] || '';
+      // 优先显示订单 time_slots 第一个具体时间（"00:00" 这种），回退到 period（"全天/半天"）
+      let slots = [];
+      try { slots = Array.isArray(r.order_time_slots) ? r.order_time_slots : (typeof r.order_time_slots === 'string' ? JSON.parse(r.order_time_slots || '[]') : []); } catch {}
+      const timeText = (slots && slots[0]) || (r.period === 'half' ? '半天' : (r.period === 'full' ? '全天' : (r.period || '全天')));
       return (
         <div onClick={() => { if (r.order_id) nav('/orders/' + r.order_id); }} className="hover:bg-gray-50"
           style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', background: '#fff', cursor: 'pointer' }}>
-          <div style={{ fontSize: 14, color: '#666', minWidth: 40, textAlign: 'right', paddingTop: 2 }}>{r.period || '全天'}</div>
+          <div style={{ fontSize: 14, color: '#666', minWidth: 40, textAlign: 'right', paddingTop: 2 }}>{timeText}</div>
           <div style={{ width: 2, flexShrink: 0, alignSelf: 'stretch', background: '#52C41A', borderRadius: 1 }} />
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: 15, fontWeight: 500, color: '#1f2329' }}>{r.order_customer || '未知客户'}</div>
