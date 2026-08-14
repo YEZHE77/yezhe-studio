@@ -790,6 +790,8 @@ function MobileOrderCenterView({ stats, list, listTotal, state, setState, refres
   const [sheetOpen, setSheetOpen] = useState(false);
   const [sheetType, setSheetType] = useState(''); // 'status' | 'sort'
   const [qrPopover, setQrPopover] = useState(null);
+  // 新建订单弹窗（自管状态，避免父子组件 prop 传递陷阱）
+  const [showCreate, setShowCreate] = useState(false);
 
   const doSearch = () => { setState((s) => ({ ...s, q: qInput })); setSearchOpen(false); };
   const setFilter = (k, v) => setState((s) => ({ ...s, [k]: v }));
@@ -885,8 +887,8 @@ function MobileOrderCenterView({ stats, list, listTotal, state, setState, refres
         )}
       </div>
 
-      {/* + 添加新订单 */}
-      <button onClick={onCreate} style={{
+      {/* + 添加新订单（红色 FAB） */}
+      <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowCreate(true); }} style={{
         position: 'fixed', right: 16,
         bottom: 'calc(24px + env(safe-area-inset-bottom))',
         zIndex: 40,
@@ -897,6 +899,15 @@ function MobileOrderCenterView({ stats, list, listTotal, state, setState, refres
       }}>
         <span style={{ fontSize: 18 }}>+</span>添加新订单
       </button>
+
+      {/* 新建订单弹窗：仅点击按钮才打开，融入网页版后台添加订单逻辑（OrderCreateModal） */}
+      <OrderCreateModal
+        visible={showCreate}
+        packages={pkgs}
+        initialPackageId={null}
+        onClose={() => setShowCreate(false)}
+        onAfterCreate={() => { setShowCreate(false); refreshOrderList({ reset: true }); }}
+      />
 
       {/* 底部弹窗：状态 / 排序 */}
       {sheetOpen && (
