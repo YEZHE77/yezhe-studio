@@ -272,7 +272,17 @@ export default function OrderCreateModal({ visible, packages, initialPackageId, 
       customer_phone: phones[0] || '',
       shoot_date: form.date_tbd ? '' : form.shoot_date,
       date_tbd: form.date_tbd ? 1 : 0,
-      time_slots: form.date_tbd || !form.pick_slots ? [] : form.time_slots,
+      time_slots: (() => {
+        if (form.date_tbd || !form.pick_slots) return [];
+        // 半天/全天 是特殊标记，从 slots 里取出来单独发 period 字段
+        const real = form.time_slots.filter((h) => /^\d{2}:\d{2}$/.test(h));
+        return real;
+      })(),
+      period: (() => {
+        if (!form.pick_slots) return 'full';
+        const v = form.time_slots.find((h) => h === 'half' || h === 'full');
+        return v || 'full';
+      })(),
       package_id: form.package_id || null,
       package_price: parseFloat(form.package_price) || 0,
       deposit: parseFloat(form.package_deposit) || 0,
@@ -334,6 +344,22 @@ export default function OrderCreateModal({ visible, packages, initialPackageId, 
       </button>
     );
   }
+  // 时段类型按钮：半天 / 全天（与 hours 互斥，点击清空 slots）
+  const PERIOD_OPTIONS = [
+    { v: 'half', label: '半天' },
+    { v: 'full', label: '全天' }
+  ];
+  function periodBtn(opt) {
+    const on = form.time_slots.length === 1 && form.time_slots[0] === opt.v;
+    return (
+      <button key={opt.v} type="button" disabled={slotDisabled} onClick={() => set({ time_slots: [opt.v] })}
+        className="px-3 py-1.5 rounded-[24px] text-xs border transition flex items-center gap-1"
+        style={{ background: on ? '#333333' : MINT, color: '#FFFFFF', borderColor: 'transparent' }}>
+        {on && <IconCheck className="w-3 h-3" />}
+        {opt.label}
+      </button>
+    );
+  }
 
   return (
     <div
@@ -353,6 +379,12 @@ export default function OrderCreateModal({ visible, packages, initialPackageId, 
             <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6" /></svg>
           </button>
           <div className="text-base" style={{ color: TEXT_BODY }}>新增订单</div>
+          {/* 右上角保存按钮（点击触发表单提交） */}
+          <button type="button" disabled={saving} onClick={() => document.getElementById('order-create-submit')?.click()}
+            className="absolute right-4 top-1/2 -translate-y-1/2 text-sm disabled:opacity-50"
+            style={{ color: TEXT_BODY, background: 'none', border: 'none', padding: '4px 8px', cursor: 'pointer' }}>
+            {saving ? '保存中…' : '保存'}
+          </button>
         </div>
 
         {/* 可滚动内容区 */}
@@ -446,6 +478,7 @@ export default function OrderCreateModal({ visible, packages, initialPackageId, 
                 <div className="text-xs mb-2" style={{ color: TEXT_MUTED }}>按小时选择场次，可多选（婚礼可选多个时间段）</div>
                 <div className="flex flex-wrap gap-2">
                   {HOURS.map(slotBtn)}
+                  {PERIOD_OPTIONS.map(periodBtn)}
                 </div>
               </div>
             )}
@@ -583,15 +616,11 @@ export default function OrderCreateModal({ visible, packages, initialPackageId, 
 
         </div>
 
-        {/* ⑧ 底部居中保存 */}
-        <div className="px-5 py-4 flex flex-col items-center shrink-0 border-t" style={{ borderColor: '#EEEEEE' }}>
-          {err && <div className="mb-3 w-full px-3 py-2 rounded-md text-center text-sm" style={{ background: '#FDECEC', color: '#E4393C' }}>{err}</div>}
-          <button type="submit" disabled={saving}
-            className="min-w-[160px] py-2.5 rounded-md text-white text-sm disabled:opacity-50 hover:opacity-90"
-            style={{ background: BLUE }}>
-            {saving ? '保存中…' : '保存'}
-          </button>
+        {/* 错误提示 + 隐藏 submit 触发器（标题栏右上角保存按钮 click 触发此按钮提交表单） */}
+        <div className="px-5 py-2 shrink-0">
+          {err && <div className="w-full px-3 py-2 rounded-md text-center text-sm" style={{ background: '#FDECEC', color: '#E4393C' }}>{err}</div>}
         </div>
+        <button id="order-create-submit" type="submit" disabled={saving} className="hidden" aria-hidden="true">保存</button>
       </form>
 
       {/* 执行人多选弹窗 */}
