@@ -472,7 +472,7 @@ export default function Orders() {
                       <span style={{ color: '#ff3333' }}>¥{amount.toLocaleString()}</span>
                       {remain > 0 && (
                         <span className="px-2 py-0.5 rounded-lg text-[11px] text-white"
-                          style={{ background: '#ff3333' }}>未结算尾款</span>
+                          style={{ background: '#7ECDBB' }}>未结算尾款</span>
                       )}
                     </div>
                     <div className="flex items-center gap-1 mt-1.5 text-[12px]" style={{ color: '#6b7280' }}>
@@ -892,7 +892,7 @@ function MobileOrderCenterView({ stats, list, listTotal, state, setState, refres
         bottom: 'calc(24px + env(safe-area-inset-bottom))',
         zIndex: 40,
         height: 44, padding: '0 20px', borderRadius: 22,
-        background: '#FA5151', color: '#fff', border: 'none',
+        background: '#7ECDBB', color: '#fff', border: 'none',
         fontSize: 15, display: 'flex', alignItems: 'center', gap: 6,
         boxShadow: '0 6px 18px rgba(250,81,81,0.35)'
       }}>
@@ -1208,7 +1208,7 @@ function OrderCard({ order, studioLogo, onClick }) {
         <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
           {pkgCategory ? <span style={{ fontSize: 12, color: '#999' }}>{pkgCategory}</span> : null}
           {remain > 0 && order.status !== 'completed' && order.status !== 'cancelled' && (
-            <span style={{ fontSize: 9, color: '#fff', background: '#ff3333', padding: '0 5px', lineHeight: '14px', borderRadius: 3 }}>未结算尾款</span>
+            <span style={{ fontSize: 9, color: '#fff', background: '#7ECDBB', padding: '0 5px', lineHeight: '14px', borderRadius: 3 }}>未结算尾款</span>
           )}
         </div>
       </div>
