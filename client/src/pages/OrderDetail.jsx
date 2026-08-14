@@ -1091,9 +1091,7 @@ export default function OrderDetail() {
               <button type="button" onClick={stepNext} disabled={detail.cancelled || curStep >= ORDER_STEPS_11.length}
                 style={{ height: 24, padding: '0 12px', borderRadius: 3, border: '1px solid ' + BLUE, background: BLUE, color: '#fff', fontSize: 12, cursor: detail.cancelled || curStep >= ORDER_STEPS_11.length ? 'not-allowed' : 'pointer', opacity: detail.cancelled || curStep >= ORDER_STEPS_11.length ? 0.4 : 1 }}>下一步 ›</button>
             </div>
-            <div style={{ textAlign: 'center', fontSize: 14, color: TEXT_SUB, marginTop: 8 }}>
-              {statusText}
-            </div>
+            {/* 状态文字行已删除（与手机端 db330aa 一致，进度条上方仅保留两个按钮） */}
             <div style={{ overflowX: 'auto', overflowY: 'hidden', WebkitOverflowScrolling: 'touch' }}>
               <div className="flex items-start" style={{ gap: 0, minWidth: steps.length * 70 + (steps.length - 1) * 20 }}>
                 {steps.map((st, i) => (
