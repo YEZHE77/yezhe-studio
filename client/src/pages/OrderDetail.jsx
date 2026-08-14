@@ -1004,10 +1004,14 @@ export default function OrderDetail() {
             </div>
           </div>
 
-          {/* 订单变更记录 */}
-          <div style={{ margin: '12px 12px 0', background: '#fff', borderRadius: 8, padding: '14px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+          {/* 订单变更记录（3 项可点击跳转 logModal 对应 tab） */}
+          <div onClick={() => { setLogModalTab('status'); setLogModal(true); }} style={{ margin: '12px 12px 0', background: '#fff', borderRadius: 8, padding: '14px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', boxShadow: '0 1px 3px rgba(0,0,0,0.04)', cursor: 'pointer' }}>
             <span style={{ fontSize: 14, color: '#1f2329' }}>订单变更记录</span>
-            <span style={{ fontSize: 13, color: '#bbb' }}>状态、交易、顾客下载</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14, fontSize: 13, color: '#bbb' }}>
+              <span onClick={(e) => { e.stopPropagation(); setLogModalTab('status'); setLogModal(true); }} style={{ display: 'inline-flex', alignItems: 'center', gap: 3, cursor: 'pointer' }}>状态<span style={{ marginLeft: 3 }}>›</span></span>
+              <span onClick={(e) => { e.stopPropagation(); setLogModalTab('trade'); setLogModal(true); }} style={{ display: 'inline-flex', alignItems: 'center', gap: 3, cursor: 'pointer' }}>交易<span style={{ marginLeft: 3 }}>›</span></span>
+              <span onClick={(e) => { e.stopPropagation(); setLogModalTab('download'); setLogModal(true); }} style={{ display: 'inline-flex', alignItems: 'center', gap: 3, cursor: 'pointer' }}>顾客下载<span style={{ marginLeft: 3 }}>›</span></span>
+            </div>
           </div>
 
           {/* 更多设置底部弹窗 */}
@@ -2290,80 +2294,84 @@ export default function OrderDetail() {
         </div>
       </div>
 
-      {/* 右上角【查看记录】唤起日志弹窗：3 个 Tab（订单状态详情 / 交易记录 / 下载记录） */}
+      {/* 订单记录全屏页（点击底部订单变更记录跳转，校 IMG_7533） */}
       {logModal && (
-        <div onClick={() => setLogModal(false)} style={{ position: 'fixed', inset: 0, zIndex: 70, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div onClick={(e) => e.stopPropagation()} style={{ width: '100%', maxWidth: 720, maxHeight: '80vh', background: '#ffffff', borderRadius: 8, overflow: 'hidden', boxShadow: '0 12px 40px rgba(0,0,0,0.18)', display: 'flex', flexDirection: 'column' }}>
-            <div className="flex items-center justify-between" style={{ padding: '16px 24px', borderBottom: '1px solid ' + DIV, flexShrink: 0 }}>
-              <div style={{ fontSize: 16, fontWeight: 400, color: '#222222' }}>订单记录 · {detail.order_no}</div>
-              <button type="button" onClick={() => setLogModal(false)}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#999999', fontSize: 22, lineHeight: 1, padding: 0 }} aria-label="关闭">×</button>
-            </div>
-            <div className="flex" style={{ borderBottom: '1px solid ' + DIV, padding: '0 24px', flexShrink: 0 }}>
-              {[{ k: 'status', t: '订单状态详情' }, { k: 'trade', t: '交易记录' }, { k: 'download', t: '下载记录' }].map((tb) => {
-                const active = logModalTab === tb.k;
-                return (
-                  <button key={tb.k} type="button" onClick={() => setLogModalTab(tb.k)}
-                    style={{ padding: '10px 16px', background: 'none', border: 'none', cursor: 'pointer', fontSize: 14, color: active ? BLUE : '#666666', borderBottom: active ? ('2px solid ' + BLUE) : '2px solid transparent', fontWeight: 400 }}>
-                    {tb.t}
-                  </button>
-                );
-              })}
-            </div>
-            <div style={{ padding: '20px 24px', overflow: 'auto', flex: 1 }}>
-              {logModalTab === 'status' && (
-                <>
-                  <div style={{ color: '#222222', fontWeight: 400, marginBottom: 8 }}>操作日志</div>
-                  {(detail.logs || []).length === 0 && <div style={{ color: '#999999', fontSize: 14, padding: '4px 0' }}>暂无日志</div>}
-                  {(detail.logs || []).map((l, i, arr) => (
-                    <div key={i} className="flex" style={{ gap: 12 }}>
-                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: 10, flexShrink: 0 }}>
-                        <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#52C41A', marginTop: 7, flexShrink: 0 }} />
-                        {i < arr.length - 1 && <span style={{ flex: 1, width: 1, background: '#EAEAEA', marginTop: 4 }} />}
-                      </div>
-                      <div style={{ flex: 1, paddingBottom: 14 }}>
-                        <div style={{ fontSize: 14, color: '#333333' }}>{l.text}</div>
-                        <div style={{ fontSize: 12, color: TEXT_SUB, marginTop: 2 }}>{new Date(l.t).toLocaleString('zh-CN')}</div>
-                      </div>
+        <div style={{ position: 'fixed', inset: 0, zIndex: 70, background: '#fff', display: 'flex', flexDirection: 'column' }}>
+          <div style={{ paddingTop: 'env(safe-area-inset-top, 0px)', height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', borderBottom: '1px solid ' + DIV, flexShrink: 0, position: 'relative' }}>
+            <button type="button" onClick={() => setLogModal(false)}
+              style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#999', fontSize: 20, padding: 4 }} aria-label="返回">‹</button>
+            <div style={{ fontSize: 16, fontWeight: 500, color: '#222222' }}>订单记录</div>
+          </div>
+          <div className="flex" style={{ borderBottom: '1px solid ' + DIV, padding: '0 24px', flexShrink: 0 }}>
+            {[{ k: 'status', t: '订单变更记录' }, { k: 'trade', t: '交易记录' }, { k: 'download', t: '下载记录' }].map((tb) => {
+              const active = logModalTab === tb.k;
+              return (
+                <button key={tb.k} type="button" onClick={() => setLogModalTab(tb.k)}
+                  style={{ padding: '12px 16px', background: 'none', border: 'none', cursor: 'pointer', fontSize: 14, color: active ? '#FF4949' : '#666666', borderBottom: active ? '2px solid #FF4949' : '2px solid transparent', fontWeight: active ? 500 : 400 }}>
+                  {tb.t}
+                </button>
+              );
+            })}
+          </div>
+          <div style={{ padding: '20px 24px', overflow: 'auto', flex: 1 }}>
+            {logModalTab === 'status' && (
+              <>
+                <div style={{ color: '#222222', fontSize: 13, marginBottom: 12 }}>订单编号：{detail.order_no}</div>
+                {(detail.logs || []).length === 0 && <div style={{ color: '#999999', fontSize: 14, padding: '4px 0' }}>暂无日志</div>}
+                {(detail.logs || []).map((l, i, arr) => (
+                  <div key={i} className="flex" style={{ gap: 12 }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: 50, flexShrink: 0 }}>
+                      <div style={{ fontSize: 13, color: '#666' }}>{new Date(l.t).toLocaleDateString('zh-CN').replace(/\//g, '-')}</div>
+                      <div style={{ fontSize: 11, color: '#999' }}>{new Date(l.t).getFullYear()}</div>
                     </div>
-                  ))}
-                </>
-              )}
-              {logModalTab === 'trade' && (
-                <div>
-                  <div style={{ color: '#222222', fontWeight: 400, marginBottom: 8 }}>收款流水</div>
-                  {(!detail.payments || detail.payments.length === 0) && <div style={{ color: '#999999', fontSize: 14, padding: '4px 0' }}>暂无流水</div>}
-                  {detail.payments && detail.payments.map((p) => (
-                    <div key={p.id} className="flex items-center justify-between" style={{ borderBottom: '1px solid ' + DIV, padding: '8px 0' }}>
-                      <div>
-                        <span style={{ color: '#222222' }}>{TYPE_LABEL[p.type]}</span>
-                        <span style={{ color: '#666666', marginLeft: 8 }}>{payMethodLabel(p)}</span>
-                      </div>
-                      <div style={{ color: p.type === 'refund' ? '#ef4444' : '#10b981' }}>
-                        {p.type === 'refund' ? '-' : '+'}¥{Number(p.amount).toLocaleString()}
-                      </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0 }}>
+                      <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#FF4949', marginTop: 7, flexShrink: 0 }} />
+                      {i < arr.length - 1 && <span style={{ flex: 1, width: 1, background: '#EAEAEA', marginTop: 4 }} />}
                     </div>
-                  ))}
-                </div>
-              )}
-              {logModalTab === 'download' && (
-                <div>
-                  <div style={{ color: '#222222', fontWeight: 400, marginBottom: 8 }}>可下载素材（原片 / 精修片 / 选片）</div>
-                  {downloadItems.length === 0 && <div style={{ color: '#999999', fontSize: 14, padding: '4px 0' }}>暂无素材</div>}
-                  <div style={{ display: 'grid', gap: 4 }}>
-                    {downloadItems.map((it, i) => (
-                      <div key={i} className="flex items-center justify-between" style={{ borderBottom: '1px solid ' + DIV, padding: '8px 0' }}>
-                        <div className="flex items-center" style={{ gap: 8, minWidth: 0 }}>
-                          <span style={{ padding: '2px 6px', borderRadius: 4, background: '#f3f4f6', fontSize: 11, color: '#666666', flexShrink: 0 }}>{it.kind}</span>
-                          <span style={{ color: '#222222', fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{it.url}</span>
-                        </div>
-                        <button type="button" onClick={() => downloadFile(it.url)} style={{ padding: '4px 8px', borderRadius: 4, border: '1px solid ' + DIV, fontSize: 12, color: '#222222', background: '#fff', cursor: 'pointer', flexShrink: 0 }}>下载</button>
-                      </div>
-                    ))}
+                    <div style={{ flex: 1, paddingBottom: 14 }}>
+                      <div style={{ fontSize: 14, color: '#333333' }}>{l.text}</div>
+                      <div style={{ fontSize: 12, color: TEXT_SUB, marginTop: 2 }}>{new Date(l.t).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}</div>
+                    </div>
                   </div>
+                ))}
+              </>
+            )}
+            {logModalTab === 'trade' && (
+              <div>
+                <div style={{ color: '#222222', fontSize: 13, marginBottom: 12 }}>订单编号：{detail.order_no}</div>
+                <div style={{ color: '#222222', fontWeight: 400, marginBottom: 8 }}>收款流水</div>
+                {(!detail.payments || detail.payments.length === 0) && <div style={{ color: '#999999', fontSize: 14, padding: '4px 0' }}>暂无流水</div>}
+                {detail.payments && detail.payments.map((p) => (
+                  <div key={p.id} className="flex items-center justify-between" style={{ borderBottom: '1px solid ' + DIV, padding: '8px 0' }}>
+                    <div>
+                      <span style={{ color: '#222222' }}>{TYPE_LABEL[p.type]}</span>
+                      <span style={{ color: '#666666', marginLeft: 8 }}>{payMethodLabel(p)}</span>
+                    </div>
+                    <div style={{ color: p.type === 'refund' ? '#ef4444' : '#10b981' }}>
+                      {p.type === 'refund' ? '-' : '+'}¥{Number(p.amount).toLocaleString()}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+            {logModalTab === 'download' && (
+              <div>
+                <div style={{ color: '#222222', fontSize: 13, marginBottom: 12 }}>订单编号：{detail.order_no}</div>
+                <div style={{ color: '#222222', fontWeight: 400, marginBottom: 8 }}>可下载素材（原片 / 精修片 / 选片）</div>
+                {downloadItems.length === 0 && <div style={{ color: '#999999', fontSize: 14, padding: '4px 0' }}>暂无素材</div>}
+                <div style={{ display: 'grid', gap: 4 }}>
+                  {downloadItems.map((it, i) => (
+                    <div key={i} className="flex items-center justify-between" style={{ borderBottom: '1px solid ' + DIV, padding: '8px 0' }}>
+                      <div className="flex items-center" style={{ gap: 8, minWidth: 0 }}>
+                        <span style={{ padding: '2px 6px', borderRadius: 4, background: '#f3f4f6', fontSize: 11, color: '#666666', flexShrink: 0 }}>{it.kind}</span>
+                        <span style={{ color: '#222222', fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{it.url}</span>
+                      </div>
+                      <button type="button" onClick={() => downloadFile(it.url)} style={{ padding: '4px 8px', borderRadius: 4, border: '1px solid ' + DIV, fontSize: 12, color: '#222222', background: '#fff', cursor: 'pointer', flexShrink: 0 }}>下载</button>
+                    </div>
+                  ))}
                 </div>
-              )}
-            </div>
+              </div>
+            )}
           </div>
         </div>
       )}
