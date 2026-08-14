@@ -1678,6 +1678,15 @@ export default function OrderDetail() {
                 </div>
                 <button type="button" onClick={() => setAddSched(true)}
                   style={{ marginTop: 8, background: BLUE, color: '#fff', border: 'none', borderRadius: 3, fontSize: 12, padding: '6px 14px', cursor: 'pointer' }}>＋ 添加档期</button>
+                {/* 拍摄时长：全天/半天 单选下拉（与 detail.period 联动，保存到 orders.period） */}
+                <div style={{ marginTop: 10 }}>
+                  <div style={{ fontSize: 13, color: '#666666', marginBottom: 6 }}>拍摄时长</div>
+                  <select value={editForm.period} onChange={(e) => setEditForm({ ...editForm, period: e.target.value })}
+                    style={{ ...modalInputStyle, fontSize: 13, maxWidth: '100%' }}>
+                    <option value="full">全天</option>
+                    <option value="half">半天</option>
+                  </select>
+                </div>
               </div>
 
             {/* 双卡片横向布局 */}
