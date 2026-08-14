@@ -44,44 +44,46 @@ function calcExtraFee(extraCount, unitPrice) {
 // 订单详情 11 步横向流程进度条（spec：订单生成 → … → 订单完结）
 // 每一步的完成状态/时间全部由后端接口数据推导（status 阶段机 + 操作日志 logs + 原片上传数），禁止写死日期
 const ORDER_STEPS_11 = [
-  { key: 'created', label: '订单生成', kws: ['创建订单', '订单生成'] },
-  { key: 'contract', label: '生成合同', kws: ['生成合同', '合同'] },
-  { key: 'confirm', label: '沟通确认', kws: ['沟通确认', '沟通'] },
-  { key: 'shooting', label: '拍摄执行', kws: ['拍摄执行', '开始拍摄', '阶段推进 → 已拍摄'] },
-  { key: 'shot_done', label: '拍摄结束', kws: ['完成拍摄', '拍摄结束', '阶段推进 → 已拍摄'] },
-  { key: 'selecting', label: '选片精修', kws: ['选片', '精修'] },
-  { key: 'teaser', label: '预告片输出', kws: ['预告片'] },
+  { key: 'paid',       label: '已支付定金', kws: ['已支付定金', '支付定金', '定金到账'] },
+  { key: 'created',    label: '订单生成',   kws: ['创建订单', '订单生成'] },
+  { key: 'contract',   label: '生成合同',   kws: ['生成合同', '合同'] },
+  { key: 'confirm',    label: '沟通确认',   kws: ['沟通确认', '沟通'] },
+  { key: 'shooting',   label: '等待拍摄',   kws: ['拍摄执行', '开始拍摄', '阶段推进 → 已拍摄', '等待拍摄'] },
+  { key: 'shot_done',  label: '拍摄结束',   kws: ['完成拍摄', '拍摄结束', '阶段推进 → 已拍摄'] },
+  { key: 'selecting',  label: '选片精修',   kws: ['选片', '精修'] },
+  { key: 'teaser',     label: '预告片输出', kws: ['预告片'] },
   { key: 'retouch_done', label: '全部精修完成', kws: ['精修完成', '全部精修完成'] },
-  { key: 'raw_pack', label: '原片打包', kws: ['上传原片', '原片打包'], raw: true },
-  { key: 'deliver', label: '统一交付', kws: ['已交付', '统一交付'] },
-  { key: 'complete', label: '订单完结', kws: ['已完成', '订单完结'] }
+  { key: 'raw_pack',   label: '原片打包',   kws: ['上传原片', '原片打包'], raw: true },
+  { key: 'deliver',    label: '统一交付',   kws: ['已交付', '统一交付'] },
+  { key: 'complete',   label: '订单完结',   kws: ['已完成', '订单完结'] }
 ];
 // 后端 status（6 阶段）→ 已完成的最后一步（1 起）
-const STATUS_BOUNDARY_11 = { deposit: 1, shot: 5, selecting: 6, retouching: 6, delivered: 10, completed: 11 };
+const STATUS_BOUNDARY_11 = { deposit: 2, shot: 6, selecting: 7, retouching: 7, delivered: 11, completed: 12 };
 // 进度条 上一步/下一步：每步的推进动作（状态步走 PUT 状态；日志步走追加操作日志）
 const STEP_ACTIONS = [
-  null,                    // 0 订单生成（建单即完成）
-  { log: '生成合同' },      // 1
-  { log: '沟通确认' },      // 2
-  { log: '拍摄执行' },      // 3
-  { status: 'shot' },      // 4 拍摄结束
-  { status: 'selecting' }, // 5 选片精修
-  { log: '预告片' },        // 6
-  { log: '精修完成' },      // 7
-  { log: '原片打包' },      // 8
-  { status: 'delivered' }, // 9 统一交付
-  { status: 'completed' }  // 10 订单完结
+  null,                    // 0 已支付定金（建单即完成）
+  null,                    // 1 订单生成
+  { log: '生成合同' },      // 2
+  { log: '沟通确认' },      // 3
+  { log: '等待拍摄' },      // 4 等待拍摄（原 log「拍摄执行」）
+  { status: 'shot' },      // 5 拍摄结束
+  { status: 'selecting' }, // 6 选片精修
+  { log: '预告片' },        // 7
+  { log: '精修完成' },      // 8
+  { log: '原片打包' },      // 9
+  { status: 'delivered' }, // 10 统一交付
+  { status: 'completed' }  // 11 订单完结
 ];
 // 状态步回退映射（上一步）
 const STATUS_REVERT = { shot: 'deposit', selecting: 'shot', delivered: 'selecting', completed: 'delivered' };
 // 作废订单：按日志倒推已推进到哪一步（禁止写死）
 function boundaryFromLogs(logs) {
   const has = (kw) => (logs || []).some((l) => (l.text || '').includes(kw));
-  if (has('已完成') || has('订单完结')) return 11;
-  if (has('已交付')) return 10;
-  if (has('选片') || has('精修')) return 6;
-  if (has('完成拍摄') || has('拍摄结束') || has('已拍摄')) return 5;
-  return 1;
+  if (has('已完成') || has('订单完结')) return 12;
+  if (has('已交付')) return 11;
+  if (has('选片') || has('精修')) return 7;
+  if (has('完成拍摄') || has('拍摄结束') || has('已拍摄')) return 6;
+  return 2;
 }
 // 11 步推导：done = 已到该步（状态边界）且数据满足；current = 第一个未完成节点；time 全部取后端日志时间
 function build11Steps(detail, logs, rawCount = 0) {
