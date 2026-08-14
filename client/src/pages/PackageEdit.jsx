@@ -625,21 +625,26 @@ export default function PackageEdit() {
               onClick={() => openSheet('album', d.album_provide)} />
             <MRow label="服务地点" value={d.service_location || '不显示'} onClick={() => openSheet('location', d.service_location)} />
 
-            {/* 服务详情分组 */}
+            {/* 服务详情分组（可编辑 textarea；空内容显示占位文案） */}
             <MGroup title="服务详情" />
-            <div style={{ padding: '14px 16px', color: '#666', fontSize: 13, lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>
-              {d.service_detail_text || (
-                <span style={{ color: MGRAY }}>婚礼跟拍 | 摄影单机位（两台相机拍摄）\n\n拍摄内容：婚礼当天流程、人物、场景等，具体拍摄内容由摄影师根据实际情况拍摄。\n照片数量：承诺拍摄不少于 300 张照片，并从中精选 40 张进行精修。\n照片格式：乙方提供 JPEG 格式的数字照片。\n婚礼预告：婚礼结束后 1—3 日 9 张精修（赠送服务）\n概述：摄影单机位记录画面有限。</span>
-              )}
+            <div style={{ padding: '14px 16px' }}>
+              <textarea
+                value={d.service_detail_text || ''}
+                onChange={(e) => setD({ service_detail_text: e.target.value })}
+                placeholder="婚礼跟拍 | 摄影单机位（两台相机拍摄）&#10;&#10;拍摄内容：婚礼当天流程、人物、场景等，具体拍摄内容由摄影师根据实际情况拍摄。&#10;照片数量：承诺拍摄不少于 300 张照片，并从中精选 40 张进行精修。&#10;照片格式：乙方提供 JPEG 格式的数字照片。&#10;婚礼预告：婚礼结束后 1—3 日 9 张精修（赠送服务）&#10;概述：摄影单机位记录画面有限。"
+                rows={8}
+                className={taBig}
+                style={{ resize: 'vertical', minHeight: 160, lineHeight: 1.7 }}
+              />
             </div>
-            {/* 快捷模板 */}
+            {/* 快捷模板：点击追加预设段落标记到末尾 */}
             <div style={{ background: '#F8F8F8', padding: '12px 16px' }}>
-              <div style={{ fontSize: 13, color: MGRAY, marginBottom: 10 }}>快捷模板</div>
+              <div style={{ fontSize: 13, color: MGRAY, marginBottom: 10 }}>快捷模板（点击追加到末尾）</div>
               <div style={{ display: 'flex', gap: 8 }}>
-                <button type="button" onClick={() => setD({ service_detail_text: d.service_detail_text + (d.service_detail_text ? '\n' : '') + '【摄影类】' })}
-                  style={{ padding: '5px 12px', borderRadius: 12, fontSize: 12, border: '1px solid #D1D5DB', background: d.shoot_template === 'photo' ? MRED : '#fff', color: d.shoot_template === 'photo' ? '#fff' : '#333' }}>摄影类</button>
-                <button type="button" onClick={() => setD({ service_detail_text: d.service_detail_text + (d.service_detail_text ? '\n' : '') + '【摄像类】' })}
-                  style={{ padding: '5px 12px', borderRadius: 12, fontSize: 12, border: '1px solid #D1D5DB', background: d.shoot_template === 'video' ? MRED : '#fff', color: d.shoot_template === 'video' ? '#fff' : '#333' }}>摄像类</button>
+                <button type="button" onClick={() => setD({ service_detail_text: (d.service_detail_text || '') + (d.service_detail_text ? '\n' : '') + '【摄影类】' })}
+                  className="px-3 py-1.5 rounded-full text-xs border border-line bg-white">摄影类</button>
+                <button type="button" onClick={() => setD({ service_detail_text: (d.service_detail_text || '') + (d.service_detail_text ? '\n' : '') + '【摄像类】' })}
+                  className="px-3 py-1.5 rounded-full text-xs border border-line bg-white">摄像类</button>
               </div>
             </div>
           </div>
