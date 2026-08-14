@@ -1662,29 +1662,13 @@ export default function OrderDetail() {
                   <input value={editForm.shoot_date} onChange={(e) => setEditForm({ ...editForm, shoot_date: e.target.value })} type="date" style={{ ...modalInputStyle, fontSize: 13, maxWidth: '100%' }} />
                   <span style={{ fontSize: 11, color: '#999999' }}>修改日期将释放旧档期并占用新日期；冲突时会先提示。</span>
                 </div>
-                <div style={{ position: 'relative' }}>
-                  <button type="button" onClick={() => setSlotOpen((v) => !v)}
-                    style={{ ...modalInputStyle, fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, cursor: 'pointer', color: (editForm.time_slots || []).length ? '#222222' : '#999999' }}>
-                    <span className="truncate">{(editForm.time_slots || []).length ? (editForm.time_slots || []).join('、') : '点击选择拍摄时段'}</span>
-                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#999999" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><path d="m6 9 6 6 6-6" /></svg>
+                <div>
+                  <div style={{ fontSize: 13, color: '#666666', marginBottom: 6 }}>拍摄时间</div>
+                  <button type="button" onClick={() => setAddSched(true)}
+                    style={{ ...modalInputStyle, fontSize: 13, textAlign: 'left', color: '#222', background: '#fff', display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer', border: '1px dashed ' + BLUE, color: BLUE, borderRadius: 3 }}>
+                    <span style={{ fontSize: 16, marginRight: 2 }}>＋</span> 添加拍摄时间
                   </button>
-                  {slotOpen && (
-                    <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: 4, maxHeight: 200, overflowY: 'auto', background: '#fff', border: '1px solid ' + DIV, borderRadius: 4, boxShadow: '0 6px 20px rgba(0,0,0,0.10)', zIndex: 30, padding: 4 }}>
-                      {HOURS.map((h) => {
-                        const on = (editForm.time_slots || []).includes(h);
-                        return (
-                          <div key={h} onClick={() => setEditForm((f) => ({ ...f, time_slots: on ? f.time_slots.filter((x) => x !== h) : [...(f.time_slots || []), h] }))}
-                            style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '7px 12px', fontSize: 13, cursor: 'pointer', borderRadius: 3, color: on ? BLUE : '#333333', background: on ? '#EAF6FD' : 'transparent' }}>
-                            <span>{h}</span>
-                            {on && <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m5 13 4 4 10-10" /></svg>}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
                 </div>
-                <button type="button" onClick={() => setAddSched(true)}
-                  style={{ marginTop: 8, background: BLUE, color: '#fff', border: 'none', borderRadius: 3, fontSize: 12, padding: '6px 14px', cursor: 'pointer' }}>＋ 添加档期</button>
               </div>
 
             {/* 双卡片横向布局 */}
@@ -2529,68 +2513,83 @@ function AddScheduleModal({ initialDate = '', initialSlots = [], initialPeriod =
     onConfirm(date, slots, period);
   };
   return (
-    <div className="fixed inset-0 z-[95] flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.45)' }}>
-      <div onClick={(e) => e.stopPropagation()} style={{ width: '100%', maxWidth: 560, maxHeight: '88vh', background: '#F7F7F7', borderRadius: 6, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-        <div className="flex items-center justify-between shrink-0" style={{ padding: '18px 20px', borderBottom: '1px solid #EEEEEE' }}>
-          <span style={{ fontSize: 15, color: '#333333' }}>添加档期</span>
-          <button type="button" onClick={onClose} style={{ background: 'none', border: 'none', fontSize: 18, lineHeight: 1, color: '#999999', cursor: 'pointer', padding: 2 }}>×</button>
+    <div className="fixed inset-0 z-[95] flex items-end" style={{ background: 'rgba(0,0,0,0.45)' }} onClick={onClose}>
+      <div onClick={(e) => e.stopPropagation()} style={{ width: '100%', maxWidth: 480, margin: '0 auto', maxHeight: '88vh', background: '#F7F7F7', borderTopLeftRadius: 16, borderTopRightRadius: 16, display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 -6px 30px rgba(0,0,0,0.18)' }}>
+        <div className="flex items-center justify-between shrink-0" style={{ padding: '14px 20px 8px' }}>
+          <span style={{ width: 24 }} />
+          <span style={{ fontSize: 16, color: '#333333', fontWeight: 500 }}>添加档期</span>
+          <button type="button" onClick={onClose} style={{ background: 'none', border: 'none', fontSize: 22, lineHeight: 1, color: '#999999', cursor: 'pointer', padding: 2 }}>×</button>
         </div>
-        <div style={{ flex: 1, overflowY: 'auto', padding: 16 }}>
-          {/* 拍摄日期 */}
-          <div style={{ background: '#fff', border: '1px solid #EEEEEE', borderRadius: 6, padding: 16, marginBottom: 12 }}>
-            <div style={{ fontSize: 13, color: '#666666', marginBottom: 8 }}>拍摄日期</div>
-            <input type="date" value={tbd ? '' : date} disabled={tbd} onChange={(e) => setDate(e.target.value)} style={{ ...modalInputStyle, fontSize: 13, maxWidth: '100%' }} />
-          </div>
-          {/* 选择场次 */}
-          <div style={{ background: '#fff', border: '1px solid #EEEEEE', borderRadius: 6, padding: 16, marginBottom: 12 }}>
-            <div className="flex items-center justify-between" style={{ marginBottom: 12 }}>
-              <span style={{ fontSize: 13, color: '#666666' }}>选择场次</span>
-              <label className="flex items-center" style={{ gap: 6, fontSize: 12, color: '#AAAAAA', cursor: 'pointer' }}>
-                <input type="checkbox" checked={slots.length > 0} onChange={(e) => setSlots(e.target.checked ? HOURS.slice(0, 1) : [])} />
-                选择场次
-              </label>
+        <div style={{ flex: 1, overflowY: 'auto', padding: '0 16px 16px' }}>
+          {/* 拍摄设置：日期 / 时间 / 地点 */}
+          <div style={{ fontSize: 13, color: '#999999', padding: '12px 4px 6px' }}>拍摄设置</div>
+          <div style={{ background: '#fff', borderRadius: 8, overflow: 'hidden' }}>
+            {/* 拍摄日期 */}
+            <button type="button" onClick={() => {/* 由 native date picker 触发 */}} style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 14px', background: 'none', border: 'none', borderBottom: '1px solid #F2F2F2', fontSize: 14, color: '#333', textAlign: 'left', cursor: 'pointer' }}>
+              <span>拍摄日期</span>
+              <span style={{ color: '#222', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                {tbd ? '日期待定' : (date || '请选择')} <span style={{ color: '#999' }}>›</span>
+              </span>
+            </button>
+            {/* 拍摄时间（点击选择场次后回填） */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 14px', borderBottom: '1px solid #F2F2F2', fontSize: 14, color: '#333' }}>
+              <span>拍摄时间</span>
+              <span style={{ color: '#999' }}>{slots.length ? (slots.includes('00:00') && slots.length > 1 ? '下午 ' + (slots[slots.length - 1] || '') : slots[0] === '12:00' ? '上午' : '下午 ' + (slots[slots.length - 1] || '')) : '请选择场次'}</span>
             </div>
-            <div style={{ overflowX: 'auto', paddingBottom: 4 }}>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(8, 50px)', gap: '8px 5px', minWidth: 435 }}>
+            {/* 拍摄地点（暂为展示） */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 14px', fontSize: 14, color: '#333' }}>
+              <span>拍摄地点</span>
+              <span style={{ color: '#999' }}>待定</span>
+            </div>
+          </div>
+          {/* 价格设置（套系名称 + 总价） */}
+          <div style={{ fontSize: 13, color: '#999999', padding: '16px 4px 6px' }}>价格设置</div>
+          <div style={{ background: '#fff', borderRadius: 8, overflow: 'hidden' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 14px', borderBottom: '1px solid #F2F2F2', fontSize: 14, color: '#333' }}>
+              <span>预定套系</span>
+              <span style={{ color: '#222' }}>{packageName || '—'}</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 14px', fontSize: 14, color: '#333' }}>
+              <span>总价</span>
+              <span style={{ color: '#222' }}>¥ {form?.price || '0.00'}</span>
+            </div>
+          </div>
+          {/* 当前已选日期（参考图展示：2026 年 08 月 10 日） */}
+          {!tbd && date && (
+            <div style={{ fontSize: 13, color: '#999999', padding: '20px 4px 8px' }}>{date.replace(/-/g, ' 年 ').replace(/(\d{2}) 年 (\d{2}) 月 (\d{2})/, '$1 年 $2 月 $3 日')}</div>
+          )}
+          {/* 自定义时间 */}
+          <div style={{ background: '#fff', borderRadius: 8, marginBottom: 16, padding: '14px 14px', fontSize: 14, color: '#333', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <span>自定义时间</span>
+            <span style={{ color: '#bbb' }}>›</span>
+          </div>
+          {/* 可选场次 24 时段网格 + 半天/全天 */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 4px 12px' }}>
+            <span style={{ fontSize: 14, color: '#333' }}>可选场次</span>
+            <button type="button" onClick={() => setSlots(slots.length ? [] : HOURS.slice(0, 1))} style={{ background: 'none', border: 'none', color: '#999', fontSize: 12, padding: 0, cursor: 'pointer' }}>编辑</button>
+          </div>
+          <div style={{ background: '#fff', borderRadius: 8, padding: 14 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 10 }}>
               {HOURS.map((h) => {
                 const on = slots.includes(h);
                 return (
                   <button key={h} type="button" onClick={() => toggle(h)}
-                    style={{ width: 50, height: 25, fontSize: 12, lineHeight: '25px', padding: 0, border: 'none', borderRadius: 3, cursor: 'pointer', background: on ? '#333333' : '#8DDBB3', color: '#FFFFFF' }}>
+                    style={{ height: 30, fontSize: 12, padding: 0, border: 'none', borderRadius: 14, cursor: 'pointer', background: on ? '#82C8AE' : '#A6E1CC', color: on ? '#fff' : '#fff', fontWeight: on ? 500 : 400, position: 'relative' }}>
+                    {on && <span style={{ position: 'absolute', left: 4, top: '50%', transform: 'translateY(-50%)' }}>✓</span>}
                     {h}
                   </button>
                 );
               })}
-              {/* 23:00 之后加「半天」「全天」两个时段类型按钮（与 hours 互斥，选中清空 slots） */}
               <button type="button" onClick={() => pickPeriod('half')}
-                style={{ width: 50, height: 25, fontSize: 12, lineHeight: '25px', padding: 0, border: 'none', borderRadius: 3, cursor: 'pointer', background: period === 'half' ? '#333333' : '#8DDBB3', color: '#FFFFFF' }}>
-                半天
-              </button>
+                style={{ height: 30, fontSize: 12, padding: 0, border: 'none', borderRadius: 14, cursor: 'pointer', background: period === 'half' ? '#82C8AE' : '#A6E1CC', color: '#fff', fontWeight: period === 'half' ? 500 : 400 }}>半天</button>
               <button type="button" onClick={() => pickPeriod('full')}
-                style={{ width: 50, height: 25, fontSize: 12, lineHeight: '25px', padding: 0, border: 'none', borderRadius: 3, cursor: 'pointer', background: period === 'full' ? '#333333' : '#8DDBB3', color: '#FFFFFF' }}>
-                全天
-              </button>
-              </div>
+                style={{ height: 30, fontSize: 12, padding: 0, border: 'none', borderRadius: 14, cursor: 'pointer', background: period === 'full' ? '#82C8AE' : '#A6E1CC', color: '#fff', fontWeight: period === 'full' ? 500 : 400 }}>全天</button>
             </div>
+            {err && <div style={{ fontSize: 12, color: '#F53F3F', marginTop: 8 }}>{err}</div>}
           </div>
-          {/* 日期待定 */}
-          <div style={{ background: '#fff', border: '1px solid #EEEEEE', borderRadius: 6, padding: 16, marginBottom: 12 }}>
-            <label className="flex items-center" style={{ gap: 8, fontSize: 13, color: '#333333', cursor: 'pointer' }}>
-              <input type="checkbox" checked={tbd} onChange={(e) => setTbd(e.target.checked)} />
-              日期待定
-            </label>
-            {tbd && <div style={{ fontSize: 12, color: '#C2A773', background: '#FFF9EB', borderRadius: 4, padding: '8px 10px', marginTop: 10 }}>该档期标记为日期待定，日期与场次已置灰，仅记录意向。</div>}
-          </div>
-          {/* 套系名称（只读展示） */}
-          <div style={{ background: '#fff', border: '1px solid #EEEEEE', borderRadius: 6, padding: 16 }}>
-            <div style={{ fontSize: 13, color: '#666666', marginBottom: 8 }}>套系名称</div>
-            <div style={{ ...modalInputStyle, fontSize: 13, color: '#333333', background: '#FAFAFA' }}>{packageName || '—'}</div>
-          </div>
-          {err && <div style={{ fontSize: 12, color: '#F53F3F', marginTop: 8 }}>{err}</div>}
         </div>
-        <div className="flex justify-end shrink-0" style={{ gap: 10, padding: '14px 20px', borderTop: '1px solid #EEEEEE' }}>
-          <button type="button" onClick={onClose} style={modalCancelStyle}>取消</button>
-          <button type="button" onClick={confirm} style={modalSaveStyle}>确认</button>
+        <div className="flex justify-center shrink-0" style={{ padding: '12px 20px calc(16px + env(safe-area-inset-bottom))', borderTop: '1px solid #EEEEEE', background: '#fff' }}>
+          <button type="button" onClick={confirm} style={{ ...modalSaveStyle, width: '100%', padding: '12px 16px', background: '#FA5151', color: '#fff', fontSize: 15, border: 'none', borderRadius: 6, cursor: 'pointer' }}>确认</button>
         </div>
       </div>
     </div>
