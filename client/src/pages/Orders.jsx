@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import http, { img } from '../api.js';
 import { useViewState } from '../tabMemory.js';
+import { avatarColor, avatarText } from '../utils/avatar.js';
 import OrderCreateModal from '../components/OrderCreateModal.jsx';
 
 /* ==========================================================================
@@ -720,11 +721,7 @@ const TYPE_PILLS = [
 ];
 
 const AVATAR_BG = ['#7ECDBB', '#F5A623', '#2DB7F5', '#FF8A8A', '#9B7ED8', '#5A5A5A'];
-function avatarColor(name) {
-  let h = 0;
-  for (let i = 0; i < String(name || '').length; i++) h += String(name).charCodeAt(i);
-  return AVATAR_BG[h % AVATAR_BG.length];
-}
+// avatarColor / avatarText 已抽到 utils/avatar.js（订单中心 + 待办 Tab 共用，避免同客户名算出不同颜色）
 
 /* 渠道来源徽标：已知渠道用品牌色（校 IMG_7522 渠道卡），未知渠道 hash 取色 */
 const CHANNEL_COLORS = {
@@ -1157,7 +1154,7 @@ function OrderCard({ order, studioLogo, onClick }) {
   const statusText = stageLabel(order);
   const customerName = order.customer_name || order.order_name || '未知';
   const orderName = order.order_name || order.customer_name || '未知';
-  const avatarText = String(customerName).slice(0, 1);
+  const avatarTextVal = avatarText(customerName);
   const bg = avatarColor(customerName);
   const chName = order.channel || '';
   const execs = asArr(order.executors);
@@ -1186,7 +1183,7 @@ function OrderCard({ order, studioLogo, onClick }) {
           <div style={{
             width: 28, height: 28, borderRadius: '50%', background: bg, color: '#fff',
             display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, flexShrink: 0
-          }}>{avatarText}</div>
+          }}>{avatarTextVal}</div>
           <div style={{ fontSize: 15, color: '#1f2329', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{orderName}</div>
           {chName && (
             <span style={{

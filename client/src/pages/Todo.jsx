@@ -4,6 +4,7 @@
 import React, { useEffect, useMemo, useState, useCallback, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import http from '../api.js';
+import { avatarColor, avatarText } from '../utils/avatar.js';
 
 const GREEN = '#7ECDBB';
 const TEXT = '#1f2329';
@@ -31,14 +32,7 @@ const STATUS_LABEL = {
   cancelled: '已关闭',
 };
 
-// 头像颜色兜底（首字符色块）
-function avatarColor(name) {
-  const palette = ['#7ECDBB', '#2DB7F5', '#FFA940', '#FE2C55', '#9B7ED8', '#52C41A', '#EB2F96', '#13C2C2'];
-  if (!name) return palette[0];
-  let h = 0;
-  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
-  return palette[h % palette.length];
-}
+// 头像颜色 / 首字符：已抽到 utils/avatar.js（订单中心 + 待办 Tab 共用，避免同客户名算出不同颜色）
 
 function pad2(n) { return String(n).padStart(2, '0'); }
 
@@ -257,7 +251,7 @@ export default function Todo() {
           <div style={{ background: '#fff', borderRadius: 12, overflow: 'hidden' }}>
             {items.map((o, idx) => {
               const name = (o.customer_name || o.name || '客户').toString();
-              const first = name.slice(0, 1);
+              const first = avatarText(name);
               const statusKey = o.status || '';
               // deposit 状态细分：logs 含「沟通确认」=「等待拍摄」（已和客户敲定拍摄细节），否则 =「已付定金」（仅定金到账、尚未沟通）
               // 与后端 stats / orders 的 waiting_shoot 分界一致，消除卡片显示与 Tab 名错位
