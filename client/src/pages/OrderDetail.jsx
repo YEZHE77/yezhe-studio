@@ -859,7 +859,7 @@ export default function OrderDetail() {
                   <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16v6H4z" /><path d="M8 14h8" /><path d="M10 18h4" /></svg>
                 </span>
               </div>
-              <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#B0B0B0', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#7ECDBB', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm0 2c-3 0-8 1.5-8 4.5V21h16v-2.5c0-3-5-4.5-8-4.5z" /></svg>
               </div>
             </div>
@@ -871,11 +871,11 @@ export default function OrderDetail() {
                 <div style={{ fontSize: 15, color: '#1f2329', lineHeight: 1.35, marginBottom: 6 }}>{pkgInfo?.name || '未选套系'}</div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#666', flexWrap: 'wrap' }}>
                   <span>定金</span>
-                  <span style={{ background: '#2BB673', color: '#fff', padding: '1px 8px', borderRadius: 3, fontSize: 11 }}>线下收取</span>
+                  <span style={{ background: TAG_OFFLINE, color: '#fff', padding: '1px 8px', borderRadius: 3, fontSize: 11 }}>线下收取</span>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#666' }}>
                   <span>尾款</span>
-                  <span style={{ background: '#3A3A3A', color: '#fff', padding: '1px 8px', borderRadius: 3, fontSize: 11 }}>未结算</span>
+                  <span style={{ background: TAG_UNSETTLED, color: '#fff', padding: '1px 8px', borderRadius: 3, fontSize: 11 }}>未结算</span>
                 </div>
               </div>
               <div style={{ flexShrink: 0, textAlign: 'right', fontSize: 13 }}>
