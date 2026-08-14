@@ -33,7 +33,7 @@ function todayStr() {
 function emptyForm() {
   return {
     order_name: '',
-    customers: [{ name: '', phone: '' }],
+    customers: [{ name: '', phone: '' }, { name: '', phone: '' }],
     shoot_date: todayStr(),
     pick_slots: false,
     time_slots: [],
