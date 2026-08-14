@@ -58,7 +58,7 @@ const ORDER_STEPS_11 = [
   { key: 'complete',   label: '订单完结',   kws: ['已完成', '订单完结'] }
 ];
 // 后端 status（6 阶段）→ 已完成的最后一步（1 起）
-const STATUS_BOUNDARY_11 = { deposit: 2, shot: 6, selecting: 6, retouching: 7, delivered: 11, completed: 12 };
+const STATUS_BOUNDARY_11 = { deposit: 2, shot: 6, selecting: 7, retouching: 8, delivered: 11, completed: 12 };
 // 进度条 上一步/下一步：每步的推进动作（状态步走 PUT 状态；日志步走追加操作日志）
 const STEP_ACTIONS = [
   null,                    // 0 已支付定金（建单即完成）

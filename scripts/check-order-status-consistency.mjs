@@ -132,13 +132,13 @@ if (illegal.length) {
 // boundary 语义 = 该 status 阶段在 11 步进度条上的「current 步骤 index」
 // （boundary=6 表示步骤 0..5 已完成、步骤 6 是 current，与 build11Steps 的 within = (i+1) <= boundary 一致）
 // 正确映射：
-//   deposit: 2     → current = 生成合同 (i=2)
-//   shot: 6        → current = 选片中 (i=6)
-//   selecting: 6   → current = 选片中 (i=6)
-//   retouching: 7  → current = 精修中 (i=7)
-//   delivered: 11  → current = 订单完结 (i=11)
+//   deposit: 2     → 已完成生成合同前
+//   shot: 6        → 已完成拍摄结束（下一步=选片）
+//   selecting: 7   → 已完成选片（下一步=精修/预告片）
+//   retouching: 8  → 已完成精修阶段（下一步=全部精修完成）
+//   delivered: 11  → 已完成统一交付（下一步=订单完结）
 //   completed: 12  → 全部完成
-const EXPECTED_BOUNDARY = { deposit: 2, shot: 6, selecting: 6, retouching: 7, delivered: 11, completed: 12 };
+const EXPECTED_BOUNDARY = { deposit: 2, shot: 6, selecting: 7, retouching: 8, delivered: 11, completed: 12 };
 const boundaryMatch = detailSrc.match(/STATUS_BOUNDARY_11\s*=\s*\{([^}]+)\}/);
 if (boundaryMatch) {
   const parsed = {};
