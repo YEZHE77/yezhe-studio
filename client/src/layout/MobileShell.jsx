@@ -109,7 +109,7 @@ const TABS = [
 const QUICK_CREATE = [
   { label: '新建作品', icon: 'photo', to: '/works/new' },
   { label: '新建套系', icon: 'package', to: '/packages/new' },
-  { label: '新建订单', icon: 'order', to: '/schedule/new' },
+  { label: '新建订单', icon: 'order', to: '/orders/new' },
   { label: '新建档期', icon: 'calendar', to: '/schedule' }
 ];
 
