@@ -1203,27 +1203,27 @@ function OrderCard({ order, studioLogo, onClick }) {
         </div>
       </div>
 
-      {/* 日期 + 封面（绝对定位上移叠到套系行）+ 商家管理头像（叠在封面左下角） */}
+      {/* 日期 + 商家管理头像（独立在封面左侧，与日期同行）+ 封面（顶部与套系名同行） */}
       <div style={{ position: 'relative', padding: '0 14px 12px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#999', paddingBottom: 6 }}>
           <IconCalendar style={{ width: 14, height: 14, color: '#bbb' }} />
           <span>{dateLabel}：{dateValue}</span>
         </div>
-        {/* 封面：80×95 比宽稍高，绝对定位 right:14 bottom:12 让顶端上移到套系行区域 */}
+        {/* 商家管理头像：与日期同行，绝对定位在封面左侧（封面 right:14+width:80+gap:16=110） */}
+        {studioLogo ? (
+          <img src={img(studioLogo)} alt="商家管理" title="商家管理"
+            style={{ position: 'absolute', right: 110, bottom: 14, width: 30, height: 30,
+              borderRadius: '50%', border: '2px solid #fff', objectFit: 'cover', display: 'block' }} />
+        ) : (
+          <div title="商家管理"
+            style={{ position: 'absolute', right: 110, bottom: 14, width: 30, height: 30, borderRadius: '50%', background: '#2998EB', color: '#fff',
+              border: '2px solid #fff', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 12, fontWeight: 500 }}>叶</div>
+        )}
+        {/* 封面：80×95 比宽稍高，绝对定位 right:14 bottom:12 顶端上移到套系名同一行 */}
         {cover ? (
           <div style={{ position: 'absolute', right: 14, bottom: 12, width: 80, height: 95 }}>
             <img src={cover} alt="" style={{ width: '100%', height: '100%', borderRadius: 6, objectFit: 'cover', display: 'block' }} />
-            {/* 商家管理头像：absolute 叠在封面左下角（30×30 不缩尺寸） */}
-            {studioLogo ? (
-              <img src={img(studioLogo)} alt="商家管理" title="商家管理"
-                style={{ position: 'absolute', left: -12, bottom: 4, width: 30, height: 30,
-                  borderRadius: '50%', border: '2px solid #fff', objectFit: 'cover', display: 'block' }} />
-            ) : (
-              <div title="商家管理"
-                style={{ position: 'absolute', left: -12, bottom: 4, width: 30, height: 30, borderRadius: '50%', background: '#2998EB', color: '#fff',
-                  border: '2px solid #fff', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 12, fontWeight: 500 }}>叶</div>
-            )}
           </div>
         ) : (
           <div style={{ position: 'absolute', right: 14, bottom: 12, width: 80, height: 95, borderRadius: 6, background: '#F5F5F5' }} />
