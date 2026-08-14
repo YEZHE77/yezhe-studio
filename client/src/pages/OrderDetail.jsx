@@ -816,13 +816,8 @@ export default function OrderDetail() {
                 : '等待拍摄'}
             </div>
             {(() => {
-              // 实时订单状态进度条：基于 detail.logs，每条日志一个节点
+              // 实时订单状态进度条：基于 detail.logs，每条日志一个节点（不显示日期，紧凑）
               const logs = Array.isArray(detail?.logs) ? detail.logs : [];
-              const fmtTime = (t) => {
-                const d = new Date(t);
-                if (isNaN(d.getTime())) return '';
-                return `${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-              };
               if (logs.length === 0) {
                 return (
                   <div style={{ textAlign: 'center', padding: '12px 0', color: '#bbb', fontSize: 13 }}>暂无状态记录</div>
@@ -843,9 +838,8 @@ export default function OrderDetail() {
                         const isLast = i === lastIdx;
                         return (
                           <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', minWidth: 90, flexShrink: 0, position: 'relative', zIndex: 2 }}>
-                            <div style={{ width: 16, height: 16, borderRadius: '50%', background: '#FA5151', border: '2px solid #fff', boxShadow: '0 0 0 1px #FA5151' }} />
+                            <div style={{ width: 14, height: 14, borderRadius: '50%', background: '#FA5151', border: '2px solid #fff', boxShadow: '0 0 0 1px #FA5151' }} />
                             <div style={{ fontSize: 12, color: isLast ? '#FA5151' : '#666', marginTop: 8, textAlign: 'center', maxWidth: 84, lineHeight: 1.35, fontWeight: isLast ? 500 : 400 }}>{lg.text || '状态更新'}</div>
-                            <div style={{ fontSize: 10, color: '#999', marginTop: 3, textAlign: 'center' }}>{fmtTime(lg.t)}</div>
                           </div>
                         );
                       })}
