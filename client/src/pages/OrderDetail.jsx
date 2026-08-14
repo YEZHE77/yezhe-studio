@@ -1617,7 +1617,7 @@ export default function OrderDetail() {
             <div className="flex items-center justify-between shrink-0" style={{ padding: '16px 20px', borderBottom: '1px solid ' + DIV }}>
               <button type="button" onClick={() => { setEdit(false); setPkgPicker(false); setEditErrors({}); }} style={{ background: 'none', border: 'none', fontSize: 22, lineHeight: 1, color: '#999999', cursor: 'pointer', padding: 2 }} aria-label="返回">‹</button>
               <span style={{ fontSize: 15, color: '#222222' }}>编辑订单 · {detail.order_no}</span>
-              <span style={{ width: 22 }} />
+              <button type="submit" style={{ background: 'none', border: 'none', color: '#1f2329', fontSize: 15, fontWeight: 500, cursor: 'pointer', padding: '4px 8px' }}>保存</button>
             </div>
             <div style={{ flex: 1, overflowY: 'auto', padding: '18px 20px' }}>
 
@@ -1805,10 +1805,6 @@ export default function OrderDetail() {
               </div>
             </div>
 
-            </div>
-            <div className="flex justify-end shrink-0" style={{ gap: 10, padding: '14px 20px', borderTop: '1px solid ' + DIV }}>
-              <button type="button" onClick={() => { setEdit(false); setPkgPicker(false); setEditErrors({}); }} style={modalCancelStyle}>取消</button>
-              <button type="submit" style={modalSaveStyle}>保存</button>
             </div>
           </form>
         </div>
