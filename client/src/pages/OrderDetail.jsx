@@ -754,9 +754,16 @@ export default function OrderDetail() {
 
   const steps = build11Steps(detail, detail.logs, photos.raw.length);
   const curStep = steps.findIndex((s) => s.state !== 'done') === -1 ? ORDER_STEPS_11.length : steps.findIndex((s) => s.state !== 'done');
+  // 当前阶段标签：与 build11Steps 一致（手机端/桌面端统一用 steps 推断，不依赖 status 字段，避免 STEP_ACTIONS 没更新 status 时文案与进度条节点错位）
+  const curForPhase = steps.find((s) => s.state === 'current');
+  const phaseLabel = curForPhase ? curForPhase.label
+    : (detail.status === 'cancelled' ? '已作废'
+      : (detail.status === 'completed' ? '已完成'
+        : (detail.status === 'delivered' ? '已交付'
+          : STATUS_LABEL[detail.status] || '')));
   const statusText =
     (detail.payment_status === 'unpaid' ? '未付定金' : (PAY_STATUS_LABEL[payKey] || '')) +
-    (detail.status && detail.status !== detail.payment_status ? '，' + (STATUS_LABEL[detail.status] || '') : '');
+    (phaseLabel && detail.status && detail.status !== detail.payment_status ? '，' + phaseLabel : '');
   const custName = ([detail.groom_name, detail.bride_name].filter(Boolean).join(' & ') || detail.customer_name || '—');
   const custInitial = (custName && custName !== '—') ? custName.slice(0, 1) : '客';
   const offlinePay = detail.pay_method === 'offline' || detail.channel === 'offline' || detail.source === 'offline';
@@ -1120,6 +1127,12 @@ export default function OrderDetail() {
                   </React.Fragment>
                 ))}
               </div>
+            </div>
+            <div style={{ textAlign: 'right', marginTop: 4 }}>
+              <button type="button" onClick={() => { setLogModalTab('status'); setLogModal(true); }}
+                style={{ background: 'none', border: 'none', color: BLUE, fontSize: 12, padding: 0, cursor: 'pointer' }}>
+                状态变更记录 ›
+              </button>
             </div>
           </div>
         </div>
