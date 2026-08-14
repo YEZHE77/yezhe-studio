@@ -86,6 +86,10 @@ router.get('/', authRequired, async (req, res) => {
         else if (s === 'deposit_pending') { ors.push("payment_status = 'deposit' AND status = 'deposit' AND (logs IS NULL OR logs = '' OR (logs NOT LIKE '%等待拍摄%' AND logs NOT LIKE '%拍摄执行%'))"); }
         else if (s === 'waiting_raw') { ors.push('status = ?'); params.push('shot'); }
         else if (s === 'selecting') { ors.push('status = ?'); params.push('selecting'); }
+        else if (s === 'todo_selecting') { ors.push("status IN ('shot', 'selecting')"); }
+        else if (s === 'retouching') { ors.push('status = ?'); params.push('retouching'); }
+        else if (s === 'todo_retouch') { ors.push("status = 'retouching' AND (logs IS NULL OR logs = '' OR (logs NOT LIKE '%精修完成%' AND logs NOT LIKE '%全部精修完成%' AND logs NOT LIKE '%原片打包%'))"); }
+        else if (s === 'todo_deliver') { ors.push("status = 'retouching' AND (logs LIKE '%精修完成%' OR logs LIKE '%全部精修完成%' OR logs LIKE '%原片打包%')"); }
         else if (s === 'waiting_retouch') { ors.push('status = ?'); params.push('retouching'); }
         else if (s === 'downloading') { ors.push('status = ?'); params.push('delivered'); }
         else if (s === 'pending_review') { ors.push('status = ?'); params.push('completed'); }
@@ -189,15 +193,15 @@ router.get('/stats', authRequired, async (req, res) => {
     // 订单总数（筛选栏「所有订单 (N)」用，后端动态返回，前端禁止硬编码）
     const tot = await get('SELECT COUNT(*) AS c FROM orders WHERE cancelled = 0 AND is_deleted = 0');
 
-    // 工作台「待办事项」分类统计
-    // 口径：已付定金 = 已付定金且未拍摄、进度条未到「等待拍摄」节点；等待拍摄 = 进度条已到「等待拍摄」节点
+    // 工作台「待办事项」分类统计（按订单详情进度条节点区分）
+    //   待选片 = shot/selecting；精修中 = retouching 且未精修完成；待交付 = retouching 且已精修完成/原片打包
     const todoWhere = 'WHERE cancelled = 0 AND is_deleted = 0';
-    const [depositRow, waitingShootRow, unDeliveredRow, selectingRow, retouchingRow] = await Promise.all([
+    const [depositRow, waitingShootRow, selectingRow, retouchingRow, toDeliverRow] = await Promise.all([
       get(`SELECT COUNT(*) AS c FROM orders ${todoWhere} AND payment_status = 'deposit' AND status = 'deposit' AND (logs IS NULL OR logs = '' OR (logs NOT LIKE '%等待拍摄%' AND logs NOT LIKE '%拍摄执行%'))`),
       get(`SELECT COUNT(*) AS c FROM orders ${todoWhere} AND payment_status = 'deposit' AND status = 'deposit' AND (logs LIKE '%等待拍摄%' OR logs LIKE '%拍摄执行%')`),
-      get(`SELECT COUNT(*) AS c FROM orders ${todoWhere} AND status = 'shot'`),
-      get(`SELECT COUNT(*) AS c FROM orders ${todoWhere} AND status = 'selecting'`),
-      get(`SELECT COUNT(*) AS c FROM orders ${todoWhere} AND status = 'retouching'`)
+      get(`SELECT COUNT(*) AS c FROM orders ${todoWhere} AND status IN ('shot', 'selecting')`),
+      get(`SELECT COUNT(*) AS c FROM orders ${todoWhere} AND status = 'retouching' AND (logs IS NULL OR logs = '' OR (logs NOT LIKE '%精修完成%' AND logs NOT LIKE '%全部精修完成%' AND logs NOT LIKE '%原片打包%'))`),
+      get(`SELECT COUNT(*) AS c FROM orders ${todoWhere} AND status = 'retouching' AND (logs LIKE '%精修完成%' OR logs LIKE '%全部精修完成%' OR logs LIKE '%原片打包%')`)
     ]);
 
     res.json({
@@ -207,9 +211,9 @@ router.get('/stats', authRequired, async (req, res) => {
       todo: {
         deposit: Number(depositRow.c) || 0,
         waitingShoot: Number(waitingShootRow.c) || 0,
-        unDelivered: Number(unDeliveredRow.c) || 0,
         selecting: Number(selectingRow.c) || 0,
-        retouching: Number(retouchingRow.c) || 0
+        retouching: Number(retouchingRow.c) || 0,
+        toDeliver: Number(toDeliverRow.c) || 0
       }
     });
   } catch (e) { res.status(500).json({ error: e.message }); }

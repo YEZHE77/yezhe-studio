@@ -14,10 +14,9 @@ const LINE = '#F0F0F0';
 const TAB_DEFS = [
   { key: 'deposit',    label: '已付定金', filterKey: 'status', value: 'deposit_pending', accent: '#FE2C55' },
   { key: 'waiting',    label: '等待拍摄', filterKey: 'status', value: 'waiting_shoot',   accent: GREEN },
-  { key: 'shot',       label: '未交片',   filterKey: 'status', value: 'shot',      accent: '#FFA940' },
-  { key: 'selecting',  label: '待选片',   filterKey: 'status', value: 'selecting', accent: '#2DB7F5' },
-  { key: 'retouching', label: '精修中',   filterKey: 'status', value: 'retouching',accent: '#FFB900' },
-  { key: 'delivered',  label: '待交付',   filterKey: 'status', value: 'delivered', accent: '#8C8C8C' },
+  { key: 'selecting',  label: '待选片',   filterKey: 'status', value: 'todo_selecting', accent: '#2DB7F5' },
+  { key: 'retouching', label: '精修中',   filterKey: 'status', value: 'todo_retouch',   accent: '#FFB900' },
+  { key: 'delivered',  label: '待交付',   filterKey: 'status', value: 'todo_deliver',   accent: '#8C8C8C' },
 ];
 
 // 状态文本映射（与 Orders.jsx 卡片 STATUS_LABEL 同步）
@@ -62,7 +61,7 @@ export default function Todo() {
   const nav = useNavigate();
   const [searchParams] = useSearchParams();
   const initialTab = searchParams.get('tab');
-  const [counts, setCounts] = useState({ deposit: 0, waiting: 0, shot: 0, selecting: 0, retouching: 0, delivered: 0 });
+  const [counts, setCounts] = useState({ deposit: 0, waiting: 0, selecting: 0, retouching: 0, delivered: 0 });
   const [activeKey, setActiveKey] = useState(TAB_DEFS.some((t) => t.key === initialTab) ? initialTab : 'waiting');
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -80,15 +79,13 @@ export default function Todo() {
       .then((r) => {
         if (!alive) return;
         const d = r.data || {};
-        const pendingBlocks = d.pendingBlocks || {};
         const t = d.todo || {};
         setCounts({
           deposit: Number(t.deposit) || 0,
           waiting: Number(t.waitingShoot) || 0,
-          shot: Number(t.unDelivered) || 0,
           selecting: Number(t.selecting) || 0,
           retouching: Number(t.retouching) || 0,
-          delivered: Number(pendingBlocks.delivered) || 0,
+          delivered: Number(t.toDeliver) || 0,
         });
       })
       .catch(() => {});

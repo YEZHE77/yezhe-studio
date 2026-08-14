@@ -47,22 +47,26 @@ router.get('/', authRequired, async (req, res) => {
     };
 
     // 待办事项 Tab 计数（与 /api/orders/stats 完全同口径）
-    // 口径：已付定金 = 已付定金且未拍摄、且进度条还没推进到「等待拍摄」节点；
-    //       等待拍摄 = 已付定金且未拍摄、且进度条已推进到「等待拍摄」节点（logs 含「等待拍摄」/「拍摄执行」）
+    // 口径（按订单详情进度条节点区分）：
+    //   已付定金 = 已付定金且未拍摄、进度条未到「等待拍摄」节点
+    //   等待拍摄 = 已付定金且未拍摄、进度条已到「等待拍摄」节点
+    //   待选片   = 进度条到「拍摄结束 / 选片精修」节点（status = shot 或 selecting）
+    //   精修中   = status = retouching 且日志未到「精修完成 / 原片打包」
+    //   待交付   = status = retouching 且日志已到「精修完成 / 原片打包」（统一交付前）
     const todoWhere = 'WHERE cancelled = 0 AND is_deleted = 0';
-    const [depositRow, waitingShootRow, unDeliveredRow, selectingRow, retouchingRow] = await Promise.all([
+    const [depositRow, waitingShootRow, selectingRow, retouchingRow, toDeliverRow] = await Promise.all([
       get(`SELECT COUNT(*) AS c FROM orders ${todoWhere} AND payment_status = 'deposit' AND status = 'deposit' AND (logs IS NULL OR logs = '' OR (logs NOT LIKE '%等待拍摄%' AND logs NOT LIKE '%拍摄执行%'))`),
       get(`SELECT COUNT(*) AS c FROM orders ${todoWhere} AND payment_status = 'deposit' AND status = 'deposit' AND (logs LIKE '%等待拍摄%' OR logs LIKE '%拍摄执行%')`),
-      get(`SELECT COUNT(*) AS c FROM orders ${todoWhere} AND status = 'shot'`),
-      get(`SELECT COUNT(*) AS c FROM orders ${todoWhere} AND status = 'selecting'`),
-      get(`SELECT COUNT(*) AS c FROM orders ${todoWhere} AND status = 'retouching'`)
+      get(`SELECT COUNT(*) AS c FROM orders ${todoWhere} AND status IN ('shot', 'selecting')`),
+      get(`SELECT COUNT(*) AS c FROM orders ${todoWhere} AND status = 'retouching' AND (logs IS NULL OR logs = '' OR (logs NOT LIKE '%精修完成%' AND logs NOT LIKE '%全部精修完成%' AND logs NOT LIKE '%原片打包%'))`),
+      get(`SELECT COUNT(*) AS c FROM orders ${todoWhere} AND status = 'retouching' AND (logs LIKE '%精修完成%' OR logs LIKE '%全部精修完成%' OR logs LIKE '%原片打包%')`)
     ]);
     const todo = {
       deposit: Number(depositRow.c) || 0,
       waitingShoot: Number(waitingShootRow.c) || 0,
-      unDelivered: Number(unDeliveredRow.c) || 0,
       selecting: Number(selectingRow.c) || 0,
-      retouching: Number(retouchingRow.c) || 0
+      retouching: Number(retouchingRow.c) || 0,
+      toDeliver: Number(toDeliverRow.c) || 0
     };
 
     res.json({
