@@ -803,7 +803,7 @@ export default function OrderDetail() {
             </div>
           </div>
 
-          {/* 状态卡 + 实时状态进度条（左右滑动） */}
+          {/* 状态卡 + 业务流进度条（后台 11 步，横向滑动） */}
           <div style={{ margin: '12px 12px 0', background: '#fff', borderRadius: 8, padding: '16px 12px 12px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
             <div style={{ textAlign: 'center', fontSize: 14, color: '#1f2329', marginBottom: 14 }}>
               {detail?.payment_status === 'paid' ? '已付全款' : '已付定金'}，
@@ -815,39 +815,32 @@ export default function OrderDetail() {
                 : detail?.status === 'delivered' ? '已交付'
                 : '等待拍摄'}
             </div>
-            {(() => {
-              // 实时订单状态进度条：基于 detail.logs，每条日志一个节点（不显示日期，紧凑）
-              const logs = Array.isArray(detail?.logs) ? detail.logs : [];
-              if (logs.length === 0) {
-                return (
-                  <div style={{ textAlign: 'center', padding: '12px 0', color: '#bbb', fontSize: 13 }}>暂无状态记录</div>
-                );
-              }
-              const lastIdx = logs.length - 1;
-              return (
-                <div style={{ position: 'relative' }}>
-                  {/* 水平滚动容器：可左右滑动查看历史状态 */}
-                  <div style={{ display: 'flex', overflowX: 'auto', overflowY: 'hidden', padding: '4px 0 6px', WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none', msOverflowStyle: 'none' }} className="hide-scrollbar">
-                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 0, padding: '0 4px', position: 'relative' }}>
-                      {/* 连线：贯穿所有节点的灰色底 + 当前已完成段的红色 */}
-                      <div style={{ position: 'absolute', left: 12, right: 12, top: 7, height: 2, background: '#E5E5E5', zIndex: 0 }} />
-                      {logs.length > 1 && (
-                        <div style={{ position: 'absolute', left: 12, top: 7, width: `${(lastIdx / (logs.length - 1)) * (100 - 24 / Math.max(1, (logs.length - 1)) * 0)}%`, height: 2, background: '#FA5151', zIndex: 1, maxWidth: 'calc(100% - 24px)' }} />
-                      )}
-                      {logs.map((lg, i) => {
-                        const isLast = i === lastIdx;
-                        return (
-                          <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', minWidth: 90, flexShrink: 0, position: 'relative', zIndex: 2 }}>
-                            <div style={{ width: 14, height: 14, borderRadius: '50%', background: '#FA5151', border: '2px solid #fff', boxShadow: '0 0 0 1px #FA5151' }} />
-                            <div style={{ fontSize: 12, color: isLast ? '#FA5151' : '#666', marginTop: 8, textAlign: 'center', maxWidth: 84, lineHeight: 1.35, fontWeight: isLast ? 500 : 400 }}>{lg.text || '状态更新'}</div>
-                          </div>
-                        );
-                      })}
+            {/* 业务流进度条：11 步横向滑动（节点下仅文字无日期；完成=蓝勾/当前=蓝实心/未达=灰空心） */}
+            <div style={{ overflowX: 'auto', overflowY: 'hidden', WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none', msOverflowStyle: 'none' }} className="hide-scrollbar">
+              <div className="flex items-start" style={{ gap: 0, minWidth: steps.length * 70 + (steps.length - 1) * 20 }}>
+                {steps.map((st, i) => (
+                  <React.Fragment key={st.key}>
+                    <div className="flex flex-col items-center" style={{ width: 70, flexShrink: 0 }}>
+                      <div style={{
+                        width: 26, height: 26, borderRadius: '50%',
+                        background: st.state === 'done' ? '#EAF6FD' : st.state === 'current' ? BLUE : '#FFFFFF',
+                        border: st.state === 'done' || st.state === 'current' ? ('1px solid ' + BLUE) : '1px solid rgba(0,0,0,0.25)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        color: st.state === 'done' ? BLUE : (st.state === 'pending' ? 'rgba(0,0,0,0.25)' : '#FFFFFF')
+                      }}>
+                        {st.state === 'done'
+                          ? <CheckIcon />
+                          : <span style={{ fontSize: 12, fontWeight: 400, color: st.state === 'current' ? '#FFFFFF' : 'rgba(0,0,0,0.25)' }}>{i + 1}</span>}
+                      </div>
+                      <span style={{ fontSize: 12, marginTop: 6, textAlign: 'center', whiteSpace: 'nowrap', color: st.state === 'pending' ? 'rgba(0,0,0,0.25)' : st.state === 'current' ? '#555555' : 'rgba(0,0,0,0.65)' }}>{st.label}</span>
                     </div>
-                  </div>
-                </div>
-              );
-            })()}
+                    {i < steps.length - 1 && (
+                      <div style={{ flex: 1, height: 1, minWidth: 20, marginTop: 13, background: (st.state === 'done' && steps[i + 1].state === 'done') ? BLUE : '#E5E5E5' }} />
+                    )}
+                  </React.Fragment>
+                ))}
+              </div>
+            </div>
             <div style={{ textAlign: 'right', marginTop: 10 }}>
               <button type="button" onClick={() => setLogModal(true)} style={{ background: 'none', border: 'none', color: '#FA5151', fontSize: 12, padding: 0 }}>状态变更记录 ›</button>
             </div>
