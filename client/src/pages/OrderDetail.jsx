@@ -41,93 +41,60 @@ function calcExtraFee(extraCount, unitPrice) {
   return { count: n, unitPrice, discount, fee: Math.round(n * unitPrice * discount) };
 }
 
-// 订单详情 11 步横向流程进度条（spec：订单生成 → … → 订单完结）
-// 每一步的完成状态/时间全部由后端接口数据推导（status 阶段机 + 操作日志 logs + 原片上传数），禁止写死日期
-const ORDER_STEPS_11 = [
-  { key: 'paid',       label: '已支付定金', kws: ['已支付定金', '支付定金', '定金到账'] },
-  { key: 'created',    label: '订单生成',   kws: ['创建订单', '订单生成'] },
-  { key: 'contract',   label: '生成合同',   kws: ['生成合同', '合同'] },
-  { key: 'confirm',    label: '沟通确认',   kws: ['沟通确认', '沟通'] },
-  { key: 'shooting',   label: '等待拍摄',   kws: ['拍摄执行', '开始拍摄', '阶段推进 → 已拍摄', '等待拍摄'] },
-  { key: 'shot_done',  label: '拍摄结束',   kws: ['完成拍摄', '拍摄结束', '阶段推进 → 已拍摄'] },
-  { key: 'selecting',  label: '选片中',   kws: ['选片', '精修'] },
-  { key: 'teaser',     label: '精修中',   kws: ['预告片'] },
-  { key: 'retouch_done', label: '全部精修完成', kws: ['精修完成', '全部精修完成'] },
-  { key: 'raw_pack',   label: '底片打包',   kws: ['上传原片', '原片打包', '底片打包'], raw: true },
-  { key: 'deliver',    label: '统一交付',   kws: ['已交付', '统一交付'] },
-  { key: 'complete',   label: '订单完结',   kws: ['已完成', '订单完结'] }
+// 订单详情 6 步横向流程进度条（与待办事项 Tab 一一对应，简化状态机）
+// 当前节点由 status + logs 推导，与后端 stats/orders 的 todo 过滤口径完全一致
+const ORDER_STAGES = [
+  { key: 'deposit',    label: '已付定金' },
+  { key: 'waiting',    label: '等待拍摄' },
+  { key: 'selecting',  label: '待选片' },
+  { key: 'retouching', label: '精修中' },
+  { key: 'deliver',    label: '待交付' },
+  { key: 'completed',  label: '已完成' }
 ];
-// 后端 status（6 阶段）→ 已完成的最后一步（1 起）
-const STATUS_BOUNDARY_11 = { deposit: 2, shot: 6, selecting: 7, retouching: 8, delivered: 11, completed: 12 };
-// 进度条 上一步/下一步：每步的推进动作（状态步走 PUT 状态；日志步走追加操作日志）
-const STEP_ACTIONS = [
-  null,                    // 0 已支付定金（建单即完成）
-  null,                    // 1 订单生成
-  { log: '生成合同' },      // 2
-  { log: '沟通确认' },      // 3
-  { log: '等待拍摄' },      // 4 等待拍摄（原 log「拍摄执行」）
-  { status: 'shot' },      // 5 拍摄结束
-  { status: 'selecting' }, // 6 选片精修
-  { status: 'retouching', log: '阶段推进：进入精修阶段' },  // 7 预告片（跨入精修阶段，status 必须切换为 retouching）
-  { log: '精修完成' },      // 8 精修完成（retouching 阶段内子步骤，status 仍为 retouching，无需切换；靠 logs 区分「待交付」）
-  { log: '底片打包' },      // 9 底片打包（retouching 阶段内子步骤，status 仍为 retouching，无需切换；靠 logs 区分「待交付」）
-  { status: 'delivered' }, // 10 统一交付
-  { status: 'completed' }  // 11 订单完结
+
+// 从节点 i 推进到 i+1 的动作（状态步 PUT status；日志步 POST 日志）
+const STAGE_NEXT = [
+  { log: '沟通确认' },          // 0→1 已付定金 → 等待拍摄
+  { status: 'shot' },          // 1→2 等待拍摄 → 待选片
+  { status: 'retouching' },    // 2→3 待选片 → 精修中
+  { log: '精修完成' },          // 3→4 精修中 → 待交付
+  { status: 'delivered' },     // 4→5 待交付 → 已完成
 ];
-// 状态步回退映射（上一步）
-const STATUS_REVERT = { shot: 'deposit', selecting: 'shot', retouching: 'selecting', delivered: 'retouching', completed: 'delivered' };
-// 作废订单：按日志倒推已推进到哪一步（禁止写死）
-function boundaryFromLogs(logs) {
-  const has = (kw) => (logs || []).some((l) => (l.text || '').includes(kw));
-  if (has('已完成') || has('订单完结')) return 12;
-  if (has('已交付')) return 11;
-  if (has('选片') || has('精修')) return 7;
-  if (has('完成拍摄') || has('拍摄结束') || has('已拍摄')) return 6;
-  return 2;
-}
-// 11 步推导：done = 已到该步（状态边界）且数据满足；current = 第一个未完成节点；time 全部取后端日志时间
-function build11Steps(detail, logs, rawCount = 0) {
-  if (!detail) return ORDER_STEPS_11.map((s) => ({ ...s, state: 'pending', time: null }));
-  const boundary = detail.cancelled
-    ? boundaryFromLogs(logs)
-    : (STATUS_BOUNDARY_11[detail.status] || 1);
-  // 日志命中（排除「阶段推进」自动日志，避免回退状态时误判已完成；供 上一步/下一步 逐格控制）
-  const logHas = (s) => (logs || []).some((l) => !/阶段推进/.test(l.text || '') && s.kws.some((kw) => (l.text || '').includes(kw)));
-  let currentIdx = 0;
-  for (let i = 0; i < ORDER_STEPS_11.length; i++) {
-    const s = ORDER_STEPS_11[i];
-    const within = (i + 1) <= boundary;
-    const rawDone = !!s.raw && (rawCount > 0 || logHas(s)) && boundary >= 4; // 原片已上传/已登记且拍摄已执行
-    const done = within || (!s.raw && logHas(s)) || rawDone;
-    if (!done) { currentIdx = i; break; }
-    if (i === ORDER_STEPS_11.length - 1) currentIdx = ORDER_STEPS_11.length;
+
+// 从节点 i 回退到 i-1 的动作（logUndo 撤销最后一条日志；status 直接回退）
+const STAGE_PREV = [
+  null,                          // 0 已付定金（不能再退）
+  { logUndo: true },             // 1→0 撤销「沟通确认」日志
+  { status: 'deposit' },         // 2→1 待选片 → 等待拍摄
+  { status: 'selecting' },       // 3→2 精修中 → 待选片
+  { logUndo: true },             // 4→3 待交付 → 精修中（撤销「精修完成」日志）
+  { status: 'retouching' },      // 5→4 已完成 → 待交付（delivered/completed 都回退到 retouching）
+];
+
+// 当前节点 index：由 status + logs 推导（与后端 stats 的 todo 口径一致）
+function currentStageIndex(detail, logs) {
+  if (!detail) return 0;
+  if (detail.status === 'completed' || detail.status === 'delivered') return 5;
+  if (detail.status === 'retouching') {
+    const hasFinish = (logs || []).some((l) => /精修完成|全部精修完成|底片打包|原片打包/.test((l.text || '')));
+    return hasFinish ? 4 : 3;
   }
-  return ORDER_STEPS_11.map((s, i) => {
-    const within = (i + 1) <= boundary;
-    const rawDone = !!s.raw && (rawCount > 0 || logHas(s)) && boundary >= 4;
-    const done = within || (!s.raw && logHas(s)) || rawDone;
-    const state = done ? 'done' : (i === currentIdx ? 'current' : 'pending');
-    let time = null;
-    if (done) {
-      if (s.key === 'created') time = findStepTime(logs, s.kws) || fmtStepTime(detail.created_at);
-      else time = findStepTime(logs, s.kws);
-    }
-    return { ...s, state, time };
+  if (detail.status === 'shot' || detail.status === 'selecting') return 2;
+  if (detail.status === 'deposit') {
+    const hasConfirm = (logs || []).some((l) => /沟通确认/.test((l.text || '')));
+    return hasConfirm ? 1 : 0;
+  }
+  return 0; // cancelled 等异常状态归已付定金
+}
+
+// 6 步推导：i < current = done；i === current = current；i > current = pending
+function buildSteps(detail, logs) {
+  if (!detail) return ORDER_STAGES.map((s) => ({ ...s, state: 'pending', time: null }));
+  const cur = currentStageIndex(detail, logs);
+  return ORDER_STAGES.map((s, i) => {
+    const state = i < cur ? 'done' : (i === cur ? 'current' : 'pending');
+    return { ...s, state, time: null };
   });
-}
-function fmtStepTime(t) {
-  if (!t) return null;
-  const d = new Date(t);
-  if (isNaN(d.getTime())) return null;
-  const p = (n) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
-}
-function findStepTime(logs, kws) {
-  for (const kw of kws) {
-    const hit = (logs || []).find((l) => (l.text || '').includes(kw));
-    if (hit && hit.t) return fmtStepTime(hit.t);
-  }
-  return null;
 }
 // 新规范全局色号（订单详情页 v2：轻量低饱和后台风）
 const TEAL = '#67CFC3';          // 状态卡片顶部青绿细线 / 品牌点缀
@@ -509,13 +476,12 @@ export default function OrderDetail() {
     try { await http.put('/api/orders/' + detail.id, { status: 'shot' }); reload(); }
     catch (e2) { alert((e2.response && e2.response.data && e2.response.data.error) || '操作失败'); }
   }
-  // 进度条：下一步（状态步走状态机；日志步追加操作日志，逐格点亮）
+  // 进度条：下一步（逐 Tab 推进：状态步 PUT status；日志步 POST 日志）
   async function stepNext() {
     if (!detail || detail.cancelled) return;
-    const firstPending = steps.findIndex((s) => s.state !== 'done');
-    const cur = firstPending === -1 ? ORDER_STEPS_11.length : firstPending;
-    if (cur >= ORDER_STEPS_11.length) return;
-    const act = STEP_ACTIONS[cur];
+    const cur = currentStageIndex(detail, detail.logs);
+    if (cur >= ORDER_STAGES.length - 1) return; // 已完成，无下一步
+    const act = STAGE_NEXT[cur];
     if (!act) return;
     try {
       if (act.status) {
@@ -532,15 +498,23 @@ export default function OrderDetail() {
       reload();
     } catch (e2) { alert((e2.response && e2.response.data && e2.response.data.error) || '操作失败'); }
   }
-  // 进度条：上一步（直接按 detail.status 查 STATUS_REVERT 回退，不依赖 build11Steps 的 firstPending——避免 logs 与 status 错位时无反应）
+  // 进度条：上一步（逐 Tab 回退：状态步直接 PUT；日志步 logs/undo 撤销最后一条）
   async function stepPrev() {
     if (!detail || detail.cancelled) return;
-    const rev = STATUS_REVERT[detail.status];
-    if (!rev) return;
+    const cur = currentStageIndex(detail, detail.logs);
+    if (cur <= 0) return;
+    const act = STAGE_PREV[cur];
+    if (!act) return;
     try {
-      await http.put('/api/orders/' + detail.id, { status: rev });
-      // 乐观更新：本地立即回退 status，进度条秒响应
-      setDetail((d) => (d ? { ...d, status: rev } : d));
+      if (act.status) {
+        await http.put('/api/orders/' + detail.id, { status: act.status });
+        // 乐观更新：本地立即回退 status
+        setDetail((d) => (d ? { ...d, status: act.status } : d));
+      } else if (act.logUndo) {
+        await http.post('/api/orders/' + detail.id + '/logs/undo');
+        // 乐观更新：本地移除最后一条日志
+        setDetail((d) => (d ? { ...d, logs: (Array.isArray(d.logs) ? d.logs.slice(0, -1) : d.logs) } : d));
+      }
       try { window.dispatchEvent(new Event('order-status-changed')); } catch {}
       reload();
     } catch (e2) { alert((e2.response && e2.response.data && e2.response.data.error) || '操作失败'); }
@@ -752,9 +726,9 @@ export default function OrderDetail() {
     ...(sel && sel.photos ? sel.photos.map((p) => ({ url: p.photo_url, kind: '选片' })) : [])
   ];
 
-  const steps = build11Steps(detail, detail.logs, photos.raw.length);
-  const curStep = steps.findIndex((s) => s.state !== 'done') === -1 ? ORDER_STEPS_11.length : steps.findIndex((s) => s.state !== 'done');
-  // 当前阶段标签：与 build11Steps 一致（手机端/桌面端统一用 steps 推断，不依赖 status 字段，避免 STEP_ACTIONS 没更新 status 时文案与进度条节点错位）
+  const steps = buildSteps(detail, detail.logs);
+  const curStep = currentStageIndex(detail, detail.logs);
+  // 当前阶段标签：与 buildSteps 一致（与待办 Tab / 后端 stats 口径统一）
   const curForPhase = steps.find((s) => s.state === 'current');
   const phaseLabel = curForPhase ? curForPhase.label
     : (detail.status === 'cancelled' ? '已作废'
@@ -796,8 +770,7 @@ export default function OrderDetail() {
               <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#1f2329" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
             </button>
             <div style={{ fontSize: 16, color: '#1f2329' }}>{(() => {
-              // 与下方 build11Steps 一致：从 logs 推断当前阶段标签，不依赖 status 字段
-              // （避免 STEP_ACTIONS 没更新 status 时，文案与进度条节点错位）
+              // 与 buildSteps 一致：从 status+logs 推断当前阶段标签（与待办 Tab / 后端 stats 口径统一）
               const cur = steps.find((s) => s.state === 'current');
               if (cur) return cur.label;
               if (detail?.status === 'cancelled') return '已关闭';
@@ -1086,10 +1059,10 @@ export default function OrderDetail() {
           {/* 右侧 11 步横向流程进度条（spec：完成=蓝色圆圈+蓝色对勾 / 当前=蓝色实心 / 未达=灰色空心；连接线蓝/灰；支持横向滚动） */}
           <div className="flex-1" style={{ minWidth: 0, flex: isMobile ? '1 1 100%' : undefined, padding: isMobile ? '14px 16px' : '14px 28px', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 12 }}>
             <div className="flex items-center justify-between" style={{ fontSize: 12, color: TEXT_SUB, marginBottom: 20 }}>
-              <button type="button" onClick={stepPrev} disabled={detail.cancelled || curStep <= 1}
-                style={{ height: 24, padding: '0 12px', borderRadius: 3, border: '1px solid #D8D8D8', background: '#fff', color: detail.cancelled || curStep <= 1 ? '#CCCCCC' : TEXT_MAIN, fontSize: 12, cursor: detail.cancelled || curStep <= 1 ? 'not-allowed' : 'pointer' }}>‹ 上一步</button>
-              <button type="button" onClick={stepNext} disabled={detail.cancelled || curStep >= ORDER_STEPS_11.length}
-                style={{ height: 24, padding: '0 12px', borderRadius: 3, border: '1px solid ' + BLUE, background: BLUE, color: '#fff', fontSize: 12, cursor: detail.cancelled || curStep >= ORDER_STEPS_11.length ? 'not-allowed' : 'pointer', opacity: detail.cancelled || curStep >= ORDER_STEPS_11.length ? 0.4 : 1 }}>下一步 ›</button>
+              <button type="button" onClick={stepPrev} disabled={detail.cancelled || curStep <= 0}
+                style={{ height: 24, padding: '0 12px', borderRadius: 3, border: '1px solid #D8D8D8', background: '#fff', color: detail.cancelled || curStep <= 0 ? '#CCCCCC' : TEXT_MAIN, fontSize: 12, cursor: detail.cancelled || curStep <= 0 ? 'not-allowed' : 'pointer' }}>‹ 上一步</button>
+              <button type="button" onClick={stepNext} disabled={detail.cancelled || curStep >= ORDER_STAGES.length - 1}
+                style={{ height: 24, padding: '0 12px', borderRadius: 3, border: '1px solid ' + BLUE, background: BLUE, color: '#fff', fontSize: 12, cursor: detail.cancelled || curStep >= ORDER_STAGES.length - 1 ? 'not-allowed' : 'pointer', opacity: detail.cancelled || curStep >= ORDER_STAGES.length - 1 ? 0.4 : 1 }}>下一步 ›</button>
             </div>
             {/* 状态文字行已删除（与手机端 db330aa 一致，进度条上方仅保留两个按钮） */}
             <div style={{ overflowX: 'auto', overflowY: 'hidden', WebkitOverflowScrolling: 'touch' }}>
