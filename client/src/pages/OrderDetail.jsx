@@ -824,18 +824,7 @@ export default function OrderDetail() {
               <button type="button" onClick={stepNext} disabled={detail?.cancelled}
                 style={{ padding: '4px 12px', borderRadius: 4, border: '1px solid ' + BLUE, background: BLUE, color: '#fff', fontSize: 13, cursor: detail?.cancelled ? 'not-allowed' : 'pointer', opacity: detail?.cancelled ? 0.5 : 1 }}>下一步 ›</button>
             </div>
-            <div style={{ textAlign: 'center', fontSize: 14, color: '#1f2329', marginBottom: 14 }}>
-              {detail?.payment_status === 'paid' ? '已付全款' : '已付定金'}，
-              {(() => {
-                // 与下方 build11Steps 一致：从 logs 推断当前阶段标签
-                const cur = steps.find((s) => s.state === 'current');
-                if (cur) return cur.label;
-                if (detail?.status === 'cancelled') return '订单已关闭';
-                if (detail?.status === 'completed') return '订单已完成';
-                if (detail?.status === 'delivered') return '已交付';
-                return '等待拍摄';
-              })()}
-            </div>
+            {/* 状态文字行已删除——与桌面端一致，进度条上方仅保留两个按钮 */}
             {/* 业务流进度条：11 步横向滑动（节点下仅文字无日期；完成=蓝勾/当前=蓝实心/未达=灰空心） */}
             <div style={{ overflowX: 'auto', overflowY: 'hidden', WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none', msOverflowStyle: 'none' }} className="hide-scrollbar">
               <div className="flex items-start" style={{ gap: 0, minWidth: steps.length * 70 + (steps.length - 1) * 20 }}>
