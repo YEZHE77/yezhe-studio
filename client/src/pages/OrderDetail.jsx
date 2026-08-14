@@ -53,7 +53,7 @@ const ORDER_STEPS_11 = [
   { key: 'selecting',  label: '选片中',   kws: ['选片', '精修'] },
   { key: 'teaser',     label: '精修中',   kws: ['预告片'] },
   { key: 'retouch_done', label: '全部精修完成', kws: ['精修完成', '全部精修完成'] },
-  { key: 'raw_pack',   label: '底片打包',   kws: ['上传原片', '原片打包'], raw: true },
+  { key: 'raw_pack',   label: '底片打包',   kws: ['上传原片', '原片打包', '底片打包'], raw: true },
   { key: 'deliver',    label: '统一交付',   kws: ['已交付', '统一交付'] },
   { key: 'complete',   label: '订单完结',   kws: ['已完成', '订单完结'] }
 ];

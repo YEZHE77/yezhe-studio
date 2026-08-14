@@ -272,6 +272,15 @@ const PAGE_BG = '#F7F7F7';
 - 图片地址转换统一用 `img(url)` 函数
 - 分片上传用 `uploadBatch(files, opts)`
 
+### 6. 订单状态单一数据源（最高优先级，与字体规范同级）
+
+订单「当前阶段」在系统内有多套并行表示，**极易出现"详情页显示 X、列表显示 Y、待办显示 Z"的错位**。必须遵守：
+
+- **前端进度条**：`client/src/pages/OrderDetail.jsx` 的 `ORDER_STEPS_11`（11 步 + 每步 kws 关键词）是**前端唯一权威**，`STEP_ACTIONS` 写入日志的文本必须能被对应步骤的 `kws` 命中。
+- **后端统计/过滤**：`server/src/routes/stats.js` 与 `server/src/routes/orders.js` 里所有 `LIKE '%…%'` 状态关键词，必须是 `ORDER_STEPS_11.kws` 的子集（`scripts/check-order-status-consistency.mjs` 自动校验）。
+- **改动任何一处**（新增步骤 / 改关键词 / 改 STEP_ACTIONS 写什么日志），必须同步其余各处，并跑 `node scripts/check-order-status-consistency.mjs` 确认全绿。
+- **双壳路由**：`App.jsx` 与 `MobileShell.jsx` 的 B 端业务路由（works/packages/schedule/orders 等前缀）必须成对注册，尤其 `*/new` 这类新建路由。检查脚本同样覆盖。
+
 ## 当前状态
 
 ### 已完成模块
@@ -326,10 +335,13 @@ npm run build
 # 2. 后端语法检查
 node --check server/src/index.js
 
-# 3. 确认无 fontWeight 违规
+# 3. 双壳路由 + 订单状态关键词一致性（防漏注册 / 防前后端语义分叉）
+node scripts/check-order-status-consistency.mjs
+
+# 4. 确认无 fontWeight 违规
 grep -rn 'fontWeight.*[5-9]00\|fontWeight.*bold\|font-bold' client/src/ --include='*.jsx'
 
-# 4. 确认无 .env / .workbuddy 被暂存
+# 5. 确认无 .env / .workbuddy 被暂存
 git diff --cached --name-only | grep -E '\.env|\.workbuddy'
 ```
 
