@@ -90,19 +90,6 @@ const SECTIONS = [
     ]
   },
   {
-    title: '拓客引流',
-    items: [
-      { label: '优惠券', icon: Ticket, color: MINT, to: '/settings' },
-      { label: '促销套系', icon: Diamond, color: MINT, to: '/packages' },
-      { label: '优惠码', icon: Tag, color: MINT, to: '/settings' },
-      { label: '拼团活动', icon: Users2, color: MINT, to: '/settings' },
-      { label: '客户积分', icon: Coins, color: MINT, to: '/settings' },
-      { label: '生成名片', icon: IdCard, color: MINT, to: '/card' },
-      { label: '九图海报', icon: LayoutGrid, color: MINT, to: '/settings' },
-      { label: '摄影日历', icon: CalendarDays, color: MINT, to: '/schedule' }
-    ]
-  },
-  {
     title: '其他功能',
     items: [
       { label: '相册印刷', icon: Printer, color: MINT, to: '/settings', tag: 'NEW' },
