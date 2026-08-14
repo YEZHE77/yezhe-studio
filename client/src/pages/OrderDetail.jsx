@@ -809,8 +809,8 @@ export default function OrderDetail() {
             </div>
           </div>
 
-          {/* 状态卡 + 业务流进度条（后台 11 步，横向滑动） */}
-          <div style={{ margin: '12px 12px 0', background: '#fff', borderRadius: 8, padding: '12px 12px 12px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+          {/* 状态卡 + 业务流进度条（后台 12 步，横向滑动） */}
+          <div style={{ margin: '12px 12px 0', background: '#fff', borderRadius: 8, padding: '12px 12px 14px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)', borderBottom: '1px solid #EEEEEE' }}>
             {/* 卡片顶部：左上「上一步」+ 右上「下一步」（与桌面态按钮共用 stepPrev/stepNext，逐格推进/回退进度条节点） */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
               <button type="button" onClick={stepPrev} disabled={detail?.cancelled}
