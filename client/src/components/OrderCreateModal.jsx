@@ -363,13 +363,15 @@ export default function OrderCreateModal({ visible, packages, initialPackageId, 
 
   return (
     <div
-      className="fixed inset-0 z-[60] flex flex-col overflow-hidden"
-      style={{ background: '#F8F8F8' }}
+      className="fixed inset-0 z-[60] overflow-y-auto p-4 flex items-center justify-center"
+      style={{ background: 'rgba(0,0,0,0.45)' }}
+      onClick={onClose}
     >
       <form
+        onClick={(e) => e.stopPropagation()}
         onSubmit={submit}
-        className="w-full h-full bg-white flex flex-col"
-        style={{ maxWidth: 720, margin: '0 auto', borderRadius: 0 }}
+        className="bg-white shadow-xl mx-auto my-8 flex flex-col"
+        style={{ maxWidth: 672, width: '100%', maxHeight: 'calc(100vh - 4rem)', borderRadius: 8 }}
       >
         {/* 标题栏：居中标题 + 左侧 ‹ 返回关闭 + 右侧空白 */}
         <div className="relative flex items-center justify-center px-5 py-4 border-b shrink-0" style={{ borderColor: '#EEEEEE' }}>
