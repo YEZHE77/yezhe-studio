@@ -1141,7 +1141,7 @@ function OrderCard({ order, studioLogo, onClick }) {
   const nav = useNavigate();
   const snap = asObj(order.package_snapshot);
   const pkgName = [snap.name, snap.spec && snap.spec.name].filter(Boolean).join('｜') || '未选套系';
-  const pkgCategory = snap.category_name || String(snap.name || '').split('｜')[0] || '';
+  const pkgCategory = snap.category_name || order.category_name || String(snap.name || '').split('｜')[0] || '';
   const cover = snap.cover_url ? img(snap.cover_url) : '';
   const remain = Number(order.total_amount || 0) - Number(order.paid_amount || 0);
   const statusText = stageLabel(order);
@@ -1192,13 +1192,13 @@ function OrderCard({ order, studioLogo, onClick }) {
       </div>
       <div style={{ height: 1, background: '#F0F0F0' }} />
 
-      {/* 套系名 + 分类 + 尾款标签（padding-bottom 20 加大套系与日期间空白） */}
+      {/* 套系名 + 分类 + 尾款标签（padding-bottom 20 加大套系与日期间空白；套系名细体对齐参考图） */}
       <div style={{ padding: '10px 14px 20px' }}>
-        <div style={{ fontSize: 15, color: '#1f2329', lineHeight: 1.4, fontWeight: 600, marginBottom: 6 }}>{pkgName}</div>
+        <div style={{ fontSize: 15, color: '#1f2329', lineHeight: 1.4, fontWeight: 400, marginBottom: 6 }}>{pkgName}</div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
           {pkgCategory ? <span style={{ fontSize: 12, color: '#999' }}>{pkgCategory}</span> : null}
           {remain > 0 && order.status !== 'completed' && order.status !== 'cancelled' && (
-            <span style={{ fontSize: 10, color: '#fff', background: '#ff3333', padding: '1px 6px', borderRadius: 4 }}>未结算尾款</span>
+            <span style={{ fontSize: 9, color: '#fff', background: '#ff3333', padding: '0 5px', lineHeight: '14px', borderRadius: 3 }}>未结算尾款</span>
           )}
         </div>
       </div>

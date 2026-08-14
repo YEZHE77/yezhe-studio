@@ -153,6 +153,7 @@ router.get('/', authRequired, async (req, res) => {
 
     const rows = await query(
       `SELECT *,
+        (SELECT c.name FROM packages p LEFT JOIN categories c ON c.id = p.category_id WHERE p.id = orders.package_id) AS category_name,
         (SELECT stars FROM evaluates WHERE order_id = orders.id ORDER BY created_at DESC LIMIT 1) AS eval_stars,
         (SELECT created_at FROM evaluates WHERE order_id = orders.id ORDER BY created_at DESC LIMIT 1) AS eval_at,
         (SELECT submitted FROM photo_select WHERE order_id = orders.id ORDER BY updated_at DESC LIMIT 1) AS selection_submitted
