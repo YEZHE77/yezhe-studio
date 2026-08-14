@@ -2136,7 +2136,7 @@ export default function OrderDetail() {
           @media print {
             body * { visibility: hidden; }
             .print-order-sheet, .print-order-sheet * { visibility: visible; }
-            .print-order-sheet { position: absolute; left: 0; top: 0; width: 100%; padding: 20mm 15mm; }
+            .print-order-sheet { display: block !important; position: absolute; left: 0; top: 0; width: 100%; padding: 20mm 15mm; }
             @page { size: A4; margin: 0; }
           }
         `}</style>
