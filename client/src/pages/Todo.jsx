@@ -211,7 +211,9 @@ export default function Todo() {
                 onClick={() => setActiveKey(t.key)}
                 style={{
                   flex: '0 0 auto', minWidth: 86,
-                  padding: '12px 6px 10px', margin: 0, border: 0, background: 'transparent',
+                  padding: '12px 6px 10px', margin: 0, border: 0,
+                  // 选中态直接用 button 自身 background（避免 zIndex:-1 色块在真机 stacking context 中被遮盖）
+                  background: isActive ? GREEN : 'transparent',
                   display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
                   position: 'relative', cursor: 'pointer', color: isActive ? '#fff' : TEXT
                 }}
@@ -220,14 +222,6 @@ export default function Todo() {
                   fontSize: 18, fontWeight: 600, lineHeight: 1
                 }}>{counts[t.key] || 0}</span>
                 <span style={{ fontSize: 12, opacity: isActive ? 0.9 : 0.7 }}>{t.label}</span>
-                {/* 选中态：青绿底色块（覆盖整列） */}
-                {isActive && (
-                  <span style={{
-                    position: 'absolute', inset: 0,
-                    background: GREEN, borderRadius: 0,
-                    zIndex: -1
-                  }} />
-                )}
                 {/* 非选中态：底部 3px 色条 */}
                 {!isActive && (
                   <span style={{
