@@ -262,9 +262,11 @@ export async function occupySchedule(date, orderNo, meta = {}, force = false) {
     throw err;
   }
   const periods = Array.isArray(meta.periods) ? meta.periods.filter(Boolean) : [];
+  // 档期时长类型：meta.period 传入（full 全天 / half 半天），未传默认 full
+  const period = ['full', 'half'].includes(meta.period) ? meta.period : 'full';
   const exist = await get("SELECT * FROM schedules WHERE order_no = ? AND status = 'booked' ORDER BY id ASC", [orderNo]);
   const vals = [
-    date, 'full', JSON.stringify(periods), 'booked', 0, String(orderNo),
+    date, period, JSON.stringify(periods), 'booked', 0, String(orderNo),
     meta.photographer || meta.executor_name || '', meta.executor_id != null && meta.executor_id !== '' ? Number(meta.executor_id) : null,
     meta.executor_name || '', meta.note || '', lunarOf(date),
     meta.groom_name || '', meta.bride_name || '', meta.contact_phone || '', meta.address || ''

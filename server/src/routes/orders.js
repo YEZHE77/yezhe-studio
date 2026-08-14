@@ -354,6 +354,8 @@ router.post('/', authRequired, requireRole(['admin', 'photographer', 'finance'])
     const executors = normExecutors(b.executors);
     const date_tbd = b.date_tbd ? 1 : 0;
     const shoot_date = date_tbd ? '' : (b.shoot_date || '');
+    // 档期时长类型 full 全天 / half 半天（默认 full，与 schedules.period 一致）
+    const period = ['full', 'half'].includes(b.period) ? b.period : 'full';
     const customer_name = groom || bride
       ? [groom, bride].filter(Boolean).join(' & ')
       : (b.customerName ?? b.customer_name ?? '');
@@ -382,8 +384,8 @@ router.post('/', authRequired, requireRole(['admin', 'photographer', 'finance'])
       `INSERT INTO orders (order_no, customer_name, customer_phone, package_id, package_snapshot, addons_snapshot, status,
         deposit, balance, deposit_method, balance_method, shoot_date, executor, total_amount, paid_amount, remark, logs,
         groom_name, bride_name, address,
-        order_name, phones, time_slots, extra_items, executors, channel, channel_id, date_tbd, payment_status)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+        order_name, phones, time_slots, extra_items, executors, channel, channel_id, date_tbd, period, payment_status)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
       [
         order_no, customer_name, phones[0] || '', b.package_id || null,
         JSON.stringify(package_snapshot), JSON.stringify(addons), 'deposit',
@@ -391,7 +393,7 @@ router.post('/', authRequired, requireRole(['admin', 'photographer', 'finance'])
         shoot_date, executors.map((x) => x.name).filter(Boolean).join('、'), total, paid, b.remark || '', logs,
         groom, bride, b.address || '',
         order_name, JSON.stringify(phones), JSON.stringify(time_slots), JSON.stringify(extra_items),
-        JSON.stringify(executors), b.channel || '', b.channel_id || null, date_tbd, payment_status
+        JSON.stringify(executors), b.channel || '', b.channel_id || null, date_tbd, period, payment_status
       ]
     );
     // 按收款状态登记流水：已付定金→定金一笔；已付全款→定金 + 尾款；未付定金→不登记
@@ -416,6 +418,7 @@ router.post('/', authRequired, requireRole(['admin', 'photographer', 'finance'])
     if (shoot_date && !date_tbd) {
       try {
         await occupySchedule(shoot_date, order_no, {
+          period: ['full', 'half'].includes(b.period) ? b.period : 'full',
           periods: time_slots, photographer: executors.map((x) => x.name).filter(Boolean).join('、'),
           executor_id: executors[0] && executors[0].id, executor_name: (executors[0] && executors[0].name) || '',
           groom_name: groom, bride_name: bride, contact_phone: phones[0] || '', address: b.address || '',
@@ -549,7 +552,7 @@ router.put('/:id', authRequired, requireRole(['admin', 'photographer', 'finance'
         const execArr = jsonArr(execsText);
         try {
           await occupySchedule(newDate, cur.order_no, {
-            periods: jsonArr(slotsText), photographer: execText || '',
+            period, periods: jsonArr(slotsText), photographer: execText || '',
             executor_id: execArr[0] && execArr[0].id, executor_name: (execArr[0] && execArr[0].name) || '',
             groom_name: groom, bride_name: bride, contact_phone: firstPhone || '',
             address: b.address ?? cur.address ?? '', note: b.order_name ?? cur.order_name ?? ''
