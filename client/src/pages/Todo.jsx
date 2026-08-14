@@ -197,7 +197,7 @@ export default function Todo() {
           ref={tabsScrollRef}
           style={{
             display: 'flex', overflowX: 'auto', WebkitOverflowScrolling: 'touch',
-            scrollbarWidth: 'none', msOverflowStyle: 'none'
+            scrollbarWidth: 'none', msOverflowStyle: 'none', touchAction: 'pan-x'
           }}
           className="todo-tabs-scroll"
         >
