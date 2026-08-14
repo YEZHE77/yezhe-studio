@@ -818,7 +818,7 @@ export default function OrderDetail() {
           {/* 状态卡 + 业务流进度条（后台 12 步，横向滑动） */}
           <div style={{ margin: '12px 12px 0', background: '#fff', borderRadius: 8, padding: '12px 12px 14px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
             {/* 卡片顶部：左上「上一步」+ 右上「下一步」（与桌面态按钮共用 stepPrev/stepNext，逐格推进/回退进度条节点） */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
               <button type="button" onClick={stepPrev} disabled={detail?.cancelled}
                 style={{ padding: '4px 12px', borderRadius: 4, border: '1px solid ' + (detail?.cancelled ? '#E5E5E5' : DIV), background: '#fff', color: detail?.cancelled ? TEXT_WEAK : BLUE, fontSize: 13, cursor: detail?.cancelled ? 'not-allowed' : 'pointer', opacity: detail?.cancelled ? 0.5 : 1 }}>‹ 上一步</button>
               <button type="button" onClick={stepNext} disabled={detail?.cancelled}
@@ -1085,7 +1085,7 @@ export default function OrderDetail() {
 
           {/* 右侧 11 步横向流程进度条（spec：完成=蓝色圆圈+蓝色对勾 / 当前=蓝色实心 / 未达=灰色空心；连接线蓝/灰；支持横向滚动） */}
           <div className="flex-1" style={{ minWidth: 0, flex: isMobile ? '1 1 100%' : undefined, padding: isMobile ? '14px 16px' : '14px 28px', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 12 }}>
-            <div className="flex items-center justify-between" style={{ fontSize: 12, color: TEXT_SUB }}>
+            <div className="flex items-center justify-between" style={{ fontSize: 12, color: TEXT_SUB, marginBottom: 20 }}>
               <button type="button" onClick={stepPrev} disabled={detail.cancelled || curStep <= 1}
                 style={{ height: 24, padding: '0 12px', borderRadius: 3, border: '1px solid #D8D8D8', background: '#fff', color: detail.cancelled || curStep <= 1 ? '#CCCCCC' : TEXT_MAIN, fontSize: 12, cursor: detail.cancelled || curStep <= 1 ? 'not-allowed' : 'pointer' }}>‹ 上一步</button>
               <button type="button" onClick={stepNext} disabled={detail.cancelled || curStep >= ORDER_STEPS_11.length}
