@@ -477,6 +477,8 @@ router.put('/:id', authRequired, requireRole(['admin', 'photographer', 'finance'
     const date_tbd = b.date_tbd === undefined ? cur.date_tbd : (b.date_tbd ? 1 : 0);
     const shoot_date = date_tbd ? '' : (b.shoot_date ?? cur.shoot_date);
     const payment_status = PAYMENT_STATUS.includes(b.payment_status) ? b.payment_status : (cur.payment_status || 'deposit');
+    // 档期时长类型 full 全天 / half 半天（默认 'full'，与 schedule.period 一致）
+    const period = ['full', 'half'].includes(b.period) ? b.period : (cur.period || 'full');
     // 订单图片管理（原片 / 精修片 URL 列表），前端传字符串或对象统一转 JSON 文本落库
     const orderPhotosText = b.order_photos === undefined
       ? (cur.order_photos ?? null)
@@ -518,13 +520,13 @@ router.put('/:id', authRequired, requireRole(['admin', 'photographer', 'finance'
     }
     await run(
       `UPDATE orders SET customer_name=?, customer_phone=?, shoot_date=?, executor=?, remark=?, status=?,
-        groom_name=?, bride_name=?, address=?,
+        groom_name=?, bride_name=?, address=?, period=?,
         order_name=?, phones=?, time_slots=?, extra_items=?, executors=?, channel=?, channel_id=?, date_tbd=?, payment_status=?,
         order_photos=?, birthday=?, appointment_remark=?, internal_remark=?, external_remark=?, questionnaire_answers=?
        WHERE id=?`,
       [customer_name, firstPhone,
        shoot_date, execText, b.remark ?? cur.remark, status,
-       groom, bride, b.address ?? cur.address,
+       groom, bride, b.address ?? cur.address, period,
        b.order_name ?? cur.order_name, phonesText, slotsText, extrasText, execsText,
        b.channel ?? cur.channel, b.channel_id ?? cur.channel_id, date_tbd, payment_status,
        orderPhotosText, birthdayText, appointmentText, internalText, externalText, questionnaireText,

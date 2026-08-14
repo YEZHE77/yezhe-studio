@@ -191,7 +191,7 @@ export default function OrderDetail() {
   const [pay, setPay] = useState(null);
   const [err, setErr] = useState('');
   const [edit, setEdit] = useState(false);
-  const [editForm, setEditForm] = useState({ order_name: '', groom_name: '', bride_name: '', customer_phone: '', address: '', shoot_date: '', executor: '', remark: '', status: '', time_slots: [], extra_items: [] });
+  const [editForm, setEditForm] = useState({ order_name: '', groom_name: '', bride_name: '', customer_phone: '', address: '', shoot_date: '', executor: '', remark: '', status: '', time_slots: [], period: 'full', extra_items: [] });
   const [share, setShare] = useState(null);
   const [shareModal, setShareModal] = useState(false);
   const [shareBusy, setShareBusy] = useState(false);
@@ -341,6 +341,7 @@ export default function OrderDetail() {
       channel: detail.channel || '', channel_id: detail.channel_id || '',
       remark: detail.remark || '', status: detail.status,
       time_slots: asArr(detail.time_slots),
+      period: detail.period || 'full',
       extra_items: asArr(detail.extra_items).map((x) => ({ name: String((x && x.name) || ''), amount: (x && x.amount) != null ? String(x.amount) : '' }))
     });
     setEditErrors({});
@@ -1824,7 +1825,7 @@ export default function OrderDetail() {
           initialSlots={editForm.time_slots}
           packageName={(pkgInfo && pkgInfo.name) || detail.order_package || ''}
           onClose={() => setAddSched(false)}
-          onConfirm={(date, slots) => { setEditForm((f) => ({ ...f, shoot_date: date, time_slots: slots })); setSlotOpen(false); setAddSched(false); }}
+          onConfirm={(date, slots, period) => { setEditForm((f) => ({ ...f, shoot_date: date, time_slots: slots, period: period || 'full' })); setSlotOpen(false); setAddSched(false); }}
         />
       )}
 
@@ -2506,16 +2507,19 @@ const filterCtrlStyle = { height: 32, padding: '0 8px', border: 'none', color: '
 const filterBtnStyle = { height: 32, padding: '0 16px', borderRadius: 2, border: '1px solid #D5DBE2', color: '#444B53', background: '#fff', fontSize: 12, cursor: 'pointer' };
 const modalInputStyle = { width: '100%', padding: '8px 12px', borderRadius: 4, border: '1px solid ' + DIV, color: '#222222', fontSize: 14, outline: 'none', background: '#fff' };
 
-/* 添加档期弹窗（1:1 复刻拾光盒子「新增订单」弹窗：选择场次 24 时段 + 日期待定 + 套系名称） */
-function AddScheduleModal({ initialDate = '', initialSlots = [], packageName = '', onClose, onConfirm }) {
+/* 添加档期弹窗（1:1 复刻拾光盒子「新增订单」弹窗：选择场次 24 时段 + 半天全天 + 日期待定 + 套系名称） */
+function AddScheduleModal({ initialDate = '', initialSlots = [], initialPeriod = 'full', packageName = '', onClose, onConfirm }) {
   const [date, setDate] = useState(initialDate || '');
   const [slots, setSlots] = useState(Array.isArray(initialSlots) ? initialSlots : []);
+  const [period, setPeriod] = useState(initialPeriod || 'full');
   const [tbd, setTbd] = useState(false);
   const [err, setErr] = useState('');
   const toggle = (h) => setSlots((s) => s.includes(h) ? s.filter((x) => x !== h) : [...s, h]);
+  // 选择「半天/全天」时清空 slots
+  const pickPeriod = (p) => { setPeriod(p); setSlots([]); };
   const confirm = () => {
     if (!tbd && !date) return setErr('请选择拍摄日期');
-    onConfirm(date, slots);
+    onConfirm(date, slots, period);
   };
   return (
     <div className="fixed inset-0 z-[95] flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.45)' }}>
@@ -2550,6 +2554,15 @@ function AddScheduleModal({ initialDate = '', initialSlots = [], packageName = '
                   </button>
                 );
               })}
+              {/* 23:00 之后加「半天」「全天」两个时段类型按钮（与 hours 互斥，选中清空 slots） */}
+              <button type="button" onClick={() => pickPeriod('half')}
+                style={{ width: 50, height: 25, fontSize: 12, lineHeight: '25px', padding: 0, border: 'none', borderRadius: 3, cursor: 'pointer', background: period === 'half' ? '#333333' : '#8DDBB3', color: '#FFFFFF' }}>
+                半天
+              </button>
+              <button type="button" onClick={() => pickPeriod('full')}
+                style={{ width: 50, height: 25, fontSize: 12, lineHeight: '25px', padding: 0, border: 'none', borderRadius: 3, cursor: 'pointer', background: period === 'full' ? '#333333' : '#8DDBB3', color: '#FFFFFF' }}>
+                全天
+              </button>
               </div>
             </div>
           </div>

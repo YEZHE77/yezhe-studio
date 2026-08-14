@@ -253,6 +253,7 @@ const ORDERS_NEW_COLUMNS = [
   ['order_name', 'TEXT'], // 订单名称（如「张先生婚礼跟拍」）
   ['phones', 'TEXT'], // 联系电话数组 JSON: ["138...","139..."]
   ['time_slots', 'TEXT'], // 场次时间标签数组 JSON: ["09:00","10:00"]
+  ['period', `TEXT NOT NULL DEFAULT 'full'`], // 档期时长类型：full 全天 / half 半天
   ['extra_items', 'TEXT'], // 其他消费数组 JSON: [{name,amount}]
   ['executors', 'TEXT'], // 执行人数组 JSON: [{id,name,avatar}]
   ['channel', 'TEXT'], // 渠道来源名称快照（渠道被删也保留历史）
