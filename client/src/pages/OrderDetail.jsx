@@ -518,8 +518,15 @@ export default function OrderDetail() {
     const act = STEP_ACTIONS[cur];
     if (!act) return;
     try {
-      if (act.status) await http.put('/api/orders/' + detail.id, { status: act.status });
-      else await http.post('/api/orders/' + detail.id + '/logs', { text: act.log });
+      if (act.status) {
+        await http.put('/api/orders/' + detail.id, { status: act.status });
+        // 乐观更新：本地立即改 status，进度条秒响应（不等 reload 的 GET 往返）
+        setDetail((d) => (d ? { ...d, status: act.status } : d));
+      } else {
+        await http.post('/api/orders/' + detail.id + '/logs', { text: act.log });
+        // 乐观更新：本地追加日志，进度条立即点亮
+        setDetail((d) => (d ? { ...d, logs: [...(Array.isArray(d.logs) ? d.logs : []), { t: new Date().toISOString(), text: act.log }] } : d));
+      }
       // 通知 Todo 页等监听者刷新计数
       try { window.dispatchEvent(new Event('order-status-changed')); } catch {}
       reload();
@@ -538,8 +545,12 @@ export default function OrderDetail() {
         const rev = STATUS_REVERT[act.status];
         if (!rev) return;
         await http.put('/api/orders/' + detail.id, { status: rev });
+        // 乐观更新：本地立即回退 status
+        setDetail((d) => (d ? { ...d, status: rev } : d));
       } else {
         await http.post('/api/orders/' + detail.id + '/logs/undo');
+        // 乐观更新：本地移除最后一条日志
+        setDetail((d) => (d ? { ...d, logs: (Array.isArray(d.logs) ? d.logs.slice(0, -1) : d.logs) } : d));
       }
       try { window.dispatchEvent(new Event('order-status-changed')); } catch {}
       reload();
