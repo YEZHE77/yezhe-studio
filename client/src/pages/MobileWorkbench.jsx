@@ -70,47 +70,47 @@ const SECTIONS = [
   {
     title: '功能',
     items: [
-      { label: '新手引导', icon: BookOpen, color: CORAL, to: '/settings' },
-      { label: '资料', icon: FileText, color: CORAL, to: '/settings' },
-      { label: '作品', icon: Image, color: CORAL, to: '/works' },
-      { label: '套系', icon: Layers, color: CORAL, to: '/packages' }
+      { label: '新手引导', icon: BookOpen, color: MINT, to: '/settings' },
+      { label: '资料', icon: FileText, color: MINT, to: '/settings' },
+      { label: '作品', icon: Image, color: MINT, to: '/works' },
+      { label: '套系', icon: Layers, color: MINT, to: '/packages' }
     ]
   },
   {
     title: '工具',
     items: [
-      { label: '档期', icon: CalendarDays, color: CORAL, to: '/schedule' },
-      { label: '订单', icon: ClipboardList, color: CORAL, to: '/orders' },
-      { label: '客资', icon: Users, color: CORAL, to: '/customers' },
-      { label: '选片工具', icon: Images, color: CORAL, to: '/selections' },
-      { label: '团队管理', icon: UserCog, color: CORAL, to: '/settings' },
-      { label: '评价管理', icon: MessageSquare, color: CORAL, to: '/reviews' },
-      { label: '图片直播', icon: Video, color: CORAL, to: '/settings' },
-      { label: 'AI修图', icon: Sparkles, color: CORAL, to: '/settings' }
+      { label: '档期', icon: CalendarDays, color: MINT, to: '/schedule' },
+      { label: '订单', icon: ClipboardList, color: MINT, to: '/orders' },
+      { label: '客资', icon: Users, color: MINT, to: '/customers' },
+      { label: '选片工具', icon: Images, color: MINT, to: '/selections' },
+      { label: '团队管理', icon: UserCog, color: MINT, to: '/settings' },
+      { label: '评价管理', icon: MessageSquare, color: MINT, to: '/reviews' },
+      { label: '图片直播', icon: Video, color: MINT, to: '/settings' },
+      { label: 'AI修图', icon: Sparkles, color: MINT, to: '/settings' }
     ]
   },
   {
     title: '拓客引流',
     items: [
-      { label: '优惠券', icon: Ticket, color: CORAL, to: '/settings' },
-      { label: '促销套系', icon: Diamond, color: CORAL, to: '/packages' },
-      { label: '优惠码', icon: Tag, color: CORAL, to: '/settings' },
-      { label: '拼团活动', icon: Users2, color: CORAL, to: '/settings' },
-      { label: '客户积分', icon: Coins, color: CORAL, to: '/settings' },
-      { label: '生成名片', icon: IdCard, color: CORAL, to: '/card' },
-      { label: '九图海报', icon: LayoutGrid, color: CORAL, to: '/settings' },
-      { label: '摄影日历', icon: CalendarDays, color: CORAL, to: '/schedule' }
+      { label: '优惠券', icon: Ticket, color: MINT, to: '/settings' },
+      { label: '促销套系', icon: Diamond, color: MINT, to: '/packages' },
+      { label: '优惠码', icon: Tag, color: MINT, to: '/settings' },
+      { label: '拼团活动', icon: Users2, color: MINT, to: '/settings' },
+      { label: '客户积分', icon: Coins, color: MINT, to: '/settings' },
+      { label: '生成名片', icon: IdCard, color: MINT, to: '/card' },
+      { label: '九图海报', icon: LayoutGrid, color: MINT, to: '/settings' },
+      { label: '摄影日历', icon: CalendarDays, color: MINT, to: '/schedule' }
     ]
   },
   {
     title: '其他功能',
     items: [
-      { label: '相册印刷', icon: Printer, color: CORAL, to: '/settings', tag: 'NEW' },
-      { label: '存储空间', icon: HardDrive, color: CORAL, to: '/capacity' },
-      { label: '容量管理', icon: Gauge, color: CORAL, to: '/capacity' },
-      { label: '访客', icon: User, color: CORAL, to: '/datacharts' },
-      { label: '统计', icon: BarChart3, color: CORAL, to: '/datacharts' },
-      { label: '关联公众号', icon: MessageCircle, color: CORAL, to: '/settings' }
+      { label: '相册印刷', icon: Printer, color: MINT, to: '/settings', tag: 'NEW' },
+      { label: '存储空间', icon: HardDrive, color: MINT, to: '/capacity' },
+      { label: '容量管理', icon: Gauge, color: MINT, to: '/capacity' },
+      { label: '访客', icon: User, color: MINT, to: '/datacharts' },
+      { label: '统计', icon: BarChart3, color: MINT, to: '/datacharts' },
+      { label: '关联公众号', icon: MessageCircle, color: MINT, to: '/settings' }
     ]
   }
 ];
@@ -370,7 +370,7 @@ export default function MobileWorkbench() {
         >
           <div style={{ fontSize: 14, color: TEXT }}>会员中心</div>
           <div style={{ position: 'absolute', right: 10, bottom: 10 }}>
-            <Crown className="w-8 h-8" strokeWidth={1.4} style={{ color: '#D4A84B' }} />
+            <Crown className="w-8 h-8" strokeWidth={1.4} style={{ color: MINT }} />
           </div>
         </button>
         <button
@@ -411,7 +411,7 @@ export default function MobileWorkbench() {
         >
           <div style={{ fontSize: 14, color: TEXT }}>相册印刷</div>
           <div style={{ position: 'absolute', right: 10, bottom: 10 }}>
-            <Printer className="w-8 h-8" strokeWidth={1.4} style={{ color: CORAL }} />
+            <Printer className="w-8 h-8" strokeWidth={1.4} style={{ color: MINT }} />
           </div>
         </button>
       </div>
