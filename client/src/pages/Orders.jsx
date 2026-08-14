@@ -1203,32 +1203,31 @@ function OrderCard({ order, studioLogo, onClick }) {
         </div>
       </div>
 
-      {/* 日期 + 商家管理头像 + 封面（无内部分隔线；日期对齐封面底部；商家管理头像在日期与封面之间；无封面时占位以保证卡片等高） */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', padding: '0 14px 12px' }}>
+      {/* 日期 + 封面（绝对定位上移叠到套系行）+ 商家管理头像（叠在封面左下角） */}
+      <div style={{ position: 'relative', padding: '0 14px 12px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#999', paddingBottom: 6 }}>
           <IconCalendar style={{ width: 14, height: 14, color: '#bbb' }} />
           <span>{dateLabel}：{dateValue}</span>
         </div>
-        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 10, flexShrink: 0 }}>
-          {/* 商家管理头像（settings.studio.logo），永远渲染保证卡片等高 */}
-          {studioLogo ? (
-            <img src={img(studioLogo)} alt="商家管理" title="商家管理"
-              style={{ width: 30, height: 30, borderRadius: '50%', border: '2px solid #fff', objectFit: 'cover', display: 'block', boxShadow: '0 0 0 1px #eee' }} />
-          ) : (
-            <div title="商家管理"
-              style={{ width: 30, height: 30, borderRadius: '50%', background: '#2998EB', color: '#fff',
-                border: '2px solid #fff', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 12, fontWeight: 500, boxShadow: '0 0 0 1px #eee' }}>叶</div>
-          )}
-          {/* 封面（无内嵌头像层叠；参考图 IMG_7528 中封面为纯图） */}
-          {cover ? (
-            <div style={{ position: 'relative', flexShrink: 0 }}>
-              <img src={cover} alt="" style={{ width: 76, height: 76, borderRadius: 6, objectFit: 'cover', display: 'block' }} />
-            </div>
-          ) : (
-            <div style={{ width: 76, height: 76, borderRadius: 6, background: '#F5F5F5', flexShrink: 0 }} />
-          )}
-        </div>
+        {/* 封面：85×95 比宽稍高，绝对定位 right:14 bottom:12 让顶端上移到套系行区域 */}
+        {cover ? (
+          <div style={{ position: 'absolute', right: 14, bottom: 12, width: 85, height: 95 }}>
+            <img src={cover} alt="" style={{ width: '100%', height: '100%', borderRadius: 6, objectFit: 'cover', display: 'block' }} />
+            {/* 商家管理头像：absolute 叠在封面左下角（30×30 不缩尺寸） */}
+            {studioLogo ? (
+              <img src={img(studioLogo)} alt="商家管理" title="商家管理"
+                style={{ position: 'absolute', left: -15, bottom: 0, width: 30, height: 30,
+                  borderRadius: '50%', border: '2px solid #fff', objectFit: 'cover', display: 'block' }} />
+            ) : (
+              <div title="商家管理"
+                style={{ position: 'absolute', left: -15, bottom: 0, width: 30, height: 30, borderRadius: '50%', background: '#2998EB', color: '#fff',
+                  border: '2px solid #fff', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 12, fontWeight: 500 }}>叶</div>
+            )}
+          </div>
+        ) : (
+          <div style={{ position: 'absolute', right: 14, bottom: 12, width: 85, height: 95, borderRadius: 6, background: '#F5F5F5' }} />
+        )}
       </div>
       <div style={{ height: 1, background: '#F0F0F0' }} />
 
