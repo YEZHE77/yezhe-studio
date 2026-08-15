@@ -2592,10 +2592,9 @@ export default function OrderDetail() {
         </>
       )}
 
-      {/* 打印单据内容（style 放在外层兄弟节点，避开离屏父元素导致 Chrome 不渲染 @page；打印时 @media print 切到 absolute 让内容固定在每页左上角） */}
+      {/* 打印单据内容（@page 规则已挪到全局 index.css；这里只留 @media print 控制显隐与定位） */}
       <>
       <style>{`
-        @page { size: A4; margin: 20mm 15mm 20mm; @top-center { content: "拍摄服务合同"; font-family: SimSun, STSong, serif; font-size: 12px; color: #555; padding-bottom: 3mm; border-bottom: 1px solid #ddd; width: 100%; } }
         @media print {
           body * { visibility: hidden; }
           .print-order-sheet, .print-order-sheet * { visibility: visible; }
