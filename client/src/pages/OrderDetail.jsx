@@ -1351,56 +1351,6 @@ export default function OrderDetail() {
             );
           })()}
 
-          {/* 合同（模板 + 附加条款 + 生成 PDF） */}
-          <div style={{ margin: '12px 12px 0', background: '#fff', borderRadius: 8, padding: '14px 16px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
-            <div style={{ fontSize: 14, color: '#1f2329', marginBottom: 12 }}>合同</div>
-            {!pkgAgreementEnabled && !contractPdfUrl ? (
-              <div style={{ fontSize: 13, color: '#999', padding: '16px 0', textAlign: 'center', lineHeight: 1.6 }}>
-                该套系已关闭协议，无法发起合同。<br />如需使用，请到套系编辑开启协议并绑定模板。
-              </div>
-            ) : (
-              <>
-            {contractDirty && (
-              <div style={{ fontSize: 12, color: '#FF4D4F', background: 'rgba(255,77,79,0.08)', borderRadius: 6, padding: '8px 10px', marginBottom: 10, lineHeight: 1.5 }}>
-                ⚠ 订单信息已变更，当前合同 PDF 未同步最新数据，请点击「重新生成合同 PDF」更新。
-              </div>
-            )}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-              <span style={{ fontSize: 13, color: '#999' }}>合同模板</span>
-              <button type="button" onClick={() => nav('/contract-templates')} style={{ fontSize: 12, color: '#7ECDBB', background: 'none', border: 'none', cursor: 'pointer' }}>管理模板 ›</button>
-            </div>
-            <select value={contractTemplateId ?? ''} onChange={(e) => setContractTemplateId(e.target.value ? Number(e.target.value) : null)}
-              style={{ width: '100%', padding: '9px 12px', borderRadius: 6, border: '1px solid #E8E8E8', fontSize: 14, background: '#fff', outline: 'none', marginBottom: 12 }}>
-              {!contractTemplates.length && <option value="">暂无模板，点击下方一键创建</option>}
-              {contractTemplates.map((t) => (<option key={t.id} value={t.id}>{t.template_name}{t.is_default ? '（默认）' : ''}</option>))}
-            </select>
-            {/* 模板为空时一键创建默认模板（解决线上/新库无模板痛点） */}
-            {!contractTemplates.length && (
-              <button type="button" onClick={createDefaultTemplate} disabled={creatingDefault}
-                style={{ width: '100%', padding: '10px 0', borderRadius: 8, border: 'none', background: '#7ECDBB', color: '#fff', fontSize: 14, fontWeight: 500, marginBottom: 12, cursor: creatingDefault ? 'not-allowed' : 'pointer', opacity: creatingDefault ? 0.6 : 1 }}>
-                {creatingDefault ? '创建中…' : '+ 一键创建「婚礼跟拍服务合同」并使用'}
-              </button>
-            )}
-            <div style={{ fontSize: 13, color: '#999', marginBottom: 4 }}>附加条款（拼接在合同末尾）</div>
-            <textarea value={contractExtraText} onChange={(e) => setContractExtraText(e.target.value)} placeholder="选填，如特别约定、加急交付等"
-              style={{ width: '100%', minHeight: 64, padding: '10px 12px', borderRadius: 6, border: '1px solid #E8E8E8', fontSize: 13, outline: 'none', boxSizing: 'border-box', marginBottom: 12 }} />
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              <button type="button" onClick={saveContractConfig} disabled={contractSaving}
-                style={{ padding: '8px 16px', borderRadius: 6, border: '1px solid #E8E8E8', background: '#fff', color: '#666', fontSize: 13, cursor: 'pointer' }}>保存配置</button>
-              <button type="button" onClick={generateContractPdf} disabled={contractGenerating || !pkgAgreementEnabled}
-                style={{ padding: '8px 16px', borderRadius: 6, border: 'none', background: '#2DB7F5', color: '#fff', fontSize: 13, cursor: 'pointer', opacity: (contractGenerating || !pkgAgreementEnabled) ? 0.5 : 1 }}>
-                {contractGenerating ? '生成中…' : contractPdfUrl ? '重新生成合同 PDF' : '生成合同 PDF'}
-              </button>
-              {contractPdfUrl && <button type="button" onClick={viewContract} style={{ padding: '8px 16px', borderRadius: 6, border: '1px solid #2DB7F5', color: '#2DB7F5', fontSize: 13, background: '#fff', cursor: 'pointer' }}>查看合同</button>}
-              {contractPdfUrl && <button type="button" onClick={downloadContract} style={{ padding: '8px 16px', borderRadius: 6, border: 'none', background: '#2DB7F5', color: '#fff', fontSize: 13, cursor: 'pointer' }}>下载合同</button>}
-              {contractPdfUrl && (detail?.contract_invalid
-                ? <button type="button" onClick={restoreContract} style={{ padding: '8px 16px', borderRadius: 6, border: '1px solid #52C41A', color: '#52C41A', fontSize: 13, background: '#fff', cursor: 'pointer' }}>恢复合同</button>
-                : <button type="button" onClick={invalidateContract} style={{ padding: '8px 16px', borderRadius: 6, border: '1px solid #FF4D4F', color: '#FF4D4F', fontSize: 13, background: '#fff', cursor: 'pointer' }}>作废合同</button>)}
-            </div>
-              </>
-            )}
-          </div>
-
           {/* 订单变更记录（3 项可点击跳转 logModal 对应 tab） */}
           <div onClick={() => { setLogModalTab('status'); setLogModal(true); }} style={{ margin: '12px 12px 0', background: '#fff', borderRadius: 8, padding: '14px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', boxShadow: '0 1px 3px rgba(0,0,0,0.04)', cursor: 'pointer' }}>
             <span style={{ fontSize: 14, color: '#1f2329' }}>订单变更记录</span>
@@ -1771,62 +1721,6 @@ export default function OrderDetail() {
             </div>
           )}
         </div>
-      </section>
-
-      {/* ============ 合同（模板 + 附加条款 + 生成 PDF） ============ */}
-      <section style={{ margin: isMobile ? '8px 12px 0' : '8px 24px 0', background: '#FFFFFF', border: '1px solid ' + CARD_BORDER, borderRadius: 4, padding: '16px' }}>
-        <div style={{ fontSize: 14, color: '#1f2329', marginBottom: 12 }}>合同</div>
-        {!pkgAgreementEnabled && !contractPdfUrl ? (
-          <div style={{ fontSize: 13, color: '#999', padding: '16px 0', textAlign: 'center', lineHeight: 1.6 }}>
-            该套系已关闭协议，无法发起合同。如需使用，请到套系编辑开启协议并绑定模板。
-          </div>
-        ) : (
-          <>
-        {contractDirty && (
-          <div style={{ fontSize: 12, color: '#FF4D4F', background: 'rgba(255,77,79,0.08)', borderRadius: 4, padding: '8px 10px', marginBottom: 12, lineHeight: 1.5 }}>
-            ⚠ 订单信息已变更，当前合同 PDF 未同步最新数据，请点击「重新生成合同 PDF」更新。
-          </div>
-        )}
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, alignItems: 'flex-start' }}>
-          <div style={{ flex: '1 1 240px', minWidth: 200 }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-              <span style={{ fontSize: 12, color: LABEL_COLOR }}>合同模板</span>
-              <button type="button" onClick={() => nav('/contract-templates')} style={{ fontSize: 12, color: '#7ECDBB', background: 'none', border: 'none', cursor: 'pointer' }}>管理模板 ›</button>
-            </div>
-            <select value={contractTemplateId ?? ''} onChange={(e) => setContractTemplateId(e.target.value ? Number(e.target.value) : null)}
-              style={{ width: '100%', padding: '8px 10px', borderRadius: 4, border: '1px solid ' + CARD_BORDER, fontSize: 13, background: '#fff', outline: 'none' }}>
-              {!contractTemplates.length && <option value="">暂无模板，点击下方一键创建</option>}
-              {contractTemplates.map((t) => (<option key={t.id} value={t.id}>{t.template_name}{t.is_default ? '（默认）' : ''}</option>))}
-            </select>
-            {/* 模板为空时一键创建默认模板（解决线上/新库无模板痛点） */}
-            {!contractTemplates.length && (
-              <button type="button" onClick={createDefaultTemplate} disabled={creatingDefault}
-                style={{ marginTop: 8, width: '100%', padding: '8px 0', borderRadius: 6, border: 'none', background: '#7ECDBB', color: '#fff', fontSize: 13, fontWeight: 500, cursor: creatingDefault ? 'not-allowed' : 'pointer', opacity: creatingDefault ? 0.6 : 1 }}>
-                {creatingDefault ? '创建中…' : '+ 一键创建「婚礼跟拍服务合同」并使用'}
-              </button>
-            )}
-          </div>
-          <div style={{ flex: '1 1 320px', minWidth: 240 }}>
-            <div style={{ fontSize: 12, color: LABEL_COLOR, marginBottom: 6 }}>附加条款（拼接在合同末尾）</div>
-            <textarea value={contractExtraText} onChange={(e) => setContractExtraText(e.target.value)} placeholder="选填"
-              rows={2} style={{ width: '100%', resize: 'vertical', padding: '8px 10px', borderRadius: 4, border: '1px solid ' + CARD_BORDER, fontSize: 13, outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box' }} />
-          </div>
-        </div>
-        <div style={{ display: 'flex', gap: 8, marginTop: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-          <button type="button" onClick={saveContractConfig} disabled={contractSaving}
-            style={{ padding: '7px 16px', borderRadius: 4, border: '1px solid ' + CARD_BORDER, background: '#fff', color: '#666', fontSize: 13, cursor: 'pointer' }}>保存配置</button>
-          <button type="button" onClick={generateContractPdf} disabled={contractGenerating || !pkgAgreementEnabled}
-            style={{ padding: '7px 16px', borderRadius: 4, border: 'none', background: BLUE, color: '#fff', fontSize: 13, cursor: 'pointer', opacity: (contractGenerating || !pkgAgreementEnabled) ? 0.5 : 1 }}>
-            {contractGenerating ? '生成中…' : contractPdfUrl ? '重新生成合同 PDF' : '生成合同 PDF'}
-          </button>
-          {contractPdfUrl && <button type="button" onClick={viewContract} style={{ padding: '7px 16px', borderRadius: 4, border: '1px solid ' + BLUE, color: BLUE, fontSize: 13, background: '#fff', cursor: 'pointer' }}>查看合同</button>}
-          {contractPdfUrl && <button type="button" onClick={downloadContract} style={{ padding: '7px 16px', borderRadius: 4, border: 'none', background: BLUE, color: '#fff', fontSize: 13, cursor: 'pointer' }}>下载合同</button>}
-          {contractPdfUrl && (detail?.contract_invalid
-            ? <button type="button" onClick={restoreContract} style={{ padding: '7px 16px', borderRadius: 4, border: '1px solid #52C41A', color: '#52C41A', fontSize: 13, background: '#fff', cursor: 'pointer' }}>恢复合同</button>
-            : <button type="button" onClick={invalidateContract} style={{ padding: '7px 16px', borderRadius: 4, border: '1px solid #FF4D4F', color: '#FF4D4F', fontSize: 13, background: '#fff', cursor: 'pointer' }}>作废合同</button>)}
-        </div>
-          </>
-        )}
       </section>
 
       {/* ============ Module 5：底片上传 Tab 卡片（保留既有上传/选片功能，仅换肤） ============ */}
