@@ -589,9 +589,17 @@ export default function OrderDetail() {
   function printOrder() {
     if (!detail) return;
     setMoreMenu(false);
+    const ua = navigator.userAgent || '';
     // 微信内置浏览器 window.print 支持不完整：检测到微信环境弹提示引导用系统浏览器打开
-    if (/MicroMessenger/i.test(navigator.userAgent || '')) {
+    if (/MicroMessenger/i.test(ua)) {
       alert('微信浏览器不支持保存 PDF。\n\n建议复制当前链接，用系统浏览器打开后再打印，即可另存为 PDF。');
+      return;
+    }
+    // iOS 主屏幕 PWA（display:standalone）不支持 window.print：检测到独立模式引导去 Safari
+    const isStandalone = (window.navigator.standalone === true)
+      || (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
+    if (isStandalone) {
+      alert('主屏幕应用（独立模式）不支持直接打印。\n\n请在 Safari 浏览器中打开以下地址，登录后进入该订单再点「打印单据」即可保存 PDF：\n\n' + window.location.href);
       return;
     }
     // 打印单始终离屏渲染在 DOM 中，无需等待渲染；必须同步调用 window.print 以保留 iOS 用户手势上下文
