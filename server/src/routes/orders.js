@@ -927,4 +927,27 @@ router.post('/:id/unshare', authRequired, requireRole(['admin', 'photographer', 
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// 订单改期/取消申请列表（B 端查看）
+router.get('/:id/requests', authRequired, requireRole(['admin', 'photographer', 'finance']), async (req, res) => {
+  try {
+    const rows = await query('SELECT * FROM order_requests WHERE order_id = ? ORDER BY id DESC', [req.params.id]);
+    res.json(rows);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// 审核申请（通过/拒绝；通过后仅标记状态，实际改期/取消仍由商家在订单页手动操作）
+router.post('/:id/requests/:reqId/handle', authRequired, requireRole(['admin', 'photographer', 'finance']), async (req, res) => {
+  try {
+    const o = await get('SELECT * FROM orders WHERE id = ?', [req.params.id]);
+    if (!o) return res.status(404).json({ error: '订单不存在' });
+    const rq = await get('SELECT * FROM order_requests WHERE id = ? AND order_id = ?', [req.params.reqId, o.id]);
+    if (!rq) return res.status(404).json({ error: '申请不存在' });
+    const status = ['approved', 'rejected'].includes(req.body.status) ? req.body.status : 'approved';
+    await run('UPDATE order_requests SET status = ?, handled_at = ? WHERE id = ?', [status, nowISO(), rq.id]);
+    const typeLabel = rq.type === 'reschedule' ? '改期申请' : '取消申请';
+    await appendLog(o.id, `${typeLabel}${status === 'approved' ? '已通过' : '已拒绝'}${req.body.note ? '：' + req.body.note : ''}`);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 export default router;

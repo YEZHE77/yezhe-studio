@@ -174,6 +174,8 @@ export default function OrderDetail() {
   const [creatingDefault, setCreatingDefault] = useState(false);
   // 实时套系协议开关（决定订单合同区能否发起合同；无套系/读取失败默认允许，向后兼容）
   const [pkgAgreementEnabled, setPkgAgreementEnabled] = useState(true);
+  // 客户改期/取消申请列表
+  const [orderRequests, setOrderRequests] = useState([]);
   const [contractExtraText, setContractExtraText] = useState('');
   const [contractPdfUrl, setContractPdfUrl] = useState('');
   const [contractGenerating, setContractGenerating] = useState(false);
@@ -277,6 +279,11 @@ export default function OrderDetail() {
   }, [id, loadSel]);
 
   useEffect(() => { reload(); }, [reload]);
+  // 客户改期/取消申请列表
+  useEffect(() => {
+    if (!id) return;
+    http.get('/api/orders/' + id + '/requests').then((r) => setOrderRequests(r.data || [])).catch(() => setOrderRequests([]));
+  }, [id, reload]);
   // 合同模板列表
   useEffect(() => {
     http.get('/api/contract/templates').then((r) => {
@@ -311,6 +318,15 @@ export default function OrderDetail() {
     } finally {
       setCreatingDefault(false);
     }
+  };
+
+  // 审核客户改期/取消申请（通过后仍需商家在订单页手动改日期/作废，这里仅标记状态）
+  const handleRequest = async (reqId, status) => {
+    try {
+      await http.post(`/api/orders/${detail.id}/requests/${reqId}/handle`, { status });
+      const r = await http.get('/api/orders/' + detail.id + '/requests').catch(() => ({ data: [] }));
+      setOrderRequests(r.data || []);
+    } catch (e) { alert('操作失败：' + (e.message || '')); }
   };
 
   useEffect(() => {
@@ -1228,6 +1244,34 @@ export default function OrderDetail() {
               <button type="button" onClick={() => nav('/orders/' + detail?.id + '/notes')} style={{ background: 'none', border: 'none', color: '#7ECDBB', fontSize: 13 }}>展开备注</button>
             </div>
           </div>
+
+          {/* 客户改期/取消申请（B端审核；仅 pending 显示操作按钮） */}
+          {orderRequests.length > 0 && (
+            <div style={{ margin: '12px 12px 0', background: '#fff', borderRadius: 8, padding: '14px 16px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+              <div style={{ fontSize: 14, color: '#1f2329', marginBottom: 8 }}>客户申请</div>
+              {orderRequests.map((rq) => (
+                <div key={rq.id} style={{ padding: '10px 0', borderTop: '1px solid #F5F5F5' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontSize: 12, padding: '2px 8px', borderRadius: 6, background: rq.type === 'reschedule' ? '#EAF7F4' : '#FDECEC', color: rq.type === 'reschedule' ? '#3E9C8B' : '#FF4D4F' }}>
+                      {rq.type === 'reschedule' ? '改期' : '取消'}
+                    </span>
+                    <span style={{ fontSize: 12, color: '#999' }}>{rq.status === 'pending' ? '待处理' : rq.status === 'approved' ? '已通过' : '已拒绝'}</span>
+                    <span style={{ flex: 1 }} />
+                  </div>
+                  <div style={{ fontSize: 13, color: '#666', marginTop: 6, lineHeight: 1.6 }}>{rq.reason}</div>
+                  {rq.desired_date && <div style={{ fontSize: 12, color: '#999', marginTop: 4 }}>期望日期：{rq.desired_date}</div>}
+                  {rq.status === 'pending' && (
+                    <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                      <button type="button" onClick={() => handleRequest(rq.id, 'approved')}
+                        style={{ padding: '5px 14px', borderRadius: 6, background: '#7ECDBB', color: '#fff', fontSize: 12, border: 'none', cursor: 'pointer' }}>通过</button>
+                      <button type="button" onClick={() => handleRequest(rq.id, 'rejected')}
+                        style={{ padding: '5px 14px', borderRadius: 6, background: '#fff', color: '#999', fontSize: 12, border: '1px solid #E8E8E8', cursor: 'pointer' }}>拒绝</button>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
 
           {/* 退订政策（本订单所属套系的退改规则，PRD 一.2/二.2） */}
           {(() => {

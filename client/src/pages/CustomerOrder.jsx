@@ -47,6 +47,12 @@ export default function CustomerOrder() {
   const [data, setData] = useState(null);
   const [err, setErr] = useState('');
   const [loading, setLoading] = useState(true);
+  // 改期/取消申请
+  const [reqOpen, setReqOpen] = useState(false);
+  const [reqType, setReqType] = useState('reschedule');
+  const [reqReason, setReqReason] = useState('');
+  const [reqDate, setReqDate] = useState('');
+  const [reqBusy, setReqBusy] = useState(false);
 
   useEffect(() => {
     if (!token) { setErr('无权限访问'); setLoading(false); return; }
@@ -55,6 +61,24 @@ export default function CustomerOrder() {
       .catch((e) => setErr((e.response && e.response.data && e.response.data.error) || '加载失败'))
       .finally(() => setLoading(false));
   }, [token]);
+
+  const openReq = (type) => { setReqType(type); setReqReason(''); setReqDate(''); setReqOpen(true); };
+  const submitReq = async () => {
+    if (!reqReason.trim()) { alert('请填写申请原因'); return; }
+    if (reqType === 'reschedule' && !reqDate) { alert('请选择期望拍摄日期'); return; }
+    setReqBusy(true);
+    try {
+      await http.post('/api/public/order/' + token + '/request', {
+        type: reqType, reason: reqReason.trim(), desired_date: reqDate
+      });
+      setReqOpen(false);
+      alert('申请已提交，摄影师会尽快处理并与您联系');
+    } catch (e) {
+      alert((e.response?.data?.error) || '提交失败，请稍后重试');
+    } finally {
+      setReqBusy(false);
+    }
+  };
 
   if (loading) return <div style={{ minHeight: '100vh', background: '#F5F5F7', display: 'flex', alignItems: 'center', justifyContent: 'center', color: FAINT, fontSize: 14 }}>加载中…</div>;
 
@@ -198,6 +222,48 @@ export default function CustomerOrder() {
           style={{ width: '100%', marginTop: 16, padding: '14px 0', borderRadius: 14, background: BRAND, color: '#fff', fontSize: 15, border: 'none', cursor: 'pointer', boxShadow: '0 8px 20px rgba(126,205,187,0.35)' }}>
           进入选片
         </button>
+      )}
+
+      {/* 改期/取消申请（仅提交申请，由商家审核操作，不直接改订单） */}
+      <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
+        <button type="button" onClick={() => openReq('reschedule')}
+          style={{ flex: 1, padding: '12px 0', borderRadius: 12, background: '#fff', color: BRAND, fontSize: 14, border: '1px solid ' + BRAND }}>
+          申请改期
+        </button>
+        <button type="button" onClick={() => openReq('cancel')}
+          style={{ flex: 1, padding: '12px 0', borderRadius: 12, background: '#fff', color: '#FF4D4F', fontSize: 14, border: '1px solid #FF4D4F' }}>
+          申请取消
+        </button>
+      </div>
+
+      {/* 申请弹窗 */}
+      {reqOpen && (
+        <div onClick={() => setReqOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ background: '#fff', borderRadius: 16, padding: '20px', width: '100%', maxWidth: 340 }}>
+            <div style={{ fontSize: 16, fontWeight: 600, color: TEXT, marginBottom: 4 }}>{reqType === 'reschedule' ? '申请改期' : '申请取消'}</div>
+            <div style={{ fontSize: 12, color: FAINT, marginBottom: 16 }}>提交后摄影师会审核处理，不会自动变更订单</div>
+            {reqType === 'reschedule' && (
+              <label style={{ display: 'block', fontSize: 13, color: SUB, marginBottom: 12 }}>
+                期望拍摄日期
+                <input type="date" value={reqDate} onChange={(e) => setReqDate(e.target.value)}
+                  style={{ width: '100%', marginTop: 6, padding: '10px 12px', borderRadius: 10, border: '1px solid #E8E8EA', fontSize: 14, boxSizing: 'border-box', outline: 'none' }} />
+              </label>
+            )}
+            <label style={{ display: 'block', fontSize: 13, color: SUB, marginBottom: 16 }}>
+              申请原因
+              <textarea value={reqReason} onChange={(e) => setReqReason(e.target.value)} rows={3} placeholder="请填写原因"
+                style={{ width: '100%', marginTop: 6, padding: '10px 12px', borderRadius: 10, border: '1px solid #E8E8EA', fontSize: 14, boxSizing: 'border-box', outline: 'none', resize: 'none' }} />
+            </label>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button type="button" onClick={() => setReqOpen(false)} disabled={reqBusy}
+                style={{ flex: 1, padding: '11px 0', borderRadius: 10, background: '#F0F0F2', color: SUB, fontSize: 14, border: 'none' }}>取消</button>
+              <button type="button" onClick={submitReq} disabled={reqBusy}
+                style={{ flex: 1, padding: '11px 0', borderRadius: 10, background: reqType === 'cancel' ? '#FF4D4F' : BRAND, color: '#fff', fontSize: 14, border: 'none', opacity: reqBusy ? 0.6 : 1 }}>
+                {reqBusy ? '提交中…' : '提交申请'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       <div style={{ textAlign: 'center', fontSize: 12, color: FAINT, marginTop: 24 }}>YEZHE WORKSHOP · 订单信息仅供查看</div>

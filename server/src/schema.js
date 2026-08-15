@@ -466,6 +466,20 @@ export async function initSchema() {
   for (const s of (dialect === 'pg' ? PG_CONTRACT_ARCHIVE : SQLITE_CONTRACT_ARCHIVE).split(';').map((x) => x.trim()).filter(Boolean)) await run(s);
   for (const s of (dialect === 'pg' ? PG_CONTRACT_AUDIT : SQLITE_CONTRACT_AUDIT).split(';').map((x) => x.trim()).filter(Boolean)) await run(s);
 
+  // 订单改期/取消申请表（C端 token 提交，B端审核；status: pending/approved/rejected）
+  const ORDER_REQUESTS_DDL = dialect === 'pg'
+    ? `CREATE TABLE IF NOT EXISTS order_requests (
+        id SERIAL PRIMARY KEY, order_id INTEGER NOT NULL, type TEXT NOT NULL,
+        reason TEXT, desired_date TEXT, status TEXT NOT NULL DEFAULT 'pending',
+        created_at TIMESTAMPTZ DEFAULT now(), handled_at TEXT
+      )`
+    : `CREATE TABLE IF NOT EXISTS order_requests (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, order_id INTEGER NOT NULL, type TEXT NOT NULL,
+        reason TEXT, desired_date TEXT, status TEXT NOT NULL DEFAULT 'pending',
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP, handled_at TEXT
+      )`;
+  for (const s of ORDER_REQUESTS_DDL.split(';').map((x) => x.trim()).filter(Boolean)) await run(s);
+
   // 系统设置表
   for (const s of (dialect === 'pg' ? PG_SETTINGS : SQLITE_SETTINGS).split(';').map((x) => x.trim()).filter(Boolean)) await run(s);
 

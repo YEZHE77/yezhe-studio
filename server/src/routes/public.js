@@ -141,4 +141,32 @@ router.get('/order/:token', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// ===== C 端提交改期/取消申请（仅推送商家，不自动变更订单数据）=====
+router.post('/order/:token/request', async (req, res) => {
+  try {
+    const o = await get('SELECT * FROM orders WHERE customer_token = ?', [req.params.token]);
+    if (!o) return res.status(403).json({ error: '无权限访问该订单' });
+    if (o.cancelled || o.is_deleted) return res.status(404).json({ error: '订单不存在或已关闭' });
+    const b = req.body || {};
+    const type = ['reschedule', 'cancel'].includes(b.type) ? b.type : 'reschedule';
+    const reason = String(b.reason || '').trim().slice(0, 200);
+    if (!reason) return res.status(400).json({ error: '请填写申请原因' });
+    const desiredDate = type === 'reschedule' ? String(b.desired_date || '').trim() : '';
+    const id = await insert(
+      'INSERT INTO order_requests (order_id, type, reason, desired_date, status, created_at) VALUES (?,?,?,?,?,?)',
+      [o.id, type, reason, desiredDate, 'pending', nowISO()]
+    );
+    // 推送商家（消息中心）
+    const typeLabel = type === 'reschedule' ? '改期申请' : '取消申请';
+    await emitMessage({
+      message_type: 'customer_consult',
+      business_event: 'order_request_' + id,
+      title: `客户提交${typeLabel}`,
+      content: `${o.customer_name || '客户'}：${reason}${desiredDate ? '（期望日期 ' + desiredDate + '）' : ''}`,
+      rel_id: o.id, rel_model: 'order'
+    });
+    res.json({ ok: true, id });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 export default router;
