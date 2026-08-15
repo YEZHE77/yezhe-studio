@@ -186,12 +186,19 @@ export default function OrderDialog({ orderDlg, personnel, onClose, onSaved, mod
     if (payStatus === 'paid' && parseFloat(deposit) <= 0) return setLocalErr('收款状态为「已付全款」时，已付金额必须大于 0');
     if (payStatus === 'deposit' && parseFloat(deposit) <= 0) return setLocalErr('收款状态为「已付定金」时，定金必须大于 0');
     if (chooseSession && slots.length === 0) return setLocalErr('请选择场次时间段');
+    // 拆分顾客数组 → 新郎/新娘字段（后端独立列，单一顾客时新郎=c[0]，新娘留空）
+    const groom_name = (customers[0]?.name || '').trim();
+    const groom_phone = (customers[0]?.phone || '').trim();
+    const bride_name = (customers[1]?.name || '').trim();
+    const bride_phone = (customers[1]?.phone || '').trim();
     const payload = {
       order_name: orderName.trim(),
       customerName: customerName.trim(),
       customerPhoneList: phoneList,
       customer_name: customerName.trim(),
       phones: phoneList,
+      groom_name, bride_name,
+      groom_phone, bride_phone,
       shoot_date: dateTbd ? '' : shootDate,
       date_tbd: dateTbd ? 1 : 0,
       time_slots: slots,

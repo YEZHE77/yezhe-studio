@@ -401,9 +401,15 @@ export default function OrderDetail() {
 
   const openEdit = () => {
     if (!detail) return;
+    const detailPhones = asArr(detail.phones);
+    const phone0 = detailPhones[0] || detail.customer_phone || '';
+    const phone1 = detailPhones[1] || '';
     setEditForm({
       order_name: detail.order_name || '',
-      groom_name: detail.groom_name || '', bride_name: detail.bride_name || '', customer_phone: detail.customer_phone || '',
+      groom_name: detail.groom_name || '', bride_name: detail.bride_name || '',
+      groom_phone: detail.groom_phone || phone0,
+      bride_phone: detail.bride_phone || phone1,
+      customer_phone: detail.customer_phone || phone0,
       address: detail.address || '', shoot_date: detail.shoot_date || '',
       executors: asArr(detail.executors).map((x) => typeof x === 'object' ? x : { id: null, name: x }),
       channel: detail.channel || '', channel_id: detail.channel_id || '',
@@ -421,9 +427,11 @@ export default function OrderDetail() {
     const errs = {};
     const name = [editForm.groom_name, editForm.bride_name].filter(Boolean).join('').trim();
     if (!name) errs.customer_name = '请至少填写新郎或新娘姓名';
-    const phone = (editForm.customer_phone || '').trim();
-    if (!phone) errs.customer_phone = '请填写联系电话';
-    else if (!/^1\d{10}$/.test(phone)) errs.customer_phone = '手机号格式不正确（应为 11 位数字）';
+    const groomP = (editForm.groom_phone || '').trim();
+    const brideP = (editForm.bride_phone || '').trim();
+    if (!groomP && !brideP) errs.contact_phone = '请至少填写一个联系电话';
+    else if (groomP && !/^1\d{10}$/.test(groomP)) errs.contact_phone = '新郎电话格式不正确（应为 11 位数字）';
+    else if (brideP && !/^1\d{10}$/.test(brideP)) errs.contact_phone = '新娘电话格式不正确（应为 11 位数字）';
     if (Object.keys(errs).length > 0) { setEditErrors(errs); return; }
     await doSaveEdit(false);
   }
@@ -431,10 +439,16 @@ export default function OrderDetail() {
   async function doSaveEdit(force) {
     try {
       // 确保后端收到规范的 phones 数组和 executors 数组
-      const phoneVal = (editForm.customer_phone || '').trim();
+      const groomP = (editForm.groom_phone || '').trim();
+      const brideP = (editForm.bride_phone || '').trim();
+      // 取新郎/新娘电话的并集，按「新郎在前、新娘在后」回写到 phones 数组
+      const phonesList = [groomP, brideP].filter((p) => /^1\d{10}$/.test(p));
       await http.put('/api/orders/' + detail.id, {
         ...editForm,
-        phones: phoneVal ? [phoneVal] : [],
+        groom_phone: groomP,
+        bride_phone: brideP,
+        customer_phone: groomP || brideP || '',
+        phones: phonesList,
         channel: editForm.channel || '',
         channel_id: editForm.channel_id || '',
         time_slots: (editForm.time_slots || []).filter(Boolean),
@@ -2150,7 +2164,7 @@ export default function OrderDetail() {
                   <div style={{ fontSize: 13, color: '#666666', marginBottom: 4 }}>订单名称</div>
                   <input value={editForm.order_name} onChange={(e) => setEditForm({ ...editForm, order_name: e.target.value })} placeholder="如「张三 & 李四 婚纱照」" style={{ ...modalInputStyle, fontSize: 13 }} />
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2" style={{ gap: 12, marginBottom: 14 }}>
+                <div className="grid grid-cols-1 sm:grid-cols-2" style={{ gap: 12, marginBottom: 6 }}>
                   <div>
                     <div style={{ fontSize: 13, color: '#666666', marginBottom: 4 }}>新郎姓名 <span style={{ color: '#ef4444' }}>*</span></div>
                     <input value={editForm.groom_name} onChange={(e) => setEditForm({ ...editForm, groom_name: e.target.value })} placeholder="新郎姓名" style={{ ...modalInputStyle, borderColor: editErrors.customer_name ? '#ef4444' : DIV, fontSize: 13 }} />
@@ -2159,13 +2173,17 @@ export default function OrderDetail() {
                     <div style={{ fontSize: 13, color: '#666666', marginBottom: 4 }}>新娘姓名</div>
                     <input value={editForm.bride_name} onChange={(e) => setEditForm({ ...editForm, bride_name: e.target.value })} placeholder="新娘姓名" style={{ ...modalInputStyle, fontSize: 13 }} />
                   </div>
+                  <div>
+                    <div style={{ fontSize: 13, color: '#666666', marginBottom: 4 }}>新郎电话</div>
+                    <input value={editForm.groom_phone || ''} onChange={(e) => setEditForm({ ...editForm, groom_phone: e.target.value })} placeholder="11 位手机号" style={{ ...modalInputStyle, borderColor: editErrors.contact_phone ? '#ef4444' : DIV, fontSize: 13 }} />
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 13, color: '#666666', marginBottom: 4 }}>新娘电话</div>
+                    <input value={editForm.bride_phone || ''} onChange={(e) => setEditForm({ ...editForm, bride_phone: e.target.value })} placeholder="11 位手机号" style={{ ...modalInputStyle, fontSize: 13 }} />
+                  </div>
                 </div>
                 {editErrors.customer_name && <div style={{ color: '#ef4444', fontSize: 12, marginBottom: 10, marginTop: -10 }}>{editErrors.customer_name}</div>}
-                <div style={{ marginBottom: 4 }}>
-                  <div style={{ fontSize: 13, color: '#666666', marginBottom: 4 }}>联系电话 <span style={{ color: '#ef4444' }}>*</span></div>
-                  <input value={editForm.customer_phone} onChange={(e) => setEditForm({ ...editForm, customer_phone: e.target.value })} placeholder="11 位手机号" style={{ ...modalInputStyle, borderColor: editErrors.customer_phone ? '#ef4444' : DIV, fontSize: 13 }} />
-                  {editErrors.customer_phone && <div style={{ color: '#ef4444', fontSize: 12, marginTop: 4 }}>{editErrors.customer_phone}</div>}
-                </div>
+                {editErrors.contact_phone && <div style={{ color: '#ef4444', fontSize: 12, marginBottom: 10 }}>{editErrors.contact_phone}</div>}
               </div>
 
               {/* 卡片 2：订单详情 */}
