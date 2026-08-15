@@ -586,23 +586,72 @@ export default function OrderDetail() {
     try { await http.delete('/api/orders/' + detail.id); nav('/orders'); }
     catch (e2) { alert((e2.response && e2.response.data && e2.response.data.error) || '删除失败'); }
   }
+  // 独立模式/微信环境：用 html2pdf 直接生成 PDF 文件（绕过 window.print）
+  async function downloadPrintPdf() {
+    try {
+      const sheet = document.querySelector('.print-order-sheet');
+      const inner = sheet && sheet.querySelector('div');
+      if (!inner) return alert('未找到打印内容');
+      // 克隆打印内容到离屏 A4 容器（跳过 style 标签）
+      const container = document.createElement('div');
+      const clone = inner.cloneNode(true);
+      clone.style.maxWidth = 'none';
+      clone.style.margin = '0';
+      container.appendChild(clone);
+      container.style.position = 'absolute';
+      container.style.left = '-9999px';
+      container.style.top = '0';
+      container.style.width = '210mm';
+      container.style.background = '#fff';
+      container.style.padding = '15mm';
+      container.style.boxSizing = 'border-box';
+      document.body.appendChild(container);
+
+      const pdfBlob = await html2pdf().set({
+        margin: 0,
+        filename: '拍摄服务合同-' + (detail.order_no || detail.id) + '.pdf',
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+        pagebreak: { mode: ['css', 'legacy'] }
+      }).from(container).output('blob');
+
+      document.body.removeChild(container);
+
+      const filename = '拍摄服务合同-' + (detail.order_no || detail.id) + '.pdf';
+      const file = new File([pdfBlob], filename, { type: 'application/pdf' });
+      // 优先用系统分享（iOS/Android 可存到文件）；否则走 a.download
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({ files: [file], title: filename });
+      } else {
+        const url = URL.createObjectURL(pdfBlob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }
+    } catch (e) {
+      if (e && e.name === 'AbortError') return; // 用户取消分享
+      console.error(e);
+      alert('PDF 生成失败：' + (e && e.message ? e.message : e));
+    }
+  }
   function printOrder() {
     if (!detail) return;
     setMoreMenu(false);
     const ua = navigator.userAgent || '';
-    // 微信内置浏览器 window.print 支持不完整：检测到微信环境弹提示引导用系统浏览器打开
-    if (/MicroMessenger/i.test(ua)) {
-      alert('微信浏览器不支持保存 PDF。\n\n建议复制当前链接，用系统浏览器打开后再打印，即可另存为 PDF。');
-      return;
-    }
-    // iOS 主屏幕 PWA（display:standalone）不支持 window.print：检测到独立模式引导去 Safari
+    const isWeChat = /MicroMessenger/i.test(ua);
     const isStandalone = (window.navigator.standalone === true)
       || (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
-    if (isStandalone) {
-      alert('主屏幕应用（独立模式）不支持直接打印。\n\n请在 Safari 浏览器中打开以下地址，登录后进入该订单再点「打印单据」即可保存 PDF：\n\n' + window.location.href);
+    // 微信 / 独立 PWA 均不支持 window.print：走 html2pdf 直接下载 PDF
+    if (isWeChat || isStandalone) {
+      downloadPrintPdf();
       return;
     }
-    // 打印单始终离屏渲染在 DOM 中，无需等待渲染；必须同步调用 window.print 以保留 iOS 用户手势上下文
+    // 普通浏览器：原生打印（质量更好，可另存 PDF）。必须同步调用 window.print 以保留 iOS 用户手势上下文
     window.print();
   }
   async function restoreOrder() {
