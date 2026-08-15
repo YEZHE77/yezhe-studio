@@ -427,11 +427,11 @@ router.post('/', authRequired, requireRole(['admin', 'photographer', 'finance'])
     const _negMatch = _rawText.match(/底片\s*(?:大约|约)?\s*(\d+)/);
     const groom_phone = (b.groom_phone != null && b.groom_phone !== '') ? b.groom_phone : (phones[0] || '');
     const bride_phone = (b.bride_phone != null && b.bride_phone !== '') ? b.bride_phone : (phones[1] || '');
-    // 机位：details.camera_count（单机位/双机位/三机位/多机位）→ 订单 shoot_position（单机位/多机位 两档）；双机位/三机位归一为「多机位」
+    // 机位：details.camera_count 原值存储（单机位/双机位/三机位/多机位 4 档，不再归一为「多机位」）；前端显式传优先，无 _camera 才从套系名推断兜底
     const _camera = (typeof _snapDetails.camera_count === 'string' && _snapDetails.camera_count) || '';
     const shoot_position = (b.shoot_position || '').trim()
-      || (_camera ? (/双机位|三机位|多机位/.test(_camera) ? '多机位' : '单机位')
-        : (/多机位|双机位/.test(_pkgName) ? '多机位' : (/单机位/.test(_pkgName) ? '单机位' : '')));
+      || _camera
+      || (/多机位|双机位|三机位/.test(_pkgName) ? '多机位' : (/单机位/.test(_pkgName) ? '单机位' : ''));
     const total_negatives = parseInt(b.total_negatives, 10) || parseInt(_snapDetails.raw_count, 10) || (_negMatch ? parseInt(_negMatch[1], 10) : 0);
     const retouch_count = parseInt(b.retouch_count, 10) || parseInt(_snapDetails.retouch_count, 10) || parseInt(_snap.retouch_count, 10) || 0;
     // 电子相册/相册单价/快修费：套系编辑页无对应独立字段，订单默认（1 本 / 0 / 0）
