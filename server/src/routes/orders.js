@@ -445,12 +445,10 @@ router.post('/', authRequired, requireRole(['admin', 'photographer', 'finance'])
     const pay_wechat = b.pay_wechat != null ? (b.pay_wechat ? 1 : 0) : (_channel === 'wechat' || _method === 'online' ? 1 : 0);
     const pay_alipay = b.pay_alipay != null ? (b.pay_alipay ? 1 : 0) : (_channel === 'alipay' ? 1 : 0);
     const pay_account_info = b.pay_account_info || '';
-    // 协议模板初始化：套系开启协议（details.customer_agreement_enabled）且绑定了模板 → 自动带入；前端显式传优先
-    const _pkgDetails = (package_snapshot && package_snapshot.details) || {};
-    const pkgAgreementOn = !!_pkgDetails.customer_agreement_enabled;
+    // 合同模板：仅用前端显式传入（套系不再自动绑定/带入合同模板，由商家在订单页手动选模板或编辑合同）
     const contract_template_id = b.contract_template_id != null
       ? (b.contract_template_id ? parseInt(b.contract_template_id, 10) || null : null)
-      : (pkgAgreementOn && package_snapshot && package_snapshot.contract_template_id ? package_snapshot.contract_template_id : null);
+      : null;
     const id = await insert(
       `INSERT INTO orders (order_no, customer_name, customer_phone, package_id, package_snapshot, addons_snapshot, status,
         deposit, balance, deposit_method, balance_method, shoot_date, executor, total_amount, paid_amount, remark, logs,
@@ -727,19 +725,13 @@ router.post('/:id/change-package', authRequired, requireRole(['admin', 'photogra
 
     const oldSnap = safeParse(o.package_snapshot, null);
     const oldName = (oldSnap && oldSnap.name) || '（无套系）';
-    // 新套系协议开关（决定订单协议状态同步）
-    const newPkgAgreementOn = !!(safeParse(p.details, {}).customer_agreement_enabled);
     await run(
       'UPDATE orders SET package_id = ?, package_snapshot = ?, addons_snapshot = ?, total_amount = ?, balance = ? WHERE id = ?',
       [p.id, JSON.stringify(snapshot), JSON.stringify(addons), total, balance, o.id]
     );
-    // 协议状态同步：
-    //  - 新套系开启协议 → 带入新套系绑定的协议模板（未绑定时置空）
-    //  - 新套系关闭协议 + 前端二次确认（clear_contract=true）→ 清空订单所有协议数据（签署记录/PDF/快照/附加条款失效）
-    if (newPkgAgreementOn) {
-      await run('UPDATE orders SET contract_template_id = ? WHERE id = ?', [p.contract_template_id || null, o.id]);
-      await appendLog(o.id, '已同步新套系绑定的协议模板');
-    } else if (b.clear_contract) {
+    // 合同模板不再随套系联动：保留订单原有的 contract_template_id（如有），商家在订单页手动选模板
+    // 仅当新套系关协议 + 用户二次确认清空（clear_contract=true）→ 清空订单合同数据
+    if (b.clear_contract) {
       await run(`UPDATE orders SET contract_template_id = NULL, contract_pdf_url = NULL, contract_extra_text = NULL,
         contract_invalid = 0, contract_file_key = NULL, contract_file_md5 = NULL, contract_order_snapshot = NULL WHERE id = ?`, [o.id]);
       await appendLog(o.id, '新套系关闭协议，已清空订单协议数据（签署记录/PDF/附加条款已失效）');
@@ -749,7 +741,7 @@ router.post('/:id/change-package', authRequired, requireRole(['admin', 'photogra
     if (o.contract_file_key || o.contract_pdf_url || o.contract_template_id) {
       try { await generateEventTodo(o.id, 'regen_contract', '重新生成合同', `已更换套系为「${p.name}」，原合同已失效，请重新生成合同 PDF`, 'switch'); } catch (e) { console.error('[todo] 生成待办失败', e.message); }
     }
-    res.json({ ok: true, package_snapshot: snapshot, total_amount: total, balance, agreement_enabled: newPkgAgreementOn });
+    res.json({ ok: true, package_snapshot: snapshot, total_amount: total, balance });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 

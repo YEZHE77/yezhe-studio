@@ -159,7 +159,6 @@ export default function CustomerAgreementEdit() {
   const [loading, setLoading] = useState(true);
   const [tip, setTip] = useState('');
   const [tipKey, setTipKey] = useState(0);
-  const [contractTemplates, setContractTemplates] = useState([]);
   const flash = (m) => { setTip(m); setTipKey((k) => k + 1); setTimeout(() => setTip(''), 2000); };
   // 防抖保存 toggle：避免快速点击触发多次 PUT
   const saveTimerRef = useRef(null);
@@ -171,8 +170,6 @@ export default function CustomerAgreementEdit() {
       .then((r) => setPkg(r.data || null))
       .catch(() => setPkg(null))
       .finally(() => setLoading(false));
-    // 拉取协议模板列表（绑定下拉用）
-    http.get('/api/contract/templates').then((r) => setContractTemplates(r.data || [])).catch(() => setContractTemplates([]));
   }, [id]);
 
   if (loading) {
@@ -236,16 +233,6 @@ export default function CustomerAgreementEdit() {
     }, 500);
   };
 
-  // 协议模板绑定（packages.contract_template_id 独立字段，不在 details 里）
-  const contractTemplateId = pkg?.contract_template_id ?? null;
-  const changeTemplate = (v) => {
-    const newId = v ? parseInt(v, 10) : null;
-    setPkg((p) => p ? { ...p, contract_template_id: newId } : p);
-    http.put('/api/packages/' + id, { contract_template_id: newId })
-      .then(() => flash('已保存'))
-      .catch(() => flash('保存失败'));
-  };
-
   return (
     <div style={{ minHeight: '100vh', background: MBG, paddingBottom: 32 }}>
       {/* 顶部导航 */}
@@ -288,26 +275,7 @@ export default function CustomerAgreementEdit() {
           <div style={{ fontSize: 12, color: MGRAY, marginTop: 8, lineHeight: 1.6 }}>
             开启后，客户需同意协议才可在小程序进行预约
           </div>
-          {/* 协议模板绑定：开关开启后出现（绑定一套合同模板，订单生成 PDF 用） */}
-          {agreementEnabled && (
-            <div style={{ marginTop: 12 }}>
-              <div style={{ fontSize: 13, color: '#666', marginBottom: 6 }}>协议模板（生成合同 PDF 用）</div>
-              {contractTemplates.length ? (
-                <select
-                  value={contractTemplateId ?? ''}
-                  onChange={(e) => changeTemplate(e.target.value)}
-                  style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1px solid #E8E8E8', fontSize: 14, background: '#fff', outline: 'none' }}
-                >
-                  <option value="">未绑定模板</option>
-                  {contractTemplates.map((t) => (
-                    <option key={t.id} value={t.id}>{t.template_name}{t.is_default ? '（默认）' : ''}</option>
-                  ))}
-                </select>
-              ) : (
-                <div style={{ fontSize: 13, color: MGRAY }}>暂无合同模板，请先到「合同模板管理」创建</div>
-              )}
-            </div>
-          )}
+          {/* 协议模板不再随套系绑定：合同模板由商家在订单页/合同模块手动选择或编辑 */}
         </div>
         {/* 手写签名 toggle + ? */}
         <div style={{ padding: '14px 14px 12px' }}>
