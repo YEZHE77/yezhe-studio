@@ -2642,8 +2642,8 @@ export default function OrderDetail() {
                   <td style={{ padding: '4px 8px' }}>{pkgInfo?.details?.album_provide === 'provide' ? '是' : pkgInfo?.details?.album_provide === 'extra' ? '相册另购' : '否'}</td>
                 </tr>
                 <tr>
-                  <td style={{ padding: '4px 8px', color: '#555' }}>交付时间</td>
-                  <td style={{ padding: '4px 8px' }} colSpan={3}>{pkgInfo?.details?.delivery_time || '—'}</td>
+                  <td style={{ padding: '4px 8px', color: '#555', verticalAlign: 'top' }}>交付时间</td>
+                  <td style={{ padding: '4px 8px', whiteSpace: 'pre-wrap', wordBreak: 'break-word', lineHeight: 1.6 }} colSpan={3}>{pkgInfo?.details?.delivery_time || '—'}</td>
                 </tr>
                 <tr>
                   <td style={{ padding: '4px 8px', color: '#555' }}>拍摄费</td>
@@ -2653,7 +2653,7 @@ export default function OrderDetail() {
                 </tr>
                 <tr>
                   <td style={{ padding: '4px 8px', color: '#555', verticalAlign: 'top' }}>交付备注</td>
-                  <td style={{ padding: '4px 8px', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }} colSpan={3}>{pkgInfo?.details?.delivery_remark || '—'}</td>
+                  <td style={{ padding: '4px 8px', whiteSpace: 'pre-wrap', wordBreak: 'break-word', lineHeight: 1.6 }} colSpan={3}>{pkgInfo?.details?.delivery_remark || '—'}</td>
                 </tr>
               </tbody>
             </table>
