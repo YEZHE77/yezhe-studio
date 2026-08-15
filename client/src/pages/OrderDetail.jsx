@@ -2558,13 +2558,13 @@ export default function OrderDetail() {
         </>
       )}
 
-      {/* 打印单据内容（屏幕外定位避免 display:none 优先级问题；打印时 @media print 切到 static 走 @page 边距盒） */}
+      {/* 打印单据内容（屏幕外定位避免 display:none 优先级问题；打印时 @media print 切到 absolute 让内容固定在每页左上角，padding 与 @page 边距对齐） */}
       <div className="print-order-sheet" style={{ position: 'fixed', left: -10000, top: 0, width: '100%', padding: '20mm 15mm' }}>
         <style>{`
           @media print {
             body * { visibility: hidden; }
             .print-order-sheet, .print-order-sheet * { visibility: visible; }
-            .print-order-sheet { position: static !important; left: auto !important; top: auto !important; width: 100% !important; margin: 0 !important; padding: 0 !important; }
+            .print-order-sheet { position: absolute !important; left: 0 !important; top: 0 !important; width: 100% !important; margin: 0 !important; padding: 30mm 20mm 25mm !important; }
             /* @page 页面盒：定义每页尺寸 + 页边距 + 页眉/页脚（W3C 标准，原生支持） */
             @page { size: A4; margin: 30mm 20mm 25mm; @top-center { content: "拍摄服务合同"; font-family: SimSun, STSong, serif; font-size: 12px; color: #555; padding-bottom: 4mm; border-bottom: 1px solid #ddd; width: 100%; } }
           }
