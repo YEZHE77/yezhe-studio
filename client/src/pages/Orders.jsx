@@ -805,6 +805,13 @@ function MobileOrderCenterView({ stats, list, listTotal, state, setState, refres
       setQrPopover((prev) => (prev && prev.orderId === o.id ? { ...prev, loading: false, qrUrl: '', error: err.response?.data?.error || '二维码生成失败' } : prev));
     }
   };
+
+  // 订单作废（与后端 /api/orders/:id/cancel 对齐；移动端卡片上的红色垃圾桶触发）。
+  // 抛错由 OrderCard 弹窗层捕获并提示，避免一次性 alert 把状态吞掉。
+  const handleCancelOrder = async (o, reason) => {
+    await http.post('/api/orders/' + o.id + '/cancel', { reason: reason || '' });
+    refreshOrderList({ reset: true });
+  };
   const closeQrPopover = () => setQrPopover(null);
 
   const activeStatusLabel = ORDER_STATUS_OPTIONS.find((x) => x.value === (trash ? '__trash' : (state.statuses?.[0] || '')))?.label || '全部订单';
@@ -864,7 +871,13 @@ function MobileOrderCenterView({ stats, list, listTotal, state, setState, refres
         ) : (
           <>
             {list.map((o) => (
-              <OrderCard key={o.id} order={o} studioLogo={studioLogo} onClick={() => onNavToOrder(o.id)} />
+              <OrderCard
+                key={o.id}
+                order={o}
+                studioLogo={studioLogo}
+                onClick={() => onNavToOrder(o.id)}
+                onCancel={handleCancelOrder}
+              />
             ))}
             {list.length < listTotal && (
               <button type="button" onClick={onLoadMore} style={{
@@ -1132,7 +1145,7 @@ function MobileOrderCenterView({ stats, list, listTotal, state, setState, refres
   );
 }
 
-function OrderCard({ order, studioLogo, onClick }) {
+function OrderCard({ order, studioLogo, onClick, onCancel }) {
   const nav = useNavigate();
   const snap = asObj(order.package_snapshot);
   const pkgName = [snap.name, snap.spec && snap.spec.name].filter(Boolean).join('｜') || '未选套系';
@@ -1149,6 +1162,35 @@ function OrderCard({ order, studioLogo, onClick }) {
   const execFirst = execs[0] || {};
   const execName = execFirst.name || order.executor || '';
   const execAvatar = execFirst.avatar ? img(execFirst.avatar) : '';
+  // 作废弹窗状态：仅当卡片未被作废、且父组件传入了 onCancel 时才允许打开
+  const isCancelled = order.status === 'cancelled' || Number(order.cancelled) === 1;
+  const canCancel = !isCancelled && typeof onCancel === 'function';
+  const [cancelOpen, setCancelOpen] = useState(false);
+  const [reason, setReason] = useState('');
+  const [busy, setBusy] = useState(false);
+  const openCancel = (e) => {
+    e.stopPropagation();
+    e.preventDefault();
+    if (!canCancel) return;
+    setReason('');
+    setCancelOpen(true);
+  };
+  const closeCancel = () => {
+    if (busy) return;
+    setCancelOpen(false);
+    setReason('');
+  };
+  const confirmCancel = async () => {
+    if (busy) return;
+    try {
+      setBusy(true);
+      await onCancel(order, reason.trim());
+      // 父组件成功后会刷新列表；失败抛错则弹窗保持，由用户决定重试或关闭
+    } catch (err) {
+      setBusy(false);
+      alert((err && err.message) || '作废失败');
+    }
+  };
 
   let dateLabel = '拍摄日期';
   let dateValue = Number(order.date_tbd) === 1 ? '日期待定' : (order.shoot_date || '未排期');
@@ -1226,7 +1268,7 @@ function OrderCard({ order, studioLogo, onClick }) {
       </div>
       <div style={{ height: 1, background: '#F0F0F0' }} />
 
-      {/* 备注 + 编辑入口（点击编辑跳 /orders/:id/notes） */}
+      {/* 备注 + 编辑入口（点击编辑跳 /orders/:id/notes）+ 作废按钮（最右侧，红色垃圾桶） */}
       <div style={{ display: 'flex', alignItems: 'center', padding: '6px 14px 10px' }}>
         <span
           onClick={(e) => { e.stopPropagation(); nav('/orders/' + order.id + '/notes'); }}
@@ -1242,8 +1284,77 @@ function OrderCard({ order, studioLogo, onClick }) {
           <span style={{ marginLeft: 6, flex: 1, fontSize: 12, color: '#666', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {order.remark}
           </span>
+        ) : <span style={{ flex: 1 }} />}
+        {/* 作废按钮：仅未作废订单显示；红/白双态提示危险操作 */}
+        {canCancel ? (
+          <button
+            type="button"
+            onClick={openCancel}
+            title="作废订单"
+            aria-label="作废订单"
+            data-testid="order-card-cancel"
+            style={{
+              width: 28, height: 28, borderRadius: 6, border: '1px solid #F0F0F0',
+              background: '#fff', color: '#999',
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+              cursor: 'pointer', padding: 0, flexShrink: 0, transition: 'all .15s'
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = '#FFF1F0'; e.currentTarget.style.color = '#ff4d4f'; e.currentTarget.style.borderColor = '#ffccc7'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.color = '#999'; e.currentTarget.style.borderColor = '#F0F0F0'; }}
+          >
+            <IconTrash style={{ width: 14, height: 14 }} />
+          </button>
         ) : null}
       </div>
+
+      {/* 作废确认弹窗：居中卡片 + 半透明遮罩，含作废原因输入框（选填）。
+          后端会自动释放已占档期，详情页也会同步出现「已关闭」状态。 */}
+      {cancelOpen && (
+        <div
+          onClick={closeCancel}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 70, padding: 24 }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{ background: '#fff', borderRadius: 14, padding: '20px 20px 16px', width: '100%', maxWidth: 320, boxShadow: '0 12px 32px rgba(0,0,0,0.18)' }}
+          >
+            <div style={{ fontSize: 16, fontWeight: 600, color: '#1f2329', marginBottom: 8 }}>作废订单</div>
+            <div style={{ fontSize: 13, color: '#666', lineHeight: 1.6, marginBottom: 12 }}>
+              {`确认作废「${customerName}」的订单？`}
+              {order.shoot_date && !order.date_tbd ? (
+                <>已占用档期 <span style={{ color: '#1f2329', fontWeight: 500 }}>{fmtDate(order.shoot_date)}</span> 作废后将自动释放。</>
+              ) : null}
+            </div>
+            <div style={{ fontSize: 12, color: '#999', marginBottom: 4 }}>作废原因（选填）</div>
+            <textarea
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              placeholder="例如：客户取消、档期冲撞…"
+              rows={3}
+              maxLength={120}
+              style={{ width: '100%', resize: 'none', fontSize: 13, padding: '8px 10px', border: '1px solid #E5E5E5', borderRadius: 8, boxSizing: 'border-box', color: '#1f2329', background: '#FAFAFA' }}
+            />
+            <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
+              <button
+                type="button"
+                onClick={closeCancel}
+                disabled={busy}
+                style={{ flex: 1, padding: '10px 0', borderRadius: 8, border: '1px solid #E5E5E5', background: '#fff', fontSize: 14, color: '#666', cursor: busy ? 'not-allowed' : 'pointer' }}
+              >
+                再想想
+              </button>
+              <button
+                type="button"
+                onClick={confirmCancel}
+                disabled={busy}
+                style={{ flex: 1, padding: '10px 0', borderRadius: 8, border: 'none', background: '#ff4d4f', color: '#fff', fontSize: 14, fontWeight: 500, cursor: busy ? 'not-allowed' : 'pointer', opacity: busy ? 0.6 : 1 }}
+              >
+                {busy ? '作废中…' : '确认作废'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </button>
   );
 }

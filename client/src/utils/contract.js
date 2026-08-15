@@ -2,45 +2,68 @@
 // PDF 前端本地生成，模板 template_content 为唯一数据源
 
 // 人民币金额 → 大写（如 2580 → 贰仟伍佰捌拾元整）
+// 规则：段内（每4位）末尾零不写「零」、中间连续零只写一个；跨段时低位段不足4位需补「零」
 export function rmbUpper(n) {
   if (n == null || n === '') return '';
   const num = Math.round(Number(n) * 100) / 100;
   if (isNaN(num) || num < 0) return '';
   const digits = '零壹贰叁肆伍陆柒捌玖';
-  const smallUnits = ['', '拾', '佰', '仟'];
-  const bigUnits = ['', '万', '亿', '兆'];
+  const segUnit = ['', '拾', '佰', '仟'];
+  const bigUnit = ['', '万', '亿', '兆'];
 
   const integer = Math.floor(num);
   const decimal = Math.round((num - integer) * 100);
 
+  // 段内（0-9999）转大写：末尾零不加，中间连续零只加一个
   function segUpper(seg) {
+    const ds = [
+      Math.floor(seg / 1000) % 10,
+      Math.floor(seg / 100) % 10,
+      Math.floor(seg / 10) % 10,
+      seg % 10
+    ];
     let s = '';
-    let zero = false;
+    let zeroPending = false;
+    let hasNonZero = false;
     for (let i = 0; i < 4; i++) {
-      const d = Math.floor(seg / Math.pow(10, 3 - i)) % 10;
+      const d = ds[i];
       if (d === 0) {
-        if (s && !zero) { s += '零'; zero = true; }
+        // 仅当前面已有数字、且后面仍存在非零位时，才需要补「零」
+        if (hasNonZero && ds.slice(i + 1).some((x) => x > 0)) zeroPending = true;
       } else {
-        s += digits[d] + smallUnits[3 - i];
-        zero = false;
+        if (zeroPending) { s += '零'; zeroPending = false; }
+        s += digits[d] + segUnit[3 - i];
+        hasNonZero = true;
       }
     }
     return s;
   }
 
+  // 整数部分：按 4 位分段（低位→高位），跨段时补零
   let intStr = '';
-  let x = integer;
-  let unitIdx = 0;
-  if (integer === 0) intStr = '零';
-  while (x > 0) {
-    const seg = x % 10000;
-    x = Math.floor(x / 10000);
-    if (seg > 0) {
-      intStr = segUpper(seg) + bigUnits[unitIdx] + intStr;
-    } else if (intStr && intStr[0] !== '零') {
-      intStr = '零' + intStr;
+  if (integer === 0) {
+    intStr = '零';
+  } else {
+    const segs = [];
+    let tmp = integer;
+    while (tmp > 0) {
+      segs.push(tmp % 10000);
+      tmp = Math.floor(tmp / 10000);
     }
-    unitIdx++;
+    let needZero = false;
+    for (let i = segs.length - 1; i >= 0; i--) {
+      const seg = segs[i];
+      if (seg === 0) {
+        if (intStr) needZero = true;
+        continue;
+      }
+      if (needZero) { intStr += '零'; needZero = false; }
+      // 非最高段且不足 4 位 → 说明该段高位有缺失，需补「零」（如 10001 → 壹万零壹）
+      if (i < segs.length - 1 && seg < 1000 && intStr && !intStr.endsWith('零')) {
+        intStr += '零';
+      }
+      intStr += segUpper(seg) + bigUnit[i];
+    }
   }
 
   let result = intStr + '元';
@@ -49,8 +72,14 @@ export function rmbUpper(n) {
   } else {
     const jiao = Math.floor(decimal / 10);
     const fen = decimal % 10;
-    if (jiao > 0) result += digits[jiao] + '角';
-    if (fen > 0) result += digits[fen] + '分';
+    if (jiao > 0) {
+      result += digits[jiao] + '角';
+      if (fen > 0) result += digits[fen] + '分';
+    } else if (fen > 0) {
+      // 无角有分且整数部分非零 → 需补「零」（如 10000.01 → 壹万元零壹分）
+      if (integer > 0) result += '零';
+      result += digits[fen] + '分';
+    }
   }
   return result;
 }

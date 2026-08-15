@@ -3,6 +3,17 @@ import http, { formatBytes } from '../api.js';
 import Icon from '../components/Icon.jsx';
 import { safeNum } from '../utils/number.js';
 
+// 移动端判断：<768px 走窄屏内联样式（与 Finance.jsx 同款 hook，避免内容贴边/挤压）
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(typeof window !== 'undefined' ? window.innerWidth < 768 : false);
+  useEffect(() => {
+    const onResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+  return isMobile;
+}
+
 // 三个 Tab（视频流量为预留占位，暂不启用）
 const TABS = [
   { key: 'storage', label: '存储空间' },
@@ -79,7 +90,7 @@ function StorageTab({ reloadKey }) {
         {data.cloudEnabled ? (
           <>
             <div className="flex items-end justify-between flex-wrap gap-2 mt-3 mb-2">
-              <div className="text-3xl text-fg">{formatBytes(data.totalUsedBytes)}</div>
+              <div className="text-2xl sm:text-3xl text-fg">{formatBytes(data.totalUsedBytes)}</div>
               <div className="text-xs text-muted">
                 额度 {data.limitBytes ? formatBytes(data.limitBytes) : '不限'}{data.totalEstimated ? '（估算）' : ''} · 剩余 {remaining != null ? formatBytes(remaining) : '—'}
                 {data.objectCount != null ? ` · ${data.objectCount} 个对象` : ''}
@@ -116,7 +127,7 @@ function StorageTab({ reloadKey }) {
               const cp = Math.round((safeNum(c.bytes) / Math.max(1, catSum)) * 100);
               return (
                 <div key={c.category} className="flex items-center gap-3 flex-wrap">
-                  <div className="w-28 shrink-0 text-sm text-fg flex items-center gap-1.5">
+                  <div className="w-20 sm:w-28 shrink-0 text-sm text-fg flex items-center gap-1.5">
                     {c.label || '未分类'}
                     {c.isPublic && <span className="text-[10px] px-1.5 py-0.5 rounded bg-sky-50 text-sky-600">公开</span>}
                   </div>
@@ -269,7 +280,7 @@ function CleanupCard({ onCleaned }) {
             )}
           </div>
 
-          <div className="mt-3 flex items-center gap-2">
+          <div className="mt-3 flex items-center gap-2 flex-wrap">
             <button
               onClick={() => setShowConfirm(true)}
               disabled={!selected.size}
@@ -406,7 +417,7 @@ function TrafficTab() {
         {data.usedBytes != null ? (
           <>
             <div className="flex items-end justify-between flex-wrap gap-2 mt-3 mb-2">
-              <div className="text-3xl text-fg">{formatBytes(data.usedBytes)}</div>
+              <div className="text-2xl sm:text-3xl text-fg">{formatBytes(data.usedBytes)}</div>
               <div className="text-xs text-muted">额度 {formatBytes(data.limitBytes)} · 剩余 {formatBytes(remaining)}</div>
             </div>
             <UsageBar pct={pct} level={level} />
@@ -451,21 +462,28 @@ export default function CapacityManagement() {
   const [tab, setTab] = useState('storage');
   const [reloadKey, setReloadKey] = useState(0);
   const reload = () => setReloadKey((k) => k + 1);
+  const isMobile = useIsMobile();
 
   return (
-    <div className="space-y-5" style={{ maxWidth: 1050 }}>
+    <div
+      className="space-y-5"
+      style={{
+        maxWidth: 1050,
+        ...(isMobile ? { padding: '12px 12px 24px', background: '#F8F8F8', minHeight: '100%' } : {})
+      }}
+    >
       <div>
-        <h1 className="text-xl text-fg">容量管理</h1>
+        <h1 className={isMobile ? 'text-lg text-fg' : 'text-xl text-fg'}>容量管理</h1>
         <p className="text-muted text-xs mt-0.5">Cloudflare R2 免费额度下的存储与流量监控 · 无任何付费 / VIP / 扩容购买逻辑</p>
       </div>
 
-      {/* Tab 切换 */}
-      <div className="flex gap-1 border-b border-line">
+      {/* Tab 切换（移动端可横向滚动，防贴边） */}
+      <div className={'flex gap-1 border-b border-line ' + (isMobile ? 'overflow-x-auto -mx-3 px-3' : '')}>
         {TABS.map((t) => (
           <button
             key={t.key}
             onClick={() => setTab(t.key)}
-            className={'px-4 py-2.5 text-sm border-b-2 -mb-px transition ' +
+            className={'px-4 py-2.5 text-sm border-b-2 -mb-px transition whitespace-nowrap ' +
               (tab === t.key ? 'border-brand text-brand' : 'border-transparent text-muted hover:text-fg')}
           >
             {t.label}
