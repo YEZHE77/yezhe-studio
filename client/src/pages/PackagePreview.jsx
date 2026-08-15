@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import http, { img } from '../api.js';
 import { getRefundText, getRefundSummary, getRefundParagraphs, normalizePolicy } from '../utils/refundPolicy.js';
+import { getServiceAgreement } from '../utils/customerAgreement.js';
 
 /* ==========================================================================
    套系预览页（1:1 复刻小程序风格）
@@ -399,7 +400,7 @@ export default function PackagePreview() {
                 <span style={{ fontSize: 14, color: MGREEN }}>{agreementOpen ? '收起' : '展开'}</span>
               </div>
               {agreementOpen && (
-                <div style={{ marginTop: 10, fontSize: 13, color: '#666', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{d.customer_agreement || '未设置'}</div>
+                <div style={{ marginTop: 10, fontSize: 13, color: '#666', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{getServiceAgreement(d)}</div>
               )}
             </div>
 

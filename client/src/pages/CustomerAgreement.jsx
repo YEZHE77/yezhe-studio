@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import http from '../api.js';
+import { getServiceAgreement } from '../utils/customerAgreement.js';
 
 /* ============================================================
    顾客协议（独立页面）
@@ -38,7 +39,7 @@ export default function CustomerAgreement() {
       .finally(() => setLoading(false));
   }, [id]);
 
-  const agreementText = pkg?.details?.customer_agreement || '';
+  const agreementText = getServiceAgreement(pkg?.details);
   const packageName = pkg?.name || pkg?.title || '';
 
   return (

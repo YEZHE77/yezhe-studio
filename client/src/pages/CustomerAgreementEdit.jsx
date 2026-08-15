@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import http from '../api.js';
+import { getServiceAgreement, getPhotoAuthAgreement } from '../utils/customerAgreement.js';
 
 /* ============================================================
    顾客协议编辑页（B 端管理员，从套系编辑 MRow 跳转进入）
@@ -195,8 +196,8 @@ export default function CustomerAgreementEdit() {
   const packageName = pkg.name || pkg.title || '';
   const agreementEnabled = !!d.customer_agreement_enabled;
   const signatureRequired = !!d.signature_required;
-  const serviceAgreementContent = d.customer_agreement || '';
-  const photoAuthContent = d.photo_authorization_agreement || '';
+  const serviceAgreementContent = getServiceAgreement(d);
+  const photoAuthContent = getPhotoAuthAgreement(d);
 
   // 合并保存：保留 details 全部字段，仅覆盖当前修改的字段
   const saveDetails = async (patch) => {
