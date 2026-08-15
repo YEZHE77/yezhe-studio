@@ -2592,22 +2592,29 @@ export default function OrderDetail() {
         </>
       )}
 
-      {/* 打印单据内容（@page 已在全局 index.css；这里只留 @media print 控制显隐/定位 + position:fixed 页眉兜底） */}
+      {/* 打印单据：table 结构 + thead + table-header-group，让 Chrome 打印引擎在每页分页时自动重复表头（最可靠的跨页页眉方案） */}
       <>
       <style>{`
         @media print {
           body * { visibility: hidden; }
           .print-order-sheet, .print-order-sheet * { visibility: visible; }
-          .print-page-header { visibility: visible !important; }
-          .print-order-sheet { position: absolute !important; left: 0 !important; top: 0 !important; width: 100% !important; margin: 0 !important; padding: 12mm 15mm 18mm !important; }
+          .print-page-header { display: table-header-group !important; visibility: visible !important; }
+          .print-order-sheet { position: absolute !important; left: 0 !important; top: 0 !important; width: 100% !important; margin: 0 !important; padding: 12mm 15mm 18mm !important; border-collapse: collapse !important; }
         }
       `}</style>
-      {/* 每页页眉（normal 模式 visibility:hidden 但保留文档流位置，print 模式 visibility:visible 让 Chrome 跨页重复；不要用 left:-10000 这种完全离屏，会让 Chrome 跳过） */}
-      <div className="print-page-header" style={{ position: 'fixed', top: 0, left: 0, right: 0, textAlign: 'center', fontSize: 12, color: '#555', fontFamily: 'SimSun, STSong, serif', padding: '4mm 0 2mm', borderBottom: '1px solid #ddd', background: '#fff', letterSpacing: 2, visibility: 'hidden', zIndex: -1 }}>
-        拍摄服务合同
-      </div>
-      <div className="print-order-sheet" style={{ position: 'fixed', left: -10000, top: 0, width: '100%', padding: '20mm 15mm' }}>
-        <div style={{ maxWidth: 700, margin: '0 auto', fontFamily: 'SimSun, STSong, serif', fontSize: 14, lineHeight: 1.8, color: '#222' }}>
+      {/* 打印表（thead = 页眉每页重复；tbody = 全部内容） */}
+      <table className="print-order-sheet" style={{ position: 'fixed', left: -10000, top: 0, width: '100%', padding: '20mm 15mm', borderCollapse: 'collapse', fontFamily: 'SimSun, STSong, serif' }}>
+        <thead className="print-page-header" style={{ visibility: 'hidden' }}>
+          <tr>
+            <td style={{ textAlign: 'center', fontSize: 12, color: '#555', padding: '4mm 0 2mm', borderBottom: '1px solid #ddd', background: '#fff', letterSpacing: 2 }}>
+              拍摄服务合同
+            </td>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>
+              <div style={{ maxWidth: 700, margin: '0 auto', fontFamily: 'SimSun, STSong, serif', fontSize: 14, lineHeight: 1.8, color: '#222' }}>
           {/* 标题 */}
           <div style={{ textAlign: 'center', borderBottom: '2px solid #000', paddingBottom: 16, marginBottom: 12 }}>
             <div style={{ fontSize: 22, fontWeight: 400, letterSpacing: 4 }}>拍摄服务合同</div>
@@ -2831,8 +2838,11 @@ export default function OrderDetail() {
           <div style={{ textAlign: 'center', marginTop: 40, fontSize: 12, color: '#999', borderTop: '1px solid #ccc', paddingTop: 12 }}>
             <div>打印时间：{new Date().toLocaleString('zh-CN')}</div>
           </div>
-        </div>
-      </div>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
       </>
 
       {/* 订单记录全屏页（点击底部订单变更记录跳转，校 IMG_7533） */}
