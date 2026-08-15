@@ -1067,6 +1067,9 @@ export default function OrderDetail() {
     (detail.payment_status === 'unpaid' ? '未付定金' : (PAY_STATUS_LABEL[payKey] || '')) +
     (phaseLabel && detail.status && detail.status !== detail.payment_status ? '，' + phaseLabel : '');
   const custName = ([detail.groom_name, detail.bride_name].filter(Boolean).join(' & ') || detail.customer_name || '—');
+  // 新郎/新娘姓名：优先独立字段；都为空时从 customer_name 反向拆分（兼容拆分前老数据）
+  const groomPrintName = (detail.groom_name || '').trim() || custName.split(/\s*[&＆，,]\s*/)[0] || '';
+  const bridePrintName = (detail.bride_name || '').trim() || custName.split(/\s*[&＆，,]\s*/).slice(1).join(' ') || '';
   const custInitial = (custName && custName !== '—') ? custName.slice(0, 1) : '客';
   const offlinePay = detail.pay_method === 'offline' || detail.channel === 'offline' || detail.source === 'offline';
 
@@ -2587,9 +2590,9 @@ export default function OrderDetail() {
                 </tr>
                 <tr>
                   <td style={{ padding: '4px 8px', color: '#555' }}>新郎</td>
-                  <td style={{ padding: '4px 8px' }}>{detail.groom_name || '—'}</td>
+                  <td style={{ padding: '4px 8px', whiteSpace: 'nowrap' }}>{groomPrintName || '—'}</td>
                   <td style={{ padding: '4px 8px', color: '#555' }}>新娘</td>
-                  <td style={{ padding: '4px 8px' }}>{detail.bride_name || '—'}</td>
+                  <td style={{ padding: '4px 8px', whiteSpace: 'nowrap' }}>{bridePrintName || '—'}</td>
                 </tr>
                 <tr>
                   <td style={{ padding: '4px 8px', color: '#555' }}>拍摄日期</td>
