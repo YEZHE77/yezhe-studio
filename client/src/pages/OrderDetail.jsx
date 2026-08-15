@@ -2623,8 +2623,14 @@ export default function OrderDetail() {
                 <tr>
                   <td style={{ padding: '4px 8px', color: '#555' }}>原片</td>
                   <td style={{ padding: '4px 8px' }}>{pkgInfo?.details?.raw_count ? `${pkgInfo.details.raw_count} 张` : '—'}</td>
+                  <td style={{ padding: '4px 8px', color: '#555' }}></td>
+                  <td style={{ padding: '4px 8px' }}></td>
+                </tr>
+                <tr>
                   <td style={{ padding: '4px 8px', color: '#555' }}>精修片</td>
                   <td style={{ padding: '4px 8px' }}>{pkgInfo?.details?.retouch_count ? `${pkgInfo.details.retouch_count} 张` : '—'}</td>
+                  <td style={{ padding: '4px 8px', color: '#555' }}></td>
+                  <td style={{ padding: '4px 8px' }}></td>
                 </tr>
                 <tr>
                   <td style={{ padding: '4px 8px', color: '#555' }}>加片费</td>
