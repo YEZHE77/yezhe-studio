@@ -2569,7 +2569,7 @@ export default function OrderDetail() {
         <div style={{ maxWidth: 700, margin: '0 auto', fontFamily: 'SimSun, STSong, serif', color: '#000' }}>
           {/* 标题 */}
           <div style={{ textAlign: 'center', borderBottom: '2px solid #000', paddingBottom: 16, marginBottom: 20 }}>
-            <div style={{ fontSize: 22, fontWeight: 400, letterSpacing: 4 }}>拍摄服务单</div>
+            <div style={{ fontSize: 22, fontWeight: 400, letterSpacing: 4 }}>拍摄服务合同</div>
             <div style={{ fontSize: 14, marginTop: 8, color: '#555' }}>订单编号：{detail.order_no}</div>
             <div style={{ fontSize: 13, marginTop: 4, color: '#555' }}>创建时间：{detail.created_at ? new Date(detail.created_at).toLocaleString('zh-CN') : '—'}　·　订单状态：{statusText || '—'}</div>
           </div>
@@ -2793,7 +2793,6 @@ export default function OrderDetail() {
           {/* 页脚 */}
           <div style={{ textAlign: 'center', marginTop: 40, fontSize: 12, color: '#999', borderTop: '1px solid #ccc', paddingTop: 12 }}>
             <div>打印时间：{new Date().toLocaleString('zh-CN')}</div>
-            <div style={{ marginTop: 4 }}>本单据仅供内部使用，最终结算以合同为准</div>
           </div>
         </div>
       </div>
