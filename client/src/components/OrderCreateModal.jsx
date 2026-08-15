@@ -151,7 +151,7 @@ function Dropdown({ value, placeholder, options, onSelect, renderValue, renderOp
   );
 }
 
-export default function OrderCreateModal({ visible, packages, initialPackageId, onClose, onAfterCreate }) {
+export default function OrderCreateModal({ visible, packages, initialPackageId, onClose, onAfterCreate, pageMode = false }) {
   const [form, setForm] = useState(emptyForm());
   const [err, setErr] = useState('');
   const [saving, setSaving] = useState(false);
@@ -363,15 +363,15 @@ export default function OrderCreateModal({ visible, packages, initialPackageId, 
 
   return (
     <div
-      className="fixed inset-0 z-[60] overflow-y-auto p-4 flex items-center justify-center"
-      style={{ background: 'rgba(0,0,0,0.45)' }}
-      onClick={onClose}
+      className={pageMode ? 'min-h-screen bg-white' : 'fixed inset-0 z-[60] overflow-y-auto p-4 flex items-center justify-center'}
+      style={pageMode ? {} : { background: 'rgba(0,0,0,0.45)' }}
+      onClick={pageMode ? undefined : onClose}
     >
       <form
-        onClick={(e) => e.stopPropagation()}
+        onClick={pageMode ? undefined : (e) => e.stopPropagation()}
         onSubmit={submit}
-        className="bg-white shadow-xl mx-auto my-8 flex flex-col"
-        style={{ maxWidth: 672, width: '100%', maxHeight: 'calc(100vh - 4rem)', borderRadius: 8 }}
+        className={pageMode ? 'bg-white flex flex-col w-full min-h-screen' : 'bg-white shadow-xl mx-auto my-8 flex flex-col'}
+        style={pageMode ? {} : { maxWidth: 672, width: '100%', maxHeight: 'calc(100vh - 4rem)', borderRadius: 8 }}
       >
         {/* 标题栏：居中标题 + 左侧 ‹ 返回关闭 + 右侧空白 */}
         <div className="relative flex items-center justify-center px-5 py-4 border-b shrink-0" style={{ borderColor: '#EEEEEE' }}>

@@ -13,6 +13,7 @@ export default function OrdersNew() {
   return (
     <OrderCreateModal
       visible
+      pageMode
       packages={pkgs}
       onClose={() => nav('/orders')}
       onAfterCreate={() => nav('/orders')}
