@@ -127,7 +127,10 @@ router.get('/order/:token', async (req, res) => {
       payment_status: o.payment_status || 'deposit',
       payment_status_label: PAY_LABEL[o.payment_status] || o.payment_status,
       selection_url: selectionUrl,
-      contract_pdf_url: o.contract_pdf_url || ''
+      order_id: o.id,
+      // 合同：只返回是否可下载（有私有文件且未作废），不返回公开 URL；预览/下载走后端鉴权中转
+      contract_available: !!(o.contract_file_key && !Number(o.contract_invalid)),
+      contract_invalid: !!Number(o.contract_invalid)
     });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });

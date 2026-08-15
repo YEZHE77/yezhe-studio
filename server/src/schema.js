@@ -315,6 +315,34 @@ CREATE TABLE IF NOT EXISTS contract_template (
   create_time TEXT DEFAULT CURRENT_TIMESTAMP, update_time TEXT DEFAULT CURRENT_TIMESTAMP
 );`;
 
+// 合同历史版本归档（重新生成/作废时旧文件归档，保留期内可恢复）
+const PG_CONTRACT_ARCHIVE = `
+CREATE TABLE IF NOT EXISTS contract_archive (
+  id SERIAL PRIMARY KEY, order_id INTEGER NOT NULL, file_key TEXT NOT NULL, file_md5 TEXT,
+  generated_at TEXT, archived_at TEXT, reason TEXT, operator_uid INTEGER,
+  destroyed_at TEXT
+);`;
+const SQLITE_CONTRACT_ARCHIVE = `
+CREATE TABLE IF NOT EXISTS contract_archive (
+  id INTEGER PRIMARY KEY AUTOINCREMENT, order_id INTEGER NOT NULL, file_key TEXT NOT NULL, file_md5 TEXT,
+  generated_at TEXT, archived_at TEXT, reason TEXT, operator_uid INTEGER,
+  destroyed_at TEXT
+);`;
+
+// 合同操作审计日志（上传/下载/作废/恢复/销毁，全流程留痕）
+const PG_CONTRACT_AUDIT = `
+CREATE TABLE IF NOT EXISTS contract_audit (
+  id SERIAL PRIMARY KEY, order_id INTEGER NOT NULL, operator_uid INTEGER, operator_name TEXT,
+  action TEXT NOT NULL, ip TEXT, token TEXT, detail TEXT,
+  created_at TIMESTAMPTZ DEFAULT now()
+);`;
+const SQLITE_CONTRACT_AUDIT = `
+CREATE TABLE IF NOT EXISTS contract_audit (
+  id INTEGER PRIMARY KEY AUTOINCREMENT, order_id INTEGER NOT NULL, operator_uid INTEGER, operator_name TEXT,
+  action TEXT NOT NULL, ip TEXT, token TEXT, detail TEXT,
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP
+);`;
+
 // orders 的向前兼容新增列（仅当不存在时补加，绝不删列/不破坏数据）
 const ORDERS_NEW_COLUMNS = [
   ['customer_phone', 'TEXT'],
@@ -434,6 +462,9 @@ export async function initSchema() {
 
   // 合同模板表（contract_template）
   for (const s of (dialect === 'pg' ? PG_CONTRACT_TEMPLATE : SQLITE_CONTRACT_TEMPLATE).split(';').map((x) => x.trim()).filter(Boolean)) await run(s);
+  // 合同历史版本归档表 + 合同操作审计日志表
+  for (const s of (dialect === 'pg' ? PG_CONTRACT_ARCHIVE : SQLITE_CONTRACT_ARCHIVE).split(';').map((x) => x.trim()).filter(Boolean)) await run(s);
+  for (const s of (dialect === 'pg' ? PG_CONTRACT_AUDIT : SQLITE_CONTRACT_AUDIT).split(';').map((x) => x.trim()).filter(Boolean)) await run(s);
 
   // 系统设置表
   for (const s of (dialect === 'pg' ? PG_SETTINGS : SQLITE_SETTINGS).split(';').map((x) => x.trim()).filter(Boolean)) await run(s);
@@ -485,6 +516,11 @@ export async function initSchema() {
   // 合同生成版本追溯：最近生成时间 + 生成时完整订单快照 JSON（用于「订单已变更，旧PDF未同步」比对）
   await ensureColumn('orders', 'contract_generate_time', 'TEXT');
   await ensureColumn('orders', 'contract_order_snapshot', 'TEXT');
+  // 合同安全存储与溯源（安全规范）：操作人 / 文件 md5 / 作废标记 / 私有对象 key（后端下载中转用）
+  await ensureColumn('orders', 'contract_operator_uid', 'INTEGER');
+  await ensureColumn('orders', 'contract_file_md5', 'TEXT');
+  await ensureColumn('orders', 'contract_invalid', 'INTEGER NOT NULL DEFAULT 0');
+  await ensureColumn('orders', 'contract_file_key', 'TEXT');
   // 订单备注分组：生日/纪念日 / 预约备注 / 内部备注 / 外部备注（问卷答案 questionnaire_answers 已在 DDL）
   await ensureColumn('orders', 'birthday', 'TEXT');
   await ensureColumn('orders', 'appointment_remark', 'TEXT');

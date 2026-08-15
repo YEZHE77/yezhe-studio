@@ -1,10 +1,11 @@
-// routes/contract.js —— 合同模板管理 + 订单合同 PDF 上传回写
-// 模板 template_content 富文本带 {{占位符}}；PDF 前端本地生成后上传 R2 回写 contract_pdf_url
+// routes/contract.js —— 合同模板管理 + 订单合同 PDF 安全存储（私有 R2 + 后端鉴权中转下载）
+// 模板 template_content 富文本带 {{占位符}}；PDF 前端本地生成后上传私有 R2，下载走后端鉴权中转
 import { Router } from 'express';
 import multer from 'multer';
+import crypto from 'node:crypto';
 import { query, get, insert, run } from '../db.js';
-import { authRequired, requireRole } from '../auth.js';
-import { saveBuffer } from '../storage.js';
+import { authRequired, requireRole, peekUser } from '../auth.js';
+import { saveBuffer, getObjectBuffer, deleteObjectByKey } from '../storage.js';
 import { emitMessage } from './message.js';
 
 const router = Router();
@@ -12,6 +13,7 @@ const STAFF_ROLES = ['admin', 'photographer', 'finance'];
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 
 function nowISO() { return new Date().toISOString(); }
+function md5(buf) { return crypto.createHash('md5').update(buf).digest('hex'); }
 
 // ===== 合同数据一致性强制规则 =====
 // ① 模板防篡改：必填业务占位符（缺失则禁止保存模板）
@@ -25,6 +27,18 @@ function contractPrecheck(o) {
   const price = parseFloat(o.total_amount) || 0;
   if (price <= 0) missing.push('合同总价');
   return { ok: missing.length === 0, missing };
+}
+
+// 合同操作审计留痕（上传/下载/作废/恢复/销毁，记录操作人 + IP + 时间）
+async function audit(orderId, req, action, detail, operator) {
+  try {
+    const uid = (operator && operator.uid) || (req.user && req.user.uid) || null;
+    const name = (operator && operator.username) || (req.user && req.user.username) || null;
+    await insert(
+      'INSERT INTO contract_audit (order_id, operator_uid, operator_name, action, ip, token, detail, created_at) VALUES (?,?,?,?,?,?,?,?)',
+      [orderId, uid, name, action, req.ip || '', String(detail || '').slice(0, 200), detail || '', nowISO()]
+    );
+  } catch (e) { console.error('[contract] audit failed', e.message); }
 }
 
 // ===================== 合同模板 CRUD =====================
@@ -97,7 +111,7 @@ router.get('/orders/:id/contract-precheck', authRequired, requireRole(...STAFF_R
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// 前端本地生成 PDF 后上传，回写 contract_pdf_url + 保存生成时间与订单快照 + 推送消息
+// 前端本地生成 PDF 后上传（私有存储）：存 contract_file_key + md5 + 操作人 + 快照；重新生成时旧文件归档
 router.post('/orders/:id/contract-pdf', authRequired, requireRole(...STAFF_ROLES), upload.single('file'), async (req, res) => {
   try {
     const o = await get('SELECT * FROM orders WHERE id = ?', [req.params.id]);
@@ -106,12 +120,21 @@ router.post('/orders/:id/contract-pdf', authRequired, requireRole(...STAFF_ROLES
     // 生成后二次校验：核心字段为空仍拒绝（防绕过前端直接调接口）
     const pre = contractPrecheck(o);
     if (!pre.ok) return res.status(400).json({ error: '订单核心信息不完整，无法生成合同：' + pre.missing.join('、') });
-    const isUpdate = !!o.contract_pdf_url;
-    const { url } = await saveBuffer(req.file.buffer, '.pdf', 'biz-contract', { contentType: 'application/pdf', isPublic: false, category: 'contract' });
-    // 生成后存储数据快照（本次渲染使用的完整订单 JSON，用于版本追溯与「订单已变更」比对）
-    await run('UPDATE orders SET contract_pdf_url = ?, contract_generate_time = ?, contract_order_snapshot = ? WHERE id = ?',
-      [url, nowISO(), JSON.stringify(o), o.id]);
-    // 消息中心：生成 / 重新生成合同（order_msg 类型，记录操作时间与订单关联 ID，全流程可追溯）
+    const isUpdate = !!o.contract_file_key;
+    // 合同文件存专属私有目录 contract/{订单ID}/（不通过公开 Worker 代理暴露，仅后端鉴权中转下载）
+    const { r2Key } = await saveBuffer(req.file.buffer, '.pdf', 'contract/' + o.id, { contentType: 'application/pdf', isPublic: false, category: 'contract' });
+    const fileMd5 = md5(req.file.buffer);
+    // 重新生成：旧文件归档保留 30 天（可恢复历史版本）
+    if (isUpdate && o.contract_file_key && o.contract_file_key !== r2Key) {
+      await insert(
+        'INSERT INTO contract_archive (order_id, file_key, file_md5, generated_at, archived_at, reason, operator_uid) VALUES (?,?,?,?,?,?,?)',
+        [o.id, o.contract_file_key, o.contract_file_md5 || null, o.contract_generate_time || nowISO(), nowISO(), 'regenerate', (req.user && req.user.uid) || null]
+      );
+    }
+    // contract_pdf_url 只存后端中转路径（不暴露原始桶直链）；file_key 用于后端 GetObject 中转下载
+    await run('UPDATE orders SET contract_file_key = ?, contract_file_md5 = ?, contract_operator_uid = ?, contract_pdf_url = ?, contract_generate_time = ?, contract_order_snapshot = ?, contract_invalid = 0 WHERE id = ?',
+      [r2Key, fileMd5, (req.user && req.user.uid) || null, '/api/contract/download/' + o.id, nowISO(), JSON.stringify(o), o.id]);
+    await audit(o.id, req, isUpdate ? 'update' : 'upload', isUpdate ? '重新生成合同' : '生成合同');
     await emitMessage({
       message_type: 'order_msg',
       business_event: isUpdate ? 'contract_updated' : 'contract_generated',
@@ -119,7 +142,62 @@ router.post('/orders/:id/contract-pdf', authRequired, requireRole(...STAFF_ROLES
       content: `${o.customer_name || '客户'} 的合同${isUpdate ? '已重新生成' : '已生成'}（订单 ${o.order_no || o.id}）`,
       rel_id: String(o.id), rel_model: 'order'
     });
-    res.json({ ok: true, contract_pdf_url: url, contract_generate_time: o.contract_generate_time });
+    res.json({ ok: true, contract_pdf_url: '/api/contract/download/' + o.id });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ===================== 合同下载鉴权中转 + 作废/恢复 =====================
+
+// 下载（预览/下载统一走后端鉴权中转）：管理员登录态 或 客户 customer_token 鉴权；md5 校验
+router.get('/download/:orderId', async (req, res) => {
+  try {
+    const o = await get('SELECT * FROM orders WHERE id = ?', [req.params.orderId]);
+    if (!o || !o.contract_file_key) return res.status(404).json({ error: '合同不存在' });
+    // 鉴权：管理员登录态 或 客户 customer_token 匹配
+    const admin = peekUser(req);
+    const ct = String(req.query.customer_token || '');
+    const isCustomer = !!ct && !!o.customer_token && ct === o.customer_token;
+    if (!admin && !isCustomer) return res.status(403).json({ error: '无权限访问该合同' });
+    // 作废合同：客户不可下载（管理员仍可查看）
+    if (Number(o.contract_invalid) && isCustomer) return res.status(403).json({ error: '合同已作废，无法下载' });
+    // 读文件 + md5 校验（篡改/损坏直接阻断）
+    let buf;
+    try { buf = await getObjectBuffer(o.contract_file_key); } catch (e) { return res.status(404).json({ error: '合同文件不存在，请重新生成' }); }
+    if (o.contract_file_md5 && md5(buf) !== o.contract_file_md5) {
+      return res.status(409).json({ error: '合同文件校验失败（已损坏或被篡改），请重新生成' });
+    }
+    await audit(o.id, req, 'download', isCustomer ? '客户下载合同（customer_token）' : '管理员下载合同', admin || undefined);
+    const dl = req.query.dl === '1';
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', (dl ? 'attachment' : 'inline') + '; filename="contract-' + o.id + '.pdf"');
+    res.send(buf);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// 作废合同：标记 contract_invalid=1，客户无法下载
+router.post('/orders/:id/invalidate', authRequired, requireRole(...STAFF_ROLES), async (req, res) => {
+  try {
+    const o = await get('SELECT * FROM orders WHERE id = ?', [req.params.id]);
+    if (!o) return res.status(404).json({ error: '订单不存在' });
+    await run('UPDATE orders SET contract_invalid = 1 WHERE id = ?', [o.id]);
+    await audit(o.id, req, 'invalidate', '作废合同');
+    await emitMessage({
+      message_type: 'system', business_event: 'contract_invalidated',
+      title: '合同已作废', content: `${o.customer_name || '客户'} 的合同已作废（订单 ${o.order_no || o.id}）`,
+      rel_id: String(o.id), rel_model: 'order'
+    });
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// 恢复作废合同：contract_invalid=0，客户恢复下载权限
+router.post('/orders/:id/restore', authRequired, requireRole(...STAFF_ROLES), async (req, res) => {
+  try {
+    const o = await get('SELECT * FROM orders WHERE id = ?', [req.params.id]);
+    if (!o) return res.status(404).json({ error: '订单不存在' });
+    await run('UPDATE orders SET contract_invalid = 0 WHERE id = ?', [o.id]);
+    await audit(o.id, req, 'restore', '恢复合同');
+    res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 

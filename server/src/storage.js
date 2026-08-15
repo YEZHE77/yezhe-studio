@@ -441,3 +441,24 @@ export async function mergeChunks(uploadId, ext, zone = 'biz-works', meta = {}) 
   await deleteChunks(uploadId);
   return result;
 }
+
+// ===== 私有对象读写（合同文件走私有存储 + 后端鉴权中转，不通过公开 Worker 代理） =====
+
+// 按对象 key 读取完整二进制（合同下载鉴权中转用）
+export async function getObjectBuffer(key) {
+  const provider = activeProvider();
+  if (!provider) throw new Error('未配置云端存储');
+  const { GetObjectCommand } = await import('@aws-sdk/client-s3');
+  const client = await makeS3Client(provider);
+  const r = await client.send(new GetObjectCommand({ Bucket: bucketOf(provider), Key: key }));
+  return Buffer.from(await r.Body.transformToByteArray());
+}
+
+// 按对象 key 删除（合同作废 / 销毁时物理删除底层对象）
+export async function deleteObjectByKey(key) {
+  const provider = activeProvider();
+  if (!provider) return;
+  const { DeleteObjectCommand } = await import('@aws-sdk/client-s3');
+  const client = await makeS3Client(provider);
+  await client.send(new DeleteObjectCommand({ Bucket: bucketOf(provider), Key: key }));
+}

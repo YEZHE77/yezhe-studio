@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import http, { img } from '../api.js';
+import http, { img, BASE } from '../api.js';
 
 // ===== C 端客户订单查看页（/customer-order?token=customer_token）=====
 // customer_token 鉴权，与 B 端订单详情同口径：套系详细内容 + 拍摄档期/时间/地点 + 执行人 + 消费明细 + 选片入口
@@ -157,16 +157,21 @@ export default function CustomerOrder() {
         <Row label="待付金额" value={'¥' + Number(data.balance || 0).toFixed(2)} color={data.balance > 0 ? '#F5A623' : TEXT} />
       </Card>
 
-      {/* 合同预览 / 下载 */}
-      {data.contract_pdf_url && (
+      {/* 合同预览 / 下载（走后端鉴权中转，customer_token 鉴权，不暴露公开 URL） */}
+      {data.contract_available && (
         <Card style={{ marginTop: 12 }}>
           <div style={{ fontSize: 13, color: SUB, marginBottom: 10 }}>合同</div>
           <div style={{ display: 'flex', gap: 10 }}>
-            <a href={data.contract_pdf_url} target="_blank" rel="noreferrer"
+            <a href={BASE + '/api/contract/download/' + data.order_id + '?customer_token=' + token} target="_blank" rel="noreferrer"
               style={{ flex: 1, textAlign: 'center', padding: '12px 0', borderRadius: 12, background: '#fff', color: BRAND, fontSize: 14, border: '1px solid ' + BRAND, textDecoration: 'none' }}>预览合同</a>
-            <a href={data.contract_pdf_url} download
+            <a href={BASE + '/api/contract/download/' + data.order_id + '?customer_token=' + token + '&dl=1'}
               style={{ flex: 1, textAlign: 'center', padding: '12px 0', borderRadius: 12, background: BRAND, color: '#fff', fontSize: 14, textDecoration: 'none' }}>下载合同 PDF</a>
           </div>
+        </Card>
+      )}
+      {!data.contract_available && data.contract_invalid && (
+        <Card style={{ marginTop: 12 }}>
+          <div style={{ fontSize: 13, color: '#FF4D4F' }}>合同已作废</div>
         </Card>
       )}
 

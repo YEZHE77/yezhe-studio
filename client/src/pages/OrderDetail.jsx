@@ -728,6 +728,38 @@ export default function OrderDetail() {
     alert('客户订单链接已复制：\n' + miniQr.url);
   }
 
+  // ===== 合同：查看/下载走后端鉴权中转（管理员带 token，blob 流式） =====
+  async function viewContract() {
+    if (!detail) return;
+    try {
+      const r = await http.get('/api/contract/download/' + detail.id, { responseType: 'blob' });
+      const url = URL.createObjectURL(r.data);
+      window.open(url, '_blank');
+    } catch (e) { alert('合同打开失败，请重试'); }
+  }
+  async function downloadContract() {
+    if (!detail) return;
+    try {
+      const r = await http.get('/api/contract/download/' + detail.id + '?dl=1', { responseType: 'blob' });
+      const url = URL.createObjectURL(r.data);
+      const a = document.createElement('a');
+      a.href = url; a.download = '合同-' + (detail.customer_name || detail.order_no || detail.id) + '.pdf';
+      document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(url);
+    } catch (e) { alert('合同下载失败，请重试'); }
+  }
+  async function invalidateContract() {
+    if (!detail) return;
+    if (!window.confirm('确认作废该合同？作废后客户将无法下载。')) return;
+    try { await http.post('/api/contract/orders/' + detail.id + '/invalidate'); reload(); }
+    catch (e) { alert((e.response && e.response.data && e.response.data.error) || '作废失败'); }
+  }
+  async function restoreContract() {
+    if (!detail) return;
+    try { await http.post('/api/contract/orders/' + detail.id + '/restore'); reload(); }
+    catch (e) { alert((e.response && e.response.data && e.response.data.error) || '恢复失败'); }
+  }
+
   // —— 图片管理：原片 / 精修片 真实上传（复用现有分片上传，不新建接口） ——
   async function addPhotos(kind, fileList) {
     if (!fileList || !fileList.length) return;
@@ -1139,7 +1171,11 @@ export default function OrderDetail() {
                 style={{ padding: '8px 16px', borderRadius: 6, border: 'none', background: '#2DB7F5', color: '#fff', fontSize: 13, cursor: 'pointer', opacity: contractGenerating ? 0.6 : 1 }}>
                 {contractGenerating ? '生成中…' : contractPdfUrl ? '重新生成合同 PDF' : '生成合同 PDF'}
               </button>
-              {contractPdfUrl && <a href={contractPdfUrl} target="_blank" rel="noreferrer" style={{ padding: '8px 16px', borderRadius: 6, border: '1px solid #2DB7F5', color: '#2DB7F5', fontSize: 13, textDecoration: 'none' }}>查看合同</a>}
+              {contractPdfUrl && <button type="button" onClick={viewContract} style={{ padding: '8px 16px', borderRadius: 6, border: '1px solid #2DB7F5', color: '#2DB7F5', fontSize: 13, background: '#fff', cursor: 'pointer' }}>查看合同</button>}
+              {contractPdfUrl && <button type="button" onClick={downloadContract} style={{ padding: '8px 16px', borderRadius: 6, border: 'none', background: '#2DB7F5', color: '#fff', fontSize: 13, cursor: 'pointer' }}>下载合同</button>}
+              {contractPdfUrl && (detail?.contract_invalid
+                ? <button type="button" onClick={restoreContract} style={{ padding: '8px 16px', borderRadius: 6, border: '1px solid #52C41A', color: '#52C41A', fontSize: 13, background: '#fff', cursor: 'pointer' }}>恢复合同</button>
+                : <button type="button" onClick={invalidateContract} style={{ padding: '8px 16px', borderRadius: 6, border: '1px solid #FF4D4F', color: '#FF4D4F', fontSize: 13, background: '#fff', cursor: 'pointer' }}>作废合同</button>)}
             </div>
           </div>
 
@@ -1544,7 +1580,11 @@ export default function OrderDetail() {
             style={{ padding: '7px 16px', borderRadius: 4, border: 'none', background: BLUE, color: '#fff', fontSize: 13, cursor: 'pointer', opacity: contractGenerating ? 0.6 : 1 }}>
             {contractGenerating ? '生成中…' : contractPdfUrl ? '重新生成合同 PDF' : '生成合同 PDF'}
           </button>
-          {contractPdfUrl && <a href={contractPdfUrl} target="_blank" rel="noreferrer" style={{ padding: '7px 16px', borderRadius: 4, border: '1px solid ' + BLUE, color: BLUE, fontSize: 13, textDecoration: 'none' }}>查看合同</a>}
+          {contractPdfUrl && <button type="button" onClick={viewContract} style={{ padding: '7px 16px', borderRadius: 4, border: '1px solid ' + BLUE, color: BLUE, fontSize: 13, background: '#fff', cursor: 'pointer' }}>查看合同</button>}
+          {contractPdfUrl && <button type="button" onClick={downloadContract} style={{ padding: '7px 16px', borderRadius: 4, border: 'none', background: BLUE, color: '#fff', fontSize: 13, cursor: 'pointer' }}>下载合同</button>}
+          {contractPdfUrl && (detail?.contract_invalid
+            ? <button type="button" onClick={restoreContract} style={{ padding: '7px 16px', borderRadius: 4, border: '1px solid #52C41A', color: '#52C41A', fontSize: 13, background: '#fff', cursor: 'pointer' }}>恢复合同</button>
+            : <button type="button" onClick={invalidateContract} style={{ padding: '7px 16px', borderRadius: 4, border: '1px solid #FF4D4F', color: '#FF4D4F', fontSize: 13, background: '#fff', cursor: 'pointer' }}>作废合同</button>)}
         </div>
       </section>
 
