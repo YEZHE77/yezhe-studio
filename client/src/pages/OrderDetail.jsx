@@ -2618,12 +2618,11 @@ export default function OrderDetail() {
       {/* 打印单据内容（屏幕外定位避免 display:none 优先级问题；打印时 @media print 切到 absolute 让内容固定在每页左上角，padding 与 @page 边距对齐） */}
       <div className="print-order-sheet" style={{ position: 'fixed', left: -10000, top: 0, width: '100%', padding: '20mm 15mm' }}>
         <style>{`
+          @page { size: A4; margin: 20mm 15mm 20mm; @top-center { content: "拍摄服务合同"; font-family: SimSun, STSong, serif; font-size: 12px; color: #555; padding-bottom: 3mm; border-bottom: 1px solid #ddd; width: 100%; } }
           @media print {
             body * { visibility: hidden; }
             .print-order-sheet, .print-order-sheet * { visibility: visible; }
             .print-order-sheet { position: absolute !important; left: 0 !important; top: 0 !important; width: 100% !important; margin: 0 !important; padding: 20mm 15mm 20mm !important; }
-            /* @page 页面盒：定义每页尺寸 + 页边距 + 页眉/页脚（W3C 标准，原生支持） */
-            @page { size: A4; margin: 20mm 15mm 20mm; @top-center { content: "拍摄服务合同"; font-family: SimSun, STSong, serif; font-size: 12px; color: #555; padding-bottom: 3mm; border-bottom: 1px solid #ddd; width: 100%; } }
           }
         `}</style>
         <div style={{ maxWidth: 700, margin: '0 auto', fontFamily: 'SimSun, STSong, serif', fontSize: 14, lineHeight: 1.8, color: '#222' }}>
@@ -2741,17 +2740,17 @@ export default function OrderDetail() {
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14, lineHeight: 1.8, border: '1px solid #ddd' }}>
                   <thead>
                     <tr style={{ background: '#f5f5f5' }}>
-                      <th style={{ padding: '4px 8px', border: '1px solid #ddd', textAlign: 'center', fontWeight: 400 }}>类型</th>
-                      <th style={{ padding: '4px 8px', border: '1px solid #ddd', textAlign: 'center', fontWeight: 400 }}>金额</th>
-                      <th style={{ padding: '4px 8px', border: '1px solid #ddd', textAlign: 'center', fontWeight: 400 }}>方式</th>
+                      <th style={{ padding: '10px 12px', border: '1px solid #ddd', textAlign: 'center', fontWeight: 400 }}>类型</th>
+                      <th style={{ padding: '10px 12px', border: '1px solid #ddd', textAlign: 'center', fontWeight: 400 }}>金额</th>
+                      <th style={{ padding: '10px 12px', border: '1px solid #ddd', textAlign: 'center', fontWeight: 400 }}>方式</th>
                     </tr>
                   </thead>
                   <tbody>
                     {detail.payments.map((p) => (
                       <tr key={p.id}>
-                        <td style={{ padding: '4px 8px', border: '1px solid #ddd', textAlign: 'center' }}>{TYPE_LABEL[p.type] || p.type}</td>
-                        <td style={{ padding: '4px 8px', border: '1px solid #ddd', textAlign: 'center' }}>{p.type === 'refund' ? '-' : '+'}¥{Number(p.amount).toLocaleString()}</td>
-                        <td style={{ padding: '4px 8px', border: '1px solid #ddd', textAlign: 'center' }}>{payMethodLabel(p)}</td>
+                        <td style={{ padding: '10px 12px', border: '1px solid #ddd', textAlign: 'center' }}>{TYPE_LABEL[p.type] || p.type}</td>
+                        <td style={{ padding: '10px 12px', border: '1px solid #ddd', textAlign: 'center' }}>{p.type === 'refund' ? '-' : '+'}¥{Number(p.amount).toLocaleString()}</td>
+                        <td style={{ padding: '10px 12px', border: '1px solid #ddd', textAlign: 'center' }}>{payMethodLabel(p)}</td>
                       </tr>
                     ))}
                   </tbody>
