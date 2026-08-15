@@ -3,6 +3,8 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import http, { img } from '../api.js';
 import { useViewState } from '../tabMemory.js';
 import { avatarColor, avatarText } from '../utils/avatar.js';
+import { channelColor, channelBadgeStyle } from '../utils/channel.js';
+import { stageLabel } from '../utils/orderStage.js';
 import OrderCreateModal from '../components/OrderCreateModal.jsx';
 
 /* ==========================================================================
@@ -17,11 +19,6 @@ import OrderCreateModal from '../components/OrderCreateModal.jsx';
    移动端顶部深色 #1f1f1f / 未结算尾款 #ff3333 红底白字 / 卡片圆角 12 / 卡片间距 12。
    ========================================================================== */
 
-const STATUS_LABEL = {
-  deposit: '已付定金', shot: '已拍摄', selecting: '选片中',
-  retouching: '精修中', delivered: '已交付', completed: '已完成', cancelled: '已关闭'
-};
-
 // 待办 Tab key → 筛选 status 值（与 Todo.jsx TAB_DEFS 的 key/value 一致）
 // 供 /orders?tab=xxx 兼容跳转使用（消除 TAB_STATUS 未定义引用隐患）
 const TAB_STATUS = {
@@ -31,26 +28,6 @@ const TAB_STATUS = {
   retouching: 'todo_retouch',
   delivered: 'todo_deliver',
 };
-
-// deposit 状态细分：logs 含「沟通确认」=「等待拍摄」，否则 =「已付定金」
-// retouching 状态细分：logs 含「精修完成/全部精修完成/底片打包/原片打包」=「待交付」，否则 =「精修中」
-// 两段细分都与后端 stats/orders 的 waiting_shoot / todo_retouch / todo_deliver 过滤分界一致
-function stageLabel(o) {
-  if (!o) return '历史订单';
-  const s = o.status;
-  if (s === 'deposit' || s === 'retouching') {
-    let logsArr = [];
-    try { logsArr = Array.isArray(o.logs) ? o.logs : (typeof o.logs === 'string' ? JSON.parse(o.logs || '[]') : []); } catch {}
-    if (s === 'deposit') {
-      const hasConfirm = logsArr.some((l) => (l && l.text || '').includes('沟通确认'));
-      return hasConfirm ? '等待拍摄' : '已付定金';
-    }
-    // retouching + logs 已到「精修完成/底片打包」→ 归「待交付」（与后端 stats 口径一致）
-    const hasFinish = logsArr.some((l) => (l && l.text || '').match(/精修完成|全部精修完成|底片打包|原片打包/));
-    return hasFinish ? '待交付' : '精修中';
-  }
-  return STATUS_LABEL[s] || '历史订单';
-}
 
 // JSON 列容错解析：后端已 JSON.parse，但旧数据/异常情况下可能仍是字符串
 function asArr(v) {
@@ -751,37 +728,7 @@ const TYPE_PILLS = [
 const AVATAR_BG = ['#7ECDBB', '#F5A623', '#2DB7F5', '#FF8A8A', '#9B7ED8', '#5A5A5A'];
 // avatarColor / avatarText 已抽到 utils/avatar.js（订单中心 + 待办 Tab 共用，避免同客户名算出不同颜色）
 
-/* 渠道来源徽标：已知渠道用品牌色（校 IMG_7522 渠道卡），未知渠道 hash 取色
-   抖音品牌色为深黑 #161823，在 20×20 小徽标 + 白底卡片上几乎看不见"抖"字（与编辑笔图标视觉混淆）。
-   改为白底黑字 + 黑边框：保留品牌调性同时保证小尺寸下的可读性。 */
-const CHANNEL_COLORS = {
-  '抖音': '#FFFFFF',         // 抖音品牌徽标：白底 + 黑字 + 黑边框（在白底卡片上对比度反转）
-  '小红书': '#FF2442',       // 小红书红
-  '美团': '#FFB300',         // 美团黄
-  '小程序': '#07C160',       // 微信绿
-  '客户推荐': '#52C8B6',     // 心形图标青绿（与小程序区分）
-  '自然进店': '#5BC0DE',     // 气泡图标天蓝
-  '其他来源': '#7B85F4',     // 网格图标蓝紫
-};
-// 渠道 → 徽标前景/边框（仅少数需要差异化，如抖音的白底黑字需要黑边框）
-const CHANNEL_BADGE = {
-  抖音: { color: '#000000', border: '1px solid #161823' },
-};
-const CHANNEL_FALLBACK = ['#FE2C55', '#FF2442', '#FFB300', '#07C160', '#2DB7F5', '#7ECDBB', '#9B7ED8', '#5A5A5A'];
-function channelColor(name) {
-  if (!name) return '#8C8C8C';
-  if (CHANNEL_COLORS[name]) return CHANNEL_COLORS[name];
-  let h = 0;
-  for (let i = 0; i < String(name).length; i++) h += String(name).charCodeAt(i);
-  return CHANNEL_FALLBACK[h % CHANNEL_FALLBACK.length];
-}
-// 渠道 → 徽标前景/边框样式；返回 { background, color, border }，渲染处直接合并
-function channelBadgeStyle(name) {
-  const background = channelColor(name);
-  const custom = CHANNEL_BADGE[name];
-  if (custom) return { background, ...custom };
-  return { background, color: '#fff' };
-}
+/* 渠道来源徽标逻辑已抽到 utils/channel.js（channelColor / channelBadgeStyle） */
 
 const IconBack = () => (
   <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
