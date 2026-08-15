@@ -389,11 +389,11 @@ export default function PackagePreview() {
               <span style={{ fontSize: 14, color: '#999' }}>未开启</span>
             </div>
 
-            {/* 顾客协议：预览页仅做展开/收起查看，不做跳转跳转（修改请进套系编辑→顾客协议编辑页） */}
+            {/* 顾客协议（与「服务详情」完全一致的展开/收起逻辑：永远绿色 + 永远「展开/收起」+ 未设置时点开显示「未设置」） */}
             <div style={{ padding: '14px 0', borderTop: `1px solid ${MBORDER}` }}>
               <div onClick={() => setAgreementOpen((v) => !v)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}>
                 <span style={{ fontSize: 14, color: '#333' }}>顾客协议</span>
-                <span style={{ fontSize: 14, color: d.customer_agreement ? MGREEN : '#999' }}>{agreementOpen ? '收起' : (d.customer_agreement ? '展开' : '未设置')}</span>
+                <span style={{ fontSize: 14, color: MGREEN }}>{agreementOpen ? '收起' : '展开'}</span>
               </div>
               {agreementOpen && (
                 <div style={{ marginTop: 10, fontSize: 13, color: '#666', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{d.customer_agreement || '未设置'}</div>
