@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import http, { img, uploadBatch, conflictOf } from '../api.js';
 import bgm from '../bgm.js';
@@ -233,10 +233,13 @@ export default function OrderDetail() {
     http.get('/api/admin/photo-select/' + oid).then((r) => setSel(r.data)).catch(() => setSel(null));
   }, []);
 
+  // 请求序号：连点时只接受最后一次 reload 的响应，避免旧 GET 覆盖乐观更新后的新状态
+  const reloadSeq = useRef(0);
   const reload = useCallback(async () => {
+    const seq = ++reloadSeq.current;
     try {
       const r = await http.get('/api/orders/' + id);
-      setDetail(r.data);
+      if (seq === reloadSeq.current) setDetail(r.data);
       loadSel(id);
     } catch { setNotFound(true); }
   }, [id, loadSel]);
@@ -477,26 +480,30 @@ export default function OrderDetail() {
     catch (e2) { alert((e2.response && e2.response.data && e2.response.data.error) || '操作失败'); }
   }
   // 进度条：下一步（逐 Tab 推进：状态步 PUT status；日志步 POST 日志）
+  // 乐观更新：点击瞬间先本地更新 detail（节点秒动），再后台发请求；失败回滚 + 提示
   async function stepNext() {
     if (!detail || detail.cancelled) return;
     const cur = currentStageIndex(detail, detail.logs);
     if (cur >= ORDER_STAGES.length - 1) return; // 已完成，无下一步
     const act = STAGE_NEXT[cur];
     if (!act) return;
+    // ① 乐观更新：立即本地更新（不等网络往返）
+    if (act.status) {
+      setDetail((d) => (d ? { ...d, status: act.status } : d));
+    } else {
+      setDetail((d) => (d ? { ...d, logs: [...(Array.isArray(d.logs) ? d.logs : []), { t: new Date().toISOString(), text: act.log }] } : d));
+    }
+    // ② 后台发请求
     try {
-      if (act.status) {
-        await http.put('/api/orders/' + detail.id, { status: act.status });
-        // 乐观更新：本地立即改 status，进度条秒响应（不等 reload 的 GET 往返）
-        setDetail((d) => (d ? { ...d, status: act.status } : d));
-      } else {
-        await http.post('/api/orders/' + detail.id + '/logs', { text: act.log });
-        // 乐观更新：本地追加日志，进度条立即点亮
-        setDetail((d) => (d ? { ...d, logs: [...(Array.isArray(d.logs) ? d.logs : []), { t: new Date().toISOString(), text: act.log }] } : d));
-      }
+      if (act.status) await http.put('/api/orders/' + detail.id, { status: act.status });
+      else await http.post('/api/orders/' + detail.id + '/logs', { text: act.log });
       // 通知 Todo 页等监听者刷新计数
       try { window.dispatchEvent(new Event('order-status-changed')); } catch {}
-      reload();
-    } catch (e2) { alert((e2.response && e2.response.data && e2.response.data.error) || '操作失败'); }
+    } catch (e2) {
+      alert((e2.response && e2.response.data && e2.response.data.error) || '操作失败');
+    } finally {
+      reload(); // 静默同步真实数据（成功兜底 / 失败回滚）
+    }
   }
   // 进度条：上一步（逐 Tab 回退：状态步直接 PUT；日志步 logs/undo 撤销最后一条）
   async function stepPrev() {
@@ -505,19 +512,22 @@ export default function OrderDetail() {
     if (cur <= 0) return;
     const act = STAGE_PREV[cur];
     if (!act) return;
+    // ① 乐观更新：立即本地回退（不等网络往返）
+    if (act.status) {
+      setDetail((d) => (d ? { ...d, status: act.status } : d));
+    } else if (act.logUndo) {
+      setDetail((d) => (d ? { ...d, logs: (Array.isArray(d.logs) ? d.logs.slice(0, -1) : d.logs) } : d));
+    }
+    // ② 后台发请求
     try {
-      if (act.status) {
-        await http.put('/api/orders/' + detail.id, { status: act.status });
-        // 乐观更新：本地立即回退 status
-        setDetail((d) => (d ? { ...d, status: act.status } : d));
-      } else if (act.logUndo) {
-        await http.post('/api/orders/' + detail.id + '/logs/undo');
-        // 乐观更新：本地移除最后一条日志
-        setDetail((d) => (d ? { ...d, logs: (Array.isArray(d.logs) ? d.logs.slice(0, -1) : d.logs) } : d));
-      }
+      if (act.status) await http.put('/api/orders/' + detail.id, { status: act.status });
+      else if (act.logUndo) await http.post('/api/orders/' + detail.id + '/logs/undo');
       try { window.dispatchEvent(new Event('order-status-changed')); } catch {}
+    } catch (e2) {
+      alert((e2.response && e2.response.data && e2.response.data.error) || '操作失败');
+    } finally {
       reload();
-    } catch (e2) { alert((e2.response && e2.response.data && e2.response.data.error) || '操作失败'); }
+    }
   }
   async function cancel() {
     if (!detail) return;
