@@ -2607,9 +2607,9 @@ export default function OrderDetail() {
         <thead className="print-page-header" style={{ visibility: 'hidden', display: 'table-header-group' }}>
           <tr>
             <td style={{ width: '100%', padding: '4mm 15mm 3mm', borderBottom: '1px solid #555', background: '#fff' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', fontSize: 12, color: '#555', letterSpacing: 1 }}>
-                <span style={{ fontWeight: 500, fontSize: 14 }}>拍摄服务合同</span>
+              <div style={{ position: 'relative', fontSize: 12, color: '#555', letterSpacing: 1 }}>
                 <span style={{ fontSize: 11, color: '#888' }}>叶哲 STUDIO · 摄影工作室</span>
+                <span style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)', fontWeight: 500, fontSize: 14, color: '#333' }}>拍摄服务合同</span>
               </div>
             </td>
           </tr>
