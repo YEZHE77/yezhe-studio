@@ -2632,12 +2632,10 @@ export default function OrderDetail() {
                   <td style={{ padding: '4px 8px', color: '#555' }}>快修费</td>
                   <td style={{ padding: '4px 8px' }}>{Number(detail.quick_repair_cost) > 0 ? '¥' + Number(detail.quick_repair_cost).toLocaleString() : (pkgInfo?.details?.quick_repair_cost || '—')}</td>
                 </tr>
-                {pkgInfo?.details?.delivery_remark ? (
-                  <tr>
-                    <td style={{ padding: '4px 8px', color: '#555' }}>交付备注</td>
-                    <td style={{ padding: '4px 8px', whiteSpace: 'pre-wrap' }} colSpan={3}>{pkgInfo.details.delivery_remark}</td>
-                  </tr>
-                ) : null}
+                <tr>
+                  <td style={{ padding: '4px 8px', color: '#555' }}>交付备注</td>
+                  <td style={{ padding: '4px 8px', whiteSpace: 'pre-wrap' }} colSpan={3}>{pkgInfo?.details?.delivery_remark || '—'}</td>
+                </tr>
                 <tr>
                   <td style={{ padding: '4px 8px', color: '#555' }}>化妆服装</td>
                   <td style={{ padding: '4px 8px' }}>{`${pkgInfo?.details?.cloth_provide === 'provide' ? '提供服装' : '不提供服装'} · ${pkgInfo?.details?.makeup_provide === 'provide' ? '提供化妆' : '不提供化妆'}`}</td>
