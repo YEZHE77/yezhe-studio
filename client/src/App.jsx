@@ -48,6 +48,7 @@ const DataCharts = React.lazy(() => import('./pages/DataCharts.jsx'));
 const BusinessCard = React.lazy(() => import('./pages/BusinessCard.jsx'));
 const SelectionAdmin = React.lazy(() => import('./pages/SelectionAdmin.jsx'));
 const ShareAlbum = React.lazy(() => import('./pages/ShareAlbum.jsx'));
+const SelectionClient = React.lazy(() => import('./pages/SelectionClient.jsx'));
 const CapacityManagement = React.lazy(() => import('./pages/CapacityManagement.jsx'));
 const Channels = React.lazy(() => import('./pages/Channels.jsx'));
 // 客户前端（公开，无需登录）：首页 / 我的 / 公开作品相册
@@ -126,6 +127,10 @@ export default function App() {
       {/* 客户影集分享：公开页面，无需登录即可访问 */}
       <Route path="/share/:token" element={
         <Suspense fallback={<PageLoader />}><ShareAlbum /></Suspense>
+      } />
+      {/* 客户在线选片：公开页面，无需登录（token + 可选密码），完全隐藏 B 端菜单 */}
+      <Route path="/s/:token" element={
+        <Suspense fallback={<PageLoader />}><SelectionClient /></Suspense>
       } />
       {!user && (
         <>

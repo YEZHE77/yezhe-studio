@@ -226,6 +226,35 @@ CREATE TABLE IF NOT EXISTS evaluates (
   text TEXT, images TEXT, status TEXT NOT NULL DEFAULT 'pending', created_at TEXT DEFAULT CURRENT_TIMESTAMP
 );`;
 
+// 选片工具（对标拾光盒子 Lite）：selection_tasks 选片任务（业务配置 + 图片 URL JSON）+ selection_marks 逐张三态标记
+// token 复用 shares 表（type='selection', ref_id=selection_tasks.id），密码/有效期/启停走 shares 通用内核
+const PG_SELECTION_TABLES = `
+CREATE TABLE IF NOT EXISTS selection_tasks (
+  id SERIAL PRIMARY KEY, order_id INTEGER NOT NULL,
+  min_retouch INTEGER NOT NULL DEFAULT 0, extra_price REAL NOT NULL DEFAULT 0,
+  watermark_enabled INTEGER NOT NULL DEFAULT 0, photos TEXT,
+  submitted INTEGER NOT NULL DEFAULT 0, submitted_at TEXT,
+  created_at TIMESTAMPTZ DEFAULT now(), updated_at TIMESTAMPTZ DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS selection_marks (
+  id SERIAL PRIMARY KEY, task_id INTEGER NOT NULL, photo_key TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'pending', updated_at TIMESTAMPTZ DEFAULT now(),
+  UNIQUE(task_id, photo_key)
+);`;
+const SQLITE_SELECTION_TABLES = `
+CREATE TABLE IF NOT EXISTS selection_tasks (
+  id INTEGER PRIMARY KEY AUTOINCREMENT, order_id INTEGER NOT NULL,
+  min_retouch INTEGER NOT NULL DEFAULT 0, extra_price REAL NOT NULL DEFAULT 0,
+  watermark_enabled INTEGER NOT NULL DEFAULT 0, photos TEXT,
+  submitted INTEGER NOT NULL DEFAULT 0, submitted_at TEXT,
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP, updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS selection_marks (
+  id INTEGER PRIMARY KEY AUTOINCREMENT, task_id INTEGER NOT NULL, photo_key TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'pending', updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE(task_id, photo_key)
+);`;
+
 // orders 的向前兼容新增列（仅当不存在时补加，绝不删列/不破坏数据）
 const ORDERS_NEW_COLUMNS = [
   ['customer_phone', 'TEXT'],
@@ -333,6 +362,9 @@ export async function initSchema() {
 
   // 客户侧新表
   for (const s of (dialect === 'pg' ? PG_CUSTOMER_TABLES : SQLITE_CUSTOMER_TABLES).split(';').map((x) => x.trim()).filter(Boolean)) await run(s);
+
+  // 选片工具表（selection_tasks + selection_marks）
+  for (const s of (dialect === 'pg' ? PG_SELECTION_TABLES : SQLITE_SELECTION_TABLES).split(';').map((x) => x.trim()).filter(Boolean)) await run(s);
 
   // 系统设置表
   for (const s of (dialect === 'pg' ? PG_SETTINGS : SQLITE_SETTINGS).split(';').map((x) => x.trim()).filter(Boolean)) await run(s);
