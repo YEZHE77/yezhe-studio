@@ -406,9 +406,22 @@ export default function OrderDetail() {
     const detailPhones = asArr(detail.phones);
     const phone0 = detailPhones[0] || detail.customer_phone || '';
     const phone1 = detailPhones[1] || '';
+    // 新郎/新娘姓名：优先取独立字段；为空时从 customer_name 反向拆分（兼容拆分前老数据）
+    const rawGroom = (detail.groom_name || '').trim();
+    const rawBride = (detail.bride_name || '').trim();
+    let groom = rawGroom, bride = rawBride;
+    if (!groom && !bride) {
+      const cn = (detail.customer_name || '').trim();
+      if (cn) {
+        // 常见分隔符：& / ，/ 空&
+        const parts = cn.split(/\s*[&＆，,]\s*/).filter(Boolean);
+        groom = parts[0] || '';
+        bride = parts.slice(1).join(' ') || '';
+      }
+    }
     setEditForm({
       order_name: detail.order_name || '',
-      groom_name: detail.groom_name || '', bride_name: detail.bride_name || '',
+      groom_name: groom, bride_name: bride,
       groom_phone: detail.groom_phone || phone0,
       bride_phone: detail.bride_phone || phone1,
       customer_phone: detail.customer_phone || phone0,
