@@ -372,6 +372,10 @@ router.post('/', authRequired, requireRole(['admin', 'photographer', 'finance'])
     }
     if (!package_snapshot) total = deposit + (parseFloat(b.balance) || 0);
     total += extraTotal;
+    // 数值合法性校验（PRD 一.1.2）：定金 ≤ 总价，防止脏数据进入订单
+    if (deposit > total) {
+      return res.status(400).json({ error: '定金不能大于合同总价，请核对金额' });
+    }
     // 实收金额由收款状态推导：未付=0 / 已付定金=定金 / 已付全款=应收总额
     const paid = payment_status === 'unpaid' ? 0 : (payment_status === 'paid' ? total : deposit);
     const balance = Math.max(0, total - paid);

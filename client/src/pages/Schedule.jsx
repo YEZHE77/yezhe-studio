@@ -258,6 +258,19 @@ export default function Schedule() {
     setAdvOpen(false);
   };
 
+  // 一键档期校准：根据有效订单重建占用 + 清理孤儿 booked（修复脏数据）
+  const reconcile = async () => {
+    if (!window.confirm('一键校准档期？\n\n将根据当前所有有效订单重新刷新日历占用状态，清理已取消订单残留的占用记录。')) return;
+    try {
+      const r = await http.post('/api/schedules/reconcile');
+      const d = r.data || {};
+      alert(`校准完成：清理孤儿占用 ${d.removed_orphans} 条，重建档期 ${d.rebuilt} 条（共 ${d.total_orders} 个有效订单）。`);
+      load();
+    } catch (e) {
+      alert('校准失败：' + (e.response?.data?.error || e.message));
+    }
+  };
+
   const dayRows = selDate ? rowsOf(selDate) : [];
   const dayPends = selDate ? pendsOf(selDate) : [];
   const selParts = selDate ? selDate.split('-') : [];
@@ -494,6 +507,10 @@ export default function Schedule() {
         <button onClick={() => { setMenuOpen(false); setBooking({ open: true, openDays: [0,1,2,3,4,5,6] }); }} className="w-full text-left flex items-center gap-3 px-4 py-3 hover:bg-gray-50" style={{ fontSize: 14, color: '#333', borderTop: '1px solid #F2F2F2' }}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#999" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
           预约设置
+        </button>
+        <button onClick={() => { setMenuOpen(false); reconcile(); }} className="w-full text-left flex items-center gap-3 px-4 py-3 hover:bg-gray-50" style={{ fontSize: 14, color: '#333', borderTop: '1px solid #F2F2F2' }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#999" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12a9 9 0 1 1-9-9"/><path d="M21 3v6h-6"/></svg>
+          校准档期
         </button>
       </div>
     );

@@ -438,4 +438,44 @@ router.delete('/:id', authRequired, requireRole(['admin', 'photographer']), asyn
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// 一键档期校准：根据全部有效订单重建 booked 占用 + 清理孤儿 booked（兜底修复脏数据）
+// 触发场景：档期日历出现「占用但订单已取消」或「订单已排期但日历未占用」等不一致时
+router.post('/reconcile', authRequired, requireRole(['admin']), async (req, res) => {
+  try {
+    // ① 清理孤儿 booked：order_no 为空，或对应订单已不存在/已作废/已删除
+    const orphans = await query(
+      `SELECT s.id, s.order_no FROM schedules s
+       WHERE s.status = 'booked'
+         AND (s.order_no IS NULL OR s.order_no = ''
+              OR NOT EXISTS (SELECT 1 FROM orders o WHERE o.order_no = s.order_no AND o.cancelled = 0 AND o.is_deleted = 0))`
+    );
+    for (const row of orphans) {
+      await run('DELETE FROM schedules WHERE id = ?', [row.id]);
+    }
+    // ② 遍历全部有效订单，重建/修正 booked 记录（force=true 跳过冲突，occupySchedule 内部处理「同订单去重 + 日期迁移」）
+    const orders = await query(
+      `SELECT id, order_no, shoot_date, date_tbd, executors, groom_name, bride_name, customer_phone, address, executor
+       FROM orders WHERE cancelled = 0 AND is_deleted = 0 AND shoot_date IS NOT NULL AND shoot_date != '' AND date_tbd = 0`
+    );
+    let rebuilt = 0;
+    for (const o of orders) {
+      const meta = {
+        groom_name: o.groom_name || '', bride_name: o.bride_name || '',
+        contact_phone: o.customer_phone || '', address: o.address || '',
+        photographer: o.executor || ''
+      };
+      try {
+        const execs = JSON.parse(o.executors || '[]');
+        if (Array.isArray(execs) && execs.length) {
+          meta.executor_id = execs[0].id;
+          meta.executor_name = execs[0].name;
+        }
+      } catch { /* executors 非法则用 executor 兜底 */ }
+      try { await occupySchedule(o.shoot_date, o.order_no, meta, true); rebuilt++; }
+      catch { /* 单个失败不阻断整体校准 */ }
+    }
+    res.json({ ok: true, removed_orphans: orphans.length, rebuilt, total_orders: orders.length });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 export default router;
