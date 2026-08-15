@@ -978,14 +978,17 @@ export default function OrderDetail() {
     const snap = detail.package_snapshot || {};
     // 【底层强制规则 1】订单一旦保存套系快照，展示与核算一律读快照；
     // 后续编辑原始套系不影响历史订单。仅无快照的历史脏数据才回落到最新套系配置。
+    // 【补丁】实时套系始终查找，用于填补快照中缺失的模板字段（如后加的交付时间/备注）
+    //   —— 快照已有值则快照胜出，缺失的 key 才用实时套系兜底；不影响其他字段的「快照为准」语义。
     const hasSnap = !!(snap && (snap.id || snap.name));
-    const live = hasSnap ? {} : (pkgs.find((p) => p.id === detail.package_id) || {});
+    const live = pkgs.find((p) => p.id === detail.package_id) || {};
     const arr = (v) => Array.isArray(v) ? v : [];
     const obj = (v) => (v && typeof v === 'object' && !Array.isArray(v)) ? v : {};
     const val = (s, l) => (s !== undefined && s !== null && s !== '' ? s : l);
     return {
       fromSnapshot: hasSnap,
-      details: obj(snap.details).extra_photo_fee !== undefined || Object.keys(obj(snap.details)).length ? obj(snap.details) : obj(live.details),
+      // details：合并快照 + 实时套系；快照胜出（已有值），缺失 key 用实时兜底
+      details: { ...obj(live.details), ...obj(snap.details) },
       name: snap.name || live.name || '—',
       price: val(snap.price, live.price),
       deposit: val(snap.deposit, live.deposit),
