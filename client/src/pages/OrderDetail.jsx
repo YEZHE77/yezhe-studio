@@ -2282,25 +2282,26 @@ export default function OrderDetail() {
         </div>
       )}
 
-      {/* 分享订单给客户二维码浮层（customer_token 随机链接，客户只读查看自己订单） */}
+      {/* 分享订单给客户二维码弹窗（customer_token 随机链接，客户只读查看自己订单；屏幕居中样式） */}
       {miniQr !== null && (
         <>
-          <div className="fixed inset-0 z-[90]" style={{ background: 'rgba(0,0,0,0.3)' }} onClick={closeMiniQr} />
+          <div className="fixed inset-0 z-[90]" style={{ background: 'rgba(0,0,0,0.45)' }} onClick={closeMiniQr} />
           <div onClick={(e) => e.stopPropagation()}
-            style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 95, width: 280, background: '#fff', borderRadius: 8, padding: 16, boxShadow: '0 20px 60px rgba(0,0,0,0.18)' }}>
-            <div style={{ color: '#222222', fontWeight: 400, marginBottom: 8 }}>分享订单给客户</div>
+            style={{ position: 'fixed', left: '50%', top: '50%', transform: 'translate(-50%, -50%)', zIndex: 95, width: 300, maxWidth: 'calc(100vw - 32px)', background: '#fff', borderRadius: 12, padding: '24px 22px 20px', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}>
+            <div style={{ textAlign: 'center', fontSize: 16, color: '#1f2329' }}>分享订单</div>
+            <div style={{ textAlign: 'center', fontSize: 12, color: '#999999', marginTop: 4, marginBottom: 16 }}>扫码或复制链接分享给客户</div>
             {miniQr ? (
               <>
-                <img src={miniQr.qr_url} alt="订单二维码" style={{ width: 176, height: 176, margin: '0 auto', borderRadius: 8, display: 'block' }} />
-                <div style={{ fontSize: 11, color: '#666666', marginTop: 10, wordBreak: 'break-all' }}>{miniQr.url}</div>
-                <div style={{ display: 'flex', gap: 6, marginTop: 12 }}>
-                  <button onClick={copyCustomerUrl} style={{ flex: 1, padding: '7px 0', borderRadius: 4, background: BLUE, color: '#fff', fontSize: 12, border: 'none', cursor: 'pointer' }}>复制链接</button>
-                  <button onClick={() => openMiniQr(true)} disabled={miniQrLoading} style={{ flex: 1, padding: '7px 0', borderRadius: 4, background: '#fff', color: '#666', fontSize: 12, border: '1px solid ' + DIV, cursor: 'pointer' }}>重置链接</button>
+                <img src={miniQr.qr_url} alt="订单二维码" style={{ width: 200, height: 200, margin: '0 auto', display: 'block', borderRadius: 8 }} />
+                <div style={{ fontSize: 12, color: '#666666', marginTop: 14, wordBreak: 'break-all', textAlign: 'center', lineHeight: 1.5 }}>{miniQr.url}</div>
+                <div style={{ display: 'flex', gap: 10, marginTop: 18 }}>
+                  <button onClick={copyCustomerUrl} style={{ flex: 1, padding: '10px 0', borderRadius: 20, background: '#FF4D4F', color: '#fff', fontSize: 14, border: 'none', cursor: 'pointer' }}>复制链接</button>
+                  <button onClick={() => openMiniQr(true)} disabled={miniQrLoading} style={{ flex: 1, padding: '10px 0', borderRadius: 20, background: '#fff', color: '#666666', fontSize: 14, border: '1px solid #E8E8E8', cursor: 'pointer' }}>重置链接</button>
                 </div>
-                <div style={{ fontSize: 11, color: '#999999', textAlign: 'center', marginTop: 8 }}>客户扫码 / 打开链接即可查看自己的订单（只读）</div>
+                <div style={{ fontSize: 11, color: '#999999', textAlign: 'center', marginTop: 12, lineHeight: 1.5 }}>客户扫码 / 打开链接即可查看自己的订单（只读）</div>
               </>
             ) : (
-              <div style={{ color: '#666666', fontSize: 14, padding: 32, textAlign: 'center' }}>生成中…</div>
+              <div style={{ color: '#999999', fontSize: 14, padding: 60, textAlign: 'center' }}>生成中…</div>
             )}
           </div>
         </>
