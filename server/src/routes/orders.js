@@ -419,19 +419,21 @@ router.post('/', authRequired, requireRole(['admin', 'photographer', 'finance'])
     // 客户专属访问令牌（C 端 /customer-order?token= 只读查看）
     const customer_token = crypto.randomBytes(16).toString('hex');
     // 合同渲染专用字段：套系仅在新建订单时初始化填充一次，之后 PDF 渲染只读订单字段（数据一致性强制规则，不读套系兜底）
+    // 字段来源优先级：b.*（前端显式）→ _snap.details.*（套系编辑页存的 JSON）→ _snap.*（旧的表字段，仅作兜底兼容）
     const _snap = package_snapshot || {};
+    const _snapDetails = (_snap && _snap.details) || {};
     const _pkgName = _snap.name || '';
     const _rawText = ((_snap.raw_policy || '') + ' ' + (_snap.description || ''));
     const _negMatch = _rawText.match(/底片\s*(?:大约|约)?\s*(\d+)/);
     const groom_phone = (b.groom_phone != null && b.groom_phone !== '') ? b.groom_phone : (phones[0] || '');
     const bride_phone = (b.bride_phone != null && b.bride_phone !== '') ? b.bride_phone : (phones[1] || '');
-    const shoot_position = (b.shoot_position || '').trim() || (/多机位|双机位/.test(_pkgName) ? '多机位' : (/单机位/.test(_pkgName) ? '单机位' : ''));
-    const total_negatives = parseInt(b.total_negatives, 10) || (_negMatch ? parseInt(_negMatch[1], 10) : 0);
-    const retouch_count = parseInt(b.retouch_count, 10) || parseInt(_snap.retouch_count, 10) || 0;
-    const album_electronic_num = parseInt(b.album_electronic_num, 10) || 1;
-    const album_price = parseFloat(b.album_price) || 0;
-    const shoot_cost = parseFloat(b.shoot_cost) || parseFloat(_snap.price) || 0;
-    const quick_repair_cost = parseFloat(b.quick_repair_cost) || 0;
+    const shoot_position = (b.shoot_position || '').trim() || (typeof _snapDetails.shoot_position === 'string' && _snapDetails.shoot_position) || (/多机位|双机位/.test(_pkgName) ? '多机位' : (/单机位/.test(_pkgName) ? '单机位' : ''));
+    const total_negatives = parseInt(b.total_negatives, 10) || parseInt(_snapDetails.raw_count, 10) || (_negMatch ? parseInt(_negMatch[1], 10) : 0);
+    const retouch_count = parseInt(b.retouch_count, 10) || parseInt(_snapDetails.retouch_count, 10) || parseInt(_snap.retouch_count, 10) || 0;
+    const album_electronic_num = parseInt(b.album_electronic_num, 10) || parseInt(_snapDetails.album_electronic_num, 10) || 1;
+    const album_price = parseFloat(b.album_price) || parseFloat(_snapDetails.album_price) || 0;
+    const shoot_cost = parseFloat(b.shoot_cost) || parseFloat(_snap.price) || parseFloat(_snapDetails.shoot_cost) || 0;
+    const quick_repair_cost = parseFloat(b.quick_repair_cost) || parseFloat(_snapDetails.quick_repair_cost) || 0;
     const _method = b.deposit_method || 'offline';
     const _channel = normChannel(b.deposit_method, b.deposit_channel);
     const pay_cash = b.pay_cash != null ? (b.pay_cash ? 1 : 0) : (_method === 'offline' && _channel === 'cash' ? 1 : 0);
