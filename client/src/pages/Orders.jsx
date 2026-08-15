@@ -472,8 +472,8 @@ export default function Orders() {
                       <div className="flex items-center gap-1.5 min-w-0">
                         <span className="text-fg text-sm truncate">订单：{o.customer_name || o.order_name || '未命名订单'}</span>
                         {o.channel && (
-                          <span className="shrink-0 inline-flex items-center justify-center text-white text-[11px] font-medium"
-                            style={{ width: 20, height: 20, borderRadius: 4, background: channelColor(o.channel) }}>
+                          <span className="shrink-0 inline-flex items-center justify-center text-[11px] font-medium"
+                            style={{ width: 20, height: 20, borderRadius: 4, ...channelBadgeStyle(o.channel) }}>
                             {o.channel.slice(0, 1)}
                           </span>
                         )}
@@ -580,8 +580,8 @@ export default function Orders() {
                   <span className="text-fg block truncate">
                     订单：{o.customer_name || o.order_name || '未命名订单'}
                     {o.channel && (
-                      <span className="shrink-0 inline-flex items-center justify-center text-white text-[11px] font-medium"
-                        style={{ width: 20, height: 20, borderRadius: 4, background: channelColor(o.channel), marginLeft: 6, verticalAlign: 'middle' }}>
+                      <span className="shrink-0 inline-flex items-center justify-center text-[11px] font-medium"
+                        style={{ width: 20, height: 20, borderRadius: 4, ...channelBadgeStyle(o.channel), marginLeft: 6, verticalAlign: 'middle' }}>
                         {o.channel.slice(0, 1)}
                       </span>
                     )}
@@ -751,15 +751,21 @@ const TYPE_PILLS = [
 const AVATAR_BG = ['#7ECDBB', '#F5A623', '#2DB7F5', '#FF8A8A', '#9B7ED8', '#5A5A5A'];
 // avatarColor / avatarText 已抽到 utils/avatar.js（订单中心 + 待办 Tab 共用，避免同客户名算出不同颜色）
 
-/* 渠道来源徽标：已知渠道用品牌色（校 IMG_7522 渠道卡），未知渠道 hash 取色 */
+/* 渠道来源徽标：已知渠道用品牌色（校 IMG_7522 渠道卡），未知渠道 hash 取色
+   抖音品牌色为深黑 #161823，在 20×20 小徽标 + 白底卡片上几乎看不见"抖"字（与编辑笔图标视觉混淆）。
+   改为白底黑字 + 黑边框：保留品牌调性同时保证小尺寸下的可读性。 */
 const CHANNEL_COLORS = {
-  '抖音': '#161823',         // 抖音品牌深色（与音乐图标同色）
+  '抖音': '#FFFFFF',         // 抖音品牌徽标：白底 + 黑字 + 黑边框（在白底卡片上对比度反转）
   '小红书': '#FF2442',       // 小红书红
   '美团': '#FFB300',         // 美团黄
   '小程序': '#07C160',       // 微信绿
   '客户推荐': '#52C8B6',     // 心形图标青绿（与小程序区分）
   '自然进店': '#5BC0DE',     // 气泡图标天蓝
   '其他来源': '#7B85F4',     // 网格图标蓝紫
+};
+// 渠道 → 徽标前景/边框（仅少数需要差异化，如抖音的白底黑字需要黑边框）
+const CHANNEL_BADGE = {
+  抖音: { color: '#000000', border: '1px solid #161823' },
 };
 const CHANNEL_FALLBACK = ['#FE2C55', '#FF2442', '#FFB300', '#07C160', '#2DB7F5', '#7ECDBB', '#9B7ED8', '#5A5A5A'];
 function channelColor(name) {
@@ -768,6 +774,13 @@ function channelColor(name) {
   let h = 0;
   for (let i = 0; i < String(name).length; i++) h += String(name).charCodeAt(i);
   return CHANNEL_FALLBACK[h % CHANNEL_FALLBACK.length];
+}
+// 渠道 → 徽标前景/边框样式；返回 { background, color, border }，渲染处直接合并
+function channelBadgeStyle(name) {
+  const background = channelColor(name);
+  const custom = CHANNEL_BADGE[name];
+  if (custom) return { background, ...custom };
+  return { background, color: '#fff' };
 }
 
 const IconBack = () => (
@@ -1215,8 +1228,8 @@ function OrderCard({ order, studioLogo, onClick }) {
           <div style={{ fontSize: 15, color: '#1f2329', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{orderName}</div>
           {chName && (
             <span style={{
-              width: 20, height: 20, borderRadius: 4, background: channelColor(chName),
-              color: '#fff', fontSize: 11, fontWeight: 500, flexShrink: 0,
+              width: 20, height: 20, borderRadius: 4, ...channelBadgeStyle(chName),
+              fontSize: 11, fontWeight: 500, flexShrink: 0,
               display: 'inline-flex', alignItems: 'center', justifyContent: 'center'
             }}>{chName.slice(0, 1)}</span>
           )}
