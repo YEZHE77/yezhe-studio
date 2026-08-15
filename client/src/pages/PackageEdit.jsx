@@ -82,6 +82,10 @@ function defaultDetails() {
     consult_reminder: false,
     warm_tips: '',
     tags: [],
+    // 顾客协议扩展字段：toggle 控制启用 + 照片授权协议（默认签署）
+    customer_agreement_enabled: false,
+    signature_required: false,
+    photo_authorization_agreement: '',
     customer_agreement: ''
   };
 }
@@ -656,8 +660,8 @@ export default function PackageEdit() {
             <MRow label="温馨提示" value={d.warm_tips ? d.warm_tips.slice(0, 30) + '...' : ''}
               onClick={() => openSheet('warm', d.warm_tips)} />
             <MRow label="咨询提醒设置" value="" onClick={() => setD({ consult_reminder: !d.consult_reminder })} />
-            <MRow label="顾客协议" value={d.customer_agreement ? '已启用' : '未启用'}
-              onClick={() => openSheet('agreement', d.customer_agreement)} />
+            <MRow label="顾客协议" value={d.customer_agreement_enabled ? '服务协议已启用' : (d.customer_agreement ? '已填写' : '未启用')}
+              onClick={() => nav('/packages/' + id + '/agreement/edit')} />
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', minHeight: 50, padding: '0 16px', borderBottom: '1px solid ' + MBORDER }}>
               <span style={{ fontSize: 15, color: '#333' }}>对外公开</span>
               <MSwitch checked={d.public_all_visible} onChange={(v) => setD({ public_all_visible: v })} />

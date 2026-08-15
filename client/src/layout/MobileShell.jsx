@@ -35,6 +35,7 @@ const MessageCenter = React.lazy(() => import('../pages/MessageCenter.jsx'));
 const PhotoPackages = React.lazy(() => import('../pages/PhotoPackages.jsx'));
 const ContractTemplates = React.lazy(() => import('../pages/ContractTemplates.jsx'));
 const CustomerAgreement = React.lazy(() => import('../pages/CustomerAgreement.jsx'));
+const CustomerAgreementEdit = React.lazy(() => import('../pages/CustomerAgreementEdit.jsx'));
 // C 端微官网（H5 客户首页，与小程序 pages/index 结构一致）——工作台「小程序」入口预览
 const Home = React.lazy(() => import('../pages/Home.jsx'));
 
@@ -258,6 +259,7 @@ export default function MobileShell() {
                 <Route path="/packages/new" element={<PackageEdit />} />
                 <Route path="/packages/:id" element={<PackagePreview />} />
                 <Route path="/packages/:id/agreement" element={<CustomerAgreement />} />
+                <Route path="/packages/:id/agreement/edit" element={<CustomerAgreementEdit />} />
                 <Route path="/packages/:id/edit" element={<PackageEdit />} />
                 <Route path="/schedule" element={<Schedule />} />
                 <Route path="/schedule/new" element={<ScheduleNewOrder />} />
