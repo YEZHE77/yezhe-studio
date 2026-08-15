@@ -974,7 +974,7 @@ export default function Schedule() {
       {err && <div className="fixed bottom-4 left-1/2 -translate-x-1/2 bg-red-500 text-white text-sm px-4 py-2 rounded shadow-lg z-50">{err}</div>}
 
       {dlg && <ScheduleDialog dlg={dlg} personnel={personnel} onClose={() => setDlg(null)} onSaved={() => { setDlg(null); load(); }} />}
-      {orderDlg && <OrderDialog orderDlg={orderDlg} personnel={personnel} onClose={() => setOrderDlg(null)} onSaved={() => { setOrderDlg(null); load(); }} />}
+      {orderDlg && <OrderDialog orderDlg={orderDlg} personnel={personnel} onClose={() => setOrderDlg(null)} onSaved={() => { setOrderDlg(null); load(); }} mode="page" topTitle="新建档期" />}
       {booking && <BookingDialog onClose={() => setBooking(null)} />}
       {share && (
         <div className="fixed inset-0 flex items-center justify-center z-50 p-4" style={{ background: 'rgba(0,0,0,0.4)' }}>
@@ -1153,7 +1153,6 @@ function toast(msg) {
 
 /* ============ 编辑档期弹窗（保留原档期业务逻辑，不改动） ============ */
 function ScheduleDialog({ dlg, personnel, onClose, onSaved }) {
-  const isMobile = (window.innerWidth || 1200) < 768; // 手机端：贴底抽屉形态
   const [date, setDate] = useState(dlg.date || '');
   const [chooseSession, setChooseSession] = useState((dlg.periods || []).length > 0);
   const [dateTbd, setDateTbd] = useState(!!dlg.date_tbd);
@@ -1191,14 +1190,22 @@ function ScheduleDialog({ dlg, personnel, onClose, onSaved }) {
   };
 
   return (
-    <div className="fixed inset-0 flex justify-center z-50" style={{ background: 'rgba(0,0,0,0.4)', alignItems: isMobile ? 'flex-end' : 'center', padding: isMobile ? 0 : 16 }}>
-      <div onClick={(e) => e.stopPropagation()} style={{ width: '100%', maxWidth: 560, maxHeight: isMobile ? '94dvh' : '88vh', background: '#F7F7F7', borderRadius: isMobile ? '16px 16px 0 0' : 6, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-        <div className="flex items-center justify-between shrink-0" style={{ padding: '18px 20px', borderBottom: '1px solid #EEEEEE' }}>
-          <div style={{ fontSize: 15, color: '#333333' }}>{dlg.id ? '编辑档期' : '添加档期'}</div>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: 18, lineHeight: 1, color: '#999999', cursor: 'pointer', padding: 2 }}>×</button>
-        </div>
+    <div className="min-h-screen flex flex-col" style={{ background: '#F7F7F7' }}>
+      {/* 标题栏：左侧返回 + 居中标题 + 右侧保存（与新增订单全屏页一致） */}
+      <div className="relative flex items-center justify-center px-5 py-4 border-b shrink-0" style={{ borderColor: '#EEEEEE', background: '#fff' }}>
+        <button onClick={onClose} aria-label="返回"
+          className="absolute left-4 top-1/2 -translate-y-1/2 w-8 h-8 rounded-md flex items-center justify-center"
+          style={{ color: '#666666', background: 'none', border: 'none', cursor: 'pointer' }}>
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6" /></svg>
+        </button>
+        <div className="text-base" style={{ color: '#333333' }}>{dlg.id ? '编辑档期' : '添加档期'}</div>
+        <button onClick={save} className="absolute right-4 top-1/2 -translate-y-1/2 text-sm"
+          style={{ color: BLUE, background: 'none', border: 'none', padding: '4px 8px', cursor: 'pointer' }}>
+          保存
+        </button>
+      </div>
 
-        <div style={{ flex: 1, overflowY: 'auto', padding: 16 }}>
+      <div className="flex-1 overflow-y-auto" style={{ padding: 16 }}>
           {/* 拍摄日期 */}
           <div style={{ background: '#fff', border: '1px solid #EEEEEE', borderRadius: 6, padding: 16, marginBottom: 12 }}>
             <label style={{ display: 'block', fontSize: 13, color: '#666666', marginBottom: 8 }}>拍摄日期</label>
@@ -1273,12 +1280,6 @@ function ScheduleDialog({ dlg, personnel, onClose, onSaved }) {
 
           {localErr && <div style={{ fontSize: 12, color: '#F53F3F', marginTop: 8 }}>{localErr}</div>}
         </div>
-
-        <div className="flex justify-end shrink-0" style={{ gap: 10, padding: '14px 20px', borderTop: '1px solid #EEEEEE' }}>
-          <button onClick={onClose} style={{ padding: '8px 20px', borderRadius: 4, border: '1px solid #D8D8D8', background: '#fff', color: '#666666', fontSize: 13, cursor: 'pointer' }}>取消</button>
-          <button onClick={save} style={{ padding: '8px 20px', borderRadius: 4, border: 'none', background: BLUE, color: '#fff', fontSize: 13, cursor: 'pointer' }}>确认</button>
-        </div>
-      </div>
     </div>
   );
 }
