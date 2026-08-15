@@ -659,6 +659,36 @@ export async function initSchema() {
   ];
   for (const [col, def] of APPOINTMENT_NEW_COLUMNS) await ensureColumn('appointments', col, def);
 
+  // 同步顾客协议模板（2026-08-15）：清空所有套系/订单快照的自定义 customer_agreement，统一回落到前端默认模板
+  try {
+    const rows = await query('SELECT id, details FROM packages');
+    for (const r of rows) {
+      let d = {};
+      if (r.details) { try { d = JSON.parse(r.details); } catch { d = {}; } }
+      if (d && typeof d === 'object' && !Array.isArray(d) && d.customer_agreement) {
+        d.customer_agreement = '';
+        await run('UPDATE packages SET details = ? WHERE id = ?', [JSON.stringify(d), r.id]);
+      }
+    }
+  } catch (e) { console.error('[schema] 同步顾客协议(packages.details)失败', e); }
+  // 订单快照里的旧协议一并清空，使打印单据统一走新默认模板
+  try {
+    const orders = await query('SELECT id, package_snapshot FROM orders');
+    for (const o of orders) {
+      let snap = {};
+      if (o.package_snapshot) { try { snap = JSON.parse(o.package_snapshot); } catch { snap = {}; } }
+      const sd = snap && typeof snap === 'object' && snap.details && typeof snap.details === 'object' ? snap.details : null;
+      if (sd && sd.customer_agreement) {
+        sd.customer_agreement = '';
+        await run('UPDATE orders SET package_snapshot = ? WHERE id = ?', [JSON.stringify(snap), o.id]);
+      }
+    }
+  } catch (e) { console.error('[schema] 同步顾客协议(orders.package_snapshot)失败', e); }
+  // 旧版顶层 customer_agreement 列（若存在）一并清空
+  try {
+    await run(`UPDATE packages SET customer_agreement = '' WHERE customer_agreement IS NOT NULL AND customer_agreement <> ''`);
+  } catch (e) { /* 列不存在则忽略 */ }
+
   console.log('[schema] 表结构已就绪');
 }
 
