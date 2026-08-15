@@ -2709,7 +2709,7 @@ export default function OrderDetail() {
           {/* 服务详情（订单套系快照；空时用官方默认模板） */}
           <div style={{ marginBottom: 20 }}>
             <div style={{ fontSize: 16, fontWeight: 400, borderBottom: '1px solid #ccc', paddingBottom: 6, marginBottom: 10 }}>服务详情</div>
-            <div style={{ fontSize: 13, lineHeight: 1.7, color: '#222', whiteSpace: 'pre-wrap' }}>
+            <div style={{ fontSize: 13, lineHeight: 1.7, color: '#222', whiteSpace: 'pre-wrap', textIndent: '2em' }}>
               {((pkgInfo && pkgInfo.details && pkgInfo.details.service_detail_text) || DEFAULT_SERVICE_DETAIL)}
             </div>
           </div>
@@ -2728,7 +2728,7 @@ export default function OrderDetail() {
                   {paras.map((p, i) => {
                     const isHeading = /^[一二三四五六七八九十]+、/.test(p);
                     return (
-                      <div key={i} style={{ marginBottom: isHeading ? 8 : 4, fontWeight: isHeading ? 400 : 300 }}>{p}</div>
+                      <div key={i} style={{ marginBottom: isHeading ? 8 : 4, fontWeight: isHeading ? 400 : 300, textIndent: isHeading ? 0 : '2em' }}>{p}</div>
                     );
                   })}
                 </div>
@@ -2750,7 +2750,7 @@ export default function OrderDetail() {
                   {paras.map((p, i) => {
                     const isHeading = /^[一二三四五六七八九十]+、/.test(p);
                     return (
-                      <div key={i} style={{ marginBottom: isHeading ? 8 : 4, fontWeight: isHeading ? 400 : 300 }}>{p}</div>
+                      <div key={i} style={{ marginBottom: isHeading ? 8 : 4, fontWeight: isHeading ? 400 : 300, textIndent: isHeading ? 0 : '2em' }}>{p}</div>
                     );
                   })}
                 </div>
@@ -2771,7 +2771,7 @@ export default function OrderDetail() {
                 </div>
                 <div style={{ fontSize: 13, lineHeight: 1.7, color: '#222' }}>
                   {paras.map((p, i) => (
-                    <div key={i} style={{ marginBottom: i < paras.length - 1 ? 6 : 0 }}>{p}</div>
+                    <div key={i} style={{ marginBottom: i < paras.length - 1 ? 6 : 0, textIndent: '2em' }}>{p}</div>
                   ))}
                 </div>
               </div>
