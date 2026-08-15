@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import http, { img } from '../api.js';
+import { POLICY_TEXTS, POLICY_SUMMARY, normalizePolicy } from '../utils/refundPolicy.js';
 
 /* ==========================================================================
    套系预览页（1:1 复刻小程序风格）
@@ -84,6 +85,7 @@ export default function PackagePreview() {
   const [serviceModalOpen, setServiceModalOpen] = useState(false);
   const [serviceDetailOpen, setServiceDetailOpen] = useState(false);
   const [refundOpen, setRefundOpen] = useState(false);
+  const [refundDetailOpen, setRefundDetailOpen] = useState(false);
   const [agreementOpen, setAgreementOpen] = useState(false);
   const [shareModalOpen, setShareModalOpen] = useState(false);
   const [shareData, setShareData] = useState(null);
@@ -288,6 +290,39 @@ export default function PackagePreview() {
           </div>
         </div>
       ) : null}
+
+      {/* 退订政策（hide_refund=false 时显示；与套系编辑退订政策编辑页共用文案） */}
+      {!d.hide_refund && (() => {
+        const policy = normalizePolicy(d.refund_policy);
+        return (
+          <div style={{ padding: '16px 16px 16px', background: '#fff', borderTop: '1px solid ' + MBORDER }}>
+            <div style={{ fontSize: 15, fontWeight: 600, color: '#333', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ width: 3, height: 14, background: MRED, borderRadius: 2, display: 'inline-block' }} />
+              须知：
+            </div>
+            <div style={{ fontSize: 14, color: '#555', lineHeight: 1.8 }}>
+              <span>退订政策 {policy} · {POLICY_SUMMARY[policy]}</span>
+              {!refundDetailOpen && (
+                <button type="button" onClick={() => setRefundDetailOpen(true)}
+                  style={{ display: 'block', marginTop: 8, background: 'none', border: 'none', color: MGREEN, fontSize: 13, cursor: 'pointer', textDecoration: 'underline', padding: 0 }}>
+                  查看详情
+                </button>
+              )}
+              {refundDetailOpen && (
+                <div style={{ marginTop: 10 }}>
+                  {POLICY_TEXTS[policy].map((line, i) => (
+                    <div key={i} style={{ marginBottom: i < POLICY_TEXTS[policy].length - 1 ? 6 : 0 }}>{line}</div>
+                  ))}
+                  <button type="button" onClick={() => setRefundDetailOpen(false)}
+                    style={{ display: 'block', marginTop: 10, background: 'none', border: 'none', color: MGREEN, fontSize: 13, cursor: 'pointer', textDecoration: 'underline', padding: 0 }}>
+                    收起
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })()}
 
 
       {/* 套系服务详情全屏页（校 IMG_7532） */}

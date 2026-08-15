@@ -59,6 +59,7 @@ const AppointmentForm = React.lazy(() => import('./pages/AppointmentForm.jsx'));
 const ContractTemplates = React.lazy(() => import('./pages/ContractTemplates.jsx'));
 const CustomerAgreement = React.lazy(() => import('./pages/CustomerAgreement.jsx'));
 const CustomerAgreementEdit = React.lazy(() => import('./pages/CustomerAgreementEdit.jsx'));
+const RefundPolicyEdit = React.lazy(() => import('./pages/RefundPolicyEdit.jsx'));
 // 客户前端（公开，无需登录）：首页 / 我的 / 公开作品相册
 const Home = React.lazy(() => import('./pages/Home.jsx'));
 const My = React.lazy(() => import('./pages/My.jsx'));
@@ -100,6 +101,7 @@ function AppShell() {
                 <Route path="/packages/:id" element={<PackagePreview />} />
                 <Route path="/packages/:id/agreement" element={<CustomerAgreement />} />
                 <Route path="/packages/:id/agreement/edit" element={<CustomerAgreementEdit />} />
+                <Route path="/packages/:id/refund/edit" element={<RefundPolicyEdit />} />
                 <Route path="/packages/:id/edit" element={<PackageEdit />} />
                 <Route path="/schedule" element={<Schedule />} />
                 <Route path="/schedule/new" element={<ScheduleNewOrder />} />

@@ -713,8 +713,8 @@ export default function PackageEdit() {
               </button>
               <ChevronRight />
             </button>
-            {/* 退订政策 */}
-            <button type="button" onClick={() => openSheet('refund', d.refund_policy)}
+            {/* 退订政策：跳转独立编辑页（/packages/:id/refund/edit） */}
+            <button type="button" onClick={() => nav('/packages/' + id + '/refund/edit')}
               style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', minHeight: 50, padding: '8px 16px', width: '100%', background: 'none', border: 'none', textAlign: 'left', borderBottom: '1px solid ' + MBORDER }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%' }}>
                 <span style={{ fontSize: 15, color: '#333', flex: 1 }}>退订政策</span>
