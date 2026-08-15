@@ -491,6 +491,8 @@ export default function PackageEdit() {
         name: form.name, price: parseFloat(form.price) || 0, deposit: parseFloat(form.deposit) || 0,
         category_id: form.category_id || null, cover_url: coverUrl, description: form.description || '',
         status: form.status, addons: form.addons || [], marketing: form.marketing || {}, specs: form.specs || [],
+        // 同步 details 关键字段到独立列（数据一致性：避免 packages.retouch_count 列长期为 0，其他模块读列拿不到）
+        retouch_count: parseInt(d.retouch_count, 10) || 0,
         questionnaire: Array.isArray(d.questionnaire) ? JSON.stringify(d.questionnaire) : '',
         details: d
       };

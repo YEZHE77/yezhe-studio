@@ -427,13 +427,18 @@ router.post('/', authRequired, requireRole(['admin', 'photographer', 'finance'])
     const _negMatch = _rawText.match(/底片\s*(?:大约|约)?\s*(\d+)/);
     const groom_phone = (b.groom_phone != null && b.groom_phone !== '') ? b.groom_phone : (phones[0] || '');
     const bride_phone = (b.bride_phone != null && b.bride_phone !== '') ? b.bride_phone : (phones[1] || '');
-    const shoot_position = (b.shoot_position || '').trim() || (typeof _snapDetails.shoot_position === 'string' && _snapDetails.shoot_position) || (/多机位|双机位/.test(_pkgName) ? '多机位' : (/单机位/.test(_pkgName) ? '单机位' : ''));
+    // 机位：details.camera_count（单机位/双机位/三机位/多机位）→ 订单 shoot_position（单机位/多机位 两档）；双机位/三机位归一为「多机位」
+    const _camera = (typeof _snapDetails.camera_count === 'string' && _snapDetails.camera_count) || '';
+    const shoot_position = (b.shoot_position || '').trim()
+      || (_camera ? (/双机位|三机位|多机位/.test(_camera) ? '多机位' : '单机位')
+        : (/多机位|双机位/.test(_pkgName) ? '多机位' : (/单机位/.test(_pkgName) ? '单机位' : '')));
     const total_negatives = parseInt(b.total_negatives, 10) || parseInt(_snapDetails.raw_count, 10) || (_negMatch ? parseInt(_negMatch[1], 10) : 0);
     const retouch_count = parseInt(b.retouch_count, 10) || parseInt(_snapDetails.retouch_count, 10) || parseInt(_snap.retouch_count, 10) || 0;
-    const album_electronic_num = parseInt(b.album_electronic_num, 10) || parseInt(_snapDetails.album_electronic_num, 10) || 1;
-    const album_price = parseFloat(b.album_price) || parseFloat(_snapDetails.album_price) || 0;
-    const shoot_cost = parseFloat(b.shoot_cost) || parseFloat(_snap.price) || parseFloat(_snapDetails.shoot_cost) || 0;
-    const quick_repair_cost = parseFloat(b.quick_repair_cost) || parseFloat(_snapDetails.quick_repair_cost) || 0;
+    // 电子相册/相册单价/快修费：套系编辑页无对应独立字段，订单默认（1 本 / 0 / 0）
+    const album_electronic_num = parseInt(b.album_electronic_num, 10) || 1;
+    const album_price = parseFloat(b.album_price) || 0;
+    const shoot_cost = parseFloat(b.shoot_cost) || parseFloat(_snap.price) || 0;
+    const quick_repair_cost = parseFloat(b.quick_repair_cost) || 0;
     const _method = b.deposit_method || 'offline';
     const _channel = normChannel(b.deposit_method, b.deposit_channel);
     const pay_cash = b.pay_cash != null ? (b.pay_cash ? 1 : 0) : (_method === 'offline' && _channel === 'cash' ? 1 : 0);
