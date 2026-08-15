@@ -2642,14 +2642,14 @@ export default function OrderDetail() {
                   <td style={{ padding: '4px 8px' }}>{pkgInfo?.details?.album_provide === 'provide' ? '是' : pkgInfo?.details?.album_provide === 'extra' ? '相册另购' : '否'}</td>
                 </tr>
                 <tr>
-                  <td style={{ padding: '4px 8px', color: '#555', verticalAlign: 'top' }}>交付时间</td>
-                  <td style={{ padding: '4px 8px', whiteSpace: 'pre-wrap', wordBreak: 'break-word', lineHeight: 1.6 }} colSpan={3}>{pkgInfo?.details?.delivery_time || '—'}</td>
-                </tr>
-                <tr>
                   <td style={{ padding: '4px 8px', color: '#555' }}>拍摄费</td>
                   <td style={{ padding: '4px 8px' }}>{Number(detail.shoot_cost) > 0 ? '¥' + Number(detail.shoot_cost).toLocaleString() : '—'}</td>
                   <td style={{ padding: '4px 8px', color: '#555' }}>定金</td>
                   <td style={{ padding: '4px 8px' }}>{Number(detail.deposit) > 0 ? '¥' + Number(detail.deposit).toLocaleString() : '—'}</td>
+                </tr>
+                <tr>
+                  <td style={{ padding: '4px 8px', color: '#555', verticalAlign: 'top' }}>交付时间</td>
+                  <td style={{ padding: '4px 8px', whiteSpace: 'pre-wrap', wordBreak: 'break-word', lineHeight: 1.6 }} colSpan={3}>{pkgInfo?.details?.delivery_time || '—'}</td>
                 </tr>
                 <tr>
                   <td style={{ padding: '4px 8px', color: '#555', verticalAlign: 'top' }}>交付备注</td>
