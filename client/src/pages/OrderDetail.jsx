@@ -1310,13 +1310,11 @@ export default function OrderDetail() {
           <div style={{ margin: '12px 12px 0', background: '#fff', borderRadius: 8, overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
             {(() => {
               const extraFee = pkgInfo?.details?.extra_photo_fee || pkgInfo?.extra_photo_fee || '';
-              const coupon = pkgInfo?.marketing?.coupon || '';
               const extraList = Array.isArray(detail?.extra_items) ? detail.extra_items : [];
               const extraSum = extraList.reduce((s, x) => s + (Number(x.amount) || 0), 0);
               const rows = [
                 { k: '可选精修片', v: pkgInfo?.retouch_count ? `${pkgInfo.retouch_count}张` : '—', chevron: true },
                 { k: '加片费', v: extraFee ? `¥ ${extraFee}/张` : '—', chevron: true },
-                { k: '加片优惠', v: coupon || '无', chevron: true },
                 { k: '其他消费', v: extraList.length ? `¥${extraSum.toLocaleString()}` : '无', chevron: true }
               ];
               return rows.map((r, i) => (
