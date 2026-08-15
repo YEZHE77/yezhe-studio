@@ -2569,9 +2569,14 @@ export default function OrderDetail() {
             body * { visibility: hidden; }
             .print-order-sheet, .print-order-sheet * { visibility: visible; }
             .print-order-sheet { position: absolute !important; left: 0 !important; top: 0 !important; width: 100% !important; padding: 20mm 15mm !important; }
+            .print-sheet-header { position: fixed !important; top: 0 !important; left: 0 !important; right: 0 !important; }
             @page { size: A4; margin: 0; }
           }
         `}</style>
+        {/* 每页页眉（打印时 position:fixed 在每页顶部重复） */}
+        <div className="print-sheet-header" style={{ textAlign: 'center', fontSize: 12, color: '#555', letterSpacing: 2, padding: '5mm 0 3mm', borderBottom: '1px solid #ddd' }}>
+          拍摄服务合同
+        </div>
         <div style={{ maxWidth: 700, margin: '0 auto', fontFamily: 'SimSun, STSong, serif', fontSize: 14, lineHeight: 1.8, color: '#222' }}>
           {/* 标题 */}
           <div style={{ textAlign: 'center', borderBottom: '2px solid #000', paddingBottom: 16, marginBottom: 20 }}>
