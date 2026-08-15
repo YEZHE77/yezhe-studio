@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import http from '../api.js';
 import { useViewState } from '../tabMemory.js';
-import OrderDialog from '../components/OrderDialog.jsx';
 
 const WEEK = ['日', '一', '二', '三', '四', '五', '六'];
 const WEEK_FULL = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
@@ -97,7 +96,6 @@ export default function Schedule() {
   const [advOpen, setAdvOpen] = useState(false);
   const [accOpen, setAccOpen] = useState(false);
   const [dlg, setDlg] = useState(null);
-  const [orderDlg, setOrderDlg] = useState(null);
   const [booking, setBooking] = useState(null);
   const [share, setShare] = useState(null);
   // 手机端订单卡底部操作面板（选中档期行）
@@ -162,7 +160,7 @@ export default function Schedule() {
     clearTimeout(hoverTimerRef.current);
     clearTimeout(fadeTimerRef.current);
     setHoverTooltip(null);
-  }, [state.month, dlg, orderDlg, booking, share]);
+  }, [state.month, dlg, booking, share]);
 
   // Tooltip 淡出结束（visible=false 持续）后从 DOM 移除
   useEffect(() => {
@@ -184,12 +182,9 @@ export default function Schedule() {
     if (location.state?.openNew) {
       const date = selDate || todayStr;
       setErr('');
-      if (isMobileView) {
-        nav('/schedule/new', { state: { date } });
-      } else {
-        setOrderDlg({ date });
-        nav(location.pathname, { replace: true, state: {} });
-      }
+      // 桌面端与移动端统一：都走 /schedule/new 路由 + ScheduleNewOrder 组件（与新建订单页字段/校验/保存逻辑完全一致）
+      nav('/schedule/new', { state: { date } });
+      return;
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.state]);
@@ -239,8 +234,8 @@ export default function Schedule() {
     else if (day) date = `${y}-${pad(m)}-${pad(day)}`;
     else date = selDate || todayStr;
     setErr('');
-    if (isMobileView) { nav('/schedule/new', { state: { date } }); return; }
-    setOrderDlg({ date });
+    // 桌面端与移动端统一：都走 /schedule/new 路由 + ScheduleNewOrder 组件（与新建订单页字段/校验/保存逻辑完全一致）
+    nav('/schedule/new', { state: { date } });
   };
   const openEdit = (row) => {
     setErr('');
@@ -974,7 +969,7 @@ export default function Schedule() {
       {err && <div className="fixed bottom-4 left-1/2 -translate-x-1/2 bg-red-500 text-white text-sm px-4 py-2 rounded shadow-lg z-50">{err}</div>}
 
       {dlg && <ScheduleDialog dlg={dlg} personnel={personnel} onClose={() => setDlg(null)} onSaved={() => { setDlg(null); load(); }} />}
-      {orderDlg && <OrderDialog orderDlg={orderDlg} personnel={personnel} onClose={() => setOrderDlg(null)} onSaved={() => { setOrderDlg(null); load(); }} mode="page" topTitle="新建档期" />}
+      {/* 「+新建档期」走路由 /schedule/new（与移动端一致，复用 ScheduleNewOrder 组件）；删除桌面端直接调 OrderDialog 的旧入口 */}
       {booking && <BookingDialog onClose={() => setBooking(null)} />}
       {share && (
         <div className="fixed inset-0 flex items-center justify-center z-50 p-4" style={{ background: 'rgba(0,0,0,0.4)' }}>
