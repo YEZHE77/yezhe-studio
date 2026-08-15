@@ -2349,31 +2349,6 @@ export default function OrderDetail() {
             </table>
           </div>
 
-          {/* 订单信息 */}
-          <div style={{ marginBottom: 20 }}>
-            <div style={{ fontSize: 16, fontWeight: 400, borderBottom: '1px solid #ccc', paddingBottom: 6, marginBottom: 10 }}>订单信息</div>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
-              <tbody>
-                <tr>
-                  <td style={{ padding: '4px 8px', width: 120, color: '#555' }}>订单名称</td>
-                  <td style={{ padding: '4px 8px' }}>{detail.order_name || '—'}</td>
-                  <td style={{ padding: '4px 8px', width: 100, color: '#555' }}>拍摄日期</td>
-                  <td style={{ padding: '4px 8px' }}>{tbd ? '日期待定' : (detail.shoot_date || '—')}</td>
-                </tr>
-                <tr>
-                  <td style={{ padding: '4px 8px', color: '#555' }}>渠道来源</td>
-                  <td style={{ padding: '4px 8px' }}>{detail.channel || '—'}</td>
-                  <td style={{ padding: '4px 8px', color: '#555' }}>订单状态</td>
-                  <td style={{ padding: '4px 8px' }}>{STATUS_LABEL[detail.status] || detail.status}</td>
-                </tr>
-                <tr>
-                  <td style={{ padding: '4px 8px', color: '#555' }}>执行人</td>
-                  <td style={{ padding: '4px 8px' }} colSpan={3}>{execs.length ? execs.map((x) => x.name).join('、') : (detail.executor || '—')}</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-
           {/* 套系详情 */}
           {pkgInfo && (
             <div style={{ marginBottom: 20 }}>
