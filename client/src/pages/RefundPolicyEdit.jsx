@@ -1,15 +1,17 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import http from '../api.js';
-import { POLICY_TEXTS, normalizePolicy } from '../utils/refundPolicy.js';
+import { POLICY_TEXTS, FIELD_LAX, FIELD_STRICT, normalizePolicy, getRefundText, getRefundParagraphs } from '../utils/refundPolicy.js';
 
 /* ============================================================
    退订政策编辑页（B 端管理员，从套系编辑 MRow 跳转进入）
    —— 路由 /packages/:id/refund/edit
    —— 字段：
-       hide_refund      是否展示退订政策（toggle：false=展示，true=隐藏；默认 false）
-       refund_policy    '宽松' | '严格'（互斥 radio；默认 '严格'）
-   —— 切换交互：toggle/radio 立即乐观更新 + 500ms 防抖 PUT
+       hide_refund                  是否展示退订政策（toggle）
+       refund_policy                '宽松' | '严格'（互斥 radio）
+       refund_policy_lax_text       宽松文案（textarea 多行，\n 分段）
+       refund_policy_strict_text    严格文案（同上）
+   —— 切换交互：toggle/radio 立即乐观更新+防抖；文案点「编辑」进 textarea，点「保存」PUT
    ============================================================ */
 
 const MRED = '#FF4D4F';
@@ -107,6 +109,31 @@ export default function RefundPolicyEdit() {
   const toggleVisible = (v) => scheduleSave({ hide_refund: v });
   const selectPolicy = (v) => { if (v !== policy) scheduleSave({ refund_policy: v }); };
 
+  // 文案编辑：当前选中类型的可编辑 textarea，独立 tracking，切换 policy 时重置
+  const currentText = getRefundText(d, policy);
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(currentText);
+  const [editingBusy, setEditingBusy] = useState(false);
+  useEffect(() => { setDraft(currentText); setEditing(false); }, [policy]); // 外部 policy 切换时同步
+
+  const openEdit = () => { setDraft(currentText); setEditing(true); };
+  const cancelEdit = () => { setDraft(currentText); setEditing(false); };
+  const saveEdit = async () => {
+    if (editingBusy) return;
+    const key = policy === '宽松' ? FIELD_LAX : FIELD_STRICT;
+    setEditingBusy(true);
+    try {
+      await http.put('/api/packages/' + id, { details: { ...d, [key]: draft } });
+      setPkg((p) => p ? { ...p, details: { ...p.details, [key]: draft } } : p);
+      setEditing(false);
+      flash('已保存');
+    } catch (e) {
+      flash('保存失败');
+    } finally {
+      setEditingBusy(false);
+    }
+  };
+
   const handleDone = () => { nav(-1); };
 
   return (
@@ -163,14 +190,52 @@ export default function RefundPolicyEdit() {
             );
           })}
         </div>
-        {/* 当前选中类型的完整说明 */}
+        {/* 当前选中类型的文案（可编辑：点编辑进 textarea） */}
         <div style={{ padding: '14px 16px' }}>
-          <div style={{ fontSize: 15, color: MTEXT, fontWeight: 600, marginBottom: 10 }}>{policy}</div>
-          <div style={{ fontSize: 13, color: '#555', lineHeight: 1.8 }}>
-            {POLICY_TEXTS[policy].map((line, i) => (
-              <div key={i} style={{ marginBottom: i < POLICY_TEXTS[policy].length - 1 ? 6 : 0 }}>{line}</div>
-            ))}
+          <div style={{ display: 'flex', alignItems: 'center', marginBottom: 10 }}>
+            <span style={{ fontSize: 15, color: MTEXT, fontWeight: 600, flex: 1 }}>{policy}</span>
+            {!editing && (
+              <button type="button" onClick={openEdit}
+                style={{ background: 'none', border: 'none', color: '#07C160', fontSize: 13, cursor: 'pointer' }}>
+                编辑
+              </button>
+            )}
           </div>
+          {editing ? (
+            <div>
+              <textarea
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                placeholder="请填写退订条款，每行一段"
+                rows={5}
+                style={{
+                  width: '100%', resize: 'vertical', fontSize: 13, lineHeight: 1.7,
+                  padding: '10px 12px', borderRadius: 8,
+                  border: '1px solid #E5E5E5', background: '#FAFAFA',
+                  boxSizing: 'border-box', color: MTEXT, outline: 'none', fontFamily: 'inherit'
+                }}
+              />
+              <div style={{ display: 'flex', gap: 10, marginTop: 10 }}>
+                <button type="button" onClick={cancelEdit} disabled={editingBusy}
+                  style={{ flex: 1, padding: '10px 0', borderRadius: 8, border: '1px solid #E5E5E5', background: '#fff', fontSize: 14, color: MGRAY, cursor: editingBusy ? 'not-allowed' : 'pointer' }}>
+                  取消
+                </button>
+                <button type="button" onClick={saveEdit} disabled={editingBusy}
+                  style={{ flex: 1, padding: '10px 0', borderRadius: 8, border: 'none', background: MRED, color: '#fff', fontSize: 14, fontWeight: 500, cursor: editingBusy ? 'not-allowed' : 'pointer', opacity: editingBusy ? 0.6 : 1 }}>
+                  {editingBusy ? '保存中…' : '保存'}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div style={{ fontSize: 13, color: '#555', lineHeight: 1.8 }}>
+              {getRefundParagraphs(d, policy).map((line, i, arr) => (
+                <div key={i} style={{ marginBottom: i < arr.length - 1 ? 6 : 0 }}>{line}</div>
+              ))}
+              {getRefundParagraphs(d, policy).length === 0 && (
+                <div style={{ color: MGRAY, fontSize: 13 }}>未填写，点击右上「编辑」添加条款</div>
+              )}
+            </div>
+          )}
         </div>
       </div>
 

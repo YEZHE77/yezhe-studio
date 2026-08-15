@@ -86,7 +86,10 @@ function defaultDetails() {
     customer_agreement_enabled: false,
     signature_required: false,
     photo_authorization_agreement: '',
-    customer_agreement: ''
+    customer_agreement: '',
+    // 退订政策文案（宽松/严格两个独立字段，留空时用 utils/refundPolicy.js 的默认）
+    refund_policy_lax_text: '',
+    refund_policy_strict_text: ''
   };
 }
 

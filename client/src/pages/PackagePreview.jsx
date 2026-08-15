@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import http, { img } from '../api.js';
-import { POLICY_TEXTS, POLICY_SUMMARY, normalizePolicy } from '../utils/refundPolicy.js';
+import { getRefundText, getRefundSummary, getRefundParagraphs, normalizePolicy } from '../utils/refundPolicy.js';
 
 /* ==========================================================================
    套系预览页（1:1 复刻小程序风格）
@@ -301,7 +301,7 @@ export default function PackagePreview() {
               须知：
             </div>
             <div style={{ fontSize: 14, color: '#555', lineHeight: 1.8 }}>
-              <span>退订政策 {policy} · {POLICY_SUMMARY[policy]}</span>
+              <span>退订政策 {policy} · {getRefundSummary(d, policy)}</span>
               {!refundDetailOpen && (
                 <button type="button" onClick={() => setRefundDetailOpen(true)}
                   style={{ display: 'block', marginTop: 8, background: 'none', border: 'none', color: MGREEN, fontSize: 13, cursor: 'pointer', textDecoration: 'underline', padding: 0 }}>
@@ -310,9 +310,12 @@ export default function PackagePreview() {
               )}
               {refundDetailOpen && (
                 <div style={{ marginTop: 10 }}>
-                  {POLICY_TEXTS[policy].map((line, i) => (
-                    <div key={i} style={{ marginBottom: i < POLICY_TEXTS[policy].length - 1 ? 6 : 0 }}>{line}</div>
-                  ))}
+                  {(() => {
+                    const paras = getRefundParagraphs(d, policy);
+                    return paras.length ? paras.map((line, i) => (
+                      <div key={i} style={{ marginBottom: i < paras.length - 1 ? 6 : 0 }}>{line}</div>
+                    )) : <div style={{ color: MGRAY, fontSize: 13 }}>未填写</div>;
+                  })()}
                   <button type="button" onClick={() => setRefundDetailOpen(false)}
                     style={{ display: 'block', marginTop: 10, background: 'none', border: 'none', color: MGREEN, fontSize: 13, cursor: 'pointer', textDecoration: 'underline', padding: 0 }}>
                     收起
