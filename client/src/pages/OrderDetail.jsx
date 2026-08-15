@@ -2778,26 +2778,6 @@ export default function OrderDetail() {
             )}
           </div>
 
-          {/* 退订政策：按订单创建时的套系快照展示（订单保存后独立原则，避免被后续套系修改污染；空时用官方模板兜底） */}
-          {(() => {
-            const sd = (pkgInfo && pkgInfo.details) || {};
-            const policy = normalizePolicy(sd.refund_policy);
-            const paras = getRefundParagraphs(sd, policy);
-            if (!paras.length) return null;
-            return (
-              <div style={{ marginBottom: 20 }}>
-                <div style={{ fontSize: 16, fontWeight: 400, borderBottom: '1px solid #ccc', paddingBottom: 6, marginBottom: 10 }}>
-                  退订政策（{policy}）
-                </div>
-                <div style={{ fontSize: 13, lineHeight: 1.7, color: '#222' }}>
-                  {paras.map((p, i) => (
-                    <div key={i} style={{ marginBottom: i < paras.length - 1 ? 6 : 0 }}>{p}</div>
-                  ))}
-                </div>
-              </div>
-            );
-          })()}
-
           {/* 顾客服务协议：订单创建时的套系快照；空时用官方默认模板 */}
           {(() => {
             const sd = (pkgInfo && pkgInfo.details) || {};
@@ -2837,6 +2817,26 @@ export default function OrderDetail() {
                       <div key={i} style={{ marginBottom: isHeading ? 8 : 4, fontWeight: isHeading ? 400 : 300 }}>{p}</div>
                     );
                   })}
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* 退订政策：放在最底部（用户最新要求：按 顾客服务协议 → 顾客照片授权协议 → 退订政策 顺序） */}
+          {(() => {
+            const sd = (pkgInfo && pkgInfo.details) || {};
+            const policy = normalizePolicy(sd.refund_policy);
+            const paras = getRefundParagraphs(sd, policy);
+            if (!paras.length) return null;
+            return (
+              <div style={{ marginBottom: 20 }}>
+                <div style={{ fontSize: 16, fontWeight: 400, borderBottom: '1px solid #ccc', paddingBottom: 6, marginBottom: 10 }}>
+                  退订政策（{policy}）
+                </div>
+                <div style={{ fontSize: 13, lineHeight: 1.7, color: '#222' }}>
+                  {paras.map((p, i) => (
+                    <div key={i} style={{ marginBottom: i < paras.length - 1 ? 6 : 0 }}>{p}</div>
+                  ))}
                 </div>
               </div>
             );
