@@ -335,8 +335,20 @@ export default function PackageEdit() {
   // 移动端 Sheet 弹窗
   const [sheet, setSheet] = useState(null); // 'name' | 'price' | 'deposit' | 'refund' | 'raw' | 'questionnaire' | 'duration' | 'rawCount' | 'retouch' | 'extraFee' | 'extraDisc' | 'cloth' | 'album' | 'location' | 'warm' | 'visible' | null
   const [sheetVal, setSheetVal] = useState('');
-  const openSheet = (key, val) => { setSheet(key); setSheetVal(val !== undefined ? String(val) : ''); };
-  const closeSheet = () => { setSheet(null); setSheetVal(''); };
+  // 拍摄时长 Sheet 子步骤：'pick' 选项列表 / 'custom' 自定义输入框
+  const [durationStep, setDurationStep] = useState('pick');
+  const [durationDraft, setDurationDraft] = useState('');
+  const openSheet = (key, val) => {
+    setSheet(key);
+    setSheetVal(val !== undefined ? String(val) : '');
+    if (key === 'duration') setDurationStep('pick');
+  };
+  const closeSheet = () => {
+    setSheet(null);
+    setSheetVal('');
+    setDurationStep('pick');
+    setDurationDraft('');
+  };
   // 套系封面裁切：选中图存 cropSrc 唤起弹窗；裁切结果存 coverPending（仅保存时上传）
   const [coverPending, setCoverPending] = useState(null);
   const [cropOpen, setCropOpen] = useState(false);
@@ -835,12 +847,39 @@ export default function PackageEdit() {
         </MSheet>
 
         <MSheet open={sheet === 'duration'} onClose={closeSheet} title="拍摄时长">
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {DURATION_OPTS.map((o) => (
-              <button key={o} type="button" onClick={() => { setD({ duration: o }); closeSheet(); }}
-                style={{ padding: '12px 16px', borderRadius: 8, border: '1px solid ' + (d.duration === o ? MRED : '#E5E5E5'), background: d.duration === o ? '#FFF5F5' : '#fff', fontSize: 15, color: '#333', textAlign: 'left' }}>{o}</button>
-            ))}
-          </div>
+          {durationStep === 'pick' ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {DURATION_OPTS.map((o) => (
+                <button key={o} type="button"
+                  onClick={() => {
+                    if (o === '指定时长') {
+                      // 进入自定义输入视图，初始值用已有值（仅当值不是全天/半天时）
+                      const init = (d.duration && !DURATION_OPTS.includes(d.duration)) ? d.duration : '';
+                      setDurationDraft(init);
+                      setDurationStep('custom');
+                      return;
+                    }
+                    setD({ duration: o });
+                    closeSheet();
+                  }}
+                  style={{ padding: '12px 16px', borderRadius: 8, border: '1px solid ' + (d.duration === o ? MRED : '#E5E5E5'), background: d.duration === o ? '#FFF5F5' : '#fff', fontSize: 15, color: '#333', textAlign: 'left' }}>{o}</button>
+              ))}
+            </div>
+          ) : (
+            <div>
+              <button type="button" onClick={() => setDurationStep('pick')}
+                style={{ fontSize: 13, color: MRED, background: 'none', border: 'none', padding: 0, marginBottom: 12, cursor: 'pointer' }}>← 返回选项</button>
+              <div style={{ fontSize: 13, color: '#666', marginBottom: 6 }}>自定义时长（如 3小时 / 3小时30分 / 4h / 全天 16:00-22:00）</div>
+              <input autoFocus value={durationDraft} onChange={(e) => setDurationDraft(e.target.value)} placeholder="请输入具体时长"
+                style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #D1D5DB', fontSize: 15, outline: 'none' }} />
+              <div style={{ display: 'flex', gap: 12, marginTop: 16 }}>
+                <button type="button" onClick={() => { setDurationStep('pick'); }}
+                  style={{ flex: 1, padding: '12px', borderRadius: 8, background: '#fff', color: '#666', fontSize: 15, border: '1px solid #D1D5DB' }}>取消</button>
+                <button type="button" disabled={!durationDraft.trim()} onClick={() => { setD({ duration: durationDraft.trim() }); setDurationStep('pick'); closeSheet(); }}
+                  style={{ flex: 1, padding: '12px', borderRadius: 8, background: MRED, color: '#fff', fontSize: 15, border: 'none', opacity: durationDraft.trim() ? 1 : 0.5 }}>确定</button>
+              </div>
+            </div>
+          )}
         </MSheet>
 
         <MSheet open={sheet === 'rawCount'} onClose={closeSheet} title="原片数量">
