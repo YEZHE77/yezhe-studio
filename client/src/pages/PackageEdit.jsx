@@ -327,7 +327,6 @@ export default function PackageEdit() {
   const [qnaHelpOpen, setQnaHelpOpen] = useState(false);
   // 内联编辑开关（文本展示 + 编辑链接）
   const [editRaw, setEditRaw] = useState(false);
-  const [editDisc, setEditDisc] = useState(false);
   const [editAgr, setEditAgr] = useState(false);
 
   // 移动端 Tab：0=价格, 1=详情, 2=选填
@@ -643,7 +642,6 @@ export default function PackageEdit() {
                 <MRow label="原片" value={d.raw_count ? `${d.raw_count}张` : '请选择'} onClick={() => openSheet('rawCount', d.raw_count)} />
                 <MRow label="精修片" value={d.retouch_count ? `${d.retouch_count}张` : '请选择'} onClick={() => openSheet('retouch', d.retouch_count)} />
                 <MRow label="加片费" value={d.extra_photo_fee || '请选择'} onClick={() => openSheet('extraFee', d.extra_photo_fee)} />
-                <MRow label="加片优惠" value={d.extra_photo_discount || '无'} onClick={() => openSheet('extraDisc', d.extra_photo_discount)} />
                 <MRow label="快修费" value={d.quick_repair_cost ? `${d.quick_repair_cost} 元` : '请选择'} onClick={() => openSheet('quickRepair', d.quick_repair_cost)} />
                 <MRow label="交付时间" value={d.delivery_time || '请选择'} onClick={() => openSheet('deliveryTime', d.delivery_time)} />
               </>
@@ -900,13 +898,6 @@ export default function PackageEdit() {
           <input autoFocus value={sheetVal} onChange={(e) => setSheetVal(e.target.value)} placeholder="如 ¥50.00/张"
             style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #D1D5DB', fontSize: 15, outline: 'none' }} />
           <button type="button" onClick={() => { setD({ extra_photo_fee: sheetVal }); closeSheet(); }}
-            style={{ width: '100%', marginTop: 16, padding: '12px', borderRadius: 8, background: MRED, color: '#fff', fontSize: 15, border: 'none' }}>确定</button>
-        </MSheet>
-
-        <MSheet open={sheet === 'extraDisc'} onClose={closeSheet} title="加片优惠">
-          <input autoFocus value={sheetVal} onChange={(e) => setSheetVal(e.target.value)} placeholder="如 满10张9折"
-            style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #D1D5DB', fontSize: 15, outline: 'none' }} />
-          <button type="button" onClick={() => { setD({ extra_photo_discount: sheetVal }); closeSheet(); }}
             style={{ width: '100%', marginTop: 16, padding: '12px', borderRadius: 8, background: MRED, color: '#fff', fontSize: 15, border: 'none' }}>确定</button>
         </MSheet>
 
@@ -1379,19 +1370,8 @@ export default function PackageEdit() {
                   </Field>
                 </div>
 
-                {/* 加片优惠 / 服务地点 */}
+                {/* 服务地点：单独占一行（两列布局删了加片优惠后只剩一列） */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
-                  {/* 加片优惠 */}
-                  <Field label="加片优惠">
-                    <div className="flex items-center gap-2">
-                      {editDisc
-                        ? <input autoFocus className={inputSm} value={d.extra_photo_discount}
-                            onChange={(e) => setD({ extra_photo_discount: e.target.value })} onBlur={() => setEditDisc(false)} placeholder="如 满 10 张 9 折" />
-                        : <span className="text-sm" style={{ color: '#333333' }}>{d.extra_photo_discount || '暂无优惠'}</span>}
-                      <button type="button" onClick={() => setEditDisc((v) => !v)} className="text-[13px]" style={{ color: LINK }}>编辑</button>
-                    </div>
-                  </Field>
-
                   {/* 服务地点：下拉 + 文本输入 同一行 gap 8px */}
                   <Field label="服务地点">
                     <div className="flex items-center gap-2 flex-wrap">
