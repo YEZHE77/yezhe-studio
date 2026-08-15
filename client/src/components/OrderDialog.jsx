@@ -618,16 +618,14 @@ export default function OrderDialog({ orderDlg, personnel, onClose, onSaved, mod
             <PackagePicker pkgList={pkgList} value={pkgId} onPick={onPickPackage} compact />
           </div>
         </div>
-        {priceMissing && (
+        <div className="flex items-center" style={{ gap: 8, padding: '10px 0', borderTop: `1px solid ${PAGE_BORDER}` }}>
+          <span style={{ fontSize: 14, color: MODAL_RED }}>套系价格</span>
+          <input value={pkgPrice} onChange={(e) => { setPkgPrice(e.target.value); setPriceMissing(!(parseFloat(e.target.value) > 0)); }} placeholder="请输入价格"
+            style={{ flex: 1, border: 'none', outline: 'none', fontSize: 15, color: PAGE_TEXT, background: 'transparent' }} />
+        </div>
+        {payStatus === 'deposit' && (
           <div className="flex items-center" style={{ gap: 8, padding: '10px 0', borderTop: `1px solid ${PAGE_BORDER}` }}>
-            <span style={{ fontSize: 14, color: MODAL_RED }}>套系价格</span>
-            <input value={pkgPrice} onChange={(e) => { setPkgPrice(e.target.value); setPriceMissing(!(parseFloat(e.target.value) > 0)); }} placeholder="请输入价格"
-              style={{ flex: 1, border: 'none', outline: 'none', fontSize: 15, color: PAGE_TEXT, background: 'transparent' }} />
-          </div>
-        )}
-        {pkgId && payStatus === 'deposit' && (
-          <div className="flex items-center" style={{ gap: 8, padding: '10px 0', borderTop: `1px solid ${PAGE_BORDER}` }}>
-            <span style={{ fontSize: 14, color: MODAL_RED }}>定金</span>
+            <span style={{ fontSize: 14, color: MODAL_RED }}>套系定金</span>
             <input value={deposit} onChange={(e) => setDeposit(e.target.value)} placeholder="请输入定金"
               style={{ flex: 1, border: 'none', outline: 'none', fontSize: 15, color: PAGE_TEXT, background: 'transparent' }} />
           </div>
