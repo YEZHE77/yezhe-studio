@@ -2925,28 +2925,26 @@ export default function OrderDetail() {
             <span style={{ fontSize: 16, fontWeight: 500, color: '#222' }}>套系服务详情</span>
           </div>
           <div style={{ overflowY: 'auto', flex: 1, padding: '8px 20px' }}>
+            {/* 标准模版完整字段列表（与 PackagePreview 套系更多服务一致） */}
             {(() => {
               const dd = (pkgInfo && pkgInfo.details) || {};
               const rows = [
-                { label: '时长', value: dd.duration || pkgInfo?.duration || '未设置' },
-                { label: '拍摄', value: dd.raw_count ? `${dd.raw_count}张` : '未设置' },
-                { label: '精修', value: dd.retouch_count ? `${dd.retouch_count}张` : '未设置' },
-                { label: '仅送精修', value: !!(dd.raw_all_included), toggle: true },
-                { label: '化妆', value: dd.makeup_provide !== 'not', toggle: true },
-                { label: '服装', value: dd.cloth_provide !== 'not', toggle: true },
+                { label: '拍摄时长', value: dd.duration || pkgInfo?.duration || '未设置' },
+                { label: '原片', value: dd.raw_count ? `${dd.raw_count}张` : '未设置' },
+                { label: '精修片', value: dd.retouch_count ? `${dd.retouch_count}张` : '未设置' },
+                { label: '加片费', value: dd.extra_photo_fee || '未设置' },
+                { label: '快修费', value: dd.quick_repair_cost || '未设置' },
+                { label: '交付时间', value: dd.delivery_time || '未设置' },
+                { label: '交付备注', value: dd.delivery_remark || '未设置', fullWidth: true },
+                { label: '化妆服装', value: `${dd.cloth_provide === 'provide' ? '提供服装' : '不提供服装'} · ${dd.makeup_provide === 'provide' ? '提供化妆' : '不提供化妆'}` },
+                { label: '提供相册', value: dd.album_provide === 'provide' ? '是' : dd.album_provide === 'extra' ? '相册另购' : '否' },
+                { label: '服务地点', value: dd.service_location || '未设置' }
               ];
               return rows.map((row, i, arr) => (
                 <div key={i} style={{ display: 'flex', alignItems: 'center', padding: '14px 0', borderBottom: i < arr.length - 1 ? `1px solid ${DIV}` : 'none' }}>
                   <span style={{ fontSize: 14, color: '#333', flex: 1 }}>{row.label}</span>
-                  {row.toggle ? (
-                    row.value ? (
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#82C8AE" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="9 12 12 15 17 9"/></svg>
-                    ) : (
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ddd" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/></svg>
-                    )
-                  ) : (
-                    <span style={{ fontSize: 14, color: '#666' }}>{row.value}</span>
-                  )}
+                  <span style={{ fontSize: 14, color: '#666', maxWidth: '60%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{row.value}</span>
+                  <span style={{ color: '#82C8AE', marginLeft: 6 }}>›</span>
                 </div>
               ));
             })()}
