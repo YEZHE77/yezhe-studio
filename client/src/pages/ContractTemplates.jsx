@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import http from '../api.js';
 import { DEFAULT_CONTRACT_TEMPLATE } from '../utils/contractDefault.js';
 
@@ -34,6 +35,7 @@ function fmtTime(t) {
 }
 
 export default function ContractTemplates() {
+  const nav = useNavigate();
   const [list, setList] = useState([]);
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(EMPTY);
@@ -103,7 +105,12 @@ export default function ContractTemplates() {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
         <div style={{ minWidth: 0 }}>
           <h1 style={{ fontSize: isMobile ? 18 : 20, fontWeight: 500, color: TEXT, margin: 0 }}>合同模板管理</h1>
-          <p style={{ fontSize: 13, color: FAINT, margin: '4px 0 0' }}>合同正文带 {{占位符}}，订单一键生成 PDF 时批量替换</p>
+          <p style={{ fontSize: 13, color: FAINT, margin: '4px 0 0' }}>
+            合同正文带 {{占位符}}，订单一键生成 PDF 时批量替换　·　
+            <button type="button" onClick={() => nav('/contract-audit')} style={{ background: 'none', border: 'none', color: BRAND, fontSize: 13, cursor: 'pointer', padding: 0 }}>
+              审计日志 ›
+            </button>
+          </p>
         </div>
         <button onClick={openNew} style={{ padding: '9px 18px', borderRadius: 12, background: BRAND, color: '#fff', fontSize: 14, border: 'none', cursor: 'pointer' }}>+ 新增模板</button>
       </div>

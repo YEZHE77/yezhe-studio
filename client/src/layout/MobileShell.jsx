@@ -34,6 +34,7 @@ const Finance = React.lazy(() => import('../pages/Finance.jsx'));
 const MessageCenter = React.lazy(() => import('../pages/MessageCenter.jsx'));
 const PhotoPackages = React.lazy(() => import('../pages/PhotoPackages.jsx'));
 const ContractTemplates = React.lazy(() => import('../pages/ContractTemplates.jsx'));
+const ContractAudit = React.lazy(() => import('../pages/ContractAudit.jsx'));
 const CustomerAgreement = React.lazy(() => import('../pages/CustomerAgreement.jsx'));
 const CustomerAgreementEdit = React.lazy(() => import('../pages/CustomerAgreementEdit.jsx'));
 const RefundPolicyEdit = React.lazy(() => import('../pages/RefundPolicyEdit.jsx'));
@@ -281,6 +282,7 @@ export default function MobileShell() {
                 <Route path="/finance" element={<Finance />} />
                 <Route path="/capacity" element={<CapacityManagement />} />
                 <Route path="/contract-templates" element={<ContractTemplates />} />
+                <Route path="/contract-audit" element={<ContractAudit />} />
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
             </Suspense>

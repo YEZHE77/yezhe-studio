@@ -212,6 +212,11 @@ export default function CustomerAgreementEdit() {
 
   // toggle 立即乐观更新 + 防抖 PUT
   const toggleAgreement = (v) => {
+    // 开启协议但未绑定模板 → 拦截提示（PRD 场景1.3：开启合同未绑定模板无法保存）
+    if (v && !(pkg?.contract_template_id)) {
+      alert('请先在下拉中绑定「协议模板」，再开启服务协议。');
+      return;
+    }
     setPkg((p) => p ? { ...p, details: { ...p.details, customer_agreement_enabled: v } } : p);
     scheduleSave({ customer_agreement_enabled: v });
   };

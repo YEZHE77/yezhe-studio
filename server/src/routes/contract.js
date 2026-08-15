@@ -220,4 +220,58 @@ router.post('/orders/:id/contract', authRequired, requireRole(...STAFF_ROLES), a
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// ===== 合同操作审计日志（B端，筛选 order_id / action / 时间范围，分页） =====
+router.get('/audit', authRequired, requireRole(...STAFF_ROLES), async (req, res) => {
+  try {
+    const where = [];
+    const params = [];
+    if (req.query.order_id) { where.push('a.order_id = ?'); params.push(Number(req.query.order_id) || 0); }
+    if (req.query.action) { where.push('a.action = ?'); params.push(String(req.query.action)); }
+    if (req.query.from) { where.push('a.created_at >= ?'); params.push(String(req.query.from)); }
+    if (req.query.to) { where.push('a.created_at <= ?'); params.push(String(req.query.to)); }
+    const whereSql = where.length ? 'WHERE ' + where.join(' AND ') : '';
+    const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+    const pageSize = Math.min(100, parseInt(req.query.page_size, 10) || 50);
+    const offset = (page - 1) * pageSize;
+    const rows = await query(
+      `SELECT a.id, a.order_id, a.operator_name, a.action, a.ip, a.detail, a.created_at,
+              o.order_no, o.customer_name
+       FROM contract_audit a LEFT JOIN orders o ON o.id = a.order_id
+       ${whereSql}
+       ORDER BY a.id DESC LIMIT ? OFFSET ?`,
+      [...params, pageSize, offset]
+    );
+    const totalRow = await get(`SELECT COUNT(*) AS c FROM contract_audit a ${whereSql}`, params);
+    res.json({ list: rows, total: totalRow ? Number(totalRow.c) : 0, page, page_size: pageSize });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// 审计日志导出 CSV
+router.get('/audit/export', authRequired, requireRole(...STAFF_ROLES), async (req, res) => {
+  try {
+    const where = [];
+    const params = [];
+    if (req.query.order_id) { where.push('a.order_id = ?'); params.push(Number(req.query.order_id) || 0); }
+    if (req.query.action) { where.push('a.action = ?'); params.push(String(req.query.action)); }
+    if (req.query.from) { where.push('a.created_at >= ?'); params.push(String(req.query.from)); }
+    if (req.query.to) { where.push('a.created_at <= ?'); params.push(String(req.query.to)); }
+    const whereSql = where.length ? 'WHERE ' + where.join(' AND ') : '';
+    const rows = await query(
+      `SELECT a.id, a.order_id, a.operator_name, a.action, a.ip, a.detail, a.created_at, o.order_no, o.customer_name
+       FROM contract_audit a LEFT JOIN orders o ON o.id = a.order_id
+       ${whereSql}
+       ORDER BY a.id DESC LIMIT 5000`, params
+    );
+    const esc = (v) => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"';
+    const header = ['ID', '订单ID', '订单编号', '客户姓名', '操作人', '操作类型', 'IP', '详情', '时间'];
+    const lines = [header.join(',')];
+    for (const r of rows) {
+      lines.push([r.id, r.order_id, r.order_no, r.customer_name, r.operator_name, r.action, r.ip, r.detail, r.created_at].map(esc).join(','));
+    }
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', 'attachment; filename="contract-audit.csv"');
+    res.send('\uFEFF' + lines.join('\n'));
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 export default router;
