@@ -1,5 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import http from '../api.js';
+import { DEFAULT_CONTRACT_TEMPLATE } from '../utils/contractDefault.js';
+
+// 移动端判断：<768px 走窄屏布局（与 Finance.jsx / CapacityManagement.jsx 一致）
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(typeof window !== 'undefined' ? window.innerWidth < 768 : false);
+  useEffect(() => {
+    const onResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+  return isMobile;
+}
 
 // ===== 合同模板管理（B 端管理员） =====
 // 列表（名称/默认/更新时间）+ 新增/编辑（富文本粘贴合同正文带{{占位符}} + 上传备份 PDF + 默认标记）+ 删除（绑定拦截）
@@ -28,10 +40,27 @@ export default function ContractTemplates() {
   const [tip, setTip] = useState('');
   const [busy, setBusy] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const isMobile = useIsMobile();
 
   const flash = (m) => { setTip(m); setTimeout(() => setTip(''), 2500); };
   const load = () => http.get('/api/contract/templates').then((r) => setList(r.data || [])).catch(() => setList([]));
   useEffect(() => { load(); }, []);
+
+  // 一键导入内置默认模板（解决「线上/新库无模板」痛点；后端会自动校验必填占位符）
+  const importDefault = async () => {
+    if (importing) return;
+    setImporting(true);
+    try {
+      await http.post('/api/contract/templates', DEFAULT_CONTRACT_TEMPLATE);
+      await load();
+      flash('已导入默认模板');
+    } catch (e) {
+      flash('导入失败：' + (e.response?.data?.error || e.message));
+    } finally {
+      setImporting(false);
+    }
+  };
 
   const openNew = () => { setForm(EMPTY); setEditing({}); };
   const openEdit = (t) => { setForm({ template_name: t.template_name, template_content: t.template_content || '', backup_word_url: t.backup_word_url || '', is_default: !!t.is_default }); setEditing(t); };
@@ -70,10 +99,10 @@ export default function ContractTemplates() {
   };
 
   return (
-    <div style={{ maxWidth: 900, margin: '0 auto', padding: '16px 16px 40px' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-        <div>
-          <h1 style={{ fontSize: 20, fontWeight: 500, color: TEXT, margin: 0 }}>合同模板管理</h1>
+    <div style={{ maxWidth: 900, margin: '0 auto', padding: isMobile ? '12px 12px 32px' : '16px 16px 40px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
+        <div style={{ minWidth: 0 }}>
+          <h1 style={{ fontSize: isMobile ? 18 : 20, fontWeight: 500, color: TEXT, margin: 0 }}>合同模板管理</h1>
           <p style={{ fontSize: 13, color: FAINT, margin: '4px 0 0' }}>合同正文带 {{占位符}}，订单一键生成 PDF 时批量替换</p>
         </div>
         <button onClick={openNew} style={{ padding: '9px 18px', borderRadius: 12, background: BRAND, color: '#fff', fontSize: 14, border: 'none', cursor: 'pointer' }}>+ 新增模板</button>
@@ -81,7 +110,17 @@ export default function ContractTemplates() {
 
       {tip && <div style={{ position: 'fixed', top: '18%', left: '50%', transform: 'translateX(-50%)', zIndex: 200, background: 'rgba(29,29,31,0.9)', color: '#fff', fontSize: 13, padding: '10px 18px', borderRadius: 18 }}>{tip}</div>}
 
-      {!list.length && <div style={{ textAlign: 'center', color: FAINT, fontSize: 14, padding: '60px 0', background: '#fff', borderRadius: 16 }}>暂无模板，点击右上角新增</div>}
+      {!list.length && (
+        <div style={{ background: '#fff', borderRadius: 16, padding: isMobile ? '28px 20px' : '48px 24px', textAlign: 'center', color: FAINT, fontSize: 14 }}>
+          <div style={{ fontSize: 15, color: TEXT, marginBottom: 6 }}>暂无合同模板</div>
+          <div style={{ fontSize: 13, color: FAINT, lineHeight: 1.6, marginBottom: 20 }}>系统已内置一份「婚礼跟拍服务合同」标准模板，<br />点下方按钮一键导入并设为默认，即可用于订单生成 PDF。</div>
+          <button type="button" onClick={importDefault} disabled={importing}
+            style={{ padding: '10px 24px', borderRadius: 22, background: BRAND, color: '#fff', fontSize: 14, border: 'none', cursor: importing ? 'not-allowed' : 'pointer', opacity: importing ? 0.6 : 1 }}>
+            {importing ? '导入中…' : '一键导入「婚礼跟拍服务合同」'}
+          </button>
+          <div style={{ marginTop: 14, fontSize: 12, color: FAINT }}>或点击右上角「+ 新增模板」手动粘贴你自己的合同正文</div>
+        </div>
+      )}
       {list.map((t) => (
         <div key={t.id} style={{ background: '#fff', borderRadius: 14, padding: '14px 16px', marginBottom: 10, boxShadow: '0 1px 4px rgba(0,0,0,0.04)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div style={{ minWidth: 0, flex: 1 }}>

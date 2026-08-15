@@ -5,6 +5,7 @@ import bgm from '../bgm.js';
 import Slideshow from '../components/Slideshow.jsx';
 import html2pdf from 'html2pdf.js';
 import { renderContract, buildContractVars, contractChanged } from '../utils/contract.js';
+import { DEFAULT_CONTRACT_TEMPLATE } from '../utils/contractDefault.js';
 
 const STATUS_LABEL = {
   deposit: '已付定金', shot: '已拍摄', selecting: '选片中',
@@ -169,6 +170,7 @@ export default function OrderDetail() {
   // 合同：模板 / 附加条款 / PDF
   const [contractTemplates, setContractTemplates] = useState([]);
   const [contractTemplateId, setContractTemplateId] = useState(null);
+  const [creatingDefault, setCreatingDefault] = useState(false);
   const [contractExtraText, setContractExtraText] = useState('');
   const [contractPdfUrl, setContractPdfUrl] = useState('');
   const [contractGenerating, setContractGenerating] = useState(false);
@@ -277,6 +279,29 @@ export default function OrderDetail() {
       });
     }).catch(() => {});
   }, []);
+
+  // 一键创建默认合同模板（解决「线上/新库无模板」痛点；订单合同区模板下拉为空时一键直达）
+  const createDefaultTemplate = async () => {
+    if (creatingDefault) return;
+    setCreatingDefault(true);
+    try {
+      const r = await http.post('/api/contract/templates', DEFAULT_CONTRACT_TEMPLATE);
+      const newId = r.data?.id || r.data?.template?.id;
+      // 拉一遍列表以同步 is_default 等字段
+      const listRes = await http.get('/api/contract/templates').catch(() => ({ data: [] }));
+      const list = listRes.data || [];
+      setContractTemplates(list);
+      // 自动选中新建的（或默认的）
+      const target = newId || (list.find((t) => t.is_default) || list[0])?.id;
+      if (target) setContractTemplateId(target);
+      alert('已创建默认合同模板并自动选中');
+    } catch (e) {
+      alert('创建失败：' + (e.response?.data?.error || e.message));
+    } finally {
+      setCreatingDefault(false);
+    }
+  };
+
   useEffect(() => {
     const ctrl = new AbortController();
     http.get('/api/channels', { signal: ctrl.signal }).then((r) => setChannels(Array.isArray(r.data) ? r.data : [])).catch(() => {});
@@ -1162,9 +1187,16 @@ export default function OrderDetail() {
             </div>
             <select value={contractTemplateId ?? ''} onChange={(e) => setContractTemplateId(e.target.value ? Number(e.target.value) : null)}
               style={{ width: '100%', padding: '9px 12px', borderRadius: 6, border: '1px solid #E8E8E8', fontSize: 14, background: '#fff', outline: 'none', marginBottom: 12 }}>
-              {!contractTemplates.length && <option value="">暂无模板，点击「管理模板」新建</option>}
+              {!contractTemplates.length && <option value="">暂无模板，点击下方一键创建</option>}
               {contractTemplates.map((t) => (<option key={t.id} value={t.id}>{t.template_name}{t.is_default ? '（默认）' : ''}</option>))}
             </select>
+            {/* 模板为空时一键创建默认模板（解决线上/新库无模板痛点） */}
+            {!contractTemplates.length && (
+              <button type="button" onClick={createDefaultTemplate} disabled={creatingDefault}
+                style={{ width: '100%', padding: '10px 0', borderRadius: 8, border: 'none', background: '#7ECDBB', color: '#fff', fontSize: 14, fontWeight: 500, marginBottom: 12, cursor: creatingDefault ? 'not-allowed' : 'pointer', opacity: creatingDefault ? 0.6 : 1 }}>
+                {creatingDefault ? '创建中…' : '+ 一键创建「婚礼跟拍服务合同」并使用'}
+              </button>
+            )}
             <div style={{ fontSize: 13, color: '#999', marginBottom: 4 }}>附加条款（拼接在合同末尾）</div>
             <textarea value={contractExtraText} onChange={(e) => setContractExtraText(e.target.value)} placeholder="选填，如特别约定、加急交付等"
               style={{ width: '100%', minHeight: 64, padding: '10px 12px', borderRadius: 6, border: '1px solid #E8E8E8', fontSize: 13, outline: 'none', boxSizing: 'border-box', marginBottom: 12 }} />
@@ -1571,9 +1603,16 @@ export default function OrderDetail() {
             </div>
             <select value={contractTemplateId ?? ''} onChange={(e) => setContractTemplateId(e.target.value ? Number(e.target.value) : null)}
               style={{ width: '100%', padding: '8px 10px', borderRadius: 4, border: '1px solid ' + CARD_BORDER, fontSize: 13, background: '#fff', outline: 'none' }}>
-              {!contractTemplates.length && <option value="">暂无模板，点击「管理模板」新建</option>}
+              {!contractTemplates.length && <option value="">暂无模板，点击下方一键创建</option>}
               {contractTemplates.map((t) => (<option key={t.id} value={t.id}>{t.template_name}{t.is_default ? '（默认）' : ''}</option>))}
             </select>
+            {/* 模板为空时一键创建默认模板（解决线上/新库无模板痛点） */}
+            {!contractTemplates.length && (
+              <button type="button" onClick={createDefaultTemplate} disabled={creatingDefault}
+                style={{ marginTop: 8, width: '100%', padding: '8px 0', borderRadius: 6, border: 'none', background: '#7ECDBB', color: '#fff', fontSize: 13, fontWeight: 500, cursor: creatingDefault ? 'not-allowed' : 'pointer', opacity: creatingDefault ? 0.6 : 1 }}>
+                {creatingDefault ? '创建中…' : '+ 一键创建「婚礼跟拍服务合同」并使用'}
+              </button>
+            )}
           </div>
           <div style={{ flex: '1 1 320px', minWidth: 240 }}>
             <div style={{ fontSize: 12, color: LABEL_COLOR, marginBottom: 6 }}>附加条款（拼接在合同末尾）</div>
