@@ -4,7 +4,7 @@ import http, { img, uploadBatch, conflictOf } from '../api.js';
 import bgm from '../bgm.js';
 import Slideshow from '../components/Slideshow.jsx';
 import html2pdf from 'html2pdf.js';
-import { renderContract, buildContractVars } from '../utils/contract.js';
+import { renderContract, buildContractVars, contractChanged } from '../utils/contract.js';
 
 const STATUS_LABEL = {
   deposit: '已付定金', shot: '已拍摄', selecting: '选片中',
@@ -173,6 +173,8 @@ export default function OrderDetail() {
   const [contractPdfUrl, setContractPdfUrl] = useState('');
   const [contractGenerating, setContractGenerating] = useState(false);
   const [contractSaving, setContractSaving] = useState(false);
+  // 规则4：订单业务字段 vs 生成时快照是否不一致（标红提示「订单已变更，旧PDF未同步」）
+  const [contractDirty, setContractDirty] = useState(false);
   const [slideOpen, setSlideOpen] = useState(false);
   const [slidePhotos, setSlidePhotos] = useState([]);
   const [notFound, setNotFound] = useState(false);
@@ -254,6 +256,8 @@ export default function OrderDetail() {
         setContractTemplateId(r.data.contract_template_id ?? null);
         setContractExtraText(r.data.contract_extra_text || '');
         setContractPdfUrl(r.data.contract_pdf_url || '');
+        // 规则4：订单已变更且旧 PDF 未同步 → 标红提示（仅在有历史 PDF 且快照存在时比对）
+        setContractDirty(!!r.data.contract_pdf_url && contractChanged(r.data, r.data.contract_order_snapshot));
       }
       loadSel(id);
     } catch { setNotFound(true); }
@@ -651,7 +655,7 @@ export default function OrderDetail() {
     finally { setContractSaving(false); }
   }
 
-  // ===== 合同：生成 / 重新生成 PDF =====
+  // ===== 合同：生成 / 重新生成 PDF（数据一致性：先保存配置 → 实时拉取最新订单 → 生成前校验 → 本地生成）=====
   async function generateContractPdf() {
     if (!detail) return;
     if (!contractTemplateId) { alert('请先选择合同模板'); return; }
@@ -659,17 +663,31 @@ export default function OrderDetail() {
     if (!tpl || !tpl.template_content) { alert('所选模板无合同正文，请先在「合同模板管理」填写'); return; }
     setContractGenerating(true);
     try {
-      // ① 读模板 + ② 订单字段替换占位符 + ③ 拼接附加条款
-      const vars = buildContractVars({ ...detail, contract_extra_text: contractExtraText });
+      // ① 先保存合同配置（模板 + 附加条款），确保后端持有最新配置
+      await http.post('/api/contract/orders/' + detail.id + '/contract', {
+        contract_template_id: contractTemplateId,
+        contract_extra_text: contractExtraText
+      });
+      // ② 实时请求后端读取订单最新数据库字段（数据源头唯一性，不使用页面缓存）
+      const latestRes = await http.get('/api/orders/' + detail.id);
+      const latest = latestRes.data;
+      // ③ 生成前校验：核心字段（新人/日期/机位/价格）为空则阻断
+      const pre = await http.get('/api/contract/orders/' + detail.id + '/contract-precheck');
+      if (!pre.data.ok) {
+        alert('订单核心信息不完整，无法生成合同：\n' + pre.data.missing.join('、') + '\n\n请先完善订单信息后再生成。');
+        return;
+      }
+      // ④ 用最新订单字段替换占位符（只读订单字段，不读套系兜底）
+      const vars = buildContractVars(latest);
       let htmlContent = renderContract(tpl.template_content, vars);
       // 附加条款已在占位符 {{contract_extra_text}} 中，若无占位符则拼接尾部
-      if (!/\{\{contract_extra_text\}\}/.test(tpl.template_content) && contractExtraText) {
-        htmlContent += '\n\n<h3>七、其他补充约定</h3>\n<p>' + String(contractExtraText).replace(/\n/g, '<br>') + '</p>';
+      if (!/\{\{contract_extra_text\}\}/.test(tpl.template_content) && latest.contract_extra_text) {
+        htmlContent += '\n\n<h3>七、其他补充约定</h3>\n<p>' + String(latest.contract_extra_text).replace(/\n/g, '<br>') + '</p>';
       }
       const html = '<div style="font-family: serif; font-size: 13px; line-height: 1.8; color: #000; white-space: pre-wrap;">'
         + htmlContent.replace(/\n/g, '<br>') + '</div>';
 
-      // ④ 前端本地生成 A4 PDF
+      // ⑤ 前端本地生成 A4 PDF
       const container = document.createElement('div');
       container.innerHTML = html;
       container.style.position = 'absolute';
@@ -692,13 +710,13 @@ export default function OrderDetail() {
 
       document.body.removeChild(container);
 
-      // ⑤ 上传 R2 回写 contract_pdf_url
+      // ⑥ 上传 R2 回写 contract_pdf_url + 后端保存生成时间与订单快照
       const fd = new FormData();
       fd.append('file', pdfBlob, 'contract_' + detail.id + '.pdf');
       const r = await http.post('/api/contract/orders/' + detail.id + '/contract-pdf', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
       setContractPdfUrl(r.data.contract_pdf_url);
       alert('合同 PDF 已生成并保存');
-      reload();
+      reload(); // 刷新后 contractDirty 重新比对（应为 false）
     } catch (e) {
       console.error(e);
       alert('合同生成失败：' + ((e.response && e.response.data && e.response.data.error) || e.message));
@@ -1101,6 +1119,11 @@ export default function OrderDetail() {
           {/* 合同（模板 + 附加条款 + 生成 PDF） */}
           <div style={{ margin: '12px 12px 0', background: '#fff', borderRadius: 8, padding: '14px 16px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
             <div style={{ fontSize: 14, color: '#1f2329', marginBottom: 12 }}>合同</div>
+            {contractDirty && (
+              <div style={{ fontSize: 12, color: '#FF4D4F', background: 'rgba(255,77,79,0.08)', borderRadius: 6, padding: '8px 10px', marginBottom: 10, lineHeight: 1.5 }}>
+                ⚠ 订单信息已变更，当前合同 PDF 未同步最新数据，请点击「重新生成合同 PDF」更新。
+              </div>
+            )}
             <div style={{ fontSize: 13, color: '#999', marginBottom: 4 }}>合同模板</div>
             <select value={contractTemplateId ?? ''} onChange={(e) => setContractTemplateId(e.target.value ? Number(e.target.value) : null)}
               style={{ width: '100%', padding: '9px 12px', borderRadius: 6, border: '1px solid #E8E8E8', fontSize: 14, background: '#fff', outline: 'none', marginBottom: 12 }}>
@@ -1495,6 +1518,11 @@ export default function OrderDetail() {
       {/* ============ 合同（模板 + 附加条款 + 生成 PDF） ============ */}
       <section style={{ margin: isMobile ? '8px 12px 0' : '8px 24px 0', background: '#FFFFFF', border: '1px solid ' + CARD_BORDER, borderRadius: 4, padding: '16px' }}>
         <div style={{ fontSize: 14, color: '#1f2329', marginBottom: 12 }}>合同</div>
+        {contractDirty && (
+          <div style={{ fontSize: 12, color: '#FF4D4F', background: 'rgba(255,77,79,0.08)', borderRadius: 4, padding: '8px 10px', marginBottom: 12, lineHeight: 1.5 }}>
+            ⚠ 订单信息已变更，当前合同 PDF 未同步最新数据，请点击「重新生成合同 PDF」更新。
+          </div>
+        )}
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, alignItems: 'flex-start' }}>
           <div style={{ flex: '1 1 240px', minWidth: 200 }}>
             <div style={{ fontSize: 12, color: LABEL_COLOR, marginBottom: 6 }}>合同模板</div>

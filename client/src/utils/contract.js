@@ -81,81 +81,64 @@ export function renderContract(template, vars) {
   return html;
 }
 
-// 从订单数据 + 套系快照构造合同变量（机位/底片/价格等读订单自身字段，缺省从套系快照回退）
+// 从订单自身字段构造合同变量（数据一致性强制规则）
+// 每个 {{占位符}} 唯一绑定订单对应数据库字段；字段为空则留白，绝不读套系/phones 兜底。
+// 机位/底片/精修/价格等业务字段在「新建订单时」已由套系初始化填充到订单字段，渲染只读订单字段。
 export function buildContractVars(order) {
-  const snap = (order && order.package_snapshot) || {};
-  const snapObj = typeof snap === 'string' ? (() => { try { return JSON.parse(snap); } catch { return {}; } })() : snap;
-  const pkgName = snapObj.name || '';
-  // 机位：从套系名提取（含「单机位」→单机位；含「双机位」/「多机位」→多机位）
-  const shootPosition = /多机位|双机位/.test(pkgName) ? '多机位' : (/单机位/.test(pkgName) ? '单机位' : '');
-
-  // 底片数量：从 raw_policy / description 提取数字
-  const rawText = (snapObj.raw_policy || '') + ' ' + (snapObj.description || '');
-  const negMatch = rawText.match(/底片\s*(?:大约|约)?\s*(\d+)/);
-  const totalNegatives = negMatch ? parseInt(negMatch[1], 10) : 0;
-
-  // 电话：phones 数组 [新郎, 新娘]
-  let phones = [];
-  try { phones = Array.isArray(order.phones) ? order.phones : (typeof order.phones === 'string' ? JSON.parse(order.phones || '[]') : []); } catch { phones = []; }
-  const groomPhone = phones[0] || order.customer_phone || '';
-  const bridePhone = phones[1] || order.customer_phone || '';
-
-  // 日期拆分
+  if (!order) order = {};
   const shootDate = order.shoot_date || '';
   const dParts = shootDate ? shootDate.split('-') : [];
-  const weddingYear = dParts[0] || '';
-  const weddingMonth = dParts[1] || '';
-  const weddingDay = dParts[2] || '';
-
   const totalMoney = Math.round((parseFloat(order.total_amount) || 0) * 100) / 100;
-  const shootCost = parseFloat(snapObj.price) || 0;
-  const depositMoney = parseFloat(order.deposit) || 0;
-  const balanceMoney = parseFloat(order.balance) || 0;
 
-  // 快修费：从 extra_items 提取（label 含「加片」「快修」的金额）
-  let quickRepairCost = 0;
-  try {
-    const extras = Array.isArray(order.extra_items) ? order.extra_items : (typeof order.extra_items === 'string' ? JSON.parse(order.extra_items || '[]') : []);
-    for (const x of extras) {
-      if ((x.label || x.name || '').includes('加片') || (x.label || x.name || '').includes('快修')) {
-        quickRepairCost += Math.abs(parseFloat(x.amount) || 0);
-      }
-    }
-  } catch {}
-
-  // 支付方式
-  const method = order.deposit_method || '';
-  const channel = order.deposit_channel || '';
-  const payCash = method === 'offline' && (channel === 'cash' || !channel);
-  const payWechat = channel === 'wechat' || method === 'online';
-  const payAlipay = channel === 'alipay';
+  // 数值字段：>0 显示数字，否则留白（字段为空则 PDF 留白）
+  const num = (v) => { const n = parseFloat(v); return n > 0 ? n : ''; };
+  const intNum = (v) => { const n = parseInt(v, 10); return n > 0 ? n : ''; };
 
   return {
     groom_name: order.groom_name || '',
-    groom_phone: groomPhone,
+    groom_phone: order.groom_phone || '',
     bride_name: order.bride_name || '',
-    bride_phone: bridePhone,
+    bride_phone: order.bride_phone || '',
     wedding_full_date: shootDate,
-    wedding_year: weddingYear,
-    wedding_month: weddingMonth,
-    wedding_day: weddingDay,
+    wedding_year: dParts[0] || '',
+    wedding_month: dParts[1] || '',
+    wedding_day: dParts[2] || '',
     wedding_address: order.address || '',
-    shoot_position: shootPosition,
-    total_negatives: totalNegatives,
-    retouch_count: snapObj.retouch_count || 0,
-    album_electronic_num: 1,
-    album_price: '',
+    shoot_position: order.shoot_position || '',
+    total_negatives: intNum(order.total_negatives),
+    retouch_count: intNum(order.retouch_count),
+    album_electronic_num: intNum(order.album_electronic_num),
+    album_price: num(order.album_price),
     total_money: totalMoney,
     total_money_upper: rmbUpper(totalMoney),
-    shoot_cost: shootCost,
-    quick_repair_cost: quickRepairCost || '',
-    deposit_money: depositMoney,
-    balance_money: balanceMoney,
-    pay_cash: payCash,
-    pay_wechat: payWechat,
-    pay_alipay: payAlipay,
-    pay_account_info: '',
+    shoot_cost: num(order.shoot_cost),
+    quick_repair_cost: num(order.quick_repair_cost),
+    deposit_money: num(order.deposit),
+    balance_money: num(order.balance),
+    pay_cash: !!order.pay_cash,
+    pay_wechat: !!order.pay_wechat,
+    pay_alipay: !!order.pay_alipay,
+    pay_account_info: order.pay_account_info || '',
     contract_extra_text: order.contract_extra_text || '',
     sign_date: new Date().toISOString().slice(0, 10)
   };
+}
+
+// 规则4：比对当前订单与生成时快照（contract_order_snapshot），任一业务字段变化则返回 true
+// 用于「订单已变更，旧 PDF 未同步」标红提示
+const COMPARE_FIELDS = [
+  'groom_name', 'bride_name', 'groom_phone', 'bride_phone', 'shoot_date', 'address',
+  'shoot_position', 'total_negatives', 'retouch_count', 'album_electronic_num', 'album_price',
+  'shoot_cost', 'quick_repair_cost', 'total_amount', 'deposit', 'balance',
+  'pay_cash', 'pay_wechat', 'pay_alipay', 'pay_account_info', 'contract_extra_text'
+];
+export function contractChanged(order, snapshot) {
+  if (!order || !snapshot) return false;
+  let snap = snapshot;
+  if (typeof snap === 'string') { try { snap = JSON.parse(snap); } catch { return false; } }
+  return COMPARE_FIELDS.some((f) => {
+    const a = order[f] == null ? '' : String(order[f]);
+    const b = snap[f] == null ? '' : String(snap[f]);
+    return a !== b;
+  });
 }

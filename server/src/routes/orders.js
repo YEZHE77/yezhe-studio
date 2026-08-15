@@ -411,12 +411,33 @@ router.post('/', authRequired, requireRole(['admin', 'photographer', 'finance'])
     }
     // 客户专属访问令牌（C 端 /customer-order?token= 只读查看）
     const customer_token = crypto.randomBytes(16).toString('hex');
+    // 合同渲染专用字段：套系仅在新建订单时初始化填充一次，之后 PDF 渲染只读订单字段（数据一致性强制规则，不读套系兜底）
+    const _snap = package_snapshot || {};
+    const _pkgName = _snap.name || '';
+    const _rawText = ((_snap.raw_policy || '') + ' ' + (_snap.description || ''));
+    const _negMatch = _rawText.match(/底片\s*(?:大约|约)?\s*(\d+)/);
+    const groom_phone = (b.groom_phone != null && b.groom_phone !== '') ? b.groom_phone : (phones[0] || '');
+    const bride_phone = (b.bride_phone != null && b.bride_phone !== '') ? b.bride_phone : (phones[1] || '');
+    const shoot_position = (b.shoot_position || '').trim() || (/多机位|双机位/.test(_pkgName) ? '多机位' : (/单机位/.test(_pkgName) ? '单机位' : ''));
+    const total_negatives = parseInt(b.total_negatives, 10) || (_negMatch ? parseInt(_negMatch[1], 10) : 0);
+    const retouch_count = parseInt(b.retouch_count, 10) || parseInt(_snap.retouch_count, 10) || 0;
+    const album_electronic_num = parseInt(b.album_electronic_num, 10) || 1;
+    const album_price = parseFloat(b.album_price) || 0;
+    const shoot_cost = parseFloat(b.shoot_cost) || parseFloat(_snap.price) || 0;
+    const quick_repair_cost = parseFloat(b.quick_repair_cost) || 0;
+    const _method = b.deposit_method || 'offline';
+    const _channel = normChannel(b.deposit_method, b.deposit_channel);
+    const pay_cash = b.pay_cash != null ? (b.pay_cash ? 1 : 0) : (_method === 'offline' && _channel === 'cash' ? 1 : 0);
+    const pay_wechat = b.pay_wechat != null ? (b.pay_wechat ? 1 : 0) : (_channel === 'wechat' || _method === 'online' ? 1 : 0);
+    const pay_alipay = b.pay_alipay != null ? (b.pay_alipay ? 1 : 0) : (_channel === 'alipay' ? 1 : 0);
+    const pay_account_info = b.pay_account_info || '';
     const id = await insert(
       `INSERT INTO orders (order_no, customer_name, customer_phone, package_id, package_snapshot, addons_snapshot, status,
         deposit, balance, deposit_method, balance_method, shoot_date, executor, total_amount, paid_amount, remark, logs,
         groom_name, bride_name, address,
-        order_name, phones, time_slots, extra_items, executors, channel, channel_id, date_tbd, period, payment_status, customer_token)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+        order_name, phones, time_slots, extra_items, executors, channel, channel_id, date_tbd, period, payment_status, customer_token,
+        groom_phone, bride_phone, shoot_position, total_negatives, retouch_count, album_electronic_num, album_price, shoot_cost, quick_repair_cost, pay_cash, pay_wechat, pay_alipay, pay_account_info)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
       [
         order_no, customer_name, phones[0] || '', b.package_id || null,
         JSON.stringify(package_snapshot), JSON.stringify(addons), 'deposit',
@@ -424,7 +445,8 @@ router.post('/', authRequired, requireRole(['admin', 'photographer', 'finance'])
         shoot_date, executors.map((x) => x.name).filter(Boolean).join('、'), total, paid, b.remark || '', logs,
         groom, bride, b.address || '',
         order_name, JSON.stringify(phones), JSON.stringify(time_slots), JSON.stringify(extra_items),
-        JSON.stringify(executors), b.channel || '', b.channel_id || null, date_tbd, period, payment_status, customer_token
+        JSON.stringify(executors), b.channel || '', b.channel_id || null, date_tbd, period, payment_status, customer_token,
+        groom_phone, bride_phone, shoot_position, total_negatives, retouch_count, album_electronic_num, album_price, shoot_cost, quick_repair_cost, pay_cash, pay_wechat, pay_alipay, pay_account_info
       ]
     );
     // 按收款状态登记流水：已付定金→定金一笔；已付全款→定金 + 尾款；未付定金→不登记
@@ -538,6 +560,8 @@ router.put('/:id', authRequired, requireRole(['admin', 'photographer', 'finance'
     const questionnaireText = b.questionnaire_answers === undefined
       ? (cur.questionnaire_answers ?? null)
       : (typeof b.questionnaire_answers === 'string' ? b.questionnaire_answers : JSON.stringify(b.questionnaire_answers));
+    // 合同渲染专用字段（数据一致性强制规则：PDF 只读订单字段；此处允许摄影师编辑时修改，未传则保留原值）
+    const payBool = (v, curV) => (v != null ? (v ? 1 : 0) : curV);
     // 【订单 ↔ 档期】改拍摄日期前先做冲突检测（验收④）；force=true 由前端二次确认后强行占用
     const oldDate = cur.date_tbd ? '' : (cur.shoot_date || '');
     const newDate = date_tbd ? '' : (shoot_date || '');
@@ -568,7 +592,8 @@ router.put('/:id', authRequired, requireRole(['admin', 'photographer', 'finance'
       `UPDATE orders SET customer_name=?, customer_phone=?, shoot_date=?, executor=?, remark=?, status=?,
         groom_name=?, bride_name=?, address=?, period=?,
         order_name=?, phones=?, time_slots=?, extra_items=?, executors=?, channel=?, channel_id=?, date_tbd=?, payment_status=?,
-        order_photos=?, birthday=?, appointment_remark=?, internal_remark=?, external_remark=?, questionnaire_answers=?
+        order_photos=?, birthday=?, appointment_remark=?, internal_remark=?, external_remark=?, questionnaire_answers=?,
+        groom_phone=?, bride_phone=?, shoot_position=?, total_negatives=?, retouch_count=?, album_electronic_num=?, album_price=?, shoot_cost=?, quick_repair_cost=?, pay_cash=?, pay_wechat=?, pay_alipay=?, pay_account_info=?
        WHERE id=?`,
       [customer_name, firstPhone,
        shoot_date, execText, b.remark ?? cur.remark, status,
@@ -576,6 +601,10 @@ router.put('/:id', authRequired, requireRole(['admin', 'photographer', 'finance'
        b.order_name ?? cur.order_name, phonesText, slotsText, extrasText, execsText,
        b.channel ?? cur.channel, b.channel_id ?? cur.channel_id, date_tbd, payment_status,
        orderPhotosText, birthdayText, appointmentText, internalText, externalText, questionnaireText,
+       b.groom_phone ?? cur.groom_phone, b.bride_phone ?? cur.bride_phone, b.shoot_position ?? cur.shoot_position,
+       b.total_negatives ?? cur.total_negatives, b.retouch_count ?? cur.retouch_count, b.album_electronic_num ?? cur.album_electronic_num,
+       b.album_price ?? cur.album_price, b.shoot_cost ?? cur.shoot_cost, b.quick_repair_cost ?? cur.quick_repair_cost,
+       payBool(b.pay_cash, cur.pay_cash), payBool(b.pay_wechat, cur.pay_wechat), payBool(b.pay_alipay, cur.pay_alipay), b.pay_account_info ?? cur.pay_account_info,
        cur.id]
     );
     if (b.status && b.status !== cur.status) {

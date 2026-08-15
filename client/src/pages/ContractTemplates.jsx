@@ -10,6 +10,9 @@ const FAINT = '#AEAEB2';
 
 const EMPTY = { template_name: '', template_content: '', backup_word_url: '', is_default: false };
 
+// 防篡改校验：必填业务占位符（缺失则禁止保存，与后端一致）
+const REQUIRED_PLACEHOLDERS = ['groom_name', 'bride_name', 'wedding_full_date', 'shoot_position', 'total_money'];
+
 function fmtTime(t) {
   if (!t) return '';
   const d = new Date(t);
@@ -48,6 +51,9 @@ export default function ContractTemplates() {
 
   const save = async () => {
     if (!form.template_name.trim()) return flash('请填写模板名称');
+    // 防篡改校验：缺失必填业务占位符则禁止保存
+    const missing = REQUIRED_PLACEHOLDERS.filter((p) => !(form.template_content || '').includes('{{' + p + '}}'));
+    if (missing.length) return flash('合同正文缺失必填占位符：' + missing.map((p) => '{{' + p + '}}').join('、'));
     setBusy(true);
     try {
       if (editing && editing.id) await http.put('/api/contract/templates/' + editing.id, form);

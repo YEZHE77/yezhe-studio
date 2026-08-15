@@ -468,6 +468,23 @@ export async function initSchema() {
   await ensureColumn('orders', 'contract_template_id', 'INTEGER');
   await ensureColumn('orders', 'contract_pdf_url', 'TEXT');
   await ensureColumn('orders', 'contract_extra_text', 'TEXT');
+  // 合同渲染专用业务字段（数据一致性强制规则：每个 {{占位符}} 唯一绑定订单字段，PDF 渲染只读订单表，绝不读套系兜底）
+  await ensureColumn('orders', 'groom_phone', 'TEXT');            // 新郎电话
+  await ensureColumn('orders', 'bride_phone', 'TEXT');            // 新娘电话
+  await ensureColumn('orders', 'shoot_position', 'TEXT');         // 机位（单机位/多机位）
+  await ensureColumn('orders', 'total_negatives', 'INTEGER NOT NULL DEFAULT 0'); // 底片数量
+  await ensureColumn('orders', 'retouch_count', 'INTEGER NOT NULL DEFAULT 0');   // 精修张数
+  await ensureColumn('orders', 'album_electronic_num', 'INTEGER NOT NULL DEFAULT 1'); // 电子相册数量
+  await ensureColumn('orders', 'album_price', 'REAL NOT NULL DEFAULT 0');        // 相册单价
+  await ensureColumn('orders', 'shoot_cost', 'REAL NOT NULL DEFAULT 0');         // 基础拍摄费
+  await ensureColumn('orders', 'quick_repair_cost', 'REAL NOT NULL DEFAULT 0');  // 快修费
+  await ensureColumn('orders', 'pay_cash', 'INTEGER NOT NULL DEFAULT 0');        // 现金支付勾选
+  await ensureColumn('orders', 'pay_wechat', 'INTEGER NOT NULL DEFAULT 0');      // 微信支付勾选
+  await ensureColumn('orders', 'pay_alipay', 'INTEGER NOT NULL DEFAULT 0');      // 支付宝勾选
+  await ensureColumn('orders', 'pay_account_info', 'TEXT');        // 收款账户信息
+  // 合同生成版本追溯：最近生成时间 + 生成时完整订单快照 JSON（用于「订单已变更，旧PDF未同步」比对）
+  await ensureColumn('orders', 'contract_generate_time', 'TEXT');
+  await ensureColumn('orders', 'contract_order_snapshot', 'TEXT');
   // 订单备注分组：生日/纪念日 / 预约备注 / 内部备注 / 外部备注（问卷答案 questionnaire_answers 已在 DDL）
   await ensureColumn('orders', 'birthday', 'TEXT');
   await ensureColumn('orders', 'appointment_remark', 'TEXT');
