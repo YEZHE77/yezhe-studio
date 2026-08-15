@@ -22,6 +22,16 @@ const STATUS_LABEL = {
   retouching: '精修中', delivered: '已交付', completed: '已完成', cancelled: '已关闭'
 };
 
+// 待办 Tab key → 筛选 status 值（与 Todo.jsx TAB_DEFS 的 key/value 一致）
+// 供 /orders?tab=xxx 兼容跳转使用（消除 TAB_STATUS 未定义引用隐患）
+const TAB_STATUS = {
+  deposit: 'deposit_pending',
+  waiting: 'waiting_shoot',
+  selecting: 'todo_selecting',
+  retouching: 'todo_retouch',
+  delivered: 'todo_deliver',
+};
+
 // deposit 状态细分：logs 含「沟通确认」=「等待拍摄」，否则 =「已付定金」
 // retouching 状态细分：logs 含「精修完成/全部精修完成/底片打包/原片打包」=「待交付」，否则 =「精修中」
 // 两段细分都与后端 stats/orders 的 waiting_shoot / todo_retouch / todo_deliver 过滤分界一致
@@ -375,10 +385,11 @@ export default function Orders() {
           style={{ background: '#fff', color: '#333' }}>
           <option value="">所有订单 ({stats.total})</option>
           <option value="unpaid">未付定金</option>
-          <option value="deposit">已付定金</option>
-          <option value="shot">已拍摄</option>
-          <option value="selecting">选片中</option>
-          <option value="retouching">精修中</option>
+          <option value="deposit_pending">已付定金</option>
+          <option value="waiting_shoot">等待拍摄</option>
+          <option value="todo_selecting">待选片</option>
+          <option value="todo_retouch">精修中</option>
+          <option value="todo_deliver">待交付</option>
           <option value="delivered">已交付</option>
           <option value="completed">已完成</option>
           <option value="cancelled">已关闭</option>
@@ -699,9 +710,9 @@ const ORDER_STATUS_OPTIONS = [
   { value: 'unpaid', label: '未付定金' },
   { value: 'deposit_pending', label: '已付定金' },
   { value: 'waiting_shoot', label: '等待拍摄' },
-  { value: 'shot', label: '已拍摄' },
-  { value: 'selecting', label: '选片中' },
-  { value: 'retouching', label: '精修中' },
+  { value: 'todo_selecting', label: '待选片' },
+  { value: 'todo_retouch', label: '精修中' },
+  { value: 'todo_deliver', label: '待交付' },
   { value: 'delivered', label: '已交付' },
   { value: 'completed', label: '已完成' },
   { value: 'cancelled', label: '已关闭' },
@@ -714,18 +725,21 @@ const SORT_OPTIONS = [
   { value: 'recent', label: '最近操作' }
 ];
 
-// 筛选抽屉 pill 选项（仅保留婚礼/人像摄影工作室实际会用到的状态）
-// 去掉电商/流程中状态：pending_confirm/tbd_date/waiting_raw/waiting_retouch/downloading/pending_review
+// 筛选抽屉 pill 选项（对齐业务 6 节点流程 + 特殊状态，与待办 Tab / 进度条口径一致）
+// 状态流程：未付定金 → 已付定金 → 等待拍摄 → 待选片 → 精修中 → 待交付 → 已交付 → 已完成
+// 末位：已关闭 / 未结算尾款(财务维度) / 回收站
 const STATUS_PILLS = [
   { value: 'all', label: '所有订单' },
   { value: 'unpaid_deposit', label: '未付定金' },
+  { value: 'deposit_pending', label: '已付定金' },
   { value: 'waiting_shoot', label: '等待拍摄' },
-  { value: 'has_balance', label: '未结算尾款' },
-  { value: 'selecting', label: '选片中' },
-  { value: 'retouching', label: '精修中' },
+  { value: 'todo_selecting', label: '待选片' },
+  { value: 'todo_retouch', label: '精修中' },
+  { value: 'todo_deliver', label: '待交付' },
   { value: 'delivered', label: '已交付' },
   { value: 'completed', label: '已完成' },
   { value: 'cancelled', label: '已关闭' },
+  { value: 'has_balance', label: '未结算尾款' },
   { value: '__trash', label: '回收站' }
 ];
 

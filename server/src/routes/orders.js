@@ -14,6 +14,39 @@ const JSON_COLS = ['package_snapshot', 'addons_snapshot', 'logs', 'phones', 'tim
 
 function nowISO() { return new Date().toISOString(); }
 
+// —— 状态筛选 → SQL OR 条件片段（列表 GET / 与导出 export 共用，避免两处口径分叉） ——
+// 业务节点口径与前端 OrderDetail/Todo/Orders 筛选一致：
+//   未付定金 unpaid / 已付定金 deposit_pending / 等待拍摄 waiting_shoot / 待选片 todo_selecting(shot+selecting)
+//   精修中 todo_retouch / 待交付 todo_deliver / 已交付 delivered / 已完成 completed
+function buildStatusOrs(statusList) {
+  const ors = [];
+  const params = [];
+  for (const s of statusList) {
+    if (s === 'all' || s === '') continue;
+    if (s === 'unpaid') { ors.push('payment_status = ?'); params.push('unpaid'); }
+    else if (s === 'pending_confirm') { ors.push('(status = ? AND date_tbd = 1)'); params.push('deposit'); }
+    else if (s === 'tbd_date') { ors.push('date_tbd = 1'); }
+    else if (s === 'unpaid_deposit') { ors.push('payment_status = ?'); params.push('unpaid'); }
+    else if (s === 'has_balance') { ors.push('balance > 0'); }
+    else if (s === 'waiting_shoot') { ors.push("payment_status = 'deposit' AND status = 'deposit' AND (logs LIKE '%沟通确认%' OR logs LIKE '%等待拍摄%' OR logs LIKE '%拍摄执行%')"); }
+    else if (s === 'deposit_pending') { ors.push("payment_status = 'deposit' AND status = 'deposit' AND (logs IS NULL OR logs = '' OR (logs NOT LIKE '%沟通确认%' AND logs NOT LIKE '%等待拍摄%' AND logs NOT LIKE '%拍摄执行%'))"); }
+    else if (s === 'waiting_raw') { ors.push('status = ?'); params.push('shot'); }
+    else if (s === 'selecting') { ors.push('status = ?'); params.push('selecting'); }
+    else if (s === 'todo_selecting') { ors.push("status IN ('shot', 'selecting')"); }
+    else if (s === 'retouching') { ors.push('status = ?'); params.push('retouching'); }
+    else if (s === 'todo_retouch') { ors.push("status = 'retouching' AND (logs IS NULL OR logs = '' OR (logs NOT LIKE '%精修完成%' AND logs NOT LIKE '%全部精修完成%' AND logs NOT LIKE '%底片打包%' AND logs NOT LIKE '%原片打包%'))"); }
+    else if (s === 'todo_deliver') { ors.push("status = 'retouching' AND (logs LIKE '%精修完成%' OR logs LIKE '%全部精修完成%' OR logs LIKE '%底片打包%' OR logs LIKE '%原片打包%')"); }
+    else if (s === 'waiting_retouch') { ors.push('status = ?'); params.push('retouching'); }
+    else if (s === 'downloading') { ors.push('status = ?'); params.push('delivered'); }
+    else if (s === 'pending_review') { ors.push('status = ?'); params.push('completed'); }
+    else if (s === 'completed') { ors.push('status = ?'); params.push('completed'); }
+    else if (s === 'cancelled') { ors.push('status = ?'); params.push('cancelled'); }
+    else if (s === 'deposit_paid') { ors.push('payment_status = ?'); params.push('deposit'); }
+    else { ors.push('status = ?'); params.push(s); }
+  }
+  return { ors, params };
+}
+
 // —— 收款渠道（线下区分微信/支付宝/现金/银行转账；线上统一 online） ——
 const CHANNEL_LABEL = { wechat: '微信', alipay: '支付宝', cash: '现金', bank: '银行转账', online: '线上' };
 function normChannel(method, channel) {
@@ -74,31 +107,8 @@ router.get('/', authRequired, async (req, res) => {
     if (statuses) statusList.push(...String(statuses).split(',').filter(Boolean));
     if (status) statusList.push(String(status));
     if (statusList.length) {
-      const ors = [];
-      for (const s of statusList) {
-        if (s === 'all' || s === '') continue;
-        if (s === 'unpaid') { ors.push('payment_status = ?'); params.push('unpaid'); }
-        else if (s === 'pending_confirm') { ors.push('(status = ? AND date_tbd = 1)'); params.push('deposit'); }
-        else if (s === 'tbd_date') { ors.push('date_tbd = 1'); }
-        else if (s === 'unpaid_deposit') { ors.push('payment_status = ?'); params.push('unpaid'); }
-        else if (s === 'has_balance') { ors.push('balance > 0'); }
-        else if (s === 'waiting_shoot') { ors.push("payment_status = 'deposit' AND status = 'deposit' AND (logs LIKE '%沟通确认%' OR logs LIKE '%等待拍摄%' OR logs LIKE '%拍摄执行%')"); }
-        else if (s === 'deposit_pending') { ors.push("payment_status = 'deposit' AND status = 'deposit' AND (logs IS NULL OR logs = '' OR (logs NOT LIKE '%沟通确认%' AND logs NOT LIKE '%等待拍摄%' AND logs NOT LIKE '%拍摄执行%'))"); }
-        else if (s === 'waiting_raw') { ors.push('status = ?'); params.push('shot'); }
-        else if (s === 'selecting') { ors.push('status = ?'); params.push('selecting'); }
-        else if (s === 'todo_selecting') { ors.push("status IN ('shot', 'selecting')"); }
-        else if (s === 'retouching') { ors.push('status = ?'); params.push('retouching'); }
-        else if (s === 'todo_retouch') { ors.push("status = 'retouching' AND (logs IS NULL OR logs = '' OR (logs NOT LIKE '%精修完成%' AND logs NOT LIKE '%全部精修完成%' AND logs NOT LIKE '%底片打包%' AND logs NOT LIKE '%原片打包%'))"); }
-        else if (s === 'todo_deliver') { ors.push("status = 'retouching' AND (logs LIKE '%精修完成%' OR logs LIKE '%全部精修完成%' OR logs LIKE '%底片打包%' OR logs LIKE '%原片打包%')"); }
-        else if (s === 'waiting_retouch') { ors.push('status = ?'); params.push('retouching'); }
-        else if (s === 'downloading') { ors.push('status = ?'); params.push('delivered'); }
-        else if (s === 'pending_review') { ors.push('status = ?'); params.push('completed'); }
-        else if (s === 'completed') { ors.push('status = ?'); params.push('completed'); }
-        else if (s === 'cancelled') { ors.push('status = ?'); params.push('cancelled'); }
-        else if (s === 'deposit_paid') { ors.push('payment_status = ?'); params.push('deposit'); }
-        else { ors.push('status = ?'); params.push(s); }
-      }
-      if (ors.length) where.push('(' + ors.join(' OR ') + ')');
+      const { ors, params: sp } = buildStatusOrs(statusList);
+      if (ors.length) { where.push('(' + ors.join(' OR ') + ')'); params.push(...sp); }
     }
     if (q) {
       // 搜索：客户姓名 / 订单编号 / 订单名称 / 套系名(package_snapshot 内含 name)
@@ -231,13 +241,16 @@ router.get('/recycle', authRequired, requireRole(['admin']), async (req, res) =>
 // 导出 Excel 兼容 CSV（UTF-8 BOM，Excel 中文正常；字段对齐 spec 订单列表列）
 router.get('/export', authRequired, async (req, res) => {
   try {
-    const { status, q, executor, shootFrom, shootTo } = req.query;
+    const { status, statuses, q, executor, shootFrom, shootTo } = req.query;
     const where = ['cancelled = 0', 'is_deleted = 0'];
     const params = [];
-    if (status) {
-      if (status === 'unpaid') { where.push('payment_status = ?'); params.push('unpaid'); }
-      else if (status === 'deposit_paid') { where.push('payment_status = ?'); params.push('deposit'); }
-      else { where.push('status = ?'); params.push(status); }
+    // 状态过滤：与列表 GET / 共用 buildStatusOrs（前端导出传 statuses，逗号分隔）
+    const statusList = [];
+    if (statuses) statusList.push(...String(statuses).split(',').filter(Boolean));
+    if (status) statusList.push(String(status));
+    if (statusList.length) {
+      const { ors, params: sp } = buildStatusOrs(statusList);
+      if (ors.length) { where.push('(' + ors.join(' OR ') + ')'); params.push(...sp); }
     }
     if (q) {
       where.push('(customer_name LIKE ? OR order_no LIKE ? OR COALESCE(order_name, \'\') LIKE ? OR COALESCE(package_snapshot, \'\') LIKE ?)');
@@ -258,7 +271,7 @@ router.get('/export', authRequired, async (req, res) => {
       'SELECT * FROM orders WHERE ' + where.join(' AND ') + ' ORDER BY id DESC',
       params
     );
-    const STATUS_LABEL = { deposit: '已付定金', shot: '已拍摄', selecting: '选片中', retouching: '精修中', delivered: '已交付', completed: '已完成', cancelled: '已作废' };
+    const STATUS_LABEL = { deposit: '已付定金', shot: '已拍摄', selecting: '选片中', retouching: '精修中', delivered: '已交付', completed: '已完成', cancelled: '已关闭' };
     const PAY_LABEL = { unpaid: '未付定金', deposit: '已付定金', paid: '全款已付' };
     const safeParse = (v) => { try { return v ? JSON.parse(v) : null; } catch { return null; } };
     const esc = (v) => {
@@ -272,7 +285,21 @@ router.get('/export', authRequired, async (req, res) => {
       const pkgName = snap
         ? [snap.name, snap.spec_name || (snap.spec && snap.spec.name) || ''].filter(Boolean).join('｜')
         : '';
-      const statusLabel = STATUS_LABEL[r.status] || r.status || '';
+      const statusLabel = (() => {
+        const s = r.status;
+        // deposit / retouching 按 logs 细分（与前端 stageLabel / 待办 Tab 口径一致）
+        if (s === 'deposit' || s === 'retouching') {
+          let logs = [];
+          try { logs = r.logs ? JSON.parse(r.logs) : []; } catch { logs = []; }
+          if (s === 'deposit') {
+            const hasConfirm = logs.some((l) => (l && l.text || '').includes('沟通确认'));
+            return hasConfirm ? '等待拍摄' : '已付定金';
+          }
+          const hasFinish = logs.some((l) => (l && l.text || '').match(/精修完成|全部精修完成|底片打包|原片打包/));
+          return hasFinish ? '待交付' : '精修中';
+        }
+        return STATUS_LABEL[s] || s || '';
+      })();
       const payLabel = (Number(r.refund_amount) > 0 ? '已退款' : (PAY_LABEL[r.payment_status] || r.payment_status || ''));
       lines.push([
         r.order_no, r.customer_name || r.order_name || '', r.customer_phone || '',

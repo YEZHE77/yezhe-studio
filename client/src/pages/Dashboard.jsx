@@ -40,7 +40,7 @@ const BRAND_CARDS = [
 const OPS_CARDS = [
   { icon: 'calendar', title: '档期排期', desc: '拍摄档期管理与冲突拦截', to: '/schedule' },
   { icon: 'order', title: '订单中心', desc: '订单全生命周期与收款流水', to: '/orders' },
-  { icon: 'select', title: '在线选片', desc: '客户选片进度双向同步', to: '/orders?status=selecting' },
+  { icon: 'select', title: '在线选片', desc: '客户选片进度双向同步', to: '/orders?status=todo_selecting' },
   { icon: 'finance', title: '财务管理', desc: '营收汇总 / 月度对账报表', to: '/finance' },
   { icon: 'dashboard', title: '数据看板', desc: '经营概览与待办分布', to: '/datacharts' }
 ];
