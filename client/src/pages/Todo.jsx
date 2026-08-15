@@ -1,7 +1,8 @@
-// Todo.jsx —— 待办事项页（独立待办系统）
+// Todo.jsx —— 待办事项页（独立待办系统 + 卡片 Tab 分类）
 // 数据源：GET /api/todo（todo_items 表，含订单客户名/日期 JOIN）
-// 交互：点击待办跳订单详情；「标记完成」归档（仅改待办状态，绝不动订单业务数据）
-import React, { useEffect, useState, useCallback } from 'react';
+// 交互：横向卡片 Tab 分类（已付定金/等待拍摄/待选片/精修中/待交付/重新生成合同/客户申请）
+//      点击待办跳订单详情；「标记完成」归档（仅改待办状态，绝不动订单业务数据）
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import http from '../api.js';
 import { avatarColor, avatarText } from '../utils/avatar.js';
@@ -11,16 +12,16 @@ const TEXT = '#1f2329';
 const MUTED = '#999999';
 const LINE = '#F0F0F0';
 
-// 待办类型 → 标签 + 颜色
-const TYPE_META = {
-  deposit: { label: '已付定金', color: '#FE2C55' },
-  waiting_shoot: { label: '等待拍摄', color: GREEN },
-  selecting: { label: '待选片', color: '#2DB7F5' },
-  retouching: { label: '精修中', color: '#FFB900' },
-  delivering: { label: '待交付', color: '#8C8C8C' },
-  regen_contract: { label: '重新生成合同', color: '#FF4D4F' },
-  order_request: { label: '客户申请', color: '#722ED1' }
-};
+// 横向卡片 Tab 定义（key 对应 todo_type，accent 为底部色条颜色）
+const TAB_DEFS = [
+  { key: 'deposit', label: '已付定金', accent: '#FE2C55' },
+  { key: 'waiting_shoot', label: '等待拍摄', accent: GREEN },
+  { key: 'selecting', label: '待选片', accent: '#2DB7F5' },
+  { key: 'retouching', label: '精修中', accent: '#FFB900' },
+  { key: 'delivering', label: '待交付', accent: '#8C8C8C' },
+  { key: 'regen_contract', label: '重新生成合同', accent: '#FF4D4F' },
+  { key: 'order_request', label: '客户申请', accent: '#722ED1' }
+];
 
 function pad2(n) { return String(n).padStart(2, '0'); }
 
@@ -42,25 +43,22 @@ export default function Todo() {
   const nav = useNavigate();
   const [today] = useState(() => todayInfo());
   const [items, setItems] = useState([]);
-  const [counts, setCounts] = useState({ pending: 0, done: 0 });
   const [loading, setLoading] = useState(true);
+  const [activeKey, setActiveKey] = useState('deposit');
   const [showDone, setShowDone] = useState(false);
   const [lunar, setLunar] = useState('');
   const [busyId, setBusyId] = useState(null);
+  const tabsScrollRef = useRef(null);
+  const tabRefs = useRef({});
 
   const load = useCallback(() => {
     http.get('/api/todo')
-      .then((r) => {
-        const list = Array.isArray(r.data.list) ? r.data.list : [];
-        setItems(list);
-        setCounts(r.data.counts || { pending: 0, done: 0 });
-      })
+      .then((r) => setItems(Array.isArray(r.data.list) ? r.data.list : []))
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
 
   useEffect(() => { load(); }, [load]);
-  // 切回前台刷新（配合订单状态流转后待办变化）
   useEffect(() => {
     const onVisibility = () => { if (document.visibilityState === 'visible') load(); };
     document.addEventListener('visibilitychange', onVisibility);
@@ -86,19 +84,30 @@ export default function Todo() {
 
   const pending = items.filter((t) => t.status === 'pending');
   const done = items.filter((t) => t.status === 'done');
+  const activeList = pending.filter((t) => t.todo_type === activeKey);
+
+  // 切换 Tab 时滚动到视口中央
+  useEffect(() => {
+    const el = tabRefs.current[activeKey];
+    const scroller = tabsScrollRef.current;
+    if (!el || !scroller) return;
+    requestAnimationFrame(() => {
+      const elRect = el.getBoundingClientRect();
+      const scRect = scroller.getBoundingClientRect();
+      const elCenter = elRect.left + elRect.width / 2;
+      const scCenter = scRect.left + scRect.width / 2;
+      scroller.scrollBy({ left: elCenter - scCenter, behavior: 'smooth' });
+    });
+  }, [activeKey]);
 
   const renderRow = (t) => {
-    const meta = TYPE_META[t.todo_type] || { label: t.todo_type, color: '#999' };
     const name = (t.customer_name || t.groom_name || '客户').toString();
     const first = avatarText(name);
     return (
       <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 14px', borderBottom: '1px solid ' + LINE, background: '#fff' }}>
         <div style={{ width: 36, height: 36, borderRadius: '50%', background: avatarColor(name), color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 500, flexShrink: 0 }}>{first}</div>
-        <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 4 }} onClick={() => t.order_id && nav('/orders/' + t.order_id)}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span style={{ fontSize: 11, padding: '1px 6px', borderRadius: 3, color: '#fff', background: meta.color, flexShrink: 0 }}>{meta.label}</span>
-            <span style={{ fontSize: 14, color: TEXT, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</span>
-          </div>
+        <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 4, cursor: 'pointer' }} onClick={() => t.order_id && nav('/orders/' + t.order_id)}>
+          <span style={{ fontSize: 14, color: TEXT, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</span>
           <div style={{ fontSize: 12, color: MUTED, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.content || t.title || ''}</div>
         </div>
         <div style={{ fontSize: 12, color: MUTED, whiteSpace: 'nowrap', flexShrink: 0, textAlign: 'right', display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-end' }}>
@@ -141,21 +150,53 @@ export default function Todo() {
         </div>
       </div>
 
-      {/* 待办计数条 */}
-      <div style={{ display: 'flex', gap: 8, padding: '10px 12px 0' }}>
-        <span style={{ fontSize: 12, color: GREEN, background: 'rgba(126,205,187,0.12)', padding: '3px 10px', borderRadius: 10 }}>待处理 {counts.pending || pending.length}</span>
-        <span style={{ fontSize: 12, color: MUTED, background: '#f0f0f0', padding: '3px 10px', borderRadius: 10 }}>已归档 {counts.done || done.length}</span>
+      {/* 横向卡片 Tab 分类 */}
+      <div style={{ background: '#fff', borderBottom: '1px solid ' + LINE }}>
+        <div
+          ref={tabsScrollRef}
+          style={{
+            display: 'flex', overflowX: 'auto', WebkitOverflowScrolling: 'touch',
+            scrollbarWidth: 'none', msOverflowStyle: 'none', touchAction: 'pan-x'
+          }}
+          className="todo-tabs-scroll"
+        >
+          {TAB_DEFS.map((t) => {
+            const isActive = activeKey === t.key;
+            const count = pending.filter((x) => x.todo_type === t.key).length;
+            return (
+              <button
+                key={t.key}
+                ref={(el) => { tabRefs.current[t.key] = el; }}
+                type="button"
+                onClick={() => setActiveKey(t.key)}
+                style={{
+                  flex: '0 0 auto', minWidth: 86,
+                  padding: '12px 6px 10px', margin: 0, border: 0,
+                  background: isActive ? GREEN : 'transparent',
+                  display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
+                  position: 'relative', cursor: 'pointer', color: isActive ? '#fff' : TEXT
+                }}
+              >
+                <span style={{ fontSize: 18, fontWeight: 600, lineHeight: 1 }}>{count || 0}</span>
+                <span style={{ fontSize: 12, opacity: isActive ? 0.9 : 0.7 }}>{t.label}</span>
+                {!isActive && (
+                  <span style={{ position: 'absolute', left: '20%', right: '20%', bottom: 0, height: 3, background: t.accent, borderRadius: 2 }} />
+                )}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {/* 待办列表 */}
       <div style={{ flex: 1, padding: '8px 12px 24px' }}>
         {loading ? (
           <div style={{ textAlign: 'center', color: MUTED, padding: '40px 0', fontSize: 13 }}>加载中…</div>
-        ) : pending.length === 0 ? (
+        ) : activeList.length === 0 ? (
           <div style={{ textAlign: 'center', color: MUTED, padding: '40px 0', fontSize: 13 }}>暂无待办</div>
         ) : (
           <div style={{ background: '#fff', borderRadius: 12, overflow: 'hidden' }}>
-            {pending.map(renderRow)}
+            {activeList.map(renderRow)}
           </div>
         )}
 
@@ -175,6 +216,9 @@ export default function Todo() {
           </div>
         )}
       </div>
+
+      {/* 隐藏滚动条 */}
+      <style>{`.todo-tabs-scroll::-webkit-scrollbar{ display:none; }`}</style>
     </div>
   );
 }
