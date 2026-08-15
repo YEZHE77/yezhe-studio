@@ -253,6 +253,8 @@ export default function OrderDetail() {
   const [svcDetailOpen, setSvcDetailOpen] = useState(false);
   const [svcDetailExpanded, setSvcDetailExpanded] = useState(false);
   const [svcRefundExpanded, setSvcRefundExpanded] = useState(false);
+  const [svcAgreementExpanded, setSvcAgreementExpanded] = useState(false);
+  const [svcPhotoAuthExpanded, setSvcPhotoAuthExpanded] = useState(false);
 
   const loadSel = useCallback((oid) => {
     http.get('/api/admin/photo-select/' + oid).then((r) => setSel(r.data)).catch(() => setSel(null));
@@ -2939,7 +2941,7 @@ export default function OrderDetail() {
       {svcDetailOpen && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 80, background: '#fff', display: 'flex', flexDirection: 'column' }}>
           <div style={{ paddingTop: 'env(safe-area-inset-top, 0px)', height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', borderBottom: '1px solid ' + DIV, flexShrink: 0, position: 'relative' }}>
-            <button type="button" onClick={() => setSvcDetailOpen(false)} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#999', fontSize: 20, padding: 4 }} aria-label="返回">‹</button>
+            <button type="button" onClick={() => { setSvcDetailOpen(false); setSvcDetailExpanded(false); setSvcRefundExpanded(false); setSvcAgreementExpanded(false); setSvcPhotoAuthExpanded(false); }} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#999', fontSize: 20, padding: 4 }} aria-label="返回">‹</button>
             <span style={{ fontSize: 16, fontWeight: 500, color: '#222' }}>套系服务详情</span>
           </div>
           <div style={{ overflowY: 'auto', flex: 1, padding: '8px 20px' }}>
@@ -2994,6 +2996,56 @@ export default function OrderDetail() {
                 <div style={{ marginTop: 10, fontSize: 13, color: '#666', lineHeight: 1.6 }}>{pkgInfo?.details?.refund_policy || '未设置'}</div>
               )}
             </div>
+
+            {/* 顾客协议（与 PackagePreview 一致：永远绿色 + 展开/收起） */}
+            {(() => {
+              const sd = (pkgInfo && pkgInfo.details) || {};
+              const paras = toParagraphs(getServiceAgreement(sd));
+              if (!paras.length) return null;
+              return (
+                <div style={{ padding: '14px 0', borderTop: `1px solid ${DIV}` }}>
+                  <div onClick={() => setSvcAgreementExpanded((v) => !v)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}>
+                    <span style={{ fontSize: 14, color: '#333' }}>顾客协议</span>
+                    <span style={{ fontSize: 14, color: '#82C8AE' }}>{svcAgreementExpanded ? '收起' : '展开'}</span>
+                  </div>
+                  {svcAgreementExpanded && (
+                    <div style={{ marginTop: 10, fontSize: 13, color: '#666', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
+                      {paras.map((p, i) => {
+                        const isHeading = /^[一二三四五六七八九十]+、/.test(p);
+                        return (
+                          <div key={i} style={{ marginTop: isHeading ? 8 : 0, marginBottom: 4 }}>{p}</div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+
+            {/* 顾客照片授权协议 */}
+            {(() => {
+              const sd = (pkgInfo && pkgInfo.details) || {};
+              const paras = toParagraphs(getPhotoAuthAgreement(sd));
+              if (!paras.length) return null;
+              return (
+                <div style={{ padding: '14px 0', borderTop: `1px solid ${DIV}` }}>
+                  <div onClick={() => setSvcPhotoAuthExpanded((v) => !v)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}>
+                    <span style={{ fontSize: 14, color: '#333' }}>顾客照片授权协议</span>
+                    <span style={{ fontSize: 14, color: '#82C8AE' }}>{svcPhotoAuthExpanded ? '收起' : '展开'}</span>
+                  </div>
+                  {svcPhotoAuthExpanded && (
+                    <div style={{ marginTop: 10, fontSize: 13, color: '#666', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
+                      {paras.map((p, i) => {
+                        const isHeading = /^[一二三四五六七八九十]+、/.test(p);
+                        return (
+                          <div key={i} style={{ marginTop: isHeading ? 8 : 0, marginBottom: 4 }}>{p}</div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
 
             {/* 选片提示 */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 0', borderTop: `1px solid ${DIV}` }}>
