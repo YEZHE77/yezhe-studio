@@ -26,12 +26,21 @@ function toCsv(headers, rows) {
 
 const router = Router();
 
-// 由公历日期（YYYY-MM-DD）计算农历，如「六月廿三」
+// 由公历日期（YYYY-MM-DD）计算农历（含干支年+节日），如「甲辰 八月十五 中秋」
 export function lunarOf(dateStr) {
   try {
     const [y, m, d] = String(dateStr).split('-').map(Number);
     const lunar = Solar.fromYmd(y, m, d).getLunar();
-    return lunar.getMonthInChinese() + '月' + lunar.getDayInChinese();
+    const gz = lunar.getYearInGanZhi ? lunar.getYearInGanZhi() : '';
+    const md = lunar.getMonthInChinese() + '月' + lunar.getDayInChinese();
+    // 取节日名（如中秋、春节、清明、端午）
+    const festivals = [
+      ...(lunar.getFestivals ? lunar.getFestivals() : []),
+      ...(lunar.getOtherFestivals ? lunar.getOtherFestivals() : [])
+    ];
+    // 节日名去后缀「节」字（更紧凑）：中秋、清明、端阳
+    const festival = (festivals[0] || '').replace(/节$/, '');
+    return [gz, md, festival].filter(Boolean).join(' ');
   } catch { return ''; }
 }
 

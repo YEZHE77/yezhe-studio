@@ -32,6 +32,7 @@ function todayInfo() {
   const day = d.getDate();
   const dow = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'][d.getDay()];
   return {
+    ymd: `${y}-${pad2(m)}-${pad2(day)}`,
     monthKey: `${y}-${pad2(m)}`,
     big: pad2(day),
     monthName: ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'][m - 1],
