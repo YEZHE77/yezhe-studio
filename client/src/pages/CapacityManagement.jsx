@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import http, { formatBytes } from '../api.js';
 import Icon from '../components/Icon.jsx';
 import { safeNum } from '../utils/number.js';
@@ -459,6 +460,7 @@ function VideoPlaceholder() {
 }
 
 export default function CapacityManagement() {
+  const nav = useNavigate();
   const [tab, setTab] = useState('storage');
   const [reloadKey, setReloadKey] = useState(0);
   const reload = () => setReloadKey((k) => k + 1);
@@ -472,9 +474,12 @@ export default function CapacityManagement() {
         ...(isMobile ? { padding: '12px 12px 24px', background: '#F8F8F8', minHeight: '100%' } : {})
       }}
     >
-      <div>
-        <h1 className={isMobile ? 'text-lg text-fg' : 'text-xl text-fg'}>容量管理</h1>
-        <p className="text-muted text-xs mt-0.5">Cloudflare R2 免费额度下的存储与流量监控 · 无任何付费 / VIP / 扩容购买逻辑</p>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
+        <div>
+          <h1 className={isMobile ? 'text-lg text-fg' : 'text-xl text-fg'}>容量管理</h1>
+          <p className="text-muted text-xs mt-0.5">Cloudflare R2 免费额度下的存储与流量监控 · 无任何付费 / VIP / 扩容购买逻辑</p>
+        </div>
+        <button onClick={() => nav('/consistency-check')} className="text-xs shrink-0 mt-1" style={{ color: '#7ECDBB', background: 'none', border: 'none', cursor: 'pointer' }}>数据巡检 ›</button>
       </div>
 
       {/* Tab 切换（移动端可横向滚动，防贴边） */}

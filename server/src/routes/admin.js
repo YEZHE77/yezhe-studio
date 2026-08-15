@@ -8,6 +8,7 @@ import { isR2Enabled, isCloudStorageEnabled, getActiveProviderName, deleteMediaB
 import { cfConfigured, getR2Egress } from '../cf.js';
 import { getStorageUsage } from '../r2Metrics.js';
 import { buildFullBackup, writeBackupToCloud } from '../backup.js';
+import { runConsistencyCheck } from '../consistencyCheck.js';
 
 const router = Router();
 router.use(authRequired);
@@ -642,6 +643,23 @@ router.post('/backup/run', async (req, res) => {
     const r = await writeBackupToCloud();
     if (r.ok) res.json(r);
     else res.status(500).json({ error: r.reason });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// 18. 数据一致性巡检：手动触发一次（与每日凌晨定时任务同一套逻辑）
+router.post('/consistency-check', async (req, res) => {
+  try {
+    const r = await runConsistencyCheck();
+    res.json(r);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// 18.1 查询最近一次巡检异常清单（consistency_issues 只存最近一次，故直接全量返回）
+router.get('/consistency-check/issues', async (req, res) => {
+  try {
+    const rows = await query('SELECT * FROM consistency_issues ORDER BY id ASC');
+    const lastRun = rows.length ? rows[0].check_run : null;
+    res.json({ check_run: lastRun, total: rows.length, issues: rows });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 

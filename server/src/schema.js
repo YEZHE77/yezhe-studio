@@ -480,6 +480,20 @@ export async function initSchema() {
       )`;
   for (const s of ORDER_REQUESTS_DDL.split(';').map((x) => x.trim()).filter(Boolean)) await run(s);
 
+  // 数据一致性巡检异常记录表（每日凌晨自动巡检 + 手动触发；只存最近一次巡检的异常清单，异常入库 + 推送提醒）
+  const CONSISTENCY_ISSUES_DDL = dialect === 'pg'
+    ? `CREATE TABLE IF NOT EXISTS consistency_issues (
+        id SERIAL PRIMARY KEY, check_run TEXT NOT NULL, check_type TEXT NOT NULL,
+        rel_id TEXT, summary TEXT, detail TEXT,
+        created_at TIMESTAMPTZ DEFAULT now()
+      )`
+    : `CREATE TABLE IF NOT EXISTS consistency_issues (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, check_run TEXT NOT NULL, check_type TEXT NOT NULL,
+        rel_id TEXT, summary TEXT, detail TEXT,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP
+      )`;
+  for (const s of CONSISTENCY_ISSUES_DDL.split(';').map((x) => x.trim()).filter(Boolean)) await run(s);
+
   // 系统设置表
   for (const s of (dialect === 'pg' ? PG_SETTINGS : SQLITE_SETTINGS).split(';').map((x) => x.trim()).filter(Boolean)) await run(s);
 

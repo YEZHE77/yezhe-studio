@@ -10,6 +10,7 @@ import { dialect, dataDir } from './db.js';
 import { initSchema } from './schema.js';
 import { saveImage } from './storage.js';
 import { scheduleDailyBackup } from './backup.js';
+import { scheduleConsistencyCheck } from './consistencyCheck.js';
 import { authRequired } from './auth.js';
 import { seedIfNeeded } from './seed.js';
 
@@ -159,6 +160,8 @@ initSchema().then(async () => {
   await seedIfNeeded();
   // 双重备份：启动后调度每日 R2 /backup 写入（Render 免费档重启会自动重新调度）
   try { scheduleDailyBackup(); } catch (e) { console.error('[backup] 调度失败', e.message); }
+  // 数据一致性巡检：每日凌晨 02:00 批量校验（档期冲突/精修超额/合同快照不匹配/套系未绑模板），异常入库 + 推送提醒
+  try { scheduleConsistencyCheck(); } catch (e) { console.error('[check] 调度失败', e.message); }
   const server = app.listen(PORT, () => {
     console.log(`[server] 已启动 → http://localhost:${PORT}`);
     console.log(`[server] CORS 放行: ${CORS_ORIGIN.join(', ')}`);
