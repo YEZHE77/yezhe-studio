@@ -2604,10 +2604,13 @@ export default function OrderDetail() {
       `}</style>
       {/* 打印表（thead = 页眉每页重复；tbody = 全部内容） */}
       <table className="print-order-sheet" style={{ position: 'fixed', left: -10000, top: 0, width: '100%', padding: '20mm 15mm', borderCollapse: 'collapse', fontFamily: 'SimSun, STSong, serif' }}>
-        <thead className="print-page-header" style={{ visibility: 'hidden' }}>
+        <thead className="print-page-header" style={{ visibility: 'hidden', display: 'table-header-group' }}>
           <tr>
-            <td style={{ textAlign: 'center', fontSize: 12, color: '#555', padding: '4mm 0 2mm', borderBottom: '1px solid #ddd', background: '#fff', letterSpacing: 2 }}>
-              拍摄服务合同
+            <td style={{ width: '100%', padding: '4mm 15mm 3mm', borderBottom: '1px solid #555', background: '#fff' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', fontSize: 12, color: '#555', letterSpacing: 1 }}>
+                <span style={{ fontWeight: 500, fontSize: 14 }}>拍摄服务合同</span>
+                <span style={{ fontSize: 11, color: '#888' }}>叶哲 STUDIO · 摄影工作室</span>
+              </div>
             </td>
           </tr>
         </thead>
