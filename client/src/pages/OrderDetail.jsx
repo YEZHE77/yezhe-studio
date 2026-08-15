@@ -1401,29 +1401,6 @@ export default function OrderDetail() {
             </div>
           )}
 
-          {/* 退订政策（本订单所属套系的退改规则，PRD 一.2/二.2） */}
-          {(() => {
-            let sd = {};
-            try {
-              const snap = detail?.package_snapshot && typeof detail.package_snapshot === 'object'
-                ? detail.package_snapshot : (detail?.package_snapshot ? JSON.parse(detail.package_snapshot) : {});
-              sd = (snap && typeof snap.details === 'object') ? snap.details : {};
-            } catch {}
-            const rp = normalizePolicy(sd.refund_policy);
-            const paras = getRefundParagraphs(sd, rp);
-            if (!paras.length) return null;
-            return (
-              <div style={{ margin: '12px 12px 0', background: '#fff', borderRadius: 8, padding: '14px 16px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
-                <div style={{ fontSize: 14, color: '#1f2329', marginBottom: 8 }}>退订政策（{rp}）</div>
-                <div style={{ fontSize: 13, color: '#666', lineHeight: 1.7 }}>
-                  {paras.map((line, i) => (
-                    <div key={i} style={{ marginBottom: i < paras.length - 1 ? 6 : 0 }}>{line}</div>
-                  ))}
-                </div>
-              </div>
-            );
-          })()}
-
           {/* 订单变更记录（3 项可点击跳转 logModal 对应 tab） */}
           <div onClick={() => { setLogModalTab('status'); setLogModal(true); }} style={{ margin: '12px 12px 0', background: '#fff', borderRadius: 8, padding: '14px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', boxShadow: '0 1px 3px rgba(0,0,0,0.04)', cursor: 'pointer' }}>
             <span style={{ fontSize: 14, color: '#1f2329' }}>订单变更记录</span>
@@ -2983,6 +2960,30 @@ export default function OrderDetail() {
                   {(pkgInfo?.details?.service_detail_text) || pkgInfo?.description || DEFAULT_SERVICE_DETAIL}
                 </div>
               )}
+            </div>
+
+            {/* 退订政策（严格档：默认文案 + 套系自定义覆盖） */}
+            <div style={{ padding: '14px 0', borderTop: `1px solid ${DIV}` }}>
+              <div onClick={() => setSvcRefundExpanded((v) => !v)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}>
+                <span style={{ fontSize: 14, color: '#333' }}>退订政策</span>
+                <span style={{ fontSize: 14, color: (pkgInfo?.details?.hide_refund) ? '#999' : '#82C8AE' }}>{(pkgInfo?.details?.hide_refund) ? '该套系已设置为隐藏退订政策' : (svcRefundExpanded ? '收起' : '展开')}</span>
+              </div>
+              {!pkgInfo?.details?.hide_refund && svcRefundExpanded && (() => {
+                const sd = (pkgInfo && pkgInfo.details) || {};
+                const policy = normalizePolicy(sd.refund_policy);
+                const paras = getRefundParagraphs(sd, policy);
+                if (!paras.length) return <div style={{ marginTop: 10, fontSize: 13, color: '#666', lineHeight: 1.6 }}>未设置</div>;
+                return (
+                  <div style={{ marginTop: 10, fontSize: 13, color: '#666', lineHeight: 1.6 }}>
+                    {paras.map((p, i) => {
+                      const isHeading = /^[一二三四五六七八九十]+、|退订/.test(p);
+                      return (
+                        <div key={i} style={{ marginTop: isHeading && i > 0 ? 8 : 0, marginBottom: 4, fontSize: isHeading ? 14 : 13 }}>{p}</div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
             </div>
 
             {/* 顾客协议（与 PackagePreview 一致：永远绿色 + 展开/收起） */}
