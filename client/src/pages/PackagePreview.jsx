@@ -339,25 +339,23 @@ export default function PackagePreview() {
           </div>
           {/* 滚动内容区 */}
           <div style={{ overflowY: 'auto', flex: 1, padding: '8px 20px' }}>
-            {/* 服务项列表（移除加片费，6项对齐参考图） */}
+            {/* 标准模版完整字段列表（与摄影模版对齐） */}
             {[
-              { icon: <IconClock />, label: '时长', value: d.duration || '未设置' },
-              { icon: <IconImage />, label: '拍摄', value: d.raw_count ? `${d.raw_count}张` : '未设置' },
-              { icon: <IconScissors />, label: '精修', value: d.retouch_count ? `${d.retouch_count}张` : '未设置' },
-              { icon: <IconImage />, label: '仅送精修', value: d.raw_all_included, type: 'toggle' },
-              { icon: <IconMakeup />, label: '化妆', value: d.makeup_provide !== 'not', type: 'toggle' },
-              { icon: <IconShirt />, label: '服装', value: d.cloth_provide !== 'not', type: 'toggle' },
+              { label: '拍摄时长', value: d.duration || '未设置', chevron: true },
+              { label: '原片', value: d.raw_count ? `${d.raw_count}张` : '未设置', chevron: true },
+              { label: '精修片', value: d.retouch_count ? `${d.retouch_count}张` : '未设置', chevron: true },
+              { label: '加片费', value: d.extra_photo_fee || '未设置', chevron: true },
+              { label: '快修费', value: d.quick_repair_cost || '未设置', chevron: true },
+              { label: '交付时间', value: d.delivery_time || '未设置', chevron: true },
+              { label: '交付备注', value: d.delivery_remark || '未设置', chevron: true, fullWidth: true },
+              { label: '化妆服装', value: `${d.cloth_provide === 'provide' ? '提供服装' : '不提供服装'} · ${d.makeup_provide === 'provide' ? '提供化妆' : '不提供化妆'}`, chevron: true },
+              { label: '提供相册', value: d.album_provide === 'provide' ? '是' : d.album_provide === 'extra' ? '相册另购' : '否', chevron: true },
+              { label: '服务地点', value: d.service_location || '未设置', chevron: true }
             ].map((row, i, arr) => (
               <div key={i} style={{ display: 'flex', alignItems: 'center', padding: '14px 0', borderBottom: i < arr.length - 1 ? `1px solid ${MBORDER}` : 'none' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1 }}>
-                  {row.icon}
-                  <span style={{ fontSize: 14, color: '#333' }}>{row.label}</span>
-                </div>
-                {row.type === 'toggle' ? (
-                  row.value ? <IconCheckOn /> : <IconCheckOff />
-                ) : (
-                  <span style={{ fontSize: 14, color: '#666' }}>{row.value}</span>
-                )}
+                <span style={{ fontSize: 14, color: '#333', flex: 1 }}>{row.label}</span>
+                <span style={{ fontSize: 14, color: '#666', maxWidth: row.fullWidth ? '60%' : '60%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{row.value}</span>
+                {row.chevron && <span style={{ color: '#82C8AE', marginLeft: 6 }}>›</span>}
               </div>
             ))}
 
@@ -377,15 +375,26 @@ export default function PackagePreview() {
               )}
             </div>
 
-            {/* 退订政策（可展开；hide_refund=true 显示提示语） */}
+            {/* 退订政策（严格档：默认文案 + 套系自定义覆盖） */}
             <div style={{ padding: '14px 0', borderTop: `1px solid ${MBORDER}` }}>
               <div onClick={() => setRefundOpen((v) => !v)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}>
                 <span style={{ fontSize: 14, color: '#333' }}>退订政策</span>
                 <span style={{ fontSize: 14, color: d.hide_refund ? '#999' : MGREEN }}>{d.hide_refund ? '该套系已设置为隐藏退订政策' : (refundOpen ? '收起' : '展开')}</span>
               </div>
-              {!d.hide_refund && refundOpen && (
-                <div style={{ marginTop: 10, fontSize: 13, color: '#666', lineHeight: 1.6 }}>{d.refund_policy || '未设置'}</div>
-              )}
+              {!d.hide_refund && refundOpen && (() => {
+                const paras = getRefundParagraphs(d, normalizePolicy(d.refund_policy));
+                if (!paras.length) return <div style={{ marginTop: 10, fontSize: 13, color: '#666', lineHeight: 1.6 }}>未设置</div>;
+                return (
+                  <div style={{ marginTop: 10, fontSize: 13, color: '#666', lineHeight: 1.6 }}>
+                    {paras.map((p, i) => {
+                      const isHeading = /^[一二三四五六七八九十]+、|退订/.test(p);
+                      return (
+                        <div key={i} style={{ marginTop: isHeading && i > 0 ? 8 : 0, marginBottom: 4, fontSize: isHeading ? 14 : 13 }}>{p}</div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
             </div>
 
             {/* 顾客协议（与「服务详情」完全一致的展开/收起逻辑：永远绿色 + 永远「展开/收起」+ 未设置时点开显示「未设置」） */}
