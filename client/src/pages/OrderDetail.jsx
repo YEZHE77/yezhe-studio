@@ -212,6 +212,9 @@ export default function OrderDetail() {
   const [pkgSwitching, setPkgSwitching] = useState(false);
   // 加片设置弹窗（验收⑦：按订单快照核算）
   const [addonBox, setAddonBox] = useState(null);
+  // 作废订单 / 退款弹窗（替换原生 confirm+prompt，iOS PWA prompt 失效，保证移动端可用）
+  const [cancelDlg, setCancelDlg] = useState(null); // { tip, reason }
+  const [refundDlg, setRefundDlg] = useState(null); // { amount }
   // 套系服务详情弹窗
   const [pkgDetailModal, setPkgDetailModal] = useState(false);
   const [pkgDetailTab, setPkgDetailTab] = useState('service');
@@ -643,19 +646,30 @@ export default function OrderDetail() {
     const tip = (detail.shoot_date && !detail.date_tbd
       ? `确认作废该订单？\n作废后将自动释放已占用的档期 ${detail.shoot_date}，该日期重新变为可约。`
       : '确认作废该订单？') + ruleTip;
-    if (!confirm(tip)) return;
-    const reason = prompt('作废原因（选填）');
-    if (reason === null) return;
+    setCancelDlg({ tip, reason: '' });
+  }
+  async function doCancel() {
+    if (!cancelDlg) return;
+    const reason = (cancelDlg.reason || '').trim();
+    setCancelDlg(null);
     try {
       await http.post('/api/orders/' + detail.id + '/cancel', { reason });
       reload();
     } catch (e2) { alert((e2 && e2.message) || '作废失败'); }
   }
-  async function refund() {
-    const amt = prompt('退款金额');
-    if (amt === null || !amt) return;
-    await http.post('/api/orders/' + detail.id + '/refund', { amount: parseFloat(amt), note: '手动退款' });
-    reload();
+  function refund() {
+    if (!detail) return;
+    setRefundDlg({ amount: '' });
+  }
+  async function doRefund() {
+    if (!refundDlg) return;
+    const amt = parseFloat(refundDlg.amount);
+    setRefundDlg(null);
+    if (!amt || amt <= 0) { alert('请输入有效的退款金额'); return; }
+    try {
+      await http.post('/api/orders/' + detail.id + '/refund', { amount: amt, note: '手动退款' });
+      reload();
+    } catch (e2) { alert((e2 && e2.message) || '退款失败'); }
   }
   // 复制订单：以当前订单的套系/客户信息新建一条副本（日期置为待定，避免档期冲突），跳转到新订单
   async function copyOrder() {
@@ -2344,6 +2358,42 @@ export default function OrderDetail() {
           </div>
         );
       })()}
+
+      {/* 作废订单弹窗（替换原生 confirm+prompt，iOS PWA 兼容） */}
+      {cancelDlg && (
+        <div className="fixed inset-0 flex items-center justify-center z-[85] p-4" style={{ background: 'rgba(0,0,0,0.45)' }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ width: '100%', maxWidth: 460, background: '#fff', borderRadius: 8, padding: 24 }}>
+            <div style={{ color: '#FF4D4F', fontWeight: 600, marginBottom: 12, fontSize: 15 }}>作废订单</div>
+            <div style={{ fontSize: 13, color: '#333333', whiteSpace: 'pre-wrap', lineHeight: 1.7, marginBottom: 12 }}>
+              {cancelDlg.tip}
+            </div>
+            <input value={cancelDlg.reason}
+              onChange={(e) => setCancelDlg({ ...cancelDlg, reason: e.target.value })}
+              placeholder="作废原因（选填）" style={modalInputStyle} />
+            <div className="flex justify-end" style={{ gap: 8, marginTop: 16 }}>
+              <button type="button" onClick={() => setCancelDlg(null)} style={modalCancelStyle}>取消</button>
+              <button type="button" onClick={doCancel} style={{ ...modalSaveStyle, background: '#FF4D4F' }}>确认作废</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 退款弹窗（替换原生 prompt，iOS PWA 兼容） */}
+      {refundDlg && (
+        <div className="fixed inset-0 flex items-center justify-center z-[85] p-4" style={{ background: 'rgba(0,0,0,0.45)' }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ width: '100%', maxWidth: 400, background: '#fff', borderRadius: 8, padding: 24 }}>
+            <div style={{ color: '#222222', fontWeight: 600, marginBottom: 12, fontSize: 15 }}>退款</div>
+            <div style={{ fontSize: 13, color: '#666666', marginBottom: 8 }}>请输入退款金额（元）</div>
+            <input value={refundDlg.amount} type="number" min="0"
+              onChange={(e) => setRefundDlg({ amount: e.target.value })}
+              placeholder="退款金额" style={modalInputStyle} autoFocus />
+            <div className="flex justify-end" style={{ gap: 8, marginTop: 16 }}>
+              <button type="button" onClick={() => setRefundDlg(null)} style={modalCancelStyle}>取消</button>
+              <button type="button" onClick={doRefund} style={modalSaveStyle}>确认退款</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 加片设置弹窗（验收⑦：单价与精修张数一律取订单快照） */}
       {addonBox && (() => {
