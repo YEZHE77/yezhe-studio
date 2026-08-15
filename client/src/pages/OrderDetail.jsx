@@ -2615,10 +2615,9 @@ export default function OrderDetail() {
           <tr>
             <td>
               <div style={{ maxWidth: 700, margin: '0 auto', fontFamily: 'SimSun, STSong, serif', fontSize: 14, lineHeight: 1.8, color: '#222' }}>
-          {/* 标题 */}
+          {/* 订单信息（标题"拍摄服务合同"已挪到表头每页重复，这里只保留订单号/时间/状态） */}
           <div style={{ textAlign: 'center', borderBottom: '2px solid #000', paddingBottom: 16, marginBottom: 12 }}>
-            <div style={{ fontSize: 22, fontWeight: 400, letterSpacing: 4 }}>拍摄服务合同</div>
-            <div style={{ fontSize: 13, lineHeight: 1.6, marginTop: 8, color: '#555' }}>订单编号：{detail.order_no}</div>
+            <div style={{ fontSize: 13, lineHeight: 1.6, color: '#555' }}>订单编号：{detail.order_no}</div>
             <div style={{ fontSize: 13, lineHeight: 1.6, marginTop: 4, color: '#555' }}>创建时间：{detail.created_at ? new Date(detail.created_at).toLocaleString('zh-CN') : '—'}　·　订单状态：{statusText || '—'}</div>
           </div>
 
