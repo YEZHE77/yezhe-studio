@@ -563,6 +563,23 @@ router.put('/:id', authRequired, requireRole(['admin', 'photographer', 'finance'
     const orderPhotosText = b.order_photos === undefined
       ? (cur.order_photos ?? null)
       : (typeof b.order_photos === 'string' ? b.order_photos : JSON.stringify(b.order_photos));
+    // 作品数量校验（数据一致性强制规则）：精修片数量不得超过订单「精修张数」字段（数据源=订单当前数值，0=不限；防绕过前端直接调接口）
+    if (b.order_photos !== undefined) {
+      let photosObj = null;
+      try {
+        photosObj = typeof b.order_photos === 'string' ? JSON.parse(b.order_photos) : b.order_photos;
+      } catch { photosObj = null; }
+      if (photosObj && typeof photosObj === 'object' && !Array.isArray(photosObj)) {
+        const retouchedArr = Array.isArray(photosObj.retouched) ? photosObj.retouched : [];
+        const limit = parseInt(b.retouch_count ?? cur.retouch_count, 10) || 0;
+        if (limit > 0 && retouchedArr.length > limit) {
+          return res.status(400).json({
+            error: `精修片数量超出订单额度：已上传 ${retouchedArr.length} 张，订单精修额度 ${limit} 张`,
+            code: 'RETOUCH_LIMIT_EXCEEDED'
+          });
+        }
+      }
+    }
     // 分组备注字段：生日/纪念日、预约备注、内部备注、外部备注（备注主字段沿用 remark）
     const birthdayText = b.birthday === undefined ? (cur.birthday ?? null) : (b.birthday || null);
     const appointmentText = b.appointment_remark === undefined ? (cur.appointment_remark ?? null) : (b.appointment_remark || null);
