@@ -1180,7 +1180,7 @@ export default function OrderDetail() {
           {/* 状态卡 + 业务流进度条（后台 12 步，横向滑动） */}
           <div style={{ margin: '12px 12px 0', background: '#fff', borderRadius: 8, padding: '12px 12px 14px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
             {/* 卡片顶部：左上「上一步」+ 右上「下一步」（与桌面态按钮共用 stepPrev/stepNext，逐格推进/回退进度条节点） */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
               <button type="button" onClick={stepPrev} disabled={detail?.cancelled}
                 style={{ padding: '4px 12px', borderRadius: 4, border: '1px solid ' + (detail?.cancelled ? '#E5E5E5' : DIV), background: '#fff', color: detail?.cancelled ? TEXT_WEAK : BLUE, fontSize: 13, cursor: detail?.cancelled ? 'not-allowed' : 'pointer', opacity: detail?.cancelled ? 0.5 : 1 }}>‹ 上一步</button>
               <button type="button" onClick={stepNext} disabled={detail?.cancelled}
@@ -1496,7 +1496,7 @@ export default function OrderDetail() {
 
           {/* 右侧 11 步横向流程进度条（spec：完成=蓝色圆圈+蓝色对勾 / 当前=蓝色实心 / 未达=灰色空心；连接线蓝/灰；支持横向滚动） */}
           <div className="flex-1" style={{ minWidth: 0, flex: isMobile ? '1 1 100%' : undefined, padding: isMobile ? '14px 16px' : '14px 28px', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 12 }}>
-            <div className="flex items-center justify-between" style={{ fontSize: 12, color: TEXT_SUB, marginBottom: 20 }}>
+            <div className="flex items-center justify-between" style={{ fontSize: 12, color: TEXT_SUB, marginBottom: 12 }}>
               <button type="button" onClick={stepPrev} disabled={detail.cancelled || curStep <= 0}
                 style={{ height: 24, padding: '0 12px', borderRadius: 3, border: '1px solid #D8D8D8', background: '#fff', color: detail.cancelled || curStep <= 0 ? '#CCCCCC' : TEXT_MAIN, fontSize: 12, cursor: detail.cancelled || curStep <= 0 ? 'not-allowed' : 'pointer' }}>‹ 上一步</button>
               <button type="button" onClick={stepNext} disabled={detail.cancelled || curStep >= ORDER_STAGES.length - 1}
@@ -2119,7 +2119,7 @@ export default function OrderDetail() {
               </div>
 
             {/* 双卡片横向布局 */}
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 20, marginBottom: 20 }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 20, marginBottom: 12 }}>
               {/* 卡片 1：基本信息 */}
               <div style={{ flex: '1 1 260px', minWidth: 0, background: '#FAFAFA', border: '1px solid ' + DIV, borderRadius: 6, padding: 18 }}>
                 <div style={{ fontSize: 14, fontWeight: 400, color: '#333333', marginBottom: 16, paddingBottom: 10, borderBottom: '1px solid ' + DIV }}>
@@ -2234,7 +2234,7 @@ export default function OrderDetail() {
             </div>
 
             {/* 底栏卡片：状态 + 备注 + 当前套系 */}
-            <div style={{ background: '#FAFAFA', border: '1px solid ' + DIV, borderRadius: 6, padding: 18, marginBottom: 20 }}>
+            <div style={{ background: '#FAFAFA', border: '1px solid ' + DIV, borderRadius: 6, padding: 18, marginBottom: 12 }}>
               <div className="grid grid-cols-2" style={{ gap: 20 }}>
                 <div>
                   <div style={{ fontSize: 13, color: '#666666', marginBottom: 4 }}>订单状态</div>
@@ -2621,21 +2621,21 @@ export default function OrderDetail() {
           @media print {
             body * { visibility: hidden; }
             .print-order-sheet, .print-order-sheet * { visibility: visible; }
-            .print-order-sheet { position: absolute !important; left: 0 !important; top: 0 !important; width: 100% !important; margin: 0 !important; padding: 30mm 20mm 25mm !important; }
+            .print-order-sheet { position: absolute !important; left: 0 !important; top: 0 !important; width: 100% !important; margin: 0 !important; padding: 20mm 15mm 20mm !important; }
             /* @page 页面盒：定义每页尺寸 + 页边距 + 页眉/页脚（W3C 标准，原生支持） */
-            @page { size: A4; margin: 30mm 20mm 25mm; @top-center { content: "拍摄服务合同"; font-family: SimSun, STSong, serif; font-size: 12px; color: #555; padding-bottom: 4mm; border-bottom: 1px solid #ddd; width: 100%; } }
+            @page { size: A4; margin: 20mm 15mm 20mm; @top-center { content: "拍摄服务合同"; font-family: SimSun, STSong, serif; font-size: 12px; color: #555; padding-bottom: 3mm; border-bottom: 1px solid #ddd; width: 100%; } }
           }
         `}</style>
         <div style={{ maxWidth: 700, margin: '0 auto', fontFamily: 'SimSun, STSong, serif', fontSize: 14, lineHeight: 1.8, color: '#222' }}>
           {/* 标题 */}
-          <div style={{ textAlign: 'center', borderBottom: '2px solid #000', paddingBottom: 16, marginBottom: 20 }}>
+          <div style={{ textAlign: 'center', borderBottom: '2px solid #000', paddingBottom: 16, marginBottom: 12 }}>
             <div style={{ fontSize: 22, fontWeight: 400, letterSpacing: 4 }}>拍摄服务合同</div>
             <div style={{ fontSize: 13, lineHeight: 1.6, marginTop: 8, color: '#555' }}>订单编号：{detail.order_no}</div>
             <div style={{ fontSize: 13, lineHeight: 1.6, marginTop: 4, color: '#555' }}>创建时间：{detail.created_at ? new Date(detail.created_at).toLocaleString('zh-CN') : '—'}　·　订单状态：{statusText || '—'}</div>
           </div>
 
           {/* 客户信息 */}
-          <div style={{ marginBottom: 20 }}>
+          <div style={{ marginBottom: 12 }}>
             <div style={{ fontSize: 16, fontWeight: 400, borderBottom: '1px solid #ccc', paddingBottom: 6, marginBottom: 10 }}>客户信息</div>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14, lineHeight: 1.8 }}>
               <tbody>
@@ -2666,7 +2666,7 @@ export default function OrderDetail() {
           </div>
 
           {/* 套系详情：根据实际选择的套系显示完整模板字段（pkgInfo.details 来自 package_snapshot；订单特定金额从 orders 表读取） */}
-          <div style={{ marginBottom: 20 }}>
+          <div style={{ marginBottom: 12 }}>
             <div style={{ fontSize: 16, fontWeight: 400, borderBottom: '1px solid #ccc', paddingBottom: 6, marginBottom: 10 }}>套系详情</div>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14, lineHeight: 1.8 }}>
               <tbody>
@@ -2717,7 +2717,7 @@ export default function OrderDetail() {
           </div>
 
           {/* 收款信息 */}
-          <div style={{ marginBottom: 20 }}>
+          <div style={{ marginBottom: 12 }}>
             <div style={{ fontSize: 16, fontWeight: 400, borderBottom: '1px solid #ccc', paddingBottom: 6, marginBottom: 10 }}>收款信息</div>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14, lineHeight: 1.8 }}>
               <tbody>
@@ -2761,7 +2761,7 @@ export default function OrderDetail() {
           </div>
 
           {/* 服务详情（订单套系快照；空时用官方默认模板） */}
-          <div style={{ marginBottom: 20 }}>
+          <div style={{ marginBottom: 12 }}>
             <div style={{ fontSize: 16, fontWeight: 400, borderBottom: '1px solid #ccc', paddingBottom: 6, marginBottom: 12 }}>服务详情</div>
             <div style={{ fontSize: 14, lineHeight: 1.8, color: '#222', whiteSpace: 'pre-wrap', textIndent: '2em' }}>
               {((pkgInfo && pkgInfo.details && pkgInfo.details.service_detail_text) || DEFAULT_SERVICE_DETAIL)}
@@ -2774,7 +2774,7 @@ export default function OrderDetail() {
             const paras = toParagraphs(getServiceAgreement(sd));
             if (!paras.length) return null;
             return (
-              <div style={{ marginBottom: 20 }}>
+              <div style={{ marginBottom: 12 }}>
                 <div style={{ fontSize: 16, fontWeight: 400, borderBottom: '1px solid #ccc', paddingBottom: 6, marginBottom: 12 }}>
                   顾客服务协议
                 </div>
@@ -2796,7 +2796,7 @@ export default function OrderDetail() {
             const paras = toParagraphs(getPhotoAuthAgreement(sd));
             if (!paras.length) return null;
             return (
-              <div style={{ marginBottom: 20 }}>
+              <div style={{ marginBottom: 12 }}>
                 <div style={{ fontSize: 16, fontWeight: 400, borderBottom: '1px solid #ccc', paddingBottom: 6, marginBottom: 12 }}>
                   顾客照片授权协议
                 </div>
@@ -2819,7 +2819,7 @@ export default function OrderDetail() {
             const paras = getRefundParagraphs(sd, policy);
             if (!paras.length) return null;
             return (
-              <div style={{ marginBottom: 20 }}>
+              <div style={{ marginBottom: 12 }}>
                 <div style={{ fontSize: 16, fontWeight: 400, borderBottom: '1px solid #ccc', paddingBottom: 6, marginBottom: 12 }}>
                   退订政策（{policy}）
                 </div>
@@ -2834,13 +2834,13 @@ export default function OrderDetail() {
 
           {/* 备注：客户备注 + 商家内部备注（开关控制，默认关，内部备注敏感） */}
           {detail.remark && (
-            <div style={{ marginBottom: 20 }}>
+            <div style={{ marginBottom: 12 }}>
               <div style={{ fontSize: 16, fontWeight: 400, borderBottom: '1px solid #ccc', paddingBottom: 6, marginBottom: 12 }}>客户备注</div>
               <div style={{ fontSize: 14, lineHeight: 1.8, color: '#222', whiteSpace: 'pre-wrap', textIndent: '2em' }}>{detail.remark}</div>
             </div>
           )}
           {printInternal && detail.internal_remark && (
-            <div style={{ marginBottom: 20 }}>
+            <div style={{ marginBottom: 12 }}>
               <div style={{ fontSize: 16, fontWeight: 400, borderBottom: '1px solid #ccc', paddingBottom: 6, marginBottom: 12 }}>商家内部备注</div>
               <div style={{ fontSize: 14, lineHeight: 1.8, color: '#222', whiteSpace: 'pre-wrap', textIndent: '2em' }}>{detail.internal_remark}</div>
             </div>
