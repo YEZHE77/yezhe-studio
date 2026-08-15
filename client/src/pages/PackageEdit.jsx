@@ -71,6 +71,10 @@ function defaultDetails() {
     retouch_count: '',
     extra_photo_fee: '',
     extra_photo_discount: '',
+    // 快修费 / 交付时间 / 交付备注（套系项目补充字段，2026-08-15 新增）
+    quick_repair_cost: '',
+    delivery_time: '',
+    delivery_remark: '',
     cloth_provide: 'not',
     makeup_provide: 'not',
     album_provide: 'not',
@@ -626,8 +630,11 @@ export default function PackageEdit() {
                 <MRow label="精修片" value={d.retouch_count ? `${d.retouch_count}张` : '请选择'} onClick={() => openSheet('retouch', d.retouch_count)} />
                 <MRow label="加片费" value={d.extra_photo_fee || '请选择'} onClick={() => openSheet('extraFee', d.extra_photo_fee)} />
                 <MRow label="加片优惠" value={d.extra_photo_discount || '无'} onClick={() => openSheet('extraDisc', d.extra_photo_discount)} />
+                <MRow label="快修费" value={d.quick_repair_cost ? `${d.quick_repair_cost} 元` : '请选择'} onClick={() => openSheet('quickRepair', d.quick_repair_cost)} />
+                <MRow label="交付时间" value={d.delivery_time || '请选择'} onClick={() => openSheet('deliveryTime', d.delivery_time)} />
               </>
             )}
+            <MRow label="交付备注" value={d.delivery_remark ? d.delivery_remark.slice(0, 20) + (d.delivery_remark.length > 20 ? '...' : '') : ''} onClick={() => openSheet('deliveryRemark', d.delivery_remark)} />
             <MRow label="化妆服装" value={`${d.cloth_provide === 'provide' ? '提供服装' : '不提供服装'} ${d.makeup_provide === 'provide' ? '提供化妆' : '不提供化妆'}`}
               onClick={() => openSheet('cloth', `${d.cloth_provide}|${d.makeup_provide}`)} />
             <MRow label="提供相册" value={d.album_provide === 'provide' ? '是' : d.album_provide === 'extra' ? '相册另购' : '否'}
@@ -859,6 +866,27 @@ export default function PackageEdit() {
           <input autoFocus value={sheetVal} onChange={(e) => setSheetVal(e.target.value)} placeholder="如 满10张9折"
             style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #D1D5DB', fontSize: 15, outline: 'none' }} />
           <button type="button" onClick={() => { setD({ extra_photo_discount: sheetVal }); closeSheet(); }}
+            style={{ width: '100%', marginTop: 16, padding: '12px', borderRadius: 8, background: MRED, color: '#fff', fontSize: 15, border: 'none' }}>确定</button>
+        </MSheet>
+
+        <MSheet open={sheet === 'quickRepair'} onClose={closeSheet} title="快修费">
+          <input autoFocus value={sheetVal} onChange={(e) => setSheetVal(e.target.value)} placeholder="如 1200（元）"
+            style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #D1D5DB', fontSize: 15, outline: 'none' }} />
+          <button type="button" onClick={() => { setD({ quick_repair_cost: sheetVal }); closeSheet(); }}
+            style={{ width: '100%', marginTop: 16, padding: '12px', borderRadius: 8, background: MRED, color: '#fff', fontSize: 15, border: 'none' }}>确定</button>
+        </MSheet>
+
+        <MSheet open={sheet === 'deliveryTime'} onClose={closeSheet} title="交付时间">
+          <input autoFocus value={sheetVal} onChange={(e) => setSheetVal(e.target.value)} placeholder="如 预告片1-7天 / 成片15日内"
+            style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #D1D5DB', fontSize: 15, outline: 'none' }} />
+          <button type="button" onClick={() => { setD({ delivery_time: sheetVal }); closeSheet(); }}
+            style={{ width: '100%', marginTop: 16, padding: '12px', borderRadius: 8, background: MRED, color: '#fff', fontSize: 15, border: 'none' }}>确定</button>
+        </MSheet>
+
+        <MSheet open={sheet === 'deliveryRemark'} onClose={closeSheet} title="交付备注">
+          <textarea autoFocus value={sheetVal} onChange={(e) => setSheetVal(e.target.value)} rows={4} placeholder="填写交付时间/快修费的补充说明"
+            style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #D1D5DB', fontSize: 15, outline: 'none', resize: 'none', lineHeight: 1.6 }} />
+          <button type="button" onClick={() => { setD({ delivery_remark: sheetVal }); closeSheet(); }}
             style={{ width: '100%', marginTop: 16, padding: '12px', borderRadius: 8, background: MRED, color: '#fff', fontSize: 15, border: 'none' }}>确定</button>
         </MSheet>
 
@@ -1335,6 +1363,27 @@ export default function PackageEdit() {
                     </div>
                   </Field>
                 </div>
+
+                {/* 快修费 / 交付时间 */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
+                  {/* 快修费 */}
+                  <Field label="快修费">
+                    <input className={inputSm} value={d.quick_repair_cost}
+                      onChange={(e) => setD({ quick_repair_cost: e.target.value })} placeholder="如 1200（元）" />
+                  </Field>
+
+                  {/* 交付时间 */}
+                  <Field label="交付时间">
+                    <input className={inputSm} value={d.delivery_time}
+                      onChange={(e) => setD({ delivery_time: e.target.value })} placeholder="如 预告片1-7天 / 成片15日内" />
+                  </Field>
+                </div>
+
+                {/* 交付备注 */}
+                <Field label="交付备注">
+                  <textarea className={inputSm} rows={2} value={d.delivery_remark}
+                    onChange={(e) => setD({ delivery_remark: e.target.value })} placeholder="填写交付时间/快修费的补充说明" />
+                </Field>
 
                 {/* 服装 / 化妆 / 相册：同一行三列均分（重点修改，原纵向堆叠→横向并排） */}
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-x-4">
