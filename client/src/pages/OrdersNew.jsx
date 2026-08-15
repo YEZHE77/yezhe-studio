@@ -1,22 +1,26 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import http from '../api.js';
-import OrderCreateModal from '../components/OrderCreateModal.jsx';
+import OrderDialog from '../components/OrderDialog.jsx';
 
-// 路由 /orders/new 对应的全屏「新建订单」页面（复用 OrderCreateModal 组件）
+// 路由 /orders/new 对应的全屏「新建订单」页面（复用 OrderDialog 组件，与新建档期 ScheduleNewOrder 完全一致）
 export default function OrdersNew() {
   const nav = useNavigate();
-  const [pkgs, setPkgs] = useState([]);
+  const location = useLocation();
+  const topTitle = location.state?.topTitle || '新增订单';
+  const [personnel, setPersonnel] = useState([]);
+
   useEffect(() => {
-    http.get('/api/packages?status=all').then((r) => setPkgs(r.data || [])).catch(() => {});
+    http.get('/api/admin/personnel').then((r) => setPersonnel(r.data || [])).catch(() => {});
   }, []);
+
   return (
-    <OrderCreateModal
-      visible
-      pageMode
-      packages={pkgs}
+    <OrderDialog
+      mode="page"
+      topTitle={topTitle}
+      personnel={personnel}
       onClose={() => nav('/orders')}
-      onAfterCreate={() => nav('/orders')}
+      onSaved={() => nav('/orders')}
     />
   );
 }
