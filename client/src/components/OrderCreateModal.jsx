@@ -403,21 +403,21 @@ export default function OrderCreateModal({ visible, packages, initialPackageId, 
                 className={inputCls + ' placeholder:text-[#999999]'}
                 style={{ borderColor: INPUT_BORDER, color: TEXT_BODY }}
               />
-              {/* 第二行起：添加电话（左） + 顾客姓名（右） */}
+              {/* 第二行起：新郎/新娘姓名（左） + 添加电话（右） */}
               {form.customers.map((c, i) => (
                 <div key={i} className="flex items-center gap-2 mt-2">
+                  <input
+                    value={c.name}
+                    onChange={(e) => setCustomer(i, 'name', e.target.value)}
+                    placeholder={i === 0 ? '新郎姓名' : '新娘姓名'}
+                    className={inputCls + ' placeholder:text-[#999999]'}
+                    style={{ borderColor: INPUT_BORDER, color: TEXT_BODY }}
+                  />
                   <input
                     value={c.phone}
                     onChange={(e) => setCustomer(i, 'phone', e.target.value)}
                     placeholder="添加电话"
                     inputMode="tel"
-                    className={inputCls + ' placeholder:text-[#999999]'}
-                    style={{ borderColor: INPUT_BORDER, color: TEXT_BODY }}
-                  />
-                  <input
-                    value={c.name}
-                    onChange={(e) => setCustomer(i, 'name', e.target.value)}
-                    placeholder="顾客姓名"
                     className={inputCls + ' placeholder:text-[#999999]'}
                     style={{ borderColor: INPUT_BORDER, color: TEXT_BODY }}
                   />
