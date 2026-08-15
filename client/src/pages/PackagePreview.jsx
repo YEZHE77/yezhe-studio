@@ -84,6 +84,7 @@ export default function PackagePreview() {
   const [serviceModalOpen, setServiceModalOpen] = useState(false);
   const [serviceDetailOpen, setServiceDetailOpen] = useState(false);
   const [refundOpen, setRefundOpen] = useState(false);
+  const [agreementOpen, setAgreementOpen] = useState(false);
   const [shareModalOpen, setShareModalOpen] = useState(false);
   const [shareData, setShareData] = useState(null);
   const [shareBusy, setShareBusy] = useState(false);
@@ -353,6 +354,17 @@ export default function PackagePreview() {
               <span style={{ fontSize: 14, color: '#999' }}>未开启</span>
             </div>
 
+            {/* 顾客协议（可展开；内容来自 customer_agreement） */}
+            <div style={{ padding: '14px 0', borderTop: `1px solid ${MBORDER}` }}>
+              <div onClick={() => setAgreementOpen((v) => !v)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}>
+                <span style={{ fontSize: 14, color: '#333' }}>顾客协议</span>
+                <span style={{ fontSize: 14, color: agreementOpen ? MGREEN : '#999' }}>{agreementOpen ? '收起' : (d.customer_agreement ? '展开' : '未设置')}</span>
+              </div>
+              {agreementOpen && (
+                <div style={{ marginTop: 10, fontSize: 13, color: '#666', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{d.customer_agreement || '未设置'}</div>
+              )}
+            </div>
+
             {/* 提示信息（💡 修改订单同步更新） */}
             <div style={{ marginTop: 24, padding: '10px 14px', background: '#f5f9fa', borderRadius: 6, fontSize: 12, color: '#999', display: 'flex', alignItems: 'center', gap: 6 }}>
               <span>💡</span>
@@ -361,7 +373,7 @@ export default function PackagePreview() {
           </div>
           {/* 底部 X 圆形关闭按钮 */}
           <div style={{ padding: '20px 20px calc(20px + env(safe-area-inset-bottom))', display: 'flex', justifyContent: 'center', borderTop: `1px solid ${MBORDER}`, flexShrink: 0 }}>
-            <button onClick={() => { setServiceModalOpen(false); setServiceDetailOpen(false); setRefundOpen(false); }} style={{ width: 44, height: 44, borderRadius: '50%', border: '1px solid #ddd', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <button onClick={() => { setServiceModalOpen(false); setServiceDetailOpen(false); setRefundOpen(false); setAgreementOpen(false); }} style={{ width: 44, height: 44, borderRadius: '50%', border: '1px solid #ddd', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <IconCloseX />
             </button>
           </div>
