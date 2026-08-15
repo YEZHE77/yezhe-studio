@@ -2592,15 +2592,20 @@ export default function OrderDetail() {
         </>
       )}
 
-      {/* 打印单据内容（@page 规则已挪到全局 index.css；这里只留 @media print 控制显隐与定位） */}
+      {/* 打印单据内容（@page 已在全局 index.css；这里只留 @media print 控制显隐/定位 + position:fixed 页眉兜底） */}
       <>
       <style>{`
         @media print {
           body * { visibility: hidden; }
           .print-order-sheet, .print-order-sheet * { visibility: visible; }
-          .print-order-sheet { position: absolute !important; left: 0 !important; top: 0 !important; width: 100% !important; margin: 0 !important; padding: 20mm 15mm 20mm !important; }
+          .print-page-header { visibility: visible !important; }
+          .print-order-sheet { position: absolute !important; left: 0 !important; top: 0 !important; width: 100% !important; margin: 0 !important; padding: 12mm 15mm 18mm !important; }
         }
       `}</style>
+      {/* 每页页眉 fallback：position:fixed 打印时跨页重复（@page @top-center 失效时的兜底） */}
+      <div className="print-page-header" style={{ position: 'fixed', left: -10000, top: 0, right: 0, textAlign: 'center', fontSize: 12, color: '#555', fontFamily: 'SimSun, STSong, serif', padding: '4mm 0 2mm', borderBottom: '1px solid #ddd', background: '#fff', letterSpacing: 2 }}>
+        拍摄服务合同
+      </div>
       <div className="print-order-sheet" style={{ position: 'fixed', left: -10000, top: 0, width: '100%', padding: '20mm 15mm' }}>
         <div style={{ maxWidth: 700, margin: '0 auto', fontFamily: 'SimSun, STSong, serif', fontSize: 14, lineHeight: 1.8, color: '#222' }}>
           {/* 标题 */}
