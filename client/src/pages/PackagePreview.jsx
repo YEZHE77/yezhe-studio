@@ -302,7 +302,7 @@ export default function PackagePreview() {
               须知：
             </div>
             <div style={{ fontSize: 14, color: '#555', lineHeight: 1.8 }}>
-              <span>退订政策 {policy} · {getRefundSummary(d, policy)}</span>
+              <span>退订政策 {policy}</span>
               {!refundDetailOpen && (
                 <button type="button" onClick={() => setRefundDetailOpen(true)}
                   style={{ display: 'block', marginTop: 8, background: 'none', border: 'none', color: MGREEN, fontSize: 13, cursor: 'pointer', textDecoration: 'underline', padding: 0 }}>
