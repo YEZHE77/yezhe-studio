@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import http, { formatBytes } from '../api.js';
 import Icon from '../components/Icon.jsx';
+import { safeNum } from '../utils/number.js';
 
 // 待处理订单：5 灰块（与待办事项页 5 个 Tab 同口径，按订单详情进度条节点区分）
 const PENDING = [
@@ -127,7 +128,6 @@ export default function Dashboard() {
   const storagePct = Math.min(100, Math.round(storageRatio * 100));
   const storageCritical = !!(storage && storage.cloudEnabled && storageRatio >= 0.9);
 
-  const safeNum = (v) => (typeof v === 'number' ? v : 0);
   const overview = [
     { label: '商户余额 (元)', value: stats ? safeNum(stats.balance).toLocaleString() : '—' },
     { label: '线上收入 (元)', value: stats ? safeNum(stats.onlineIncome).toLocaleString() : '—' },

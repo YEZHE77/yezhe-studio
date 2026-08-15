@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import http, { formatBytes } from '../api.js';
 import Icon from '../components/Icon.jsx';
+import { safeNum } from '../utils/number.js';
 
 // 三个 Tab（视频流量为预留占位，暂不启用）
 const TABS = [
