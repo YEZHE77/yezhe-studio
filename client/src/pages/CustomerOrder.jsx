@@ -157,6 +157,19 @@ export default function CustomerOrder() {
         <Row label="待付金额" value={'¥' + Number(data.balance || 0).toFixed(2)} color={data.balance > 0 ? '#F5A623' : TEXT} />
       </Card>
 
+      {/* 合同预览 / 下载 */}
+      {data.contract_pdf_url && (
+        <Card style={{ marginTop: 12 }}>
+          <div style={{ fontSize: 13, color: SUB, marginBottom: 10 }}>合同</div>
+          <div style={{ display: 'flex', gap: 10 }}>
+            <a href={data.contract_pdf_url} target="_blank" rel="noreferrer"
+              style={{ flex: 1, textAlign: 'center', padding: '12px 0', borderRadius: 12, background: '#fff', color: BRAND, fontSize: 14, border: '1px solid ' + BRAND, textDecoration: 'none' }}>预览合同</a>
+            <a href={data.contract_pdf_url} download
+              style={{ flex: 1, textAlign: 'center', padding: '12px 0', borderRadius: 12, background: BRAND, color: '#fff', fontSize: 14, textDecoration: 'none' }}>下载合同 PDF</a>
+          </div>
+        </Card>
+      )}
+
       {/* 选片入口 */}
       {data.selection_url && (
         <button onClick={() => nav(data.selection_url)}

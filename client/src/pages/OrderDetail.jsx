@@ -3,6 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import http, { img, uploadBatch, conflictOf } from '../api.js';
 import bgm from '../bgm.js';
 import Slideshow from '../components/Slideshow.jsx';
+import html2pdf from 'html2pdf.js';
+import { renderContract, buildContractVars } from '../utils/contract.js';
 
 const STATUS_LABEL = {
   deposit: '已付定金', shot: '已拍摄', selecting: '选片中',
@@ -164,6 +166,13 @@ export default function OrderDetail() {
   const [share, setShare] = useState(null);
   const [shareModal, setShareModal] = useState(false);
   const [shareBusy, setShareBusy] = useState(false);
+  // 合同：模板 / 附加条款 / PDF
+  const [contractTemplates, setContractTemplates] = useState([]);
+  const [contractTemplateId, setContractTemplateId] = useState(null);
+  const [contractExtraText, setContractExtraText] = useState('');
+  const [contractPdfUrl, setContractPdfUrl] = useState('');
+  const [contractGenerating, setContractGenerating] = useState(false);
+  const [contractSaving, setContractSaving] = useState(false);
   const [slideOpen, setSlideOpen] = useState(false);
   const [slidePhotos, setSlidePhotos] = useState([]);
   const [notFound, setNotFound] = useState(false);
@@ -239,12 +248,31 @@ export default function OrderDetail() {
     const seq = ++reloadSeq.current;
     try {
       const r = await http.get('/api/orders/' + id);
-      if (seq === reloadSeq.current) setDetail(r.data);
+      if (seq === reloadSeq.current) {
+        setDetail(r.data);
+        // 初始化合同字段
+        setContractTemplateId(r.data.contract_template_id ?? null);
+        setContractExtraText(r.data.contract_extra_text || '');
+        setContractPdfUrl(r.data.contract_pdf_url || '');
+      }
       loadSel(id);
     } catch { setNotFound(true); }
   }, [id, loadSel]);
 
   useEffect(() => { reload(); }, [reload]);
+  // 合同模板列表
+  useEffect(() => {
+    http.get('/api/contract/templates').then((r) => {
+      const list = r.data || [];
+      setContractTemplates(list);
+      // 默认模板：若订单未绑定，选 is_default
+      setContractTemplateId((cur) => {
+        if (cur != null) return cur;
+        const def = list.find((t) => t.is_default);
+        return def ? def.id : (list[0] ? list[0].id : null);
+      });
+    }).catch(() => {});
+  }, []);
   useEffect(() => {
     const ctrl = new AbortController();
     http.get('/api/channels', { signal: ctrl.signal }).then((r) => setChannels(Array.isArray(r.data) ? r.data : [])).catch(() => {});
@@ -607,6 +635,75 @@ export default function OrderDetail() {
     finally { setMiniQrLoading(false); }
   }
   function closeMiniQr() { setMiniQr(null); }
+
+  // ===== 合同：保存配置（模板 + 附加条款） =====
+  async function saveContractConfig() {
+    if (!detail) return;
+    setContractSaving(true);
+    try {
+      await http.post('/api/contract/orders/' + detail.id + '/contract', {
+        contract_template_id: contractTemplateId,
+        contract_extra_text: contractExtraText
+      });
+      reload();
+      alert('合同配置已保存');
+    } catch (e) { alert((e.response && e.response.data && e.response.data.error) || '保存失败'); }
+    finally { setContractSaving(false); }
+  }
+
+  // ===== 合同：生成 / 重新生成 PDF =====
+  async function generateContractPdf() {
+    if (!detail) return;
+    if (!contractTemplateId) { alert('请先选择合同模板'); return; }
+    const tpl = contractTemplates.find((t) => t.id === contractTemplateId);
+    if (!tpl || !tpl.template_content) { alert('所选模板无合同正文，请先在「合同模板管理」填写'); return; }
+    setContractGenerating(true);
+    try {
+      // ① 读模板 + ② 订单字段替换占位符 + ③ 拼接附加条款
+      const vars = buildContractVars({ ...detail, contract_extra_text: contractExtraText });
+      let htmlContent = renderContract(tpl.template_content, vars);
+      // 附加条款已在占位符 {{contract_extra_text}} 中，若无占位符则拼接尾部
+      if (!/\{\{contract_extra_text\}\}/.test(tpl.template_content) && contractExtraText) {
+        htmlContent += '\n\n<h3>七、其他补充约定</h3>\n<p>' + String(contractExtraText).replace(/\n/g, '<br>') + '</p>';
+      }
+      const html = '<div style="font-family: serif; font-size: 13px; line-height: 1.8; color: #000; white-space: pre-wrap;">'
+        + htmlContent.replace(/\n/g, '<br>') + '</div>';
+
+      // ④ 前端本地生成 A4 PDF
+      const container = document.createElement('div');
+      container.innerHTML = html;
+      container.style.position = 'absolute';
+      container.style.left = '-9999px';
+      container.style.top = '0';
+      container.style.width = '210mm';
+      container.style.background = '#fff';
+      container.style.padding = '15mm';
+      container.style.boxSizing = 'border-box';
+      document.body.appendChild(container);
+
+      const pdfBlob = await html2pdf().set({
+        margin: 0,
+        filename: 'contract.pdf',
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+        pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
+      }).from(container).output('blob');
+
+      document.body.removeChild(container);
+
+      // ⑤ 上传 R2 回写 contract_pdf_url
+      const fd = new FormData();
+      fd.append('file', pdfBlob, 'contract_' + detail.id + '.pdf');
+      const r = await http.post('/api/contract/orders/' + detail.id + '/contract-pdf', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+      setContractPdfUrl(r.data.contract_pdf_url);
+      alert('合同 PDF 已生成并保存');
+      reload();
+    } catch (e) {
+      console.error(e);
+      alert('合同生成失败：' + ((e.response && e.response.data && e.response.data.error) || e.message));
+    } finally { setContractGenerating(false); }
+  }
   function copyCustomerUrl() {
     if (!miniQr || !miniQr.url) return;
     navigator.clipboard?.writeText(miniQr.url);
@@ -1001,6 +1098,28 @@ export default function OrderDetail() {
             </div>
           </div>
 
+          {/* 合同（模板 + 附加条款 + 生成 PDF） */}
+          <div style={{ margin: '12px 12px 0', background: '#fff', borderRadius: 8, padding: '14px 16px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+            <div style={{ fontSize: 14, color: '#1f2329', marginBottom: 12 }}>合同</div>
+            <div style={{ fontSize: 13, color: '#999', marginBottom: 4 }}>合同模板</div>
+            <select value={contractTemplateId ?? ''} onChange={(e) => setContractTemplateId(e.target.value ? Number(e.target.value) : null)}
+              style={{ width: '100%', padding: '9px 12px', borderRadius: 6, border: '1px solid #E8E8E8', fontSize: 14, background: '#fff', outline: 'none', marginBottom: 12 }}>
+              {contractTemplates.map((t) => (<option key={t.id} value={t.id}>{t.template_name}{t.is_default ? '（默认）' : ''}</option>))}
+            </select>
+            <div style={{ fontSize: 13, color: '#999', marginBottom: 4 }}>附加条款（拼接在合同末尾）</div>
+            <textarea value={contractExtraText} onChange={(e) => setContractExtraText(e.target.value)} placeholder="选填，如特别约定、加急交付等"
+              style={{ width: '100%', minHeight: 64, padding: '10px 12px', borderRadius: 6, border: '1px solid #E8E8E8', fontSize: 13, outline: 'none', boxSizing: 'border-box', marginBottom: 12 }} />
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <button type="button" onClick={saveContractConfig} disabled={contractSaving}
+                style={{ padding: '8px 16px', borderRadius: 6, border: '1px solid #E8E8E8', background: '#fff', color: '#666', fontSize: 13, cursor: 'pointer' }}>保存配置</button>
+              <button type="button" onClick={generateContractPdf} disabled={contractGenerating}
+                style={{ padding: '8px 16px', borderRadius: 6, border: 'none', background: '#2DB7F5', color: '#fff', fontSize: 13, cursor: 'pointer', opacity: contractGenerating ? 0.6 : 1 }}>
+                {contractGenerating ? '生成中…' : contractPdfUrl ? '重新生成合同 PDF' : '生成合同 PDF'}
+              </button>
+              {contractPdfUrl && <a href={contractPdfUrl} target="_blank" rel="noreferrer" style={{ padding: '8px 16px', borderRadius: 6, border: '1px solid #2DB7F5', color: '#2DB7F5', fontSize: 13, textDecoration: 'none' }}>查看合同</a>}
+            </div>
+          </div>
+
           {/* 订单变更记录（3 项可点击跳转 logModal 对应 tab） */}
           <div onClick={() => { setLogModalTab('status'); setLogModal(true); }} style={{ margin: '12px 12px 0', background: '#fff', borderRadius: 8, padding: '14px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', boxShadow: '0 1px 3px rgba(0,0,0,0.04)', cursor: 'pointer' }}>
             <span style={{ fontSize: 14, color: '#1f2329' }}>订单变更记录</span>
@@ -1370,6 +1489,34 @@ export default function OrderDetail() {
               </span>
             </div>
           )}
+        </div>
+      </section>
+
+      {/* ============ 合同（模板 + 附加条款 + 生成 PDF） ============ */}
+      <section style={{ margin: isMobile ? '8px 12px 0' : '8px 24px 0', background: '#FFFFFF', border: '1px solid ' + CARD_BORDER, borderRadius: 4, padding: '16px' }}>
+        <div style={{ fontSize: 14, color: '#1f2329', marginBottom: 12 }}>合同</div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, alignItems: 'flex-start' }}>
+          <div style={{ flex: '1 1 240px', minWidth: 200 }}>
+            <div style={{ fontSize: 12, color: LABEL_COLOR, marginBottom: 6 }}>合同模板</div>
+            <select value={contractTemplateId ?? ''} onChange={(e) => setContractTemplateId(e.target.value ? Number(e.target.value) : null)}
+              style={{ width: '100%', padding: '8px 10px', borderRadius: 4, border: '1px solid ' + CARD_BORDER, fontSize: 13, background: '#fff', outline: 'none' }}>
+              {contractTemplates.map((t) => (<option key={t.id} value={t.id}>{t.template_name}{t.is_default ? '（默认）' : ''}</option>))}
+            </select>
+          </div>
+          <div style={{ flex: '1 1 320px', minWidth: 240 }}>
+            <div style={{ fontSize: 12, color: LABEL_COLOR, marginBottom: 6 }}>附加条款（拼接在合同末尾）</div>
+            <textarea value={contractExtraText} onChange={(e) => setContractExtraText(e.target.value)} placeholder="选填"
+              rows={2} style={{ width: '100%', resize: 'vertical', padding: '8px 10px', borderRadius: 4, border: '1px solid ' + CARD_BORDER, fontSize: 13, outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box' }} />
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: 8, marginTop: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+          <button type="button" onClick={saveContractConfig} disabled={contractSaving}
+            style={{ padding: '7px 16px', borderRadius: 4, border: '1px solid ' + CARD_BORDER, background: '#fff', color: '#666', fontSize: 13, cursor: 'pointer' }}>保存配置</button>
+          <button type="button" onClick={generateContractPdf} disabled={contractGenerating}
+            style={{ padding: '7px 16px', borderRadius: 4, border: 'none', background: BLUE, color: '#fff', fontSize: 13, cursor: 'pointer', opacity: contractGenerating ? 0.6 : 1 }}>
+            {contractGenerating ? '生成中…' : contractPdfUrl ? '重新生成合同 PDF' : '生成合同 PDF'}
+          </button>
+          {contractPdfUrl && <a href={contractPdfUrl} target="_blank" rel="noreferrer" style={{ padding: '7px 16px', borderRadius: 4, border: '1px solid ' + BLUE, color: BLUE, fontSize: 13, textDecoration: 'none' }}>查看合同</a>}
         </div>
       </section>
 

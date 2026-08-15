@@ -56,6 +56,7 @@ const PhotoPackages = React.lazy(() => import('./pages/PhotoPackages.jsx'));
 const PackagePublic = React.lazy(() => import('./pages/PackagePublic.jsx'));
 const CustomerOrder = React.lazy(() => import('./pages/CustomerOrder.jsx'));
 const AppointmentForm = React.lazy(() => import('./pages/AppointmentForm.jsx'));
+const ContractTemplates = React.lazy(() => import('./pages/ContractTemplates.jsx'));
 // 客户前端（公开，无需登录）：首页 / 我的 / 公开作品相册
 const Home = React.lazy(() => import('./pages/Home.jsx'));
 const My = React.lazy(() => import('./pages/My.jsx'));
@@ -111,6 +112,7 @@ function AppShell() {
                 <Route path="/card" element={<BusinessCard />} />
                 <Route path="/selections" element={<SelectionAdmin />} />
                 <Route path="/photo-packages" element={<PhotoPackages />} />
+                <Route path="/contract-templates" element={<ContractTemplates />} />
                 <Route path="/m/msg" element={<MessageCenter />} />
                 <Route path="/channels" element={<Channels />} />
                 <Route path="/finance" element={<Finance />} />

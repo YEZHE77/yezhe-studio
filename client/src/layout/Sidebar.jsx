@@ -23,6 +23,7 @@ const ITEMS = [
   { label: '档期', to: '/schedule', icon: 'calendar' },
   { label: '订单中心', to: '/orders', icon: 'order', sep: true },
   { label: '在线选片', to: '/selections', icon: 'select' },
+  { label: '合同模板', to: '/contract-templates', icon: 'order' },
   { label: '客户管理', to: '/customers', icon: 'customer', sep: true },
   { label: '团队管理', icon: 'team' },
   { label: '容量管理', to: '/capacity', icon: 'storage', expandable: true },

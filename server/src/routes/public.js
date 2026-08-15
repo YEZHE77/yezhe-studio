@@ -126,7 +126,8 @@ router.get('/order/:token', async (req, res) => {
       balance: parseFloat(o.balance) || 0,
       payment_status: o.payment_status || 'deposit',
       payment_status_label: PAY_LABEL[o.payment_status] || o.payment_status,
-      selection_url: selectionUrl
+      selection_url: selectionUrl,
+      contract_pdf_url: o.contract_pdf_url || ''
     });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });

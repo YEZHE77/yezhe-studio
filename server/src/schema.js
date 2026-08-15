@@ -300,6 +300,21 @@ CREATE TABLE IF NOT EXISTS photo_package (
   create_time TEXT DEFAULT CURRENT_TIMESTAMP, update_time TEXT DEFAULT CURRENT_TIMESTAMP
 );`;
 
+// 合同模板（订单一键生成 PDF）：template_content 富文本带 {{占位符}} 为渲染唯一数据源
+// backup_word_url 仅后台备份下载；is_default 新建订单自动选中
+const PG_CONTRACT_TEMPLATE = `
+CREATE TABLE IF NOT EXISTS contract_template (
+  id SERIAL PRIMARY KEY, template_name TEXT NOT NULL, template_content TEXT,
+  backup_word_url TEXT, is_default INTEGER NOT NULL DEFAULT 0,
+  create_time TIMESTAMPTZ DEFAULT now(), update_time TIMESTAMPTZ DEFAULT now()
+);`;
+const SQLITE_CONTRACT_TEMPLATE = `
+CREATE TABLE IF NOT EXISTS contract_template (
+  id INTEGER PRIMARY KEY AUTOINCREMENT, template_name TEXT NOT NULL, template_content TEXT,
+  backup_word_url TEXT, is_default INTEGER NOT NULL DEFAULT 0,
+  create_time TEXT DEFAULT CURRENT_TIMESTAMP, update_time TEXT DEFAULT CURRENT_TIMESTAMP
+);`;
+
 // orders 的向前兼容新增列（仅当不存在时补加，绝不删列/不破坏数据）
 const ORDERS_NEW_COLUMNS = [
   ['customer_phone', 'TEXT'],
@@ -417,6 +432,9 @@ export async function initSchema() {
   // 套系对外分享表（photo_package）
   for (const s of (dialect === 'pg' ? PG_PHOTO_PACKAGE : SQLITE_PHOTO_PACKAGE).split(';').map((x) => x.trim()).filter(Boolean)) await run(s);
 
+  // 合同模板表（contract_template）
+  for (const s of (dialect === 'pg' ? PG_CONTRACT_TEMPLATE : SQLITE_CONTRACT_TEMPLATE).split(';').map((x) => x.trim()).filter(Boolean)) await run(s);
+
   // 系统设置表
   for (const s of (dialect === 'pg' ? PG_SETTINGS : SQLITE_SETTINGS).split(';').map((x) => x.trim()).filter(Boolean)) await run(s);
 
@@ -446,6 +464,10 @@ export async function initSchema() {
   await ensureColumn('orders', 'order_photos', 'TEXT');
   // 客户专属访问令牌（C 端 /customer-order?token= 鉴权，只读查看自己订单）
   await ensureColumn('orders', 'customer_token', 'TEXT');
+  // 合同：关联模板 / 生成后 PDF 链接 / 单订单专属补充条款
+  await ensureColumn('orders', 'contract_template_id', 'INTEGER');
+  await ensureColumn('orders', 'contract_pdf_url', 'TEXT');
+  await ensureColumn('orders', 'contract_extra_text', 'TEXT');
   // 订单备注分组：生日/纪念日 / 预约备注 / 内部备注 / 外部备注（问卷答案 questionnaire_answers 已在 DDL）
   await ensureColumn('orders', 'birthday', 'TEXT');
   await ensureColumn('orders', 'appointment_remark', 'TEXT');

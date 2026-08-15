@@ -39,6 +39,7 @@ import adminThumbnailsRoutes from './routes/adminThumbnails.js';
 import messageRoutes from './routes/message.js';
 import photoPackageRoutes from './routes/photoPackage.js';
 import publicRoutes from './routes/public.js';
+import contractRoutes from './routes/contract.js';
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -125,6 +126,7 @@ app.use('/api/selection', selectionRoutes);
 app.use('/api/message', messageRoutes);
 app.use('/api/photo-package', photoPackageRoutes);
 app.use('/api/public', publicRoutes);
+app.use('/api/contract', contractRoutes);
 app.use('/api/orders', ordersRoutes);
 app.use('/api/packages', packagesRoutes);
 app.use('/api/schedules', schedulesRoutes);
