@@ -9,7 +9,6 @@ import { getRefundText, getRefundParagraphs, normalizePolicy } from '../utils/re
 import { getServiceAgreement, getPhotoAuthAgreement, toParagraphs } from '../utils/customerAgreement.js';
 import { DEFAULT_CONTRACT_TEMPLATE } from '../utils/contractDefault.js';
 import { DEFAULT_SERVICE_DETAIL } from '../utils/serviceDetail.js';
-import { DEFAULT_SERVICE_DETAIL } from '../utils/serviceDetail.js';
 
 const STATUS_LABEL = {
   deposit: '已付定金', shot: '已拍摄', selecting: '选片中',
