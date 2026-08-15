@@ -2605,7 +2605,7 @@ export default function OrderDetail() {
             </table>
           </div>
 
-          {/* 套系详情：套餐配置参数读订单表实时字段（需求4：不读套系主表/历史快照）；套系名称唯一来源为快照 */}
+          {/* 套系详情：根据实际选择的套系显示完整模板字段（pkgInfo.details 来自 package_snapshot；订单特定金额从 orders 表读取） */}
           <div style={{ marginBottom: 20 }}>
             <div style={{ fontSize: 16, fontWeight: 400, borderBottom: '1px solid #ccc', paddingBottom: 6, marginBottom: 10 }}>套系详情</div>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
@@ -2615,14 +2615,42 @@ export default function OrderDetail() {
                   <td style={{ padding: '4px 8px' }} colSpan={3}>{(pkgInfo && pkgInfo.name) || '—'}</td>
                 </tr>
                 <tr>
-                  <td style={{ padding: '4px 8px', color: '#555' }}>机位</td>
+                  <td style={{ padding: '4px 8px', color: '#555' }}>拍摄时长</td>
+                  <td style={{ padding: '4px 8px' }}>{pkgInfo?.details?.duration || '—'}</td>
+                  <td style={{ padding: '4px 8px', width: 80, color: '#555' }}>机位</td>
                   <td style={{ padding: '4px 8px' }}>{detail.shoot_position || '—'}</td>
-                  <td style={{ padding: '4px 8px', width: 80, color: '#555' }}>底片</td>
-                  <td style={{ padding: '4px 8px' }}>{Number(detail.total_negatives) > 0 ? detail.total_negatives + ' 张' : '—'}</td>
                 </tr>
                 <tr>
-                  <td style={{ padding: '4px 8px', color: '#555' }}>精修</td>
-                  <td style={{ padding: '4px 8px' }} colSpan={3}>{Number(detail.retouch_count) > 0 ? detail.retouch_count + ' 张' : '—'}</td>
+                  <td style={{ padding: '4px 8px', color: '#555' }}>原片</td>
+                  <td style={{ padding: '4px 8px' }}>{pkgInfo?.details?.raw_count ? `${pkgInfo.details.raw_count} 张` : '—'}</td>
+                  <td style={{ padding: '4px 8px', color: '#555' }}>精修片</td>
+                  <td style={{ padding: '4px 8px' }}>{pkgInfo?.details?.retouch_count ? `${pkgInfo.details.retouch_count} 张` : '—'}</td>
+                </tr>
+                <tr>
+                  <td style={{ padding: '4px 8px', color: '#555' }}>加片费</td>
+                  <td style={{ padding: '4px 8px' }}>{pkgInfo?.details?.extra_photo_fee || '—'}</td>
+                  <td style={{ padding: '4px 8px', color: '#555' }}>快修费</td>
+                  <td style={{ padding: '4px 8px' }}>{Number(detail.quick_repair_cost) > 0 ? '¥' + Number(detail.quick_repair_cost).toLocaleString() : (pkgInfo?.details?.quick_repair_cost || '—')}</td>
+                </tr>
+                <tr>
+                  <td style={{ padding: '4px 8px', color: '#555' }}>交付时间</td>
+                  <td style={{ padding: '4px 8px' }} colSpan={3}>{pkgInfo?.details?.delivery_time || '—'}</td>
+                </tr>
+                {pkgInfo?.details?.delivery_remark ? (
+                  <tr>
+                    <td style={{ padding: '4px 8px', color: '#555' }}>交付备注</td>
+                    <td style={{ padding: '4px 8px', whiteSpace: 'pre-wrap' }} colSpan={3}>{pkgInfo.details.delivery_remark}</td>
+                  </tr>
+                ) : null}
+                <tr>
+                  <td style={{ padding: '4px 8px', color: '#555' }}>化妆服装</td>
+                  <td style={{ padding: '4px 8px' }}>{`${pkgInfo?.details?.cloth_provide === 'provide' ? '提供服装' : '不提供服装'} · ${pkgInfo?.details?.makeup_provide === 'provide' ? '提供化妆' : '不提供化妆'}`}</td>
+                  <td style={{ padding: '4px 8px', color: '#555' }}>提供相册</td>
+                  <td style={{ padding: '4px 8px' }}>{pkgInfo?.details?.album_provide === 'provide' ? '是' : pkgInfo?.details?.album_provide === 'extra' ? '相册另购' : '否'}</td>
+                </tr>
+                <tr>
+                  <td style={{ padding: '4px 8px', color: '#555' }}>服务地点</td>
+                  <td style={{ padding: '4px 8px' }} colSpan={3}>{pkgInfo?.details?.service_location || '—'}</td>
                 </tr>
                 <tr>
                   <td style={{ padding: '4px 8px', color: '#555' }}>相册单价</td>
@@ -2631,10 +2659,8 @@ export default function OrderDetail() {
                   <td style={{ padding: '4px 8px' }}>{Number(detail.shoot_cost) > 0 ? '¥' + Number(detail.shoot_cost).toLocaleString() : '—'}</td>
                 </tr>
                 <tr>
-                  <td style={{ padding: '4px 8px', color: '#555' }}>快修费</td>
-                  <td style={{ padding: '4px 8px' }}>{Number(detail.quick_repair_cost) > 0 ? '¥' + Number(detail.quick_repair_cost).toLocaleString() : '—'}</td>
                   <td style={{ padding: '4px 8px', color: '#555' }}>定金</td>
-                  <td style={{ padding: '4px 8px' }}>{Number(detail.deposit) > 0 ? '¥' + Number(detail.deposit).toLocaleString() : '—'}</td>
+                  <td style={{ padding: '4px 8px' }} colSpan={3}>{Number(detail.deposit) > 0 ? '¥' + Number(detail.deposit).toLocaleString() : '—'}</td>
                 </tr>
               </tbody>
             </table>
