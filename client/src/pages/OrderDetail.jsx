@@ -9,6 +9,7 @@ import { getRefundText, getRefundParagraphs, normalizePolicy } from '../utils/re
 import { getServiceAgreement, getPhotoAuthAgreement, toParagraphs } from '../utils/customerAgreement.js';
 import { DEFAULT_CONTRACT_TEMPLATE } from '../utils/contractDefault.js';
 import { DEFAULT_SERVICE_DETAIL } from '../utils/serviceDetail.js';
+import { DEFAULT_SERVICE_DETAIL } from '../utils/serviceDetail.js';
 
 const STATUS_LABEL = {
   deposit: '已付定金', shot: '已拍摄', selecting: '选片中',
@@ -2978,33 +2979,9 @@ export default function OrderDetail() {
               </div>
               {svcDetailExpanded && (
                 <div style={{ marginTop: 10, fontSize: 13, color: '#666', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
-                  {(pkgInfo?.details?.service_detail_text) || pkgInfo?.description || '暂无服务详情'}
+                  {(pkgInfo?.details?.service_detail_text) || pkgInfo?.description || DEFAULT_SERVICE_DETAIL}
                 </div>
               )}
-            </div>
-
-            {/* 退订政策（严格档：默认文案 + 套系自定义覆盖） */}
-            <div style={{ padding: '14px 0', borderTop: `1px solid ${DIV}` }}>
-              <div onClick={() => setSvcRefundExpanded((v) => !v)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}>
-                <span style={{ fontSize: 14, color: '#333' }}>退订政策</span>
-                <span style={{ fontSize: 14, color: (pkgInfo?.details?.hide_refund) ? '#999' : '#82C8AE' }}>{(pkgInfo?.details?.hide_refund) ? '该套系已设置为隐藏退订政策' : (svcRefundExpanded ? '收起' : '展开')}</span>
-              </div>
-              {!pkgInfo?.details?.hide_refund && svcRefundExpanded && (() => {
-                const sd = (pkgInfo && pkgInfo.details) || {};
-                const policy = normalizePolicy(sd.refund_policy);
-                const paras = getRefundParagraphs(sd, policy);
-                if (!paras.length) return <div style={{ marginTop: 10, fontSize: 13, color: '#666', lineHeight: 1.6 }}>未设置</div>;
-                return (
-                  <div style={{ marginTop: 10, fontSize: 13, color: '#666', lineHeight: 1.6 }}>
-                    {paras.map((p, i) => {
-                      const isHeading = /^[一二三四五六七八九十]+、|退订/.test(p);
-                      return (
-                        <div key={i} style={{ marginTop: isHeading && i > 0 ? 8 : 0, marginBottom: 4, fontSize: isHeading ? 14 : 13 }}>{p}</div>
-                      );
-                    })}
-                  </div>
-                );
-              })()}
             </div>
 
             {/* 顾客协议（与 PackagePreview 一致：永远绿色 + 展开/收起） */}

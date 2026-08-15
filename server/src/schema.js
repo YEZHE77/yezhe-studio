@@ -717,6 +717,31 @@ export async function initSchema() {
     }
   } catch (e) { console.error('[schema] 同步订单快照服务详情失败', e); }
 
+  // 同步退订政策（2026-08-15）：清空所有套系/订单快照里旧版的 refund_policy 字段，统一用前端 refundPolicy.js 的 OFFICIAL_POLICY 默认文案
+  try {
+    const pkgs = await query('SELECT id, details FROM packages');
+    for (const r of pkgs) {
+      let d = {};
+      if (r.details) { try { d = JSON.parse(r.details); } catch { d = {}; } }
+      if (d && typeof d === 'object' && !Array.isArray(d) && d.refund_policy) {
+        delete d.refund_policy;
+        await run('UPDATE packages SET details = ? WHERE id = ?', [JSON.stringify(d), r.id]);
+      }
+    }
+  } catch (e) { console.error('[schema] 同步退订政策(packages.details)失败', e); }
+  try {
+    const orders = await query('SELECT id, package_snapshot FROM orders');
+    for (const o of orders) {
+      let snap = {};
+      if (o.package_snapshot) { try { snap = JSON.parse(o.package_snapshot); } catch { snap = {}; } }
+      const sd = snap && typeof snap === 'object' && snap.details && typeof snap.details === 'object' ? snap.details : null;
+      if (sd && sd.refund_policy) {
+        delete sd.refund_policy;
+        await run('UPDATE orders SET package_snapshot = ? WHERE id = ?', [JSON.stringify(snap), o.id]);
+      }
+    }
+  } catch (e) { console.error('[schema] 同步退订政策(orders.package_snapshot)失败', e); }
+
   console.log('[schema] 表结构已就绪');
 }
 
