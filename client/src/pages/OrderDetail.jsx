@@ -2602,8 +2602,8 @@ export default function OrderDetail() {
           .print-order-sheet { position: absolute !important; left: 0 !important; top: 0 !important; width: 100% !important; margin: 0 !important; padding: 12mm 15mm 18mm !important; }
         }
       `}</style>
-      {/* 每页页眉 fallback：position:fixed 打印时跨页重复（@page @top-center 失效时的兜底） */}
-      <div className="print-page-header" style={{ position: 'fixed', left: -10000, top: 0, right: 0, textAlign: 'center', fontSize: 12, color: '#555', fontFamily: 'SimSun, STSong, serif', padding: '4mm 0 2mm', borderBottom: '1px solid #ddd', background: '#fff', letterSpacing: 2 }}>
+      {/* 每页页眉（normal 模式 visibility:hidden 但保留文档流位置，print 模式 visibility:visible 让 Chrome 跨页重复；不要用 left:-10000 这种完全离屏，会让 Chrome 跳过） */}
+      <div className="print-page-header" style={{ position: 'fixed', top: 0, left: 0, right: 0, textAlign: 'center', fontSize: 12, color: '#555', fontFamily: 'SimSun, STSong, serif', padding: '4mm 0 2mm', borderBottom: '1px solid #ddd', background: '#fff', letterSpacing: 2, visibility: 'hidden', zIndex: -1 }}>
         拍摄服务合同
       </div>
       <div className="print-order-sheet" style={{ position: 'fixed', left: -10000, top: 0, width: '100%', padding: '20mm 15mm' }}>
