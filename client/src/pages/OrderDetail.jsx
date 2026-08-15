@@ -6,6 +6,7 @@ import Slideshow from '../components/Slideshow.jsx';
 import html2pdf from 'html2pdf.js';
 import { renderContract, buildContractVars, contractChanged } from '../utils/contract.js';
 import { getRefundText, getRefundParagraphs, normalizePolicy } from '../utils/refundPolicy.js';
+import { getServiceAgreement, getPhotoAuthAgreement, toParagraphs } from '../utils/customerAgreement.js';
 import { DEFAULT_CONTRACT_TEMPLATE } from '../utils/contractDefault.js';
 
 const STATUS_LABEL = {
@@ -2776,6 +2777,70 @@ export default function OrderDetail() {
               </div>
             )}
           </div>
+
+          {/* 退订政策：按订单创建时的套系快照展示（订单保存后独立原则，避免被后续套系修改污染；空时用官方模板兜底） */}
+          {(() => {
+            const sd = (pkgInfo && pkgInfo.details) || {};
+            const policy = normalizePolicy(sd.refund_policy);
+            const paras = getRefundParagraphs(sd, policy);
+            if (!paras.length) return null;
+            return (
+              <div style={{ marginBottom: 20 }}>
+                <div style={{ fontSize: 16, fontWeight: 400, borderBottom: '1px solid #ccc', paddingBottom: 6, marginBottom: 10 }}>
+                  退订政策（{policy}）
+                </div>
+                <div style={{ fontSize: 13, lineHeight: 1.7, color: '#222' }}>
+                  {paras.map((p, i) => (
+                    <div key={i} style={{ marginBottom: i < paras.length - 1 ? 6 : 0 }}>{p}</div>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* 顾客服务协议：订单创建时的套系快照；空时用官方默认模板 */}
+          {(() => {
+            const sd = (pkgInfo && pkgInfo.details) || {};
+            const paras = toParagraphs(getServiceAgreement(sd));
+            if (!paras.length) return null;
+            return (
+              <div style={{ marginBottom: 20 }}>
+                <div style={{ fontSize: 16, fontWeight: 400, borderBottom: '1px solid #ccc', paddingBottom: 6, marginBottom: 10 }}>
+                  顾客服务协议
+                </div>
+                <div style={{ fontSize: 13, lineHeight: 1.7, color: '#222' }}>
+                  {paras.map((p, i) => {
+                    const isHeading = /^[一二三四五六七八九十]+、/.test(p);
+                    return (
+                      <div key={i} style={{ marginBottom: isHeading ? 8 : 4, fontWeight: isHeading ? 400 : 300 }}>{p}</div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* 顾客照片授权协议 */}
+          {(() => {
+            const sd = (pkgInfo && pkgInfo.details) || {};
+            const paras = toParagraphs(getPhotoAuthAgreement(sd));
+            if (!paras.length) return null;
+            return (
+              <div style={{ marginBottom: 20 }}>
+                <div style={{ fontSize: 16, fontWeight: 400, borderBottom: '1px solid #ccc', paddingBottom: 6, marginBottom: 10 }}>
+                  顾客照片授权协议
+                </div>
+                <div style={{ fontSize: 13, lineHeight: 1.7, color: '#222' }}>
+                  {paras.map((p, i) => {
+                    const isHeading = /^[一二三四五六七八九十]+、/.test(p);
+                    return (
+                      <div key={i} style={{ marginBottom: isHeading ? 8 : 4, fontWeight: isHeading ? 400 : 300 }}>{p}</div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })()}
 
           {/* 备注：客户备注 + 商家内部备注（开关控制，默认关，内部备注敏感） */}
           {detail.remark && (
