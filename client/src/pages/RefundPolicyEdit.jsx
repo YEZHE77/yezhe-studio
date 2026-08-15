@@ -1,18 +1,11 @@
+// RefundPolicyEdit.jsx —— 退订政策编辑页（B 端管理员，从套系编辑 MRow 跳转进入）
+// 路由 /packages/:id/refund/edit
+// 字段：hide_refund / refund_policy / refund_policy_lax_text / refund_policy_strict_text
+// 切换：toggle/radio 立即乐观更新+防抖；文案点「编辑」进 textarea，点「保存」PUT
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import http from '../api.js';
-import { POLICY_TEXTS, FIELD_LAX, FIELD_STRICT, normalizePolicy, getRefundText, getRefundParagraphs } from '../utils/refundPolicy.js';
-
-/* ============================================================
-   退订政策编辑页（B 端管理员，从套系编辑 MRow 跳转进入）
-   —— 路由 /packages/:id/refund/edit
-   —— 字段：
-       hide_refund                  是否展示退订政策（toggle）
-       refund_policy                '宽松' | '严格'（互斥 radio）
-       refund_policy_lax_text       宽松文案（textarea 多行，\n 分段）
-       refund_policy_strict_text    严格文案（同上）
-   —— 切换交互：toggle/radio 立即乐观更新+防抖；文案点「编辑」进 textarea，点「保存」PUT
-   ============================================================ */
+import { FIELD_LAX, FIELD_STRICT, normalizePolicy, getRefundText } from '../utils/refundPolicy.js';
 
 const MRED = '#FF4D4F';
 const MGRAY = '#999999';
@@ -28,7 +21,7 @@ function IconBack() {
   );
 }
 
-// 自定义红色 toggle（与 PackageEdit 现有 MSwitch 风格一致，但使用品牌红色 #FF4D4F）
+// 自定义红色 toggle
 function Toggle({ checked, onChange }) {
   return (
     <button type="button" role="switch" aria-checked={!!checked}
@@ -51,14 +44,23 @@ function Toggle({ checked, onChange }) {
 export default function RefundPolicyEdit() {
   const { id } = useParams();
   const nav = useNavigate();
+
+  // ★ 所有 hooks 必须无条件、连续调用（React #310 修复）
   const [pkg, setPkg] = useState(null);
   const [loading, setLoading] = useState(true);
   const [tip, setTip] = useState('');
   const [tipKey, setTipKey] = useState(0);
+  // 文案编辑 state 提前到 early-return 之前
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState('');
+  const [editingBusy, setEditingBusy] = useState(false);
+  // policy 提升为 state，便于 useEffect 同步 + 切换 policy 时立即更新
+  const [policy, setPolicy] = useState('严格');
   const saveTimerRef = useRef(null);
 
   const flash = (m) => { setTip(m); setTipKey((k) => k + 1); setTimeout(() => setTip(''), 2000); };
 
+  // 加载套系
   useEffect(() => {
     if (!id) return;
     setLoading(true);
@@ -67,6 +69,16 @@ export default function RefundPolicyEdit() {
       .catch(() => setPkg(null))
       .finally(() => setLoading(false));
   }, [id]);
+
+  // pkg 变化时同步 policy / draft（draft 仅在加载完成 + 切换 policy 时重置）
+  useEffect(() => {
+    if (!pkg) return;
+    const next = normalizePolicy(pkg.details && pkg.details.refund_policy);
+    setPolicy((prev) => {
+      if (prev !== next) setDraft(getRefundText(pkg.details || {}, next));
+      return next;
+    });
+  }, [pkg]);
 
   if (loading) {
     return (
@@ -87,12 +99,11 @@ export default function RefundPolicyEdit() {
 
   const d = pkg.details || {};
   const hideRefund = !!d.hide_refund;
-  const policy = normalizePolicy(d.refund_policy);
+  const currentText = getRefundText(d, policy);
 
   // 防抖保存：保留 details 全部字段，仅覆盖本次修改
   const scheduleSave = (patch) => {
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-    // 乐观更新
     setPkg((p) => p ? { ...p, details: { ...p.details, ...patch } } : p);
     saveTimerRef.current = setTimeout(async () => {
       try {
@@ -107,14 +118,12 @@ export default function RefundPolicyEdit() {
   };
 
   const toggleVisible = (v) => scheduleSave({ hide_refund: v });
-  const selectPolicy = (v) => { if (v !== policy) scheduleSave({ refund_policy: v }); };
-
-  // 文案编辑：当前选中类型的可编辑 textarea，独立 tracking，切换 policy 时重置
-  const currentText = getRefundText(d, policy);
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(currentText);
-  const [editingBusy, setEditingBusy] = useState(false);
-  useEffect(() => { setDraft(currentText); setEditing(false); }, [policy]); // 外部 policy 切换时同步
+  const selectPolicy = (v) => {
+    if (v === policy) return;
+    setPolicy(v);
+    setDraft(getRefundText(d, v)); // 切换 policy 立即用新策略的文案初始化 draft
+    scheduleSave({ refund_policy: v });
+  };
 
   const openEdit = () => { setDraft(currentText); setEditing(true); };
   const cancelEdit = () => { setDraft(currentText); setEditing(false); };
@@ -135,6 +144,9 @@ export default function RefundPolicyEdit() {
   };
 
   const handleDone = () => { nav(-1); };
+
+  // 渲染当前 policy 文案（每行一段）
+  const paragraphs = currentText ? currentText.split('\n').filter(Boolean) : [];
 
   return (
     <div style={{ minHeight: '100vh', background: MBG, paddingBottom: 32 }}>
@@ -228,11 +240,12 @@ export default function RefundPolicyEdit() {
             </div>
           ) : (
             <div style={{ fontSize: 13, color: '#555', lineHeight: 1.8 }}>
-              {getRefundParagraphs(d, policy).map((line, i, arr) => (
-                <div key={i} style={{ marginBottom: i < arr.length - 1 ? 6 : 0 }}>{line}</div>
-              ))}
-              {getRefundParagraphs(d, policy).length === 0 && (
+              {paragraphs.length === 0 ? (
                 <div style={{ color: MGRAY, fontSize: 13 }}>未填写，点击右上「编辑」添加条款</div>
+              ) : (
+                paragraphs.map((line, i, arr) => (
+                  <div key={i} style={{ marginBottom: i < arr.length - 1 ? 6 : 0 }}>{line}</div>
+                ))
               )}
             </div>
           )}
