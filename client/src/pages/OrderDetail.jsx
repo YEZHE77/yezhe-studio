@@ -2684,17 +2684,17 @@ export default function OrderDetail() {
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, border: '1px solid #ddd' }}>
                   <thead>
                     <tr style={{ background: '#f5f5f5' }}>
-                      <th style={{ padding: '4px 8px', border: '1px solid #ddd', textAlign: 'left' }}>类型</th>
-                      <th style={{ padding: '4px 8px', border: '1px solid #ddd', textAlign: 'right' }}>金额</th>
-                      <th style={{ padding: '4px 8px', border: '1px solid #ddd', textAlign: 'left' }}>方式</th>
+                      <th style={{ padding: '4px 8px', border: '1px solid #ddd', textAlign: 'center' }}>类型</th>
+                      <th style={{ padding: '4px 8px', border: '1px solid #ddd', textAlign: 'center' }}>金额</th>
+                      <th style={{ padding: '4px 8px', border: '1px solid #ddd', textAlign: 'center' }}>方式</th>
                     </tr>
                   </thead>
                   <tbody>
                     {detail.payments.map((p) => (
                       <tr key={p.id}>
-                        <td style={{ padding: '4px 8px', border: '1px solid #ddd' }}>{TYPE_LABEL[p.type] || p.type}</td>
-                        <td style={{ padding: '4px 8px', border: '1px solid #ddd', textAlign: 'right' }}>{p.type === 'refund' ? '-' : '+'}¥{Number(p.amount).toLocaleString()}</td>
-                        <td style={{ padding: '4px 8px', border: '1px solid #ddd' }}>{payMethodLabel(p)}</td>
+                        <td style={{ padding: '4px 8px', border: '1px solid #ddd', textAlign: 'center' }}>{TYPE_LABEL[p.type] || p.type}</td>
+                        <td style={{ padding: '4px 8px', border: '1px solid #ddd', textAlign: 'center' }}>{p.type === 'refund' ? '-' : '+'}¥{Number(p.amount).toLocaleString()}</td>
+                        <td style={{ padding: '4px 8px', border: '1px solid #ddd', textAlign: 'center' }}>{payMethodLabel(p)}</td>
                       </tr>
                     ))}
                   </tbody>
