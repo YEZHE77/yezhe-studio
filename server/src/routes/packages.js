@@ -105,8 +105,8 @@ router.post('/', authRequired, requireRole(['admin', 'photographer']), async (re
       ? JSON.stringify(details.questionnaire)
       : (b.questionnaire || '');
     const id = await insert(
-      `INSERT INTO packages (name, price, category_id, cover_url, description, addons, marketing, status, sort, deposit, retouch_count, raw_policy, duration, questionnaire, specs, details)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+      `INSERT INTO packages (name, price, category_id, cover_url, description, addons, marketing, status, sort, deposit, retouch_count, raw_policy, duration, questionnaire, specs, details, contract_template_id)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
       [
         b.name || '未命名套系', parseFloat(b.price) || 0, b.category_id || null,
         b.cover_url || '', b.description || '',
@@ -114,7 +114,8 @@ router.post('/', authRequired, requireRole(['admin', 'photographer']), async (re
         b.status || 'on', parseInt(b.sort) || 0,
         parseFloat(b.deposit) || 0, parseInt(b.retouch_count) || 0,
         b.raw_policy || '', b.duration || '', questionnaire,
-        JSON.stringify(sanitizeSpecs(b.specs)), JSON.stringify(details)
+        JSON.stringify(sanitizeSpecs(b.specs)), JSON.stringify(details),
+        b.contract_template_id ? parseInt(b.contract_template_id) || null : null
       ]
     );
     res.json({ id });
@@ -136,7 +137,7 @@ router.put('/:id', authRequired, requireRole(['admin', 'photographer']), async (
       ? JSON.stringify(details.questionnaire)
       : (b.questionnaire ?? cur.questionnaire);
     await run(
-      `UPDATE packages SET name=?, price=?, category_id=?, cover_url=?, description=?, addons=?, marketing=?, status=?, sort=?, deposit=?, retouch_count=?, raw_policy=?, duration=?, questionnaire=?, specs=?, details=?
+      `UPDATE packages SET name=?, price=?, category_id=?, cover_url=?, description=?, addons=?, marketing=?, status=?, sort=?, deposit=?, retouch_count=?, raw_policy=?, duration=?, questionnaire=?, specs=?, details=?, contract_template_id=?
        WHERE id=?`,
       [
         b.name ?? cur.name, toFloat(b.price, cur.price), b.category_id ?? cur.category_id,
@@ -148,6 +149,8 @@ router.put('/:id', authRequired, requireRole(['admin', 'photographer']), async (
         b.raw_policy ?? cur.raw_policy, b.duration ?? cur.duration, questionnaire,
         JSON.stringify(sanitizeSpecs(b.specs ?? (cur.specs ? JSON.parse(cur.specs) : []))),
         JSON.stringify(details),
+        // 协议模板：传 null 显式解绑；未传则保留当前值
+        b.contract_template_id !== undefined ? (b.contract_template_id ? parseInt(b.contract_template_id) || null : null) : cur.contract_template_id,
         req.params.id
       ]
     );

@@ -349,6 +349,8 @@ router.post('/', authRequired, requireRole(['admin', 'photographer', 'finance'])
           specs: safeParse(p.specs, []), questionnaire: safeParse(p.questionnaire, ''),
           // details 含加片费 / 加片优惠 / 服务模板等，必须一并快照，选片核算加片费只读快照（验收⑦）
           details: safeParse(p.details, {}),
+          // 套系绑定的协议模板（快照记录当时绑定值，订单初始化时自动带入）
+          contract_template_id: p.contract_template_id || null,
           snapshot_at: nowISO()
         };
         total += usePrice;
@@ -431,13 +433,19 @@ router.post('/', authRequired, requireRole(['admin', 'photographer', 'finance'])
     const pay_wechat = b.pay_wechat != null ? (b.pay_wechat ? 1 : 0) : (_channel === 'wechat' || _method === 'online' ? 1 : 0);
     const pay_alipay = b.pay_alipay != null ? (b.pay_alipay ? 1 : 0) : (_channel === 'alipay' ? 1 : 0);
     const pay_account_info = b.pay_account_info || '';
+    // 协议模板初始化：套系开启协议（details.customer_agreement_enabled）且绑定了模板 → 自动带入；前端显式传优先
+    const _pkgDetails = (package_snapshot && package_snapshot.details) || {};
+    const pkgAgreementOn = !!_pkgDetails.customer_agreement_enabled;
+    const contract_template_id = b.contract_template_id != null
+      ? (b.contract_template_id ? parseInt(b.contract_template_id, 10) || null : null)
+      : (pkgAgreementOn && package_snapshot && package_snapshot.contract_template_id ? package_snapshot.contract_template_id : null);
     const id = await insert(
       `INSERT INTO orders (order_no, customer_name, customer_phone, package_id, package_snapshot, addons_snapshot, status,
         deposit, balance, deposit_method, balance_method, shoot_date, executor, total_amount, paid_amount, remark, logs,
         groom_name, bride_name, address,
         order_name, phones, time_slots, extra_items, executors, channel, channel_id, date_tbd, period, payment_status, customer_token,
-        groom_phone, bride_phone, shoot_position, total_negatives, retouch_count, album_electronic_num, album_price, shoot_cost, quick_repair_cost, pay_cash, pay_wechat, pay_alipay, pay_account_info)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+        groom_phone, bride_phone, shoot_position, total_negatives, retouch_count, album_electronic_num, album_price, shoot_cost, quick_repair_cost, pay_cash, pay_wechat, pay_alipay, pay_account_info, contract_template_id)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
       [
         order_no, customer_name, phones[0] || '', b.package_id || null,
         JSON.stringify(package_snapshot), JSON.stringify(addons), 'deposit',
@@ -446,7 +454,7 @@ router.post('/', authRequired, requireRole(['admin', 'photographer', 'finance'])
         groom, bride, b.address || '',
         order_name, JSON.stringify(phones), JSON.stringify(time_slots), JSON.stringify(extra_items),
         JSON.stringify(executors), b.channel || '', b.channel_id || null, date_tbd, period, payment_status, customer_token,
-        groom_phone, bride_phone, shoot_position, total_negatives, retouch_count, album_electronic_num, album_price, shoot_cost, quick_repair_cost, pay_cash, pay_wechat, pay_alipay, pay_account_info
+        groom_phone, bride_phone, shoot_position, total_negatives, retouch_count, album_electronic_num, album_price, shoot_cost, quick_repair_cost, pay_cash, pay_wechat, pay_alipay, pay_account_info, contract_template_id
       ]
     );
     // 按收款状态登记流水：已付定金→定金一笔；已付全款→定金 + 尾款；未付定金→不登记
@@ -673,6 +681,8 @@ router.post('/:id/change-package', authRequired, requireRole(['admin', 'photogra
       addons: safeParse(p.addons, []), marketing: safeParse(p.marketing, {}),
       specs, questionnaire: safeParse(p.questionnaire, ''),
       details: safeParse(p.details, {}),
+      // 新套系绑定的协议模板（快照记录；切换套系时按此同步订单协议状态）
+      contract_template_id: p.contract_template_id || null,
       snapshot_at: nowISO()
     };
     const addons = Array.isArray(b.addons) ? b.addons : (safeParse(o.addons_snapshot, []) || []);
@@ -684,12 +694,25 @@ router.post('/:id/change-package', authRequired, requireRole(['admin', 'photogra
 
     const oldSnap = safeParse(o.package_snapshot, null);
     const oldName = (oldSnap && oldSnap.name) || '（无套系）';
+    // 新套系协议开关（决定订单协议状态同步）
+    const newPkgAgreementOn = !!(safeParse(p.details, {}).customer_agreement_enabled);
     await run(
       'UPDATE orders SET package_id = ?, package_snapshot = ?, addons_snapshot = ?, total_amount = ?, balance = ? WHERE id = ?',
       [p.id, JSON.stringify(snapshot), JSON.stringify(addons), total, balance, o.id]
     );
+    // 协议状态同步：
+    //  - 新套系开启协议 → 带入新套系绑定的协议模板（未绑定时置空）
+    //  - 新套系关闭协议 + 前端二次确认（clear_contract=true）→ 清空订单所有协议数据（签署记录/PDF/快照/附加条款失效）
+    if (newPkgAgreementOn) {
+      await run('UPDATE orders SET contract_template_id = ? WHERE id = ?', [p.contract_template_id || null, o.id]);
+      await appendLog(o.id, '已同步新套系绑定的协议模板');
+    } else if (b.clear_contract) {
+      await run(`UPDATE orders SET contract_template_id = NULL, contract_pdf_url = NULL, contract_extra_text = NULL,
+        contract_invalid = 0, contract_file_key = NULL, contract_file_md5 = NULL, contract_order_snapshot = NULL WHERE id = ?`, [o.id]);
+      await appendLog(o.id, '新套系关闭协议，已清空订单协议数据（签署记录/PDF/附加条款已失效）');
+    }
     await appendLog(o.id, `更换套系：${oldName} → ${p.name}${specName ? '（' + specName + '）' : ''}，应收总额 ¥${o.total_amount || 0} → ¥${total}` + (b.reason ? '；原因：' + b.reason : ''));
-    res.json({ ok: true, package_snapshot: snapshot, total_amount: total, balance });
+    res.json({ ok: true, package_snapshot: snapshot, total_amount: total, balance, agreement_enabled: newPkgAgreementOn });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 

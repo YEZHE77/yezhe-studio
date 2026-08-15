@@ -574,7 +574,8 @@ export async function initSchema() {
     ['duration', 'TEXT'],
     ['questionnaire', 'TEXT'],
     ['specs', 'TEXT'], // 多规格配置（同一套系多个版本，独立价格/服务）
-    ['details', 'TEXT'] // 4-Tab 套系编辑页（2026-08-09）聚合存储：详情图/视频/价格隐藏/退订政策/问卷可见性/服务模板/加片/标签/协议等
+    ['details', 'TEXT'], // 4-Tab 套系编辑页（2026-08-09）聚合存储：详情图/视频/价格隐藏/退订政策/问卷可见性/服务模板/加片/标签/协议等
+    ['contract_template_id', 'INTEGER'] // 套系绑定的协议模板（开关开启时选定；新建订单自动带入）
   ];
   for (const [col, def] of PACKAGES_NEW_COLUMNS) await ensureColumn('packages', col, def);
   await ensureColumn('schedules', 'lunar_date', 'TEXT');

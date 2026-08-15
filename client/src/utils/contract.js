@@ -1,5 +1,6 @@
 // utils/contract.js —— 合同渲染工具（占位符替换 + {{#if}} 条件 + 人民币大写）
 // PDF 前端本地生成，模板 template_content 为唯一数据源
+import { getRefundText, normalizePolicy } from './refundPolicy.js';
 
 // 人民币金额 → 大写（如 2580 → 贰仟伍佰捌拾元整）
 // 规则：段内（每4位）末尾零不写「零」、中间连续零只写一个；跨段时低位段不足4位需补「零」
@@ -123,6 +124,17 @@ export function buildContractVars(order) {
   const num = (v) => { const n = parseFloat(v); return n > 0 ? n : ''; };
   const intNum = (v) => { const n = parseInt(v, 10); return n > 0 ? n : ''; };
 
+  // 退订政策：从订单套系快照 details 读（订单创建/切换套系时已快照套系退订规则；历史订单不受套系后续修改影响）
+  let snapDetails = {};
+  try {
+    const snap = order.package_snapshot && typeof order.package_snapshot === 'object'
+      ? order.package_snapshot
+      : (order.package_snapshot ? JSON.parse(order.package_snapshot) : {});
+    snapDetails = (snap && typeof snap.details === 'object') ? snap.details : {};
+  } catch { snapDetails = {}; }
+  const refundPolicy = normalizePolicy(snapDetails.refund_policy);
+  const refundRule = getRefundText(snapDetails, refundPolicy);
+
   return {
     groom_name: order.groom_name || '',
     groom_phone: order.groom_phone || '',
@@ -149,6 +161,7 @@ export function buildContractVars(order) {
     pay_alipay: !!order.pay_alipay,
     pay_account_info: order.pay_account_info || '',
     contract_extra_text: order.contract_extra_text || '',
+    refund_rule: refundRule,
     sign_date: new Date().toISOString().slice(0, 10)
   };
 }

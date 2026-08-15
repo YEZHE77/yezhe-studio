@@ -171,6 +171,8 @@ export default function OrderDetail() {
   const [contractTemplates, setContractTemplates] = useState([]);
   const [contractTemplateId, setContractTemplateId] = useState(null);
   const [creatingDefault, setCreatingDefault] = useState(false);
+  // 实时套系协议开关（决定订单合同区能否发起合同；无套系/读取失败默认允许，向后兼容）
+  const [pkgAgreementEnabled, setPkgAgreementEnabled] = useState(true);
   const [contractExtraText, setContractExtraText] = useState('');
   const [contractPdfUrl, setContractPdfUrl] = useState('');
   const [contractGenerating, setContractGenerating] = useState(false);
@@ -260,6 +262,14 @@ export default function OrderDetail() {
         setContractPdfUrl(r.data.contract_pdf_url || '');
         // 规则4：订单已变更且旧 PDF 未同步 → 标红提示（仅在有历史 PDF 且快照存在时比对）
         setContractDirty(!!r.data.contract_pdf_url && contractChanged(r.data, r.data.contract_order_snapshot));
+        // 实时套系协议开关：套系关闭协议则订单无法发起合同（PRD 四.3：套系只控制「能不能用协议」）
+        if (r.data.package_id) {
+          http.get('/api/packages/' + r.data.package_id)
+            .then((p) => setPkgAgreementEnabled(!!(p.data?.details?.customer_agreement_enabled)))
+            .catch(() => setPkgAgreementEnabled(true));
+        } else {
+          setPkgAgreementEnabled(true);
+        }
       }
       loadSel(id);
     } catch { setNotFound(true); }
@@ -457,13 +467,25 @@ export default function OrderDetail() {
   }
   async function confirmPkgSwitch() {
     if (!pkgSwitch || !pkgSwitch.package_id) { alert('请选择要更换的套系'); return; }
+    const targetPkg = pkgs.find((p) => String(p.id) === String(pkgSwitch.package_id));
+    const targetAgreementOff = targetPkg ? !(targetPkg.details && targetPkg.details.customer_agreement_enabled) : false;
+    const hasContractData = !!(detail.contract_pdf_url || detail.contract_template_id || detail.contract_extra_text);
+    // 新套系关闭协议 + 当前订单已有协议数据 → 二次确认清空（PRD 三.2）
+    let clearContract = false;
+    if (targetAgreementOff && hasContractData) {
+      if (!window.confirm('新套系已关闭协议。\n\n更换后将清空本订单所有协议数据（签署记录、合同 PDF、附加条款），且不可恢复。\n\n确定继续更换？')) {
+        return;
+      }
+      clearContract = true;
+    }
     setPkgSwitching(true);
     try {
       await http.post('/api/orders/' + detail.id + '/change-package', {
         package_id: Number(pkgSwitch.package_id),
         spec_id: pkgSwitch.spec_id || '',
         package_price: pkgSwitch.package_price === '' ? undefined : parseFloat(pkgSwitch.package_price),
-        reason: pkgSwitch.reason || ''
+        reason: pkgSwitch.reason || '',
+        clear_contract: clearContract
       });
       setPkgSwitch(null);
       reload();
@@ -1176,6 +1198,12 @@ export default function OrderDetail() {
           {/* 合同（模板 + 附加条款 + 生成 PDF） */}
           <div style={{ margin: '12px 12px 0', background: '#fff', borderRadius: 8, padding: '14px 16px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
             <div style={{ fontSize: 14, color: '#1f2329', marginBottom: 12 }}>合同</div>
+            {!pkgAgreementEnabled && !contractPdfUrl ? (
+              <div style={{ fontSize: 13, color: '#999', padding: '16px 0', textAlign: 'center', lineHeight: 1.6 }}>
+                该套系已关闭协议，无法发起合同。<br />如需使用，请到套系编辑开启协议并绑定模板。
+              </div>
+            ) : (
+              <>
             {contractDirty && (
               <div style={{ fontSize: 12, color: '#FF4D4F', background: 'rgba(255,77,79,0.08)', borderRadius: 6, padding: '8px 10px', marginBottom: 10, lineHeight: 1.5 }}>
                 ⚠ 订单信息已变更，当前合同 PDF 未同步最新数据，请点击「重新生成合同 PDF」更新。
@@ -1203,8 +1231,8 @@ export default function OrderDetail() {
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               <button type="button" onClick={saveContractConfig} disabled={contractSaving}
                 style={{ padding: '8px 16px', borderRadius: 6, border: '1px solid #E8E8E8', background: '#fff', color: '#666', fontSize: 13, cursor: 'pointer' }}>保存配置</button>
-              <button type="button" onClick={generateContractPdf} disabled={contractGenerating}
-                style={{ padding: '8px 16px', borderRadius: 6, border: 'none', background: '#2DB7F5', color: '#fff', fontSize: 13, cursor: 'pointer', opacity: contractGenerating ? 0.6 : 1 }}>
+              <button type="button" onClick={generateContractPdf} disabled={contractGenerating || !pkgAgreementEnabled}
+                style={{ padding: '8px 16px', borderRadius: 6, border: 'none', background: '#2DB7F5', color: '#fff', fontSize: 13, cursor: 'pointer', opacity: (contractGenerating || !pkgAgreementEnabled) ? 0.5 : 1 }}>
                 {contractGenerating ? '生成中…' : contractPdfUrl ? '重新生成合同 PDF' : '生成合同 PDF'}
               </button>
               {contractPdfUrl && <button type="button" onClick={viewContract} style={{ padding: '8px 16px', borderRadius: 6, border: '1px solid #2DB7F5', color: '#2DB7F5', fontSize: 13, background: '#fff', cursor: 'pointer' }}>查看合同</button>}
@@ -1213,6 +1241,8 @@ export default function OrderDetail() {
                 ? <button type="button" onClick={restoreContract} style={{ padding: '8px 16px', borderRadius: 6, border: '1px solid #52C41A', color: '#52C41A', fontSize: 13, background: '#fff', cursor: 'pointer' }}>恢复合同</button>
                 : <button type="button" onClick={invalidateContract} style={{ padding: '8px 16px', borderRadius: 6, border: '1px solid #FF4D4F', color: '#FF4D4F', fontSize: 13, background: '#fff', cursor: 'pointer' }}>作废合同</button>)}
             </div>
+              </>
+            )}
           </div>
 
           {/* 订单变更记录（3 项可点击跳转 logModal 对应 tab） */}
@@ -1590,6 +1620,12 @@ export default function OrderDetail() {
       {/* ============ 合同（模板 + 附加条款 + 生成 PDF） ============ */}
       <section style={{ margin: isMobile ? '8px 12px 0' : '8px 24px 0', background: '#FFFFFF', border: '1px solid ' + CARD_BORDER, borderRadius: 4, padding: '16px' }}>
         <div style={{ fontSize: 14, color: '#1f2329', marginBottom: 12 }}>合同</div>
+        {!pkgAgreementEnabled && !contractPdfUrl ? (
+          <div style={{ fontSize: 13, color: '#999', padding: '16px 0', textAlign: 'center', lineHeight: 1.6 }}>
+            该套系已关闭协议，无法发起合同。如需使用，请到套系编辑开启协议并绑定模板。
+          </div>
+        ) : (
+          <>
         {contractDirty && (
           <div style={{ fontSize: 12, color: '#FF4D4F', background: 'rgba(255,77,79,0.08)', borderRadius: 4, padding: '8px 10px', marginBottom: 12, lineHeight: 1.5 }}>
             ⚠ 订单信息已变更，当前合同 PDF 未同步最新数据，请点击「重新生成合同 PDF」更新。
@@ -1623,8 +1659,8 @@ export default function OrderDetail() {
         <div style={{ display: 'flex', gap: 8, marginTop: 12, alignItems: 'center', flexWrap: 'wrap' }}>
           <button type="button" onClick={saveContractConfig} disabled={contractSaving}
             style={{ padding: '7px 16px', borderRadius: 4, border: '1px solid ' + CARD_BORDER, background: '#fff', color: '#666', fontSize: 13, cursor: 'pointer' }}>保存配置</button>
-          <button type="button" onClick={generateContractPdf} disabled={contractGenerating}
-            style={{ padding: '7px 16px', borderRadius: 4, border: 'none', background: BLUE, color: '#fff', fontSize: 13, cursor: 'pointer', opacity: contractGenerating ? 0.6 : 1 }}>
+          <button type="button" onClick={generateContractPdf} disabled={contractGenerating || !pkgAgreementEnabled}
+            style={{ padding: '7px 16px', borderRadius: 4, border: 'none', background: BLUE, color: '#fff', fontSize: 13, cursor: 'pointer', opacity: (contractGenerating || !pkgAgreementEnabled) ? 0.5 : 1 }}>
             {contractGenerating ? '生成中…' : contractPdfUrl ? '重新生成合同 PDF' : '生成合同 PDF'}
           </button>
           {contractPdfUrl && <button type="button" onClick={viewContract} style={{ padding: '7px 16px', borderRadius: 4, border: '1px solid ' + BLUE, color: BLUE, fontSize: 13, background: '#fff', cursor: 'pointer' }}>查看合同</button>}
@@ -1633,6 +1669,8 @@ export default function OrderDetail() {
             ? <button type="button" onClick={restoreContract} style={{ padding: '7px 16px', borderRadius: 4, border: '1px solid #52C41A', color: '#52C41A', fontSize: 13, background: '#fff', cursor: 'pointer' }}>恢复合同</button>
             : <button type="button" onClick={invalidateContract} style={{ padding: '7px 16px', borderRadius: 4, border: '1px solid #FF4D4F', color: '#FF4D4F', fontSize: 13, background: '#fff', cursor: 'pointer' }}>作废合同</button>)}
         </div>
+          </>
+        )}
       </section>
 
       {/* ============ Module 5：底片上传 Tab 卡片（保留既有上传/选片功能，仅换肤） ============ */}
