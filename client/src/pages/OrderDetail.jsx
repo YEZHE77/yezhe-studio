@@ -2639,10 +2639,6 @@ export default function OrderDetail() {
                   <td style={{ padding: '4px 8px' }}>{pkgInfo?.details?.album_provide === 'provide' ? '是' : pkgInfo?.details?.album_provide === 'extra' ? '相册另购' : '否'}</td>
                 </tr>
                 <tr>
-                  <td style={{ padding: '4px 8px', color: '#555' }}>服务地点</td>
-                  <td style={{ padding: '4px 8px' }} colSpan={3}>{pkgInfo?.details?.service_location || '—'}</td>
-                </tr>
-                <tr>
                   <td style={{ padding: '4px 8px', color: '#555' }}>交付时间</td>
                   <td style={{ padding: '4px 8px' }} colSpan={3}>{pkgInfo?.details?.delivery_time || '—'}</td>
                 </tr>
