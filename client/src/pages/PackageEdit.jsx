@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import http, { img, uploadImage, uploadBatch } from '../api.js';
 import CropperModal from '../components/CropperModal.jsx';
-import { DEFAULT_SERVICE_DETAIL } from '../utils/serviceDetail.js';
+import { DEFAULT_SERVICE_DETAIL, DEFAULT_DELIVERY_REMARK } from '../utils/serviceDetail.js';
 
 // dataURL → File（裁切结果保存时上传用）
 function dataURLtoFile(dataUrl, name = 'cover.jpg') {
@@ -75,7 +75,7 @@ function defaultDetails() {
     // 快修费 / 交付时间 / 交付备注（套系项目补充字段，2026-08-15 新增）
     quick_repair_cost: '',
     delivery_time: '',
-    delivery_remark: '',
+    delivery_remark: DEFAULT_DELIVERY_REMARK,
     cloth_provide: 'not',
     makeup_provide: 'not',
     album_provide: 'not',
