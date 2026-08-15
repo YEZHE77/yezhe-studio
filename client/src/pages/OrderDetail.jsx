@@ -833,6 +833,17 @@ export default function OrderDetail() {
   // —— 图片管理：原片 / 精修片 真实上传（复用现有分片上传，不新建接口） ——
   async function addPhotos(kind, fileList) {
     if (!fileList || !fileList.length) return;
+    // 精修片数量限制：上传精修片不得超过订单「精修张数」字段（PRD 四.4 作品自检2，数据源=订单当前数值）
+    if (kind === 'retouched') {
+      const limit = parseInt(detail?.retouch_count, 10) || 0;
+      if (limit > 0) {
+        const current = (photos.retouched || []).length;
+        if (current + fileList.length > limit) {
+          alert(`精修片数量已达上限 ${limit} 张（当前 ${current} 张），最多还可上传 ${Math.max(0, limit - current)} 张。`);
+          return;
+        }
+      }
+    }
     setUploading((u) => ({ ...u, [kind]: true }));
     try {
       const category = kind === 'raw' ? 'raw-negative' : 'retouched';
