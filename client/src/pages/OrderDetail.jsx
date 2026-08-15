@@ -8,6 +8,7 @@ import { renderContract, buildContractVars, contractChanged } from '../utils/con
 import { getRefundText, getRefundParagraphs, normalizePolicy } from '../utils/refundPolicy.js';
 import { getServiceAgreement, getPhotoAuthAgreement, toParagraphs } from '../utils/customerAgreement.js';
 import { DEFAULT_CONTRACT_TEMPLATE } from '../utils/contractDefault.js';
+import { DEFAULT_SERVICE_DETAIL } from '../utils/serviceDetail.js';
 
 const STATUS_LABEL = {
   deposit: '已付定金', shot: '已拍摄', selecting: '选片中',
@@ -2668,6 +2669,14 @@ export default function OrderDetail() {
                 </table>
               </div>
             )}
+          </div>
+
+          {/* 服务详情（订单套系快照；空时用官方默认模板） */}
+          <div style={{ marginBottom: 20 }}>
+            <div style={{ fontSize: 16, fontWeight: 400, borderBottom: '1px solid #ccc', paddingBottom: 6, marginBottom: 10 }}>服务详情</div>
+            <div style={{ fontSize: 13, lineHeight: 1.7, color: '#222', whiteSpace: 'pre-wrap' }}>
+              {((pkgInfo && pkgInfo.details && pkgInfo.details.service_detail_text) || DEFAULT_SERVICE_DETAIL)}
+            </div>
           </div>
 
           {/* 顾客服务协议：订单创建时的套系快照；空时用官方默认模板 */}
