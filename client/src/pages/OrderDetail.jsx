@@ -2714,9 +2714,7 @@ export default function OrderDetail() {
                 </tr>
                 <tr>
                   <td style={{ padding: '4px 8px', color: '#555' }}>精修</td>
-                  <td style={{ padding: '4px 8px' }}>{Number(detail.retouch_count) > 0 ? detail.retouch_count + ' 张' : '—'}</td>
-                  <td style={{ padding: '4px 8px', color: '#555' }}>电子相册</td>
-                  <td style={{ padding: '4px 8px' }}>{Number(detail.album_electronic_num) > 0 ? detail.album_electronic_num + ' 本' : '—'}</td>
+                  <td style={{ padding: '4px 8px' }} colSpan={3}>{Number(detail.retouch_count) > 0 ? detail.retouch_count + ' 张' : '—'}</td>
                 </tr>
                 <tr>
                   <td style={{ padding: '4px 8px', color: '#555' }}>相册单价</td>
