@@ -5,6 +5,7 @@ import { useViewState } from '../tabMemory.js';
 import { avatarColor, avatarText } from '../utils/avatar.js';
 import { channelColor, channelBadgeStyle } from '../utils/channel.js';
 import { stageLabel } from '../utils/orderStage.js';
+import OrderCreateModal from '../components/OrderCreateModal.jsx';
 
 /* ==========================================================================
    订单中心（列表页）
@@ -111,6 +112,7 @@ export default function Orders() {
   // 统计数字全部来自 GET /api/orders/stats（后端实时 SQL），前端不做任何硬编码
   const [stats, setStats] = useState({ expiringSoon: 0, selectionTimeout: 0, total: 0 });
 
+  const [showForm, setShowForm] = useState(false);
   const [qInput, setQInput] = useState(state.q || '');
   // 移动端响应式：宽度 < 768px 视为手机，内联样式按 isMobile 降级
   const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' ? window.innerWidth < 768 : false);
@@ -343,7 +345,7 @@ export default function Orders() {
 
       {/* 深色筛选栏：+添加新订单 → 状态 → 执行者 → 排序 → 列表视图 → 筛选 */}
       <div className="flex items-center gap-3 px-3 py-5 rounded-lg flex-wrap" style={{ background: '#2c2c2c' }}>
-        <button onClick={() => nav('/orders/new')}
+        <button onClick={() => setShowForm(true)}
           className="px-4 py-1.5 rounded text-sm whitespace-nowrap"
           style={{ background: '#2DB7F5', color: '#fff', fontSize: 14 }}>+ 新建订单</button>
 
@@ -594,7 +596,14 @@ export default function Orders() {
         </div>
       )}
 
-      {/* 新建订单入口已统一为跳转 /orders/new → OrdersNew 全屏页（桌面端+移动端都用同一路由+同一组件） */}
+      {/* 新建订单弹窗：仅点击【+ 添加新订单】才打开，无任何自动弹出逻辑 */}
+      <OrderCreateModal
+        visible={showForm}
+        packages={pkgs}
+        initialPackageId={null}
+        onClose={() => setShowForm(false)}
+        onAfterCreate={afterMutate}
+      />
 
       {/* 分享 / 问卷邀请二维码弹窗 */}
       {shareModal && (
