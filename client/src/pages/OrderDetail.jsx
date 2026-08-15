@@ -238,8 +238,6 @@ export default function OrderDetail() {
   // 执行人独立选择弹窗（芯片标签区域的蓝色加号按钮唤起）
   const [execPickerOpen, setExecPickerOpen] = useState(false);
   const [execPickerSelections, setExecPickerSelections] = useState([]);
-  // 打印单据
-  const [printMode, setPrintMode] = useState(false);
   // 打印单据：是否附带商家内部备注（默认关，内部备注敏感）
   const [printInternal, setPrintInternal] = useState(false);
   // 底部常驻记录卡片 Tab（订单状态详情 / 交易记录 / 下载记录）
@@ -596,10 +594,8 @@ export default function OrderDetail() {
       alert('微信浏览器不支持保存 PDF。\n\n建议复制当前链接，用系统浏览器打开后再打印，即可另存为 PDF。');
       return;
     }
-    // 先渲染打印内容，再触发打印
-    setPrintMode(true);
-    // 延迟确保 DOM 渲染完成后再打印
-    setTimeout(() => { window.print(); setPrintMode(false); }, 300);
+    // 打印单始终离屏渲染在 DOM 中，无需等待渲染；必须同步调用 window.print 以保留 iOS 用户手势上下文
+    window.print();
   }
   async function restoreOrder() {
     if (!confirm('确认恢复该订单？')) return;
