@@ -741,6 +741,15 @@ export default function OrderDetail() {
       // ④ 用最新订单字段替换占位符（只读订单字段，不读套系兜底）
       const vars = buildContractVars(latest);
       let htmlContent = renderContract(tpl.template_content, vars);
+      // 退订政策：模板含 {{refund_rule}} 则已替换；否则自动拼接至「违约责任」段（PRD 二.2 自动拼接，不依赖手动加占位符）
+      if (!/\{\{refund_rule\}\}/.test(tpl.template_content) && vars.refund_rule) {
+        const refundHtml = '<h3>退订政策</h3><p>' + String(vars.refund_rule).replace(/\n/g, '<br>') + '</p>';
+        if (/违约责任/.test(htmlContent)) {
+          htmlContent = htmlContent.replace(/违约责任/, '违约责任\n\n' + refundHtml);
+        } else {
+          htmlContent += '\n\n' + refundHtml;
+        }
+      }
       // 附加条款已在占位符 {{contract_extra_text}} 中，若无占位符则拼接尾部
       if (!/\{\{contract_extra_text\}\}/.test(tpl.template_content) && latest.contract_extra_text) {
         htmlContent += '\n\n<h3>七、其他补充约定</h3>\n<p>' + String(latest.contract_extra_text).replace(/\n/g, '<br>') + '</p>';
