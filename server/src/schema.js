@@ -689,6 +689,34 @@ export async function initSchema() {
     await run(`UPDATE packages SET customer_agreement = '' WHERE customer_agreement IS NOT NULL AND customer_agreement <> ''`);
   } catch (e) { /* 列不存在则忽略 */ }
 
+  // 同步套系服务详情文本（2026-08-15）：清空旧脏的 service_detail_text 与 description，统一回落到前端默认文案
+  try {
+    const rows = await query('SELECT id, details FROM packages');
+    for (const r of rows) {
+      let d = {};
+      if (r.details) { try { d = JSON.parse(r.details); } catch { d = {}; } }
+      if (d && typeof d === 'object' && !Array.isArray(d) && (d.service_detail_text || d.description)) {
+        d.service_detail_text = '';
+        d.description = '';
+        await run('UPDATE packages SET details = ? WHERE id = ?', [JSON.stringify(d), r.id]);
+      }
+    }
+  } catch (e) { console.error('[schema] 同步套系服务详情失败', e); }
+  // 订单快照里的旧服务详情一并清空
+  try {
+    const orders = await query('SELECT id, package_snapshot FROM orders');
+    for (const o of orders) {
+      let snap = {};
+      if (o.package_snapshot) { try { snap = JSON.parse(o.package_snapshot); } catch { snap = {}; } }
+      const sd = snap && typeof snap === 'object' && snap.details && typeof snap.details === 'object' ? snap.details : null;
+      if (sd && (sd.service_detail_text || sd.description)) {
+        sd.service_detail_text = '';
+        sd.description = '';
+        await run('UPDATE orders SET package_snapshot = ? WHERE id = ?', [JSON.stringify(snap), o.id]);
+      }
+    }
+  } catch (e) { console.error('[schema] 同步订单快照服务详情失败', e); }
+
   console.log('[schema] 表结构已就绪');
 }
 
