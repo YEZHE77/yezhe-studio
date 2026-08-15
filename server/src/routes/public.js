@@ -46,7 +46,7 @@ router.post('/appointment', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// ===== 2. customer_token 订单只读查看 =====
+// ===== 2. customer_token 订单只读查看（与 B 端订单详情同口径，只读无编辑） =====
 router.get('/order/:token', async (req, res) => {
   try {
     const token = req.params.token;
@@ -54,13 +54,32 @@ router.get('/order/:token', async (req, res) => {
     if (!o) return res.status(403).json({ error: '无权限访问该订单' });
     if (o.cancelled || o.is_deleted) return res.status(404).json({ error: '订单不存在或已关闭' });
 
-    let pkgName = '', pkgPrice = 0, retouchCount = 0;
-    try {
-      const snap = o.package_snapshot ? JSON.parse(o.package_snapshot) : null;
-      if (snap) { pkgName = snap.name || ''; pkgPrice = parseFloat(snap.price) || 0; retouchCount = parseInt(snap.retouch_count, 10) || 0; }
-    } catch {}
+    const safeArr = (t) => { try { const a = JSON.parse(t || '[]'); return Array.isArray(a) ? a : []; } catch { return []; } };
 
-    // 选片入口：若存在选片任务，返回选片链接
+    // 套系快照：封面 / 简介 / 价格 / 定金 / 精修 / 加片单价 / 服务详情
+    let pkg = {};
+    try { if (o.package_snapshot) pkg = JSON.parse(o.package_snapshot) || {}; } catch {}
+    const pkgName = pkg.name || '';
+    const pkgPrice = parseFloat(pkg.price) || 0;
+    const pkgCover = pkg.cover_url || pkg.cover_image || '';
+    const pkgDesc = pkg.description || pkg.package_desc || '';
+    const pkgNotice = pkg.notice || '';
+    const pkgOtherService = pkg.other_service || '';
+    const pkgShootDuration = pkg.duration || pkg.shoot_duration || '';
+    const pkgShootScope = pkg.raw_policy || pkg.shoot_scope || '';
+    const pkgAdditionalPrice = parseFloat(pkg.additional_price) || 0;
+    const pkgPhotoTotal = parseInt(pkg.photo_total, 10) || 0;
+    const retouchCount = parseInt(pkg.retouch_count, 10) || 0;
+    const pkgOriginalFile = pkg.original_file || '';
+
+    // 拍摄时段
+    const timeSlots = safeArr(o.time_slots);
+    // 执行人
+    const executors = safeArr(o.executors).map((x) => ({ name: x.name || '', avatar: x.avatar || '' })).filter((x) => x.name);
+    // 消费明细：可选精修片 / 加片费 / 加片优惠 / 其他消费
+    const extraItems = safeArr(o.extra_items);
+
+    // 选片入口
     const selTask = await get('SELECT id FROM selection_tasks WHERE order_id = ? ORDER BY id DESC LIMIT 1', [o.id]);
     let selectionUrl = '';
     if (selTask) {
@@ -69,23 +88,44 @@ router.get('/order/:token', async (req, res) => {
     }
 
     const STATUS_LABEL = { deposit: '已付定金', shot: '已拍摄', selecting: '选片中', retouching: '精修中', delivered: '已交付', completed: '已完成' };
+    const PAY_LABEL = { unpaid: '未付定金', deposit: '已付定金', paid: '已付全款' };
 
     res.json({
       order_no: o.order_no,
       customer_name: o.customer_name,
       groom_name: o.groom_name || '',
       bride_name: o.bride_name || '',
+      create_time: o.created_at || '',
       shoot_date: o.shoot_date || '',
       date_tbd: !!Number(o.date_tbd),
+      time_slots: timeSlots,
+      address: o.address || '',
       status: o.status,
       status_label: STATUS_LABEL[o.status] || o.status,
-      package_name: pkgName,
-      package_price: pkgPrice,
-      retouch_count: retouchCount,
+      // 套系快照
+      package: {
+        name: pkgName,
+        cover: pkgCover,
+        desc: pkgDesc,
+        price: pkgPrice,
+        deposit: parseFloat(o.deposit) || 0,
+        retouch_count: retouchCount,
+        photo_total: pkgPhotoTotal,
+        original_file: pkgOriginalFile,
+        additional_price: pkgAdditionalPrice,
+        shoot_duration: pkgShootDuration,
+        shoot_scope: pkgShootScope,
+        other_service: pkgOtherService,
+        notice: pkgNotice
+      },
+      executors,
+      extra_items: extraItems,
+      // 金额
       total_amount: parseFloat(o.total_amount) || 0,
       paid_amount: parseFloat(o.paid_amount) || 0,
       balance: parseFloat(o.balance) || 0,
       payment_status: o.payment_status || 'deposit',
+      payment_status_label: PAY_LABEL[o.payment_status] || o.payment_status,
       selection_url: selectionUrl
     });
   } catch (e) { res.status(500).json({ error: e.message }); }
