@@ -151,7 +151,7 @@ function Dropdown({ value, placeholder, options, onSelect, renderValue, renderOp
   );
 }
 
-export default function OrderCreateModal({ visible, packages, initialPackageId, onClose, onAfterCreate, pageMode = false }) {
+export default function OrderCreateModal({ visible, packages, initialPackageId, initialDate, onClose, onAfterCreate, pageMode = false }) {
   const [form, setForm] = useState(emptyForm());
   const [err, setErr] = useState('');
   const [saving, setSaving] = useState(false);
@@ -168,7 +168,7 @@ export default function OrderCreateModal({ visible, packages, initialPackageId, 
 
   useEffect(() => {
     if (!visible) return;
-    setForm({ ...emptyForm(), package_id: initialPackageId || '' });
+    setForm({ ...emptyForm(), package_id: initialPackageId || '', shoot_date: initialDate || todayStr() });
     setErr('');
     setExecOpen(false);
     setConflict(null);
