@@ -238,6 +238,8 @@ export default function OrderDetail() {
   const [execPickerSelections, setExecPickerSelections] = useState([]);
   // 打印单据
   const [printMode, setPrintMode] = useState(false);
+  // 打印单据：是否附带商家内部备注（默认关，内部备注敏感）
+  const [printInternal, setPrintInternal] = useState(false);
   // 底部常驻记录卡片 Tab（订单状态详情 / 交易记录 / 下载记录）
   const [logTab, setLogTab] = useState('status');
   // 右上角【查看记录】唤起日志弹窗（与底部卡片并存，独立 Tab 状态）
@@ -902,7 +904,7 @@ export default function OrderDetail() {
   // 更多设置下拉菜单（复刻截图：仅保留 编辑订单 / 打印单据 2 项）
   // 菜单渲染在按钮内部，position:absolute + top:100% 保证紧贴按钮正下方；align 控制左右对齐
   const renderMoreMenu = (onClose, align = 'left') => (
-    <div style={{ position: 'absolute', top: '100%', zIndex: 60, marginTop: 4, ...(align === 'right' ? { right: 0 } : { left: 0 }), background: '#fff', border: '1px solid ' + DIV, borderRadius: 4, boxShadow: '0 6px 20px rgba(0,0,0,0.10)', padding: '6px 0', fontSize: 14, width: 142 }}>
+    <div style={{ position: 'absolute', top: '100%', zIndex: 60, marginTop: 4, ...(align === 'right' ? { right: 0 } : { left: 0 }), background: '#fff', border: '1px solid ' + DIV, borderRadius: 4, boxShadow: '0 6px 20px rgba(0,0,0,0.10)', padding: '6px 0', fontSize: 14, width: 184 }}>
       <button type="button" onClick={() => { onClose && onClose(); openEdit(); }} style={moreItemStyle}>
         <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>
@@ -913,6 +915,18 @@ export default function OrderDetail() {
         <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 6 2 18 2 18 9" /><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" /><rect x="6" y="14" width="12" height="8" /></svg>
           打印单据
+        </span>
+      </button>
+      {/* 打印设置：是否附带商家内部备注（默认关） */}
+      <button type="button" onClick={() => setPrintInternal((v) => !v)} style={moreItemStyle}>
+        <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, width: '100%' }}>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>
+            打印含内部备注
+          </span>
+          <span style={{ width: 34, height: 18, borderRadius: 9, background: printInternal ? '#7ECDBB' : '#ddd', position: 'relative', transition: 'background .2s', flexShrink: 0 }}>
+            <span style={{ position: 'absolute', top: 2, left: printInternal ? 18 : 2, width: 14, height: 14, borderRadius: '50%', background: '#fff', transition: 'left .2s' }} />
+          </span>
         </span>
       </button>
     </div>
@@ -2598,6 +2612,7 @@ export default function OrderDetail() {
           <div style={{ textAlign: 'center', borderBottom: '2px solid #000', paddingBottom: 16, marginBottom: 20 }}>
             <div style={{ fontSize: 22, fontWeight: 400, letterSpacing: 4 }}>拍摄服务单</div>
             <div style={{ fontSize: 14, marginTop: 8, color: '#555' }}>订单编号：{detail.order_no}</div>
+            <div style={{ fontSize: 13, marginTop: 4, color: '#555' }}>创建时间：{detail.created_at ? new Date(detail.created_at).toLocaleString('zh-CN') : '—'}　·　订单状态：{statusText || '—'}</div>
           </div>
 
           {/* 客户信息 */}
@@ -2618,6 +2633,12 @@ export default function OrderDetail() {
                   <td style={{ padding: '4px 8px' }}>{detail.bride_name || '—'}</td>
                 </tr>
                 <tr>
+                  <td style={{ padding: '4px 8px', color: '#555' }}>拍摄日期</td>
+                  <td style={{ padding: '4px 8px' }}>{detail.shoot_date || (detail.date_tbd ? '待定' : '—')}</td>
+                  <td style={{ padding: '4px 8px', width: 80, color: '#555' }}>摄影师</td>
+                  <td style={{ padding: '4px 8px' }}>{(Array.isArray(detail.executors) && detail.executors.length ? detail.executors.map((x) => (x && x.name) || '').filter(Boolean).join('、') : '') || detail.executor || '—'}</td>
+                </tr>
+                <tr>
                   <td style={{ padding: '4px 8px', color: '#555' }}>拍摄地址</td>
                   <td style={{ padding: '4px 8px' }} colSpan={3}>{detail.address || '—'}</td>
                 </tr>
@@ -2625,34 +2646,42 @@ export default function OrderDetail() {
             </table>
           </div>
 
-          {/* 套系详情 */}
-          {pkgInfo && (
-            <div style={{ marginBottom: 20 }}>
-              <div style={{ fontSize: 16, fontWeight: 400, borderBottom: '1px solid #ccc', paddingBottom: 6, marginBottom: 10 }}>套系详情</div>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
-                <tbody>
-                  <tr>
-                    <td style={{ padding: '4px 8px', width: 100, color: '#555' }}>套系名称</td>
-                    <td style={{ padding: '4px 8px' }}>{pkgInfo.name}</td>
-                    <td style={{ padding: '4px 8px', width: 80, color: '#555' }}>价格</td>
-                    <td style={{ padding: '4px 8px' }}>¥{Number(pkgInfo.price || 0).toLocaleString()}</td>
-                  </tr>
-                  <tr>
-                    <td style={{ padding: '4px 8px', color: '#555' }}>定金</td>
-                    <td style={{ padding: '4px 8px' }}>¥{Number(pkgInfo.deposit || 0).toLocaleString()}</td>
-                    <td style={{ padding: '4px 8px', color: '#555' }}>拍摄时长</td>
-                    <td style={{ padding: '4px 8px' }}>{pkgInfo.duration || '—'}</td>
-                  </tr>
-                  <tr>
-                    <td style={{ padding: '4px 8px', color: '#555' }}>精修张数</td>
-                    <td style={{ padding: '4px 8px' }}>{pkgInfo.retouch_count || '—'}</td>
-                    <td style={{ padding: '4px 8px', color: '#555' }}>底片政策</td>
-                    <td style={{ padding: '4px 8px' }}>{pkgInfo.raw_policy || '—'}</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          )}
+          {/* 套系详情：套餐配置参数读订单表实时字段（需求4：不读套系主表/历史快照）；套系名称唯一来源为快照 */}
+          <div style={{ marginBottom: 20 }}>
+            <div style={{ fontSize: 16, fontWeight: 400, borderBottom: '1px solid #ccc', paddingBottom: 6, marginBottom: 10 }}>套系详情</div>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
+              <tbody>
+                <tr>
+                  <td style={{ padding: '4px 8px', width: 100, color: '#555' }}>套系名称</td>
+                  <td style={{ padding: '4px 8px' }} colSpan={3}>{(pkgInfo && pkgInfo.name) || '—'}</td>
+                </tr>
+                <tr>
+                  <td style={{ padding: '4px 8px', color: '#555' }}>机位</td>
+                  <td style={{ padding: '4px 8px' }}>{detail.shoot_position || '—'}</td>
+                  <td style={{ padding: '4px 8px', width: 80, color: '#555' }}>底片</td>
+                  <td style={{ padding: '4px 8px' }}>{Number(detail.total_negatives) > 0 ? detail.total_negatives + ' 张' : '—'}</td>
+                </tr>
+                <tr>
+                  <td style={{ padding: '4px 8px', color: '#555' }}>精修</td>
+                  <td style={{ padding: '4px 8px' }}>{Number(detail.retouch_count) > 0 ? detail.retouch_count + ' 张' : '—'}</td>
+                  <td style={{ padding: '4px 8px', color: '#555' }}>电子相册</td>
+                  <td style={{ padding: '4px 8px' }}>{Number(detail.album_electronic_num) > 0 ? detail.album_electronic_num + ' 本' : '—'}</td>
+                </tr>
+                <tr>
+                  <td style={{ padding: '4px 8px', color: '#555' }}>相册单价</td>
+                  <td style={{ padding: '4px 8px' }}>{Number(detail.album_price) > 0 ? '¥' + Number(detail.album_price).toLocaleString() : '—'}</td>
+                  <td style={{ padding: '4px 8px', color: '#555' }}>拍摄费</td>
+                  <td style={{ padding: '4px 8px' }}>{Number(detail.shoot_cost) > 0 ? '¥' + Number(detail.shoot_cost).toLocaleString() : '—'}</td>
+                </tr>
+                <tr>
+                  <td style={{ padding: '4px 8px', color: '#555' }}>快修费</td>
+                  <td style={{ padding: '4px 8px' }}>{Number(detail.quick_repair_cost) > 0 ? '¥' + Number(detail.quick_repair_cost).toLocaleString() : '—'}</td>
+                  <td style={{ padding: '4px 8px', color: '#555' }}>定金</td>
+                  <td style={{ padding: '4px 8px' }}>{Number(detail.deposit) > 0 ? '¥' + Number(detail.deposit).toLocaleString() : '—'}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
 
           {/* 收款信息 */}
           <div style={{ marginBottom: 20 }}>
@@ -2698,11 +2727,17 @@ export default function OrderDetail() {
             )}
           </div>
 
-          {/* 备注 */}
+          {/* 备注：客户备注 + 商家内部备注（开关控制，默认关，内部备注敏感） */}
           {detail.remark && (
             <div style={{ marginBottom: 20 }}>
-              <div style={{ fontSize: 16, fontWeight: 400, borderBottom: '1px solid #ccc', paddingBottom: 6, marginBottom: 10 }}>备注</div>
+              <div style={{ fontSize: 16, fontWeight: 400, borderBottom: '1px solid #ccc', paddingBottom: 6, marginBottom: 10 }}>客户备注</div>
               <div style={{ fontSize: 14, whiteSpace: 'pre-wrap' }}>{detail.remark}</div>
+            </div>
+          )}
+          {printInternal && detail.internal_remark && (
+            <div style={{ marginBottom: 20 }}>
+              <div style={{ fontSize: 16, fontWeight: 400, borderBottom: '1px solid #ccc', paddingBottom: 6, marginBottom: 10 }}>商家内部备注</div>
+              <div style={{ fontSize: 14, whiteSpace: 'pre-wrap' }}>{detail.internal_remark}</div>
             </div>
           )}
 
