@@ -43,7 +43,7 @@ const REFUND_OPTS = ['严格', '中等', '宽松'];
 const DURATION_OPTS = ['全天', '半天', '指定时长'];
 const CAMERA_OPTS = ['单机位', '双机位', '三机位', '多机位'];
 const DELIVERY_OPTS = ['U盘', '网盘', '邮箱', '线下交付'];
-const LOCATION_OPTS = ['海口', '三亚', '北京', '上海', '广州', '深圳', '杭州', '成都'];
+const LOCATION_OPTS = ['全国', '海口', '三亚', '三沙', '儋州', '文昌', '琼海', '万宁', '东方', '五指山', '澄迈', '临高', '定安', '屯昌', '白沙', '昌江', '乐东', '陵水', '保亭', '琼中'];
 
 function defaultDetails() {
   return {
