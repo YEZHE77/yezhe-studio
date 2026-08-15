@@ -71,6 +71,9 @@ router.get('/order/:token', async (req, res) => {
     const pkgPhotoTotal = parseInt(pkg.photo_total, 10) || 0;
     const retouchCount = parseInt(pkg.retouch_count, 10) || 0;
     const pkgOriginalFile = pkg.original_file || '';
+    // 退订政策（来自套系快照 details；前端用 utils/refundPolicy.js 处理默认兜底）
+    const pkgDetails = (pkg && typeof pkg.details === 'object') ? pkg.details : {};
+    const refundPolicy = pkgDetails.refund_policy === '宽松' ? '宽松' : '严格';
 
     // 拍摄时段
     const timeSlots = safeArr(o.time_slots);
@@ -116,7 +119,10 @@ router.get('/order/:token', async (req, res) => {
         shoot_duration: pkgShootDuration,
         shoot_scope: pkgShootScope,
         other_service: pkgOtherService,
-        notice: pkgNotice
+        notice: pkgNotice,
+        refund_policy: refundPolicy,
+        refund_policy_lax_text: pkgDetails.refund_policy_lax_text || '',
+        refund_policy_strict_text: pkgDetails.refund_policy_strict_text || ''
       },
       executors,
       extra_items: extraItems,

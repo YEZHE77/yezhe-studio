@@ -5,6 +5,7 @@ import bgm from '../bgm.js';
 import Slideshow from '../components/Slideshow.jsx';
 import html2pdf from 'html2pdf.js';
 import { renderContract, buildContractVars, contractChanged } from '../utils/contract.js';
+import { getRefundText, getRefundParagraphs, normalizePolicy } from '../utils/refundPolicy.js';
 import { DEFAULT_CONTRACT_TEMPLATE } from '../utils/contractDefault.js';
 
 const STATUS_LABEL = {
@@ -488,6 +489,10 @@ export default function OrderDetail() {
         clear_contract: clearContract
       });
       setPkgSwitch(null);
+      // 强视觉提醒：切换套系后套餐规格/价格/退订政策/协议模板已变更，原有合同失效（PRD 二.4）
+      if (detail.contract_pdf_url && !clearContract) {
+        setContractDirty(true);
+      }
       reload();
     } catch (e2) { alert((e2 && e2.message) || '更换失败'); }
     finally { setPkgSwitching(false); }
@@ -610,9 +615,18 @@ export default function OrderDetail() {
   }
   async function cancel() {
     if (!detail) return;
-    const tip = detail.shoot_date && !detail.date_tbd
+    // 所属套系退订政策（作废订单时作为退款扣费参考，PRD 七.1）
+    let refundRule = '';
+    try {
+      const snap = detail.package_snapshot && typeof detail.package_snapshot === 'object'
+        ? detail.package_snapshot : (detail.package_snapshot ? JSON.parse(detail.package_snapshot) : {});
+      const sd = (snap && typeof snap.details === 'object') ? snap.details : {};
+      refundRule = getRefundText(sd, normalizePolicy(sd.refund_policy));
+    } catch {}
+    const ruleTip = refundRule ? `\n\n所属套系退订政策（退款扣费参考）：\n${refundRule}` : '';
+    const tip = (detail.shoot_date && !detail.date_tbd
       ? `确认作废该订单？\n作废后将自动释放已占用的档期 ${detail.shoot_date}，该日期重新变为可约。`
-      : '确认作废该订单？';
+      : '确认作废该订单？') + ruleTip;
     if (!confirm(tip)) return;
     const reason = prompt('作废原因（选填）');
     if (reason === null) return;
@@ -1194,6 +1208,29 @@ export default function OrderDetail() {
               <button type="button" onClick={() => nav('/orders/' + detail?.id + '/notes')} style={{ background: 'none', border: 'none', color: '#7ECDBB', fontSize: 13 }}>展开备注</button>
             </div>
           </div>
+
+          {/* 退订政策（本订单所属套系的退改规则，PRD 一.2/二.2） */}
+          {(() => {
+            let sd = {};
+            try {
+              const snap = detail?.package_snapshot && typeof detail.package_snapshot === 'object'
+                ? detail.package_snapshot : (detail?.package_snapshot ? JSON.parse(detail.package_snapshot) : {});
+              sd = (snap && typeof snap.details === 'object') ? snap.details : {};
+            } catch {}
+            const rp = normalizePolicy(sd.refund_policy);
+            const paras = getRefundParagraphs(sd, rp);
+            if (!paras.length) return null;
+            return (
+              <div style={{ margin: '12px 12px 0', background: '#fff', borderRadius: 8, padding: '14px 16px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+                <div style={{ fontSize: 14, color: '#1f2329', marginBottom: 8 }}>退订政策（{rp}）</div>
+                <div style={{ fontSize: 13, color: '#666', lineHeight: 1.7 }}>
+                  {paras.map((line, i) => (
+                    <div key={i} style={{ marginBottom: i < paras.length - 1 ? 6 : 0 }}>{line}</div>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
 
           {/* 合同（模板 + 附加条款 + 生成 PDF） */}
           <div style={{ margin: '12px 12px 0', background: '#fff', borderRadius: 8, padding: '14px 16px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>

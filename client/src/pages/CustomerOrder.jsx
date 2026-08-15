@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import http, { img, BASE } from '../api.js';
+import { getRefundText, getRefundParagraphs, normalizePolicy } from '../utils/refundPolicy.js';
 
 // ===== C 端客户订单查看页（/customer-order?token=customer_token）=====
 // customer_token 鉴权，与 B 端订单详情同口径：套系详细内容 + 拍摄档期/时间/地点 + 执行人 + 消费明细 + 选片入口
@@ -122,6 +123,22 @@ export default function CustomerOrder() {
           )}
         </Card>
       )}
+
+      {/* 退订政策（本订单所属套系的退改规则，客户只读） */}
+      <Card style={{ marginTop: 12 }}>
+        <div style={{ fontSize: 13, color: SUB, marginBottom: 8 }}>退订政策</div>
+        {(() => {
+          const rp = normalizePolicy(pkg.refund_policy);
+          const paras = getRefundParagraphs(pkg, rp);
+          return (
+            <div style={{ fontSize: 14, color: TEXT, lineHeight: 1.7 }}>
+              {paras.length ? paras.map((line, i) => (
+                <div key={i} style={{ marginBottom: i < paras.length - 1 ? 6 : 0 }}>{line}</div>
+              )) : <div style={{ color: SUB }}>暂无退订政策</div>}
+            </div>
+          );
+        })()}
+      </Card>
 
       {/* 拍摄信息 */}
       <Card style={{ marginTop: 12 }}>
