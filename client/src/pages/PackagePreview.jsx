@@ -388,12 +388,6 @@ export default function PackagePreview() {
               )}
             </div>
 
-            {/* 选片提示 */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 0', borderTop: `1px solid ${MBORDER}` }}>
-              <span style={{ fontSize: 14, color: '#333' }}>选片提示</span>
-              <span style={{ fontSize: 14, color: '#999' }}>未开启</span>
-            </div>
-
             {/* 顾客协议（与「服务详情」完全一致的展开/收起逻辑：永远绿色 + 永远「展开/收起」+ 未设置时点开显示「未设置」） */}
             <div style={{ padding: '14px 0', borderTop: `1px solid ${MBORDER}` }}>
               <div onClick={() => setAgreementOpen((v) => !v)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}>
