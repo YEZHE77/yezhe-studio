@@ -212,12 +212,9 @@ export default function CustomerAgreementEdit() {
   };
 
   // toggle 立即乐观更新 + 防抖 PUT
+  // 开关按钮自由切换：开启/关闭服务协议不依赖模板绑定（绑模板只是让新建订单自动带入合同）
+  // 如果开启后未绑模板，订单生成时不会自动带合同（商家可在订单页手动选择模板）
   const toggleAgreement = (v) => {
-    // 开启协议但未绑定模板 → 拦截提示（PRD 场景1.3：开启合同未绑定模板无法保存）
-    if (v && !(pkg?.contract_template_id)) {
-      alert('请先在下拉中绑定「协议模板」，再开启服务协议。');
-      return;
-    }
     setPkg((p) => p ? { ...p, details: { ...p.details, customer_agreement_enabled: v } } : p);
     scheduleSave({ customer_agreement_enabled: v });
   };
