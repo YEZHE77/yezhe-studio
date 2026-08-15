@@ -11,6 +11,7 @@ import bcrypt from 'bcryptjs';
 import { query, get, insert, run } from '../db.js';
 import { authRequired, requireRole } from '../auth.js';
 import { buildShareUrl } from '../shareUtil.js';
+import { emitMessage } from './message.js';
 
 const router = Router();
 const STAFF_ROLES = ['admin', 'photographer', 'finance'];
@@ -165,6 +166,13 @@ router.post('/c/:token/submit', async (req, res) => {
     const stats = markStats(marks, photos);
     await run('UPDATE selection_tasks SET submitted = 1, submitted_at = ? WHERE id = ?', [nowISO(), task.id]);
     await appendLog(task.order_id, '客户已完成选片');
+    // 消息中心：客户选片完成 → order_msg（business_event=select_finish）
+    const ord = await get('SELECT customer_name, order_no FROM orders WHERE id = ?', [task.order_id]);
+    await emitMessage({
+      message_type: 'order_msg', business_event: 'select_finish',
+      title: '客户完成选片', content: `${(ord && ord.customer_name) || '客户'} 已完成选片（喜欢 ${stats.like} 张）`,
+      rel_id: String(task.order_id), rel_model: 'order'
+    });
     res.json({ ok: true, stats, extra: calcExtraFee(stats.like, task.min_retouch, task.extra_price) });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });

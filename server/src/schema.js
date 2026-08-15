@@ -255,6 +255,51 @@ CREATE TABLE IF NOT EXISTS selection_marks (
   UNIQUE(task_id, photo_key)
 );`;
 
+// 消息中心（B 端管理员）：system_message 系统消息表
+// message_type: customer_consult 顾客咨询 / order_msg 订单消息 / todo_alert 待办提醒 / system 系统通知
+// 去重：business_event + rel_id，5 分钟内相同事件不重复生成
+const PG_MESSAGE_TABLES = `
+CREATE TABLE IF NOT EXISTS system_message (
+  id SERIAL PRIMARY KEY, receiver_uid INTEGER, message_type TEXT NOT NULL DEFAULT 'system',
+  business_event TEXT, title TEXT, content TEXT, rel_id TEXT, rel_model TEXT,
+  is_read INTEGER NOT NULL DEFAULT 0, is_archived INTEGER NOT NULL DEFAULT 0,
+  can_wechat_push INTEGER NOT NULL DEFAULT 0, wechat_push_status TEXT NOT NULL DEFAULT 'none',
+  create_time TIMESTAMPTZ DEFAULT now(), read_time TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_system_message_receiver ON system_message(receiver_uid, is_read, is_archived);
+CREATE INDEX IF NOT EXISTS idx_system_message_dedup ON system_message(business_event, rel_id, create_time);`;
+const SQLITE_MESSAGE_TABLES = `
+CREATE TABLE IF NOT EXISTS system_message (
+  id INTEGER PRIMARY KEY AUTOINCREMENT, receiver_uid INTEGER, message_type TEXT NOT NULL DEFAULT 'system',
+  business_event TEXT, title TEXT, content TEXT, rel_id TEXT, rel_model TEXT,
+  is_read INTEGER NOT NULL DEFAULT 0, is_archived INTEGER NOT NULL DEFAULT 0,
+  can_wechat_push INTEGER NOT NULL DEFAULT 0, wechat_push_status TEXT NOT NULL DEFAULT 'none',
+  create_time TEXT DEFAULT CURRENT_TIMESTAMP, read_time TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_system_message_receiver ON system_message(receiver_uid, is_read, is_archived);
+CREATE INDEX IF NOT EXISTS idx_system_message_dedup ON system_message(business_event, rel_id, create_time);`;
+
+// 套系对外分享（C 端浏览报价）：photo_package 套系表（独立于 B 端内部 packages）
+// share_token 随机不可猜测字符串，对外鉴权；is_enable 控制外部访问
+const PG_PHOTO_PACKAGE = `
+CREATE TABLE IF NOT EXISTS photo_package (
+  id SERIAL PRIMARY KEY, package_name TEXT NOT NULL, cover_image TEXT, package_desc TEXT,
+  shoot_duration TEXT, shoot_scope TEXT, photo_total INTEGER NOT NULL DEFAULT 0,
+  retouch_count INTEGER NOT NULL DEFAULT 0, original_file TEXT,
+  price REAL NOT NULL DEFAULT 0, additional_price REAL NOT NULL DEFAULT 0,
+  other_service TEXT, notice TEXT, share_token TEXT, is_enable INTEGER NOT NULL DEFAULT 1,
+  create_time TIMESTAMPTZ DEFAULT now(), update_time TIMESTAMPTZ DEFAULT now()
+);`;
+const SQLITE_PHOTO_PACKAGE = `
+CREATE TABLE IF NOT EXISTS photo_package (
+  id INTEGER PRIMARY KEY AUTOINCREMENT, package_name TEXT NOT NULL, cover_image TEXT, package_desc TEXT,
+  shoot_duration TEXT, shoot_scope TEXT, photo_total INTEGER NOT NULL DEFAULT 0,
+  retouch_count INTEGER NOT NULL DEFAULT 0, original_file TEXT,
+  price REAL NOT NULL DEFAULT 0, additional_price REAL NOT NULL DEFAULT 0,
+  other_service TEXT, notice TEXT, share_token TEXT, is_enable INTEGER NOT NULL DEFAULT 1,
+  create_time TEXT DEFAULT CURRENT_TIMESTAMP, update_time TEXT DEFAULT CURRENT_TIMESTAMP
+);`;
+
 // orders 的向前兼容新增列（仅当不存在时补加，绝不删列/不破坏数据）
 const ORDERS_NEW_COLUMNS = [
   ['customer_phone', 'TEXT'],
@@ -366,6 +411,12 @@ export async function initSchema() {
   // 选片工具表（selection_tasks + selection_marks）
   for (const s of (dialect === 'pg' ? PG_SELECTION_TABLES : SQLITE_SELECTION_TABLES).split(';').map((x) => x.trim()).filter(Boolean)) await run(s);
 
+  // 消息中心表（system_message）
+  for (const s of (dialect === 'pg' ? PG_MESSAGE_TABLES : SQLITE_MESSAGE_TABLES).split(';').map((x) => x.trim()).filter(Boolean)) await run(s);
+
+  // 套系对外分享表（photo_package）
+  for (const s of (dialect === 'pg' ? PG_PHOTO_PACKAGE : SQLITE_PHOTO_PACKAGE).split(';').map((x) => x.trim()).filter(Boolean)) await run(s);
+
   // 系统设置表
   for (const s of (dialect === 'pg' ? PG_SETTINGS : SQLITE_SETTINGS).split(';').map((x) => x.trim()).filter(Boolean)) await run(s);
 
@@ -393,6 +444,8 @@ export async function initSchema() {
   await ensureColumn('orders', 'openid', 'TEXT');
   // 订单图片管理：原片 / 精修片 URL 列表（JSON：{raw:[...], retouched:[...]}），选片复用 photo_select
   await ensureColumn('orders', 'order_photos', 'TEXT');
+  // 客户专属访问令牌（C 端 /customer-order?token= 鉴权，只读查看自己订单）
+  await ensureColumn('orders', 'customer_token', 'TEXT');
   // 订单备注分组：生日/纪念日 / 预约备注 / 内部备注 / 外部备注（问卷答案 questionnaire_answers 已在 DDL）
   await ensureColumn('orders', 'birthday', 'TEXT');
   await ensureColumn('orders', 'appointment_remark', 'TEXT');

@@ -51,6 +51,11 @@ const ShareAlbum = React.lazy(() => import('./pages/ShareAlbum.jsx'));
 const SelectionClient = React.lazy(() => import('./pages/SelectionClient.jsx'));
 const CapacityManagement = React.lazy(() => import('./pages/CapacityManagement.jsx'));
 const Channels = React.lazy(() => import('./pages/Channels.jsx'));
+const MessageCenter = React.lazy(() => import('./pages/MessageCenter.jsx'));
+const PhotoPackages = React.lazy(() => import('./pages/PhotoPackages.jsx'));
+const PackagePublic = React.lazy(() => import('./pages/PackagePublic.jsx'));
+const CustomerOrder = React.lazy(() => import('./pages/CustomerOrder.jsx'));
+const AppointmentForm = React.lazy(() => import('./pages/AppointmentForm.jsx'));
 // 客户前端（公开，无需登录）：首页 / 我的 / 公开作品相册
 const Home = React.lazy(() => import('./pages/Home.jsx'));
 const My = React.lazy(() => import('./pages/My.jsx'));
@@ -105,6 +110,8 @@ function AppShell() {
                 <Route path="/datacharts" element={<DataCharts />} />
                 <Route path="/card" element={<BusinessCard />} />
                 <Route path="/selections" element={<SelectionAdmin />} />
+                <Route path="/photo-packages" element={<PhotoPackages />} />
+                <Route path="/m/msg" element={<MessageCenter />} />
                 <Route path="/channels" element={<Channels />} />
                 <Route path="/finance" element={<Finance />} />
                 <Route path="/capacity" element={<CapacityManagement />} />
@@ -131,6 +138,18 @@ export default function App() {
       {/* 客户在线选片：公开页面，无需登录（token + 可选密码），完全隐藏 B 端菜单 */}
       <Route path="/s/:token" element={
         <Suspense fallback={<PageLoader />}><SelectionClient /></Suspense>
+      } />
+      {/* C 端套系预览（/package?token=share_token）· 公开，无编辑 */}
+      <Route path="/package" element={
+        <Suspense fallback={<PageLoader />}><PackagePublic /></Suspense>
+      } />
+      {/* C 端客户订单查看（/customer-order?token=customer_token）· 公开，只读 */}
+      <Route path="/customer-order" element={
+        <Suspense fallback={<PageLoader />}><CustomerOrder /></Suspense>
+      } />
+      {/* C 端公开预约表单 */}
+      <Route path="/appointment-form" element={
+        <Suspense fallback={<PageLoader />}><AppointmentForm /></Suspense>
       } />
       {!user && (
         <>

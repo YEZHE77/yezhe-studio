@@ -143,10 +143,6 @@ export default function Dashboard() {
         <div className="flex-1 min-w-0">
           <div className="pl-4 lg:pl-[90px]">
             <div className="text-[20px]" style={{ color: '#222222', lineHeight: 1.4 }}>叶哲 Studio</div>
-            <div className="flex flex-wrap items-center text-xs mt-5" style={{ color: 'rgba(34,34,34,0.6)' }}>
-              <span>会员专享：独立网站、小程序、档期管理</span>
-              <button type="button" className="ml-2 mt-1 lg:mt-0" style={{ color: '#222222', background: '#fff', padding: '3px 5px' }}>查看更多会员权益 &gt;</button>
-            </div>
             <div className="flex flex-wrap gap-[10px] lg:gap-[15px] mt-6">
               {QUICK.map((q) => (
                 <button

@@ -8,6 +8,7 @@ import { generateMiniProgramQr } from '../miniQr.js';
 import { authRequired, requireRole } from '../auth.js';
 import { parseRow } from '../schema.js';
 import { scheduleConflict, occupySchedule, releaseSchedule, conflictText, capacityConflict } from './schedules.js';
+import { emitMessage } from './message.js';
 
 const router = Router();
 const JSON_COLS = ['package_snapshot', 'addons_snapshot', 'logs', 'phones', 'time_slots', 'extra_items', 'executors', 'order_photos'];
@@ -408,12 +409,14 @@ router.post('/', authRequired, requireRole(['admin', 'photographer', 'finance'])
         });
       }
     }
+    // 客户专属访问令牌（C 端 /customer-order?token= 只读查看）
+    const customer_token = crypto.randomBytes(16).toString('hex');
     const id = await insert(
       `INSERT INTO orders (order_no, customer_name, customer_phone, package_id, package_snapshot, addons_snapshot, status,
         deposit, balance, deposit_method, balance_method, shoot_date, executor, total_amount, paid_amount, remark, logs,
         groom_name, bride_name, address,
-        order_name, phones, time_slots, extra_items, executors, channel, channel_id, date_tbd, period, payment_status)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+        order_name, phones, time_slots, extra_items, executors, channel, channel_id, date_tbd, period, payment_status, customer_token)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
       [
         order_no, customer_name, phones[0] || '', b.package_id || null,
         JSON.stringify(package_snapshot), JSON.stringify(addons), 'deposit',
@@ -421,7 +424,7 @@ router.post('/', authRequired, requireRole(['admin', 'photographer', 'finance'])
         shoot_date, executors.map((x) => x.name).filter(Boolean).join('、'), total, paid, b.remark || '', logs,
         groom, bride, b.address || '',
         order_name, JSON.stringify(phones), JSON.stringify(time_slots), JSON.stringify(extra_items),
-        JSON.stringify(executors), b.channel || '', b.channel_id || null, date_tbd, period, payment_status
+        JSON.stringify(executors), b.channel || '', b.channel_id || null, date_tbd, period, payment_status, customer_token
       ]
     );
     // 按收款状态登记流水：已付定金→定金一笔；已付全款→定金 + 尾款；未付定金→不登记
@@ -458,7 +461,13 @@ router.post('/', authRequired, requireRole(['admin', 'photographer', 'finance'])
         await appendLog(id, `档期占用失败：${err.message}`);
       }
     }
-    res.json({ id, order_no });
+    res.json({ id, order_no, customer_token });
+    // 消息中心：新建订单 → order_msg（去重 5 分钟）
+    await emitMessage({
+      message_type: 'order_msg', business_event: 'order_created',
+      title: '新建订单', content: `${customer_name || '客户'} 新建了订单 ${order_no}`,
+      rel_id: String(id), rel_model: 'order'
+    });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -572,6 +581,12 @@ router.put('/:id', authRequired, requireRole(['admin', 'photographer', 'finance'
     if (b.status && b.status !== cur.status) {
       const MAP = { deposit: '已付定金', shot: '已拍摄', selecting: '选片中', retouching: '精修中', delivered: '已交付', completed: '已完成' };
       await appendLog(cur.id, '阶段推进 → ' + (MAP[status] || status));
+      // 消息中心：订单状态变更 → order_msg
+      await emitMessage({
+        message_type: 'order_msg', business_event: 'order_status',
+        title: '订单状态变更', content: `${customer_name || '客户'} 的订单已进入「${MAP[status] || status}」`,
+        rel_id: String(cur.id), rel_model: 'order'
+      });
     }
     // 【订单 ↔ 档期】同步档期：有日期→占用/迁移（自动释放旧日期）；改为日期待定→释放档期（验收④）
     const jsonArr = (t) => { try { const a = JSON.parse(t || '[]'); return Array.isArray(a) ? a : []; } catch { return []; } };

@@ -3,6 +3,7 @@ import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-
 import Icon from '../components/Icon.jsx';
 import ErrorBoundary from '../components/ErrorBoundary.jsx';
 import { useAuth } from '../auth.jsx';
+import http from '../api.js';
 import MobileWorkbench from '../pages/MobileWorkbench.jsx';
 
 // 复用现有 B 端页面组件（独立懒加载，不触碰桌面 AppShell 路由表）
@@ -30,6 +31,8 @@ const SelectionAdmin = React.lazy(() => import('../pages/SelectionAdmin.jsx'));
 const CapacityManagement = React.lazy(() => import('../pages/CapacityManagement.jsx'));
 const Channels = React.lazy(() => import('../pages/Channels.jsx'));
 const Finance = React.lazy(() => import('../pages/Finance.jsx'));
+const MessageCenter = React.lazy(() => import('../pages/MessageCenter.jsx'));
+const PhotoPackages = React.lazy(() => import('../pages/PhotoPackages.jsx'));
 // C 端微官网（H5 客户首页，与小程序 pages/index 结构一致）——工作台「小程序」入口预览
 const Home = React.lazy(() => import('../pages/Home.jsx'));
 
@@ -95,13 +98,13 @@ function TopBack({ title }) {
   );
 }
 
-// 底部 Tab（工作台 / 微官网 / + / 公告 / 消息）
+// 底部 Tab（工作台 / 微官网 / + / 套系 / 消息）
 const TABS = [
   { key: 'home', label: '工作台', icon: 'monitor', to: '/' },
   { key: 'site', label: '微官网', icon: 'home', to: '/m/site' },
   { key: 'plus', label: '', icon: 'plus', to: '' },
-  { key: 'notice', label: '公告', icon: 'compass', to: '/m/notice' },
-  { key: 'msg', label: '消息', icon: 'bell', to: '/m/msg', badge: 2 }
+  { key: 'packages', label: '套系', icon: 'package', to: '/photo-packages' },
+  { key: 'msg', label: '消息', icon: 'bell', to: '/m/msg' }
 ];
 
 // + 快捷新建（全部跳转对应新建页面，无弹窗）
@@ -135,7 +138,7 @@ function ActionSheet({ open, onClose }) {
   );
 }
 
-function TabBar({ active, onTab, onPlus }) {
+function TabBar({ active, onTab, onPlus, unread }) {
   return (
     <div className="flex items-stretch" style={{ background: BAR_BG, borderTop: '1px solid #EFEFEF', height: 56, paddingBottom: 'env(safe-area-inset-bottom)', position: 'sticky', bottom: 0, zIndex: 10 }}>
       {TABS.map((t) => {
@@ -150,13 +153,14 @@ function TabBar({ active, onTab, onPlus }) {
         }
         const isActive = active === t.key;
         const color = isActive ? GREEN : MUTED;
+        const badge = t.key === 'msg' ? (unread || 0) : 0;
         return (
           <button key={t.key} type="button" onClick={() => onTab(t.to)} className="flex-1 flex flex-col items-center justify-center" style={{ background: 'none', border: 'none', position: 'relative' }}>
             <Icon name={t.icon} className="w-5 h-5" strokeWidth={1.6} style={{ color }} />
             <span className="mt-0.5" style={{ fontSize: 11, color }}>{t.label}</span>
-            {!!t.badge && (
+            {badge > 0 && (
               <span style={{ position: 'absolute', top: 6, right: '22%', minWidth: 16, height: 16, borderRadius: 8, background: '#FF4D4F', color: '#fff', fontSize: 10, fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 4px', border: '2px solid #fff' }}>
-                {t.badge > 99 ? '99+' : t.badge}
+                {badge > 99 ? '99+' : badge}
               </span>
             )}
           </button>
@@ -198,8 +202,21 @@ export default function MobileShell() {
   const location = useLocation();
   const nav = useNavigate();
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [unread, setUnread] = useState(0);
 
-  const tabRoots = ['/', '/m/site', '/m/notice', '/m/msg'];
+  // 消息未读红点：轮询 message 表（多设备同步），onFocus 切回激活强制拉取一次
+  const pullUnread = () => {
+    http.get('/api/message/unread-count').then((r) => setUnread(r.data.count || 0)).catch(() => {});
+  };
+  useEffect(() => {
+    pullUnread();
+    const t = setInterval(pullUnread, 8000);
+    const onFocus = () => pullUnread();
+    window.addEventListener('focus', onFocus);
+    return () => { clearInterval(t); window.removeEventListener('focus', onFocus); };
+  }, []);
+
+  const tabRoots = ['/', '/m/site', '/photo-packages', '/m/msg'];
   const hideTopBackRoutes = ['/works', '/packages', '/schedule', '/orders', '/todo'];
   const isTab = tabRoots.includes(location.pathname);
   // /packages/* /orders/* /schedule/* 等子路由由页面内自带顶部导航，避免双层 TopBack
@@ -208,7 +225,7 @@ export default function MobileShell() {
   const activeKey = (() => {
     if (location.pathname === '/') return 'home';
     if (location.pathname.startsWith('/m/site')) return 'site';
-    if (location.pathname.startsWith('/m/notice')) return 'notice';
+    if (location.pathname.startsWith('/photo-packages')) return 'packages';
     if (location.pathname.startsWith('/m/msg')) return 'msg';
     return '';
   })();
@@ -227,8 +244,8 @@ export default function MobileShell() {
                 <Route path="/" element={<MobileWorkbench />} />
                 <Route path="/home" element={<Home />} />
                 <Route path="/m/site" element={<MobileSite />} />
-                <Route path="/m/notice" element={<Placeholder title="公告" hint="暂无新公告。" />} />
-                <Route path="/m/msg" element={<Placeholder title="消息" hint="暂无新消息。" />} />
+                <Route path="/m/msg" element={<MessageCenter />} />
+                <Route path="/photo-packages" element={<PhotoPackages />} />
                 {/* 复用现有 B 端页面，保持与桌面端同一套业务逻辑 */}
                 <Route path="/works" element={<Works />} />
                 <Route path="/categories" element={<Categories />} />
@@ -262,8 +279,8 @@ export default function MobileShell() {
           </ErrorBoundary>
         </div>
       </div>
-      {/* 底栏仅在首页一级 Tab 页显示（工作台 / 微官网 / 公告 / 消息）；二级业务页只显示内容，不占底栏空间 */}
-      {isTab && <TabBar active={activeKey} onTab={(to) => nav(to)} onPlus={() => setSheetOpen(true)} />}
+      {/* 底栏仅在首页一级 Tab 页显示（工作台 / 微官网 / 套系 / 消息）；二级业务页只显示内容，不占底栏空间 */}
+      {isTab && <TabBar active={activeKey} unread={unread} onTab={(to) => nav(to)} onPlus={() => setSheetOpen(true)} />}
       <ActionSheet open={sheetOpen} onClose={() => setSheetOpen(false)} />
     </div>
   );

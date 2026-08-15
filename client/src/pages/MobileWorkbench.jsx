@@ -355,9 +355,9 @@ export default function MobileWorkbench() {
           onClick={() => nav('/settings')}
           style={{ background: '#FBF4E4', borderRadius: 12, padding: 14, border: 'none', textAlign: 'left', position: 'relative', minHeight: 82 }}
         >
-          <div style={{ fontSize: 14, color: TEXT }}>会员中心</div>
+          <div style={{ fontSize: 14, color: TEXT }}>资料设置</div>
           <div style={{ position: 'absolute', right: 10, bottom: 10 }}>
-            <Crown className="w-8 h-8" strokeWidth={1.4} style={{ color: MINT }} />
+            <UserCog className="w-8 h-8" strokeWidth={1.4} style={{ color: MINT }} />
           </div>
         </button>
         <button
