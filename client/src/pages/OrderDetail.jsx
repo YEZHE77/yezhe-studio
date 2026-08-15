@@ -1156,9 +1156,13 @@ export default function OrderDetail() {
                 ⚠ 订单信息已变更，当前合同 PDF 未同步最新数据，请点击「重新生成合同 PDF」更新。
               </div>
             )}
-            <div style={{ fontSize: 13, color: '#999', marginBottom: 4 }}>合同模板</div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+              <span style={{ fontSize: 13, color: '#999' }}>合同模板</span>
+              <button type="button" onClick={() => nav('/contract-templates')} style={{ fontSize: 12, color: '#7ECDBB', background: 'none', border: 'none', cursor: 'pointer' }}>管理模板 ›</button>
+            </div>
             <select value={contractTemplateId ?? ''} onChange={(e) => setContractTemplateId(e.target.value ? Number(e.target.value) : null)}
               style={{ width: '100%', padding: '9px 12px', borderRadius: 6, border: '1px solid #E8E8E8', fontSize: 14, background: '#fff', outline: 'none', marginBottom: 12 }}>
+              {!contractTemplates.length && <option value="">暂无模板，点击「管理模板」新建</option>}
               {contractTemplates.map((t) => (<option key={t.id} value={t.id}>{t.template_name}{t.is_default ? '（默认）' : ''}</option>))}
             </select>
             <div style={{ fontSize: 13, color: '#999', marginBottom: 4 }}>附加条款（拼接在合同末尾）</div>
@@ -1561,9 +1565,13 @@ export default function OrderDetail() {
         )}
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, alignItems: 'flex-start' }}>
           <div style={{ flex: '1 1 240px', minWidth: 200 }}>
-            <div style={{ fontSize: 12, color: LABEL_COLOR, marginBottom: 6 }}>合同模板</div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+              <span style={{ fontSize: 12, color: LABEL_COLOR }}>合同模板</span>
+              <button type="button" onClick={() => nav('/contract-templates')} style={{ fontSize: 12, color: '#7ECDBB', background: 'none', border: 'none', cursor: 'pointer' }}>管理模板 ›</button>
+            </div>
             <select value={contractTemplateId ?? ''} onChange={(e) => setContractTemplateId(e.target.value ? Number(e.target.value) : null)}
               style={{ width: '100%', padding: '8px 10px', borderRadius: 4, border: '1px solid ' + CARD_BORDER, fontSize: 13, background: '#fff', outline: 'none' }}>
+              {!contractTemplates.length && <option value="">暂无模板，点击「管理模板」新建</option>}
               {contractTemplates.map((t) => (<option key={t.id} value={t.id}>{t.template_name}{t.is_default ? '（默认）' : ''}</option>))}
             </select>
           </div>

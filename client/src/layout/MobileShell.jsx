@@ -33,6 +33,7 @@ const Channels = React.lazy(() => import('../pages/Channels.jsx'));
 const Finance = React.lazy(() => import('../pages/Finance.jsx'));
 const MessageCenter = React.lazy(() => import('../pages/MessageCenter.jsx'));
 const PhotoPackages = React.lazy(() => import('../pages/PhotoPackages.jsx'));
+const ContractTemplates = React.lazy(() => import('../pages/ContractTemplates.jsx'));
 // C 端微官网（H5 客户首页，与小程序 pages/index 结构一致）——工作台「小程序」入口预览
 const Home = React.lazy(() => import('../pages/Home.jsx'));
 
@@ -273,6 +274,7 @@ export default function MobileShell() {
                 <Route path="/channels" element={<Channels />} />
                 <Route path="/finance" element={<Finance />} />
                 <Route path="/capacity" element={<CapacityManagement />} />
+                <Route path="/contract-templates" element={<ContractTemplates />} />
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
             </Suspense>
