@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import http, { img, uploadImage, uploadBatch } from '../api.js';
 import CropperModal from '../components/CropperModal.jsx';
+import { DEFAULT_SERVICE_DETAIL } from '../utils/serviceDetail.js';
 
 // dataURL → File（裁切结果保存时上传用）
 function dataURLtoFile(dataUrl, name = 'cover.jpg') {
@@ -659,7 +660,7 @@ export default function PackageEdit() {
               <textarea
                 value={d.service_detail_text || ''}
                 onChange={(e) => setD({ service_detail_text: e.target.value })}
-                placeholder="婚礼跟拍 | 摄影单机位（两台相机拍摄）&#10;&#10;拍摄内容：婚礼当天流程、人物、场景等，具体拍摄内容由摄影师根据实际情况拍摄。&#10;照片数量：承诺拍摄不少于 300 张照片，并从中精选 40 张进行精修。&#10;照片格式：乙方提供 JPEG 格式的数字照片。&#10;婚礼预告：婚礼结束后 1—3 日 9 张精修（赠送服务）&#10;概述：摄影单机位记录画面有限。"
+                placeholder={DEFAULT_SERVICE_DETAIL}
                 rows={8}
                 className={taBig}
                 style={{ resize: 'vertical', minHeight: 160, lineHeight: 1.7 }}
@@ -1443,7 +1444,7 @@ export default function PackageEdit() {
               <Field label="自定义服务详情">
                 <textarea className={taBig} rows={5} value={d.service_detail_text}
                   style={{ minHeight: 220, lineHeight: 1.6 }}
-                  onChange={(e) => setD({ service_detail_text: e.target.value })} placeholder="例如：本套系包含专业摄影师全程跟拍、精修调色、相册设计等服务，拍摄前可沟通风格需求。" />
+                  onChange={(e) => setD({ service_detail_text: e.target.value })} placeholder={DEFAULT_SERVICE_DETAIL} />
                 <div className="flex flex-wrap mt-3">
                   <button type="button" onClick={() => setD({ service_detail_text: d.service_detail_text + (d.service_detail_text ? '\n' : '') + '【摄影类】' })}
                     className="text-[13px] rounded mr-2" style={{ color: '#444444', borderColor: '#E5E7EB', background: '#E5E7EB', padding: '4px 12px' }}>摄影类</button>

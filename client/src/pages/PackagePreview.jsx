@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import http, { img } from '../api.js';
 import { getRefundText, getRefundSummary, getRefundParagraphs, normalizePolicy } from '../utils/refundPolicy.js';
 import { getServiceAgreement } from '../utils/customerAgreement.js';
+import { DEFAULT_SERVICE_DETAIL } from '../utils/serviceDetail.js';
 
 /* ==========================================================================
    套系预览页（1:1 复刻小程序风格）
@@ -275,7 +276,7 @@ export default function PackagePreview() {
           服务详情：
         </div>
         <div style={{ fontSize: 14, color: '#555', lineHeight: 1.8, whiteSpace: 'pre-wrap' }}>
-          {d.service_detail_text || data.description || '暂无服务详情'}
+          {d.service_detail_text || DEFAULT_SERVICE_DETAIL}
         </div>
       </div>
 
@@ -371,7 +372,7 @@ export default function PackagePreview() {
               </div>
               {serviceDetailOpen && (
                 <div style={{ marginTop: 10, fontSize: 13, color: '#666', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
-                  {d.service_detail_text || data.description || '暂无服务详情'}
+                  {d.service_detail_text || DEFAULT_SERVICE_DETAIL}
                 </div>
               )}
             </div>
