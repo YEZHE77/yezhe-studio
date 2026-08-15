@@ -316,6 +316,8 @@ export default function PackageEdit() {
 
   const [form, setForm] = useState(emptyForm());
   const [tab, setTab] = useState(0);
+  // 桌面端 4 个 Tab 名称（套系名称 / 价格及问卷 / 服务及加片 / 其他详情）
+  const TABS = ['套系名称', '价格及问卷', '服务及加片', '其他详情'];
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
