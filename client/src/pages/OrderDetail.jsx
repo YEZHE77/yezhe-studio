@@ -555,6 +555,11 @@ export default function OrderDetail() {
   function printOrder() {
     if (!detail) return;
     setMoreMenu(false);
+    // 微信内置浏览器 window.print 支持不完整：检测到微信环境弹提示引导用系统浏览器打开
+    if (/MicroMessenger/i.test(navigator.userAgent || '')) {
+      alert('当前在微信内打开，打印功能受限。\n\n请点击右上角「···」→「在浏览器打开」，用系统浏览器打开后再打印。');
+      return;
+    }
     // 先渲染打印内容，再触发打印
     setPrintMode(true);
     // 延迟确保 DOM 渲染完成后再打印
