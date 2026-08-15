@@ -596,17 +596,22 @@ export default function OrderDetail() {
     navigator.clipboard?.writeText(share.share_url);
     alert('分享链接已复制：\n' + share.share_url);
   }
-  // 分享订单：生成微信小程序风格二维码（复用后端 /mini-qr）
-  async function openMiniQr() {
+  // 分享订单给客户：生成随机 customer_token 链接 + 二维码（客户 /customer-order?token= 只读查看自己订单）
+  async function openMiniQr(reset) {
     if (!detail) return;
     setMiniQrLoading(true); setMiniQr(null);
     try {
-      const r = await http.post('/api/orders/' + detail.id + '/mini-qr');
-      setMiniQr(r.data.qr_url || '');
+      const r = await http.post('/api/orders/' + detail.id + '/customer-share', { reset: !!reset });
+      setMiniQr({ url: r.data.url, qr_url: r.data.qr_url });
     } catch (e) { alert((e.response && e.response.data && e.response.data.error) || '生成失败'); }
     finally { setMiniQrLoading(false); }
   }
   function closeMiniQr() { setMiniQr(null); }
+  function copyCustomerUrl() {
+    if (!miniQr || !miniQr.url) return;
+    navigator.clipboard?.writeText(miniQr.url);
+    alert('客户订单链接已复制：\n' + miniQr.url);
+  }
 
   // —— 图片管理：原片 / 精修片 真实上传（复用现有分片上传，不新建接口） ——
   async function addPhotos(kind, fileList) {
@@ -2102,19 +2107,26 @@ export default function OrderDetail() {
         </div>
       )}
 
-      {/* 分享订单小程序二维码浮层 */}
+      {/* 分享订单给客户二维码浮层（customer_token 随机链接，客户只读查看自己订单） */}
       {miniQr !== null && (
         <>
           <div className="fixed inset-0 z-[90]" style={{ background: 'rgba(0,0,0,0.3)' }} onClick={closeMiniQr} />
           <div onClick={(e) => e.stopPropagation()}
-            style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 95, width: 240, background: '#fff', borderRadius: 8, padding: 16, boxShadow: '0 20px 60px rgba(0,0,0,0.18)' }}>
-            <div style={{ color: '#222222', fontWeight: 400, marginBottom: 8 }}>订单二维码</div>
+            style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 95, width: 280, background: '#fff', borderRadius: 8, padding: 16, boxShadow: '0 20px 60px rgba(0,0,0,0.18)' }}>
+            <div style={{ color: '#222222', fontWeight: 400, marginBottom: 8 }}>分享订单给客户</div>
             {miniQr ? (
-              <img src={miniQr} alt="订单二维码" style={{ width: 176, height: 176, margin: '0 auto', borderRadius: 8 }} />
+              <>
+                <img src={miniQr.qr_url} alt="订单二维码" style={{ width: 176, height: 176, margin: '0 auto', borderRadius: 8, display: 'block' }} />
+                <div style={{ fontSize: 11, color: '#666666', marginTop: 10, wordBreak: 'break-all' }}>{miniQr.url}</div>
+                <div style={{ display: 'flex', gap: 6, marginTop: 12 }}>
+                  <button onClick={copyCustomerUrl} style={{ flex: 1, padding: '7px 0', borderRadius: 4, background: BLUE, color: '#fff', fontSize: 12, border: 'none', cursor: 'pointer' }}>复制链接</button>
+                  <button onClick={() => openMiniQr(true)} disabled={miniQrLoading} style={{ flex: 1, padding: '7px 0', borderRadius: 4, background: '#fff', color: '#666', fontSize: 12, border: '1px solid ' + DIV, cursor: 'pointer' }}>重置链接</button>
+                </div>
+                <div style={{ fontSize: 11, color: '#999999', textAlign: 'center', marginTop: 8 }}>客户扫码 / 打开链接即可查看自己的订单（只读）</div>
+              </>
             ) : (
               <div style={{ color: '#666666', fontSize: 14, padding: 32, textAlign: 'center' }}>生成中…</div>
             )}
-            <div style={{ fontSize: 11, color: '#666666', textAlign: 'center', marginTop: 8 }}>微信扫码查看订单（右键 / 长按可保存）</div>
           </div>
         </>
       )}

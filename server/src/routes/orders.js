@@ -806,6 +806,23 @@ router.post('/:id/storage', authRequired, requireRole(['admin', 'photographer', 
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// 生成 / 刷新「客户订单查看」分享（customer_token 随机令牌，/customer-order?token= 只读查看）
+router.post('/:id/customer-share', authRequired, requireRole(['admin', 'photographer', 'finance']), async (req, res) => {
+  try {
+    const o = await get('SELECT * FROM orders WHERE id = ?', [req.params.id]);
+    if (!o) return res.status(404).json({ error: '订单不存在' });
+    const reset = !!(req.body && req.body.reset);
+    let token = o.customer_token;
+    if (!token || reset) token = crypto.randomBytes(16).toString('hex');
+    const base = shareBaseUrl(req);
+    const url = `${base}/customer-order?token=${token}`;
+    const qrUrl = await QRCode.toDataURL(url, { width: 480, margin: 1 });
+    await run('UPDATE orders SET customer_token = ? WHERE id = ?', [token, o.id]);
+    if (reset) await appendLog(o.id, '重置客户订单查看链接');
+    res.json({ ok: true, customer_token: token, url, qr_url: qrUrl });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // 生成 / 刷新客户影集分享二维码（公开访问，无需登录）
 router.post('/:id/share', authRequired, requireRole(['admin', 'photographer', 'finance']), async (req, res) => {
   try {
