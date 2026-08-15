@@ -4,6 +4,7 @@
 import { Router } from 'express';
 import { query, get, insert } from '../db.js';
 import { emitMessage } from './message.js';
+import { generateEventTodo } from '../todo.js';
 
 const router = Router();
 
@@ -165,7 +166,22 @@ router.post('/order/:token/request', async (req, res) => {
       content: `${o.customer_name || '客户'}：${reason}${desiredDate ? '（期望日期 ' + desiredDate + '）' : ''}`,
       rel_id: o.id, rel_model: 'order'
     });
+    // 待办：客户提交改期/取消申请 → 生成「客户申请」待办（仅提醒，不改订单数据）
+    try { await generateEventTodo(o.id, 'order_request', `客户${typeLabel}`, `${o.customer_name || '客户'}：${reason}${desiredDate ? '（期望日期 ' + desiredDate + '）' : ''}`, String(id)); } catch (e) { console.error('[todo] 生成申请待办失败', e.message); }
     res.json({ ok: true, id });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ===== C 端下载作品记录（下载行为留痕，B 端订单详情可查下载记录）=====
+router.post('/order/:token/download-log', async (req, res) => {
+  try {
+    const o = await get('SELECT * FROM orders WHERE customer_token = ?', [req.params.token]);
+    if (!o) return res.status(403).json({ error: '无权限访问该订单' });
+    const itemName = String((req.body && req.body.item_name) || '作品图片').slice(0, 100);
+    const itemType = String((req.body && req.body.item_type) || 'work').slice(0, 20);
+    await insert('INSERT INTO download_logs (order_id, item_type, item_name, operator_name, created_at) VALUES (?,?,?,?,?)',
+      [o.id, itemType, itemName, '客户', nowISO()]);
+    res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 

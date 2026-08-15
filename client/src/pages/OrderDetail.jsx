@@ -242,6 +242,8 @@ export default function OrderDetail() {
   const [printInternal, setPrintInternal] = useState(false);
   // 底部常驻记录卡片 Tab（订单状态详情 / 交易记录 / 下载记录）
   const [logTab, setLogTab] = useState('status');
+  // 下载日志（download_logs 表，真实下载行为留痕）
+  const [downloadLogs, setDownloadLogs] = useState([]);
   // 右上角【查看记录】唤起日志弹窗（与底部卡片并存，独立 Tab 状态）
   const [logModal, setLogModal] = useState(false);
   const [logModalTab, setLogModalTab] = useState('status');
@@ -288,6 +290,11 @@ export default function OrderDetail() {
   useEffect(() => {
     if (!id) return;
     http.get('/api/orders/' + id + '/requests').then((r) => setOrderRequests(r.data || [])).catch(() => setOrderRequests([]));
+  }, [id, reload]);
+  // 下载记录（download_logs 表，真实下载行为留痕）
+  useEffect(() => {
+    if (!id) return;
+    http.get('/api/orders/' + id + '/downloads').then((r) => setDownloadLogs(r.data.list || [])).catch(() => setDownloadLogs([]));
   }, [id, reload]);
   // 合同模板列表
   useEffect(() => {
@@ -1993,6 +2000,26 @@ export default function OrderDetail() {
           )}
           {logTab === 'download' && (
             <div>
+              {/* 下载日志（真实下载行为留痕） */}
+              <div style={{ color: '#222222', marginBottom: 8 }}>下载日志</div>
+              {downloadLogs.length === 0 ? (
+                <div style={{ color: '#999999', fontSize: 14, padding: '4px 0 12px' }}>暂无下载记录</div>
+              ) : (
+                <div style={{ display: 'grid', gap: 2, marginBottom: 12, maxHeight: 200, overflowY: 'auto' }}>
+                  {downloadLogs.map((dl, i) => (
+                    <div key={i} className="flex items-center justify-between" style={{ borderBottom: '1px solid ' + DIV, padding: '6px 0' }}>
+                      <div className="flex items-center" style={{ gap: 8, minWidth: 0 }}>
+                        <span style={{ padding: '2px 6px', borderRadius: 4, background: '#f3f4f6', fontSize: 11, color: '#666666', flexShrink: 0 }}>{dl.item_type === 'contract' ? '合同' : '作品'}</span>
+                        <span style={{ color: '#222222', fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{dl.item_name}</span>
+                      </div>
+                      <div style={{ fontSize: 11, color: '#999999', flexShrink: 0, textAlign: 'right' }}>
+                        <div>{dl.operator_name || ''}</div>
+                        <div>{dl.created_at ? new Date(dl.created_at).toLocaleString('zh-CN') : ''}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
               <div style={{ color: '#222222', marginBottom: 8 }}>可下载素材（原片 / 精修片 / 选片）</div>
               {downloadItems.length === 0 && <div style={{ color: '#999999', fontSize: 14, padding: '4px 0' }}>暂无素材（请在上方可片/原片/精修片 Tab 上传）</div>}
               <div style={{ display: 'grid', gap: 4 }}>

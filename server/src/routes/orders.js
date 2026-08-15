@@ -9,6 +9,7 @@ import { authRequired, requireRole } from '../auth.js';
 import { parseRow } from '../schema.js';
 import { scheduleConflict, occupySchedule, releaseSchedule, conflictText, capacityConflict } from './schedules.js';
 import { emitMessage } from './message.js';
+import { syncOrderTodos, generateEventTodo, archiveOrderTodos } from '../todo.js';
 
 const router = Router();
 const JSON_COLS = ['package_snapshot', 'addons_snapshot', 'logs', 'phones', 'time_slots', 'extra_items', 'executors', 'order_photos'];
@@ -502,6 +503,8 @@ router.post('/', authRequired, requireRole(['admin', 'photographer', 'finance'])
       title: '新建订单', content: `${customer_name || '客户'} 新建了订单 ${order_no}`,
       rel_id: String(id), rel_model: 'order'
     });
+    // 待办：新建订单生成当前阶段待办（deposit / 已付定金）
+    try { await syncOrderTodos(id); } catch (e) { console.error('[todo] 新建订单待办同步失败', e.message); }
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -645,6 +648,8 @@ router.put('/:id', authRequired, requireRole(['admin', 'photographer', 'finance'
         title: '订单状态变更', content: `${customer_name || '客户'} 的订单已进入「${MAP[status] || status}」`,
         rel_id: String(cur.id), rel_model: 'order'
       });
+      // 待办同步：订单阶段变化 → 归档旧阶段待办 + 生成新阶段待办（仅提醒，不改订单业务数据）
+      try { await syncOrderTodos(cur.id); } catch (e) { console.error('[todo] 阶段待办同步失败', e.message); }
     }
     // 【订单 ↔ 档期】同步档期：有日期→占用/迁移（自动释放旧日期）；改为日期待定→释放档期（验收④）
     const jsonArr = (t) => { try { const a = JSON.parse(t || '[]'); return Array.isArray(a) ? a : []; } catch { return []; } };
@@ -733,6 +738,10 @@ router.post('/:id/change-package', authRequired, requireRole(['admin', 'photogra
       await appendLog(o.id, '新套系关闭协议，已清空订单协议数据（签署记录/PDF/附加条款已失效）');
     }
     await appendLog(o.id, `更换套系：${oldName} → ${p.name}${specName ? '（' + specName + '）' : ''}，应收总额 ¥${o.total_amount || 0} → ¥${total}` + (b.reason ? '；原因：' + b.reason : ''));
+    // 待办：切换套系导致旧合同失效 → 生成「重新生成合同」待办（仅提醒，不改订单业务数据）
+    if (o.contract_file_key || o.contract_pdf_url || o.contract_template_id) {
+      try { await generateEventTodo(o.id, 'regen_contract', '重新生成合同', `已更换套系为「${p.name}」，原合同已失效，请重新生成合同 PDF`, 'switch'); } catch (e) { console.error('[todo] 生成待办失败', e.message); }
+    }
     res.json({ ok: true, package_snapshot: snapshot, total_amount: total, balance, agreement_enabled: newPkgAgreementOn });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -834,6 +843,8 @@ router.post('/:id/cancel', authRequired, requireRole(['admin']), async (req, res
     // 【订单 → 档期】作废自动释放所占档期（验收⑤）
     await releaseSchedule(o.order_no);
     if (o.shoot_date) await appendLog(o.id, `订单作废，已释放档期 ${o.shoot_date}`);
+    // 待办：作废订单 → 归档该订单所有 pending 待办
+    try { await archiveOrderTodos(o.id); } catch (e) { console.error('[todo] 归档待办失败', e.message); }
     res.json({ ok: true, scheduleReleased: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -964,6 +975,14 @@ router.post('/:id/requests/:reqId/handle', authRequired, requireRole(['admin', '
     const typeLabel = rq.type === 'reschedule' ? '改期申请' : '取消申请';
     await appendLog(o.id, `${typeLabel}${status === 'approved' ? '已通过' : '已拒绝'}${req.body.note ? '：' + req.body.note : ''}`);
     res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// 订单下载记录（B 端查看：合同/作品下载留痕）
+router.get('/:id/downloads', authRequired, requireRole(['admin', 'photographer', 'finance']), async (req, res) => {
+  try {
+    const rows = await query('SELECT * FROM download_logs WHERE order_id = ? ORDER BY created_at DESC, id DESC', [req.params.id]);
+    res.json({ list: rows });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 

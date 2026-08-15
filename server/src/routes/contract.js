@@ -167,6 +167,11 @@ router.get('/download/:orderId', async (req, res) => {
       return res.status(409).json({ error: '合同文件校验失败（已损坏或被篡改），请重新生成' });
     }
     await audit(o.id, req, 'download', isCustomer ? '客户下载合同（customer_token）' : '管理员下载合同', admin || undefined);
+    // 下载记录（统一到 download_logs，B 端订单详情可查）
+    try {
+      await insert('INSERT INTO download_logs (order_id, item_type, item_name, operator_name, created_at) VALUES (?,?,?,?,?)',
+        [o.id, 'contract', '合同 PDF', isCustomer ? '客户' : ((admin && admin.username) || '管理员'), nowISO()]);
+    } catch (e) { console.error('[download] 记录失败', e.message); }
     const dl = req.query.dl === '1';
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', (dl ? 'attachment' : 'inline') + '; filename="contract-' + o.id + '.pdf"');

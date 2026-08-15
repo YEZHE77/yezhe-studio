@@ -494,6 +494,32 @@ export async function initSchema() {
       )`;
   for (const s of CONSISTENCY_ISSUES_DDL.split(';').map((x) => x.trim()).filter(Boolean)) await run(s);
 
+  // 独立待办事项表（完整独立待办系统：订单阶段待办 + 事件待办，可标记完成归档，与订单业务状态解耦）
+  const TODO_ITEMS_DDL = dialect === 'pg'
+    ? `CREATE TABLE IF NOT EXISTS todo_items (
+        id SERIAL PRIMARY KEY, order_id INTEGER NOT NULL, todo_type TEXT NOT NULL,
+        title TEXT, content TEXT, status TEXT NOT NULL DEFAULT 'pending',
+        biz_key TEXT, created_at TIMESTAMPTZ DEFAULT now(), done_at TEXT
+      )`
+    : `CREATE TABLE IF NOT EXISTS todo_items (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, order_id INTEGER NOT NULL, todo_type TEXT NOT NULL,
+        title TEXT, content TEXT, status TEXT NOT NULL DEFAULT 'pending',
+        biz_key TEXT, created_at TEXT DEFAULT CURRENT_TIMESTAMP, done_at TEXT
+      )`;
+  for (const s of TODO_ITEMS_DDL.split(';').map((x) => x.trim()).filter(Boolean)) await run(s);
+
+  // 下载记录表（作品/合同下载留痕：C端/B端下载行为统一记录，B端订单详情可查）
+  const DOWNLOAD_LOGS_DDL = dialect === 'pg'
+    ? `CREATE TABLE IF NOT EXISTS download_logs (
+        id SERIAL PRIMARY KEY, order_id INTEGER, item_type TEXT, item_name TEXT,
+        operator_uid INTEGER, operator_name TEXT, created_at TIMESTAMPTZ DEFAULT now()
+      )`
+    : `CREATE TABLE IF NOT EXISTS download_logs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, order_id INTEGER, item_type TEXT, item_name TEXT,
+        operator_uid INTEGER, operator_name TEXT, created_at TEXT DEFAULT CURRENT_TIMESTAMP
+      )`;
+  for (const s of DOWNLOAD_LOGS_DDL.split(';').map((x) => x.trim()).filter(Boolean)) await run(s);
+
   // 系统设置表
   for (const s of (dialect === 'pg' ? PG_SETTINGS : SQLITE_SETTINGS).split(';').map((x) => x.trim()).filter(Boolean)) await run(s);
 
