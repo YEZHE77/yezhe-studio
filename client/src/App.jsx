@@ -93,7 +93,7 @@ function AppShell() {
         <main className="flex-1 p-3 md:p-4 lg:p-6 min-w-0 overflow-x-hidden" style={{ background: '#F8F8F8', position: 'relative' }}>
           {/* 滚动辅助线（Dashboard 日常管理卡片左外侧）：fixed 定位 + top:80 (Topbar 高) + bottom:0，
               视觉上「跟随页面下滑」永远延伸到底；仅 xl 显示与 Sidebar 固定 300 同步 */}
-          <div className="hidden xl:block fixed top-[80px] bottom-0 w-px pointer-events-none z-30" style={{ left: 'calc(50vw - 253px)', background: '#E6E9EF' }} />
+          <div className="hidden xl:block fixed top-[56px] bottom-0 w-px pointer-events-none z-30" style={{ left: 'calc(50vw - 253px)', background: '#E6E9EF' }} />
           <Breadcrumb />
           <ErrorBoundary resetKeys={[location.pathname]}>
             <Suspense fallback={<PageLoader />}>

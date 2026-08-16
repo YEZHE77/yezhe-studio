@@ -27,7 +27,7 @@ export default function Topbar({ onMenu }) {
   return (
     <header
       className="shrink-0 flex items-center justify-between"
-      style={{ height: 80, background: '#ffffff', borderBottom: '1px solid #e5e7eb', padding: '0 16px 0 24px' }}
+      style={{ height: 56, background: '#ffffff', borderBottom: '1px solid #e5e7eb', padding: '0 16px 0 24px' }}
     >
       {/* 左侧：移动端汉堡菜单（品牌已移至侧边栏工作台上方） */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>

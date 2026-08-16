@@ -84,22 +84,22 @@ function SidebarContent({ mobile = false }) {
       style={{ background: '#F8F8F8', borderRight: '1px solid #E8E8EB', padding: '20px 16px 12px' }}
     >
       {/* 品牌区：可编辑头像 + 工作室名称（位于工作台上方，参考图） */}
-      <div className={'flex items-center gap-3 px-2 pb-5 ' + brandJustify} style={{ borderBottom: '1px solid #F0F0F0' }}>
+      <div className={'flex items-center gap-3 px-2 py-4 ' + brandJustify} style={{ borderBottom: '1px solid #F0F0F0', minHeight: 60, maxHeight: 60 }}>
         <button
           type="button"
           onClick={() => fileRef.current && fileRef.current.click()}
           title="点击更换头像"
           className="shrink-0 overflow-hidden"
-          style={{ width: 44, height: 44, borderRadius: '50%', background: '#2998EB', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 18, cursor: 'pointer', border: 'none', padding: 0 }}
+          style={{ width: 36, height: 36, borderRadius: '50%', background: '#2998EB', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 16, cursor: 'pointer', border: 'none', padding: 0 }}
         >
           {studio && studio.avatar
             ? <img src={img(studio.avatar)} alt="头像" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
             : '叶'}
         </button>
         <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={onPickAvatar} />
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
-          <span style={{ fontSize: 16, fontWeight: 400, color: '#111111', lineHeight: 1.3 }}>叶哲 Studio</span>
-          <span style={{ fontSize: 11, color: '#999999', lineHeight: 1.3 }}>商家管理后台</span>
+        <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 1, minWidth: 0 }}>
+          <span style={{ fontSize: 14, fontWeight: 400, color: '#111111', lineHeight: 1.3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>叶哲 Studio</span>
+          <span style={{ fontSize: 11, color: '#999999', lineHeight: 1.3, whiteSpace: 'nowrap' }}>商家管理后台</span>
         </div>
       </div>
 
