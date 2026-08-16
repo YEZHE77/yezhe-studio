@@ -13,14 +13,13 @@ const MUTED = '#999999';
 const LINE = '#F0F0F0';
 
 // 横向卡片 Tab 定义（key 对应 todo_type，accent 为底部色条颜色）
+// 仅保留订单详情状态节点对应的 5 个阶段（regen_contract 重新生成合同 / order_request 客户申请 属事件待办，非状态节点，已删除）
 const TAB_DEFS = [
   { key: 'deposit', label: '已付定金', accent: '#FE2C55' },
   { key: 'waiting_shoot', label: '等待拍摄', accent: GREEN },
   { key: 'selecting', label: '待选片', accent: '#2DB7F5' },
   { key: 'retouching', label: '精修中', accent: '#FFB900' },
-  { key: 'delivering', label: '待交付', accent: '#8C8C8C' },
-  { key: 'regen_contract', label: '重新生成合同', accent: '#FF4D4F' },
-  { key: 'order_request', label: '客户申请', accent: '#722ED1' }
+  { key: 'delivering', label: '待交付', accent: '#8C8C8C' }
 ];
 
 function pad2(n) { return String(n).padStart(2, '0'); }
