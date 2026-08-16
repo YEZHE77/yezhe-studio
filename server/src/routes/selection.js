@@ -40,6 +40,7 @@ const WRITABLE_TASK_STATUS = [TASK_STATUS.SELECTING, TASK_STATUS.PENDING_PAYMENT
 const MARK_STATUS_LIST = [MARK_STATUS.KEEP, MARK_STATUS.REJECT];
 
 function nowISO() { return new Date().toISOString(); }
+function token90Days() { return new Date(Date.now() + 90 * 24 * 3600 * 1000).toISOString(); }
 function isExpired(expireAt) {
   if (!expireAt) return false;
   const t = new Date(expireAt).getTime();
@@ -70,6 +71,8 @@ function verifySelectToken(token) {
 async function resolveContext(token) {
   const order = await get('SELECT * FROM orders WHERE customer_token = ?', [token]);
   if (!order) return null;
+  // token 过期校验（90 天有效期，过期即失效，与无 token 同等对待）
+  if (isExpired(order.customer_token_expire_at)) return null;
   const task = await get('SELECT * FROM order_select_task WHERE order_id = ?', [order.id]);
   return { order, task };
 }
@@ -313,6 +316,10 @@ router.post('/c/:token/submit', async (req, res) => {
       await tx.run('UPDATE order_select_task SET status = ?, like_count = ?, exclude_count = ?, extra_count = ?, extra_fee = ?, pending_fee = ?, pending_count = ?, submitted_at = ?, updated_at = ? WHERE id = ?',
         [nextStatus, summary.stats.keep, summary.stats.reject, summary.extra.extraCount, summary.extra.extraFee,
          hasFee ? summary.extra.extraFee : 0, hasFee ? summary.extra.extraCount : 0, submittedAt, submittedAt, task.id]);
+      // 无加片费：选片完成 → 订单进入「精修中（选片完成-待精修）」
+      if (!hasFee) {
+        await tx.run("UPDATE orders SET status = 'retouching' WHERE id = ?", [order.id]);
+      }
     });
 
     // 通知（异步，不阻塞核心）
@@ -383,11 +390,17 @@ router.get('/orders/:orderId/task', authRequired, requireRole(...STAFF_ROLES), a
   try {
     const o = await get('SELECT * FROM orders WHERE id = ?', [req.params.orderId]);
     if (!o) return res.status(404).json({ error: '订单不存在' });
-    // 确保有客户选片令牌（customer_token 为空时自动生成，分享链接需要）
+    // 确保有客户选片令牌（customer_token 为空时自动生成；有效期 90 天）
     let token = o.customer_token;
+    let expireAt = o.customer_token_expire_at;
     if (!token) {
       token = crypto.randomBytes(16).toString('hex');
-      await run('UPDATE orders SET customer_token = ? WHERE id = ?', [token, o.id]);
+      expireAt = token90Days();
+      await run('UPDATE orders SET customer_token = ?, customer_token_expire_at = ? WHERE id = ?', [token, expireAt, o.id]);
+    } else if (!expireAt) {
+      // 已有 token 但未设有效期：补 90 天（老数据迁移兜底）
+      expireAt = token90Days();
+      await run('UPDATE orders SET customer_token_expire_at = ? WHERE id = ?', [expireAt, o.id]);
     }
     const task = await get('SELECT * FROM order_select_task WHERE order_id = ?', [o.id]);
     const photos = task ? await loadPhotos(o.id) : [];
@@ -415,7 +428,7 @@ router.get('/orders/:orderId/task', authRequired, requireRole(...STAFF_ROLES), a
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// C 端「/customer/select-photo」前置校验：验证 orderId 与 token 匹配（防遍历 orderId 访问他人订单）
+// C 端「/customer/select-photo」前置校验：验证 orderId 与 token 匹配（防遍历 orderId 访问他人订单）+ 90 天有效期
 router.get('/customer-select/validate', async (req, res) => {
   try {
     const orderId = parseInt(req.query.orderId, 10);
@@ -423,11 +436,25 @@ router.get('/customer-select/validate', async (req, res) => {
     if (!Number.isFinite(orderId) || !token) {
       return res.status(400).json({ valid: false, reason: '参数缺失' });
     }
-    const o = await get('SELECT id, customer_name, order_no, cancelled, is_deleted FROM orders WHERE id = ? AND customer_token = ?', [orderId, token]);
+    const o = await get('SELECT id, customer_name, order_no, cancelled, is_deleted, customer_token_expire_at FROM orders WHERE id = ? AND customer_token = ?', [orderId, token]);
     if (!o) return res.status(403).json({ valid: false, reason: '无权限访问该订单' });
     if (o.cancelled || o.is_deleted) return res.status(403).json({ valid: false, reason: '订单不存在或已关闭' });
+    if (isExpired(o.customer_token_expire_at)) return res.status(403).json({ valid: false, reason: '链接已过期，请联系商家重新发送' });
     res.json({ valid: true, order_no: o.order_no || '', customer_name: o.customer_name || '' });
   } catch (e) { res.status(500).json({ valid: false, reason: e.message }); }
+});
+
+// B 端「重新生成链接」：重置 customer_token（旧 token 立即失效）+ 重新 90 天有效期
+router.post('/orders/:orderId/share/reset', authRequired, requireRole(...STAFF_ROLES), async (req, res) => {
+  try {
+    const o = await get('SELECT * FROM orders WHERE id = ?', [req.params.orderId]);
+    if (!o) return res.status(404).json({ error: '订单不存在' });
+    const token = crypto.randomBytes(16).toString('hex');
+    const expireAt = token90Days();
+    await run('UPDATE orders SET customer_token = ?, customer_token_expire_at = ? WHERE id = ?', [token, expireAt, o.id]);
+    await appendOrderLog(o.id, '重新生成客户选片链接（旧链接已失效）', (req.user && req.user.username) || '');
+    res.json({ ok: true, share_url: clientUrl(req, o.id, token), expire_at: expireAt });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // 开启 / 更新选片任务配置（密码/有效期/打乱/水印/免费张数/加片单价）；不存在则创建
@@ -608,6 +635,8 @@ async function markPaid(orderId, flowNo, channel, method) {
         [orderId, o.order_no || '', 'extra', fee, method, channel, '选片加片缴费']);
       await tx.run('UPDATE orders SET balance = ? WHERE id = ?', [Math.max(0, Number(o.balance) - fee), orderId]);
     }
+    // 支付成功 → 选片完成，订单进入「精修中（选片完成-待精修）」
+    await tx.run("UPDATE orders SET status = 'retouching' WHERE id = ?", [orderId]);
   });
   return { already: false, fee };
 }

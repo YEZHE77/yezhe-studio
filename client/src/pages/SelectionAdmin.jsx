@@ -136,7 +136,7 @@ export default function SelectionAdmin() {
   };
 
   const removePhoto = async (photoId) => {
-    if (!window.confirm('确定删除这张底片？删除后该照片的全部标记会被清除，统计将自动重算。')) return;
+    if (!window.confirm('⚠️ 该底片正在选片池中，删除后将从选片池移出（客户选片页不再显示），并清除其全部选片标记，统计将自动重算。\n\n仅移除预览缩略图记录，不影响网盘原始大图。\n\n确定移出选片池并删除？')) return;
     try {
       await http.delete('/api/selection/orders/' + active.id + '/photos/' + photoId);
       toast('已删除');
@@ -182,6 +182,16 @@ export default function SelectionAdmin() {
     if (navigator.clipboard) navigator.clipboard.writeText(shareUrl);
     else { const ta = document.createElement('textarea'); ta.value = shareUrl; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta); }
     toast('已复制客户选片链接，请发送给客户');
+  };
+
+  const resetShare = async () => {
+    if (!active) return;
+    if (!window.confirm('重新生成选片链接后，旧链接将立即失效，客户需使用新链接访问（新链接有效期 90 天）。\n\n确定重新生成？')) return;
+    try {
+      const r = await http.post('/api/selection/orders/' + active.id + '/share/reset');
+      setShareUrl(r.data.share_url || '');
+      toast('已重新生成链接，旧链接已失效');
+    } catch (e) { toast('重新生成失败：' + (e.response?.data?.error || e.message)); }
   };
 
   const filtered = orders.filter((o) => !q || (o.customer_name || '').includes(q) || (o.order_no || '').includes(q));
@@ -282,6 +292,7 @@ export default function SelectionAdmin() {
                     <div style={{ display: 'flex', gap: 10, marginTop: 16, flexWrap: 'wrap' }}>
                       <Btn onClick={saveConfig} disabled={saving} primary>{saving ? '保存中…' : '保存配置'}</Btn>
                       <Btn onClick={copyLink} disabled={!shareUrl}>分享给客户</Btn>
+                      <Btn onClick={resetShare} disabled={!active}>重新生成链接</Btn>
                       <Btn onClick={() => exportList('txt')} disabled={!completed}>导出 TXT</Btn>
                       <Btn onClick={() => exportList('excel')} disabled={!completed}>导出 Excel</Btn>
                       <Btn onClick={reset} danger disabled={!task || task.status === 'selecting'}>重置选片</Btn>
