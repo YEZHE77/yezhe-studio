@@ -57,6 +57,7 @@ export default function CustomerMine() {
   const [busy, setBusy] = useState(false);
   const [loginErr, setLoginErr] = useState('');
   const [sheet, setSheet] = useState('');
+  const [orderDetail, setOrderDetail] = useState(null);
   const [toast, setToast] = useState('');
   const flashToast = (m) => { setToast(m); setTimeout(() => setToast(''), 1600); };
 
@@ -118,6 +119,14 @@ export default function CustomerMine() {
     if (!auth || !auth.logged_in) return; // 未登录菜单置灰不可点
     if (tag === 'contact') { copyWechat(); return; }
     setSheet(tag);
+  };
+
+  // 查看订单详情（全屏弹窗，只读；接口不返回备注与变更记录）
+  const openOrderDetail = (id) => {
+    setSheet(''); // 关闭订单列表 sheet
+    customerHttp.get('/api/customer/order-detail', { params: { id } })
+      .then((r) => setOrderDetail(r.data))
+      .catch((e) => flashToast((e.response && e.response.data && e.response.data.error) || '加载失败'));
   };
 
   if (auth === null) {
@@ -214,7 +223,7 @@ export default function CustomerMine() {
           {biz.orders.length === 0 ? (
             <div style={{ textAlign: 'center', color: FAINT, padding: '30px 0', fontSize: 14 }}>暂无订单</div>
           ) : biz.orders.map((o) => (
-            <div key={o.id} onClick={() => nav('/customer/order/' + o.id)} style={{ padding: '12px 0', borderBottom: '1px solid ' + LINE, cursor: 'pointer' }}>
+            <div key={o.id} onClick={() => openOrderDetail(o.id)} style={{ padding: '12px 0', borderBottom: '1px solid ' + LINE, cursor: 'pointer' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span style={{ fontSize: 14, color: TEXT }}>{o.package_name || ('订单 ' + o.order_no)}</span>
                 <span style={{ fontSize: 12, padding: '3px 8px', borderRadius: 8, background: 'rgba(126,205,187,0.15)', color: '#3E9C8B' }}>{o.status_label}</span>
@@ -265,6 +274,42 @@ export default function CustomerMine() {
         <Sheet title={'关于' + (studio.name || '')} onClose={() => setSheet('')}>
           <div style={{ fontSize: 13, color: SUB, lineHeight: 1.8, whiteSpace: 'pre-wrap' }}>{studio.intro || '用影像记录时光。'}</div>
         </Sheet>
+      )}
+
+      {/* 订单详情全屏弹窗（只读：不展示备注与订单变更记录） */}
+      {orderDetail && (
+        <div style={{ position: 'fixed', inset: 0, background: '#F2F2F5', zIndex: 100, display: 'flex', flexDirection: 'column' }}>
+          {/* 顶部深色导航 + 返回键 */}
+          <div style={{ background: '#1f1f1f', display: 'flex', alignItems: 'center', padding: '14px 18px' }}>
+            <button onClick={() => setOrderDetail(null)} style={{ background: 'none', border: 'none', fontSize: 16, color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 2 }}>
+              <span style={{ fontSize: 20, lineHeight: 1 }}>‹</span>订单详情
+            </button>
+          </div>
+          {/* 详情内容 */}
+          <div style={{ flex: 1, overflowY: 'auto', padding: '20px 18px' }}>
+            <div style={{ background: '#fff', borderRadius: 16, padding: 20, boxShadow: '0 8px 24px rgba(31,35,41,0.06)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                <span style={{ fontSize: 16, color: TEXT }}>{orderDetail.package_name || '订单详情'}</span>
+                <span style={{ fontSize: 12, padding: '4px 10px', borderRadius: 10, background: 'rgba(126,205,187,0.15)', color: '#3E9C8B' }}>{orderDetail.status_label}</span>
+              </div>
+              <div style={{ fontSize: 12, color: FAINT }}>订单号 {orderDetail.order_no || '—'}</div>
+              <div style={{ marginTop: 8, borderTop: '1px solid ' + LINE }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '13px 0', borderBottom: '1px solid ' + LINE }}>
+                  <span style={{ fontSize: 13, color: SUB, flexShrink: 0 }}>拍摄日期</span>
+                  <span style={{ fontSize: 14, color: TEXT }}>{orderDetail.shoot_date || '—'}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '13px 0', borderBottom: '1px solid ' + LINE }}>
+                  <span style={{ fontSize: 13, color: SUB, flexShrink: 0 }}>套系名称</span>
+                  <span style={{ fontSize: 14, color: TEXT, textAlign: 'right', maxWidth: '60%' }}>{orderDetail.package_name || '—'}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '13px 0' }}>
+                  <span style={{ fontSize: 13, color: SUB, flexShrink: 0 }}>拍摄进度</span>
+                  <span style={{ fontSize: 14, color: TEXT }}>{orderDetail.status_label || '—'}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
 
       {toast && <div style={{ position: 'fixed', left: '50%', top: 70, transform: 'translateX(-50%)', zIndex: 120, background: 'rgba(0,0,0,0.7)', color: '#fff', fontSize: 12, padding: '8px 14px', borderRadius: 8 }}>{toast}</div>}
