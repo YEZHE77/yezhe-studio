@@ -155,8 +155,13 @@ export default function OrderDetail() {
   const nav = useNavigate();
   // 移动端适配：<768px 视为手机，内联样式按 isMobile 降级（堆叠 / 去固定像素 / 减小留白）
   const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' ? window.innerWidth < 768 : false);
+  // 宽屏：>=1280 才走 750 设计稿两列 + 208 大间距的原始布局；中等窗口（768-1279）改用小间距避免右侧塌陷
+  const [isWide, setIsWide] = useState(() => typeof window !== 'undefined' ? window.innerWidth >= 1280 : true);
   useEffect(() => {
-    const onResize = () => setIsMobile(window.innerWidth < 768);
+    const onResize = () => {
+      setIsMobile(window.innerWidth < 768);
+      setIsWide(window.innerWidth >= 1280);
+    };
     window.addEventListener('resize', onResize);
     return () => window.removeEventListener('resize', onResize);
   }, []);
@@ -1687,7 +1692,7 @@ export default function OrderDetail() {
 
         {/* ——— 2、订单信息主体：左侧基础信息 + 右侧灰色小卡片分组 ——— */}
         <div style={{ padding: isMobile ? '0 16px' : '0 24px' }}>
-          <div className="flex flex-wrap" style={{ gap: isMobile ? 16 : 208, alignItems: 'stretch' }}>
+          <div className="flex flex-wrap" style={{ gap: isMobile ? 16 : (isWide ? 208 : 24), alignItems: 'stretch' }}>
             {/* 左侧：套系封面图 + 基础信息 */}
             <div style={{ flex: isMobile ? '1 1 100%' : '0 0 46%', display: 'flex', alignItems: 'flex-start', flexWrap: 'wrap', gap: isMobile ? 16 : 63, minWidth: 0 }}>
               <div style={{ width: isMobile ? '100%' : 206, height: isMobile ? 200 : 150, borderRadius: 2, overflow: 'hidden', background: '#f3f4f6', flexShrink: 0 }}>
@@ -1785,7 +1790,7 @@ export default function OrderDetail() {
           </div>
 
           {/* 套系摘要卡：整行紧接执行人下方（参考图） */}
-          <div style={{ background: '#fafbf8', borderRadius: 2, padding: '18px 20px', marginTop: 16, marginLeft: isMobile ? 0 : 269, maxWidth: isMobile ? '100%' : 763 }}>
+          <div style={{ background: '#fafbf8', borderRadius: 2, padding: '18px 20px', marginTop: 16, marginLeft: isMobile || !isWide ? 0 : 269, maxWidth: isMobile || !isWide ? '100%' : 763 }}>
                 <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)', gap: '16px 12px' }}>
                   {(() => {
                     const SUM_FIELDS = [
