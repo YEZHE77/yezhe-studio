@@ -2607,11 +2607,12 @@ export default function OrderDetail() {
         <thead className="print-page-header" style={{ visibility: 'hidden', display: 'table-header-group' }}>
           <tr>
             <td style={{ width: '100%', padding: '4mm 15mm 3mm', borderBottom: '1px solid #555', background: '#fff' }}>
-              <div style={{ position: 'relative', minHeight: 18, fontSize: 12, color: '#555' }}>
-                {/* 居中：标题 */}
-                <span style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)', top: 0, fontWeight: 500, fontSize: 14, color: '#333', letterSpacing: 1, whiteSpace: 'nowrap' }}>拍摄服务合同</span>
-                {/* 最右：订单信息（3 行右对齐） */}
-                <div style={{ float: 'right', textAlign: 'right', lineHeight: 1.5, fontSize: 11, color: '#666' }}>
+              {/* 三段式 flex 布局：左 1fr / 中 auto / 右 1fr。中间段「auto」+ 父 flex 的 justify-content:stretch
+                  让「拍摄服务合同」正好落在容器正中央，与左右两段互不重叠 */}
+              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', fontSize: 12, color: '#555' }}>
+                <div style={{ flex: 1 }} />
+                <div style={{ flex: '0 0 auto', textAlign: 'center', fontWeight: 500, fontSize: 14, color: '#333', letterSpacing: 1 }}>拍摄服务合同</div>
+                <div style={{ flex: 1, textAlign: 'right', lineHeight: 1.5, fontSize: 11, color: '#666' }}>
                   <div>订单编号：{detail.order_no}</div>
                   <div>创建时间：{detail.created_at ? new Date(detail.created_at).toLocaleString('zh-CN') : '—'}</div>
                   <div>订单状态：{statusText || '—'}</div>
