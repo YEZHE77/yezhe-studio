@@ -83,7 +83,7 @@ const SECTIONS = [
       { label: '订单', icon: ClipboardList, color: MINT, to: '/orders' },
       { label: '客资', icon: Users, color: MINT, to: '/customers' },
       { label: '选片工具', icon: Images, color: MINT, to: '/selections' },
-      { label: '团队管理', icon: UserCog, color: MINT, to: '/settings' },
+      { label: '团队管理', icon: UserCog, color: MINT, to: '/team' },
       { label: '评价管理', icon: MessageSquare, color: MINT, to: '/reviews' },
       { label: '图片直播', icon: Video, color: MINT, to: '/settings' },
       { label: 'AI修图', icon: Sparkles, color: MINT, to: '/settings' }
