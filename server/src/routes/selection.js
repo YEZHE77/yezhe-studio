@@ -393,6 +393,7 @@ router.get('/orders/:orderId/task', authRequired, requireRole(...STAFF_ROLES), a
         id: task.id, status: task.status, min_retouch: Number(task.min_retouch) || 0,
         extra_price: Number(task.extra_price) || 0, watermark_enabled: !!Number(task.watermark_enabled),
         shuffle_enabled: !!Number(task.shuffle_enabled), has_password: !!task.password_hash,
+        screenshot_guard: !!Number(o.screenshot_guard), thumb_only: !!Number(o.thumb_only),
         expire_at: task.expire_at || null, expired: isExpired(task.expire_at),
         pending_fee: Number(task.pending_fee) || 0, pending_count: Number(task.pending_count) || 0,
         paid_at: task.paid_at || null, pay_flow_no: task.pay_flow_no || '',

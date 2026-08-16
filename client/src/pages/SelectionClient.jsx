@@ -262,11 +262,21 @@ export default function SelectionClient() {
           <span style={{ width: 50 }} />
         </div>
         <div style={{ flex: 1, position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
-          <img src={img(cur.url)} alt="" draggable={false} onDoubleClick={dblTap}
+          <img src={img(cur.url || cur.thumb_url)} alt="" draggable={false} onDoubleClick={dblTap}
             style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', userSelect: 'none', WebkitUserSelect: 'none', transform: `scale(${zoom})`, transition: 'transform .15s' }} />
+          {task.thumb_only && !task.delivered && !cur.url && (
+            <div style={{ position: 'absolute', top: 10, left: 0, right: 0, textAlign: 'center', pointerEvents: 'none' }}>
+              <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.7)', background: 'rgba(0,0,0,0.45)', padding: '4px 12px', borderRadius: 10 }}>成片交付后可见高清原图，当前仅预览</span>
+            </div>
+          )}
           {task.watermark_enabled && (
             <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <span style={{ color: 'rgba(255,255,255,0.28)', fontSize: 18, letterSpacing: 4, transform: 'rotate(-20deg)', whiteSpace: 'nowrap' }}>YEZHE WORKSHOP</span>
+            </div>
+          )}
+          {task.screenshot_guard && (
+            <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.12)' }}>
+              <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13, letterSpacing: 2, background: 'rgba(0,0,0,0.4)', padding: '6px 14px', borderRadius: 10 }}>请勿截屏/录屏，尊重客户隐私</span>
             </div>
           )}
         </div>

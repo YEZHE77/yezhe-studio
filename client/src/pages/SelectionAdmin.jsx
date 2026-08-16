@@ -32,7 +32,7 @@ export default function SelectionAdmin() {
   const [shareUrl, setShareUrl] = useState('');
   const [photoTotal, setPhotoTotal] = useState(0);
 
-  const [form, setForm] = useState({ min_retouch: 0, extra_price: 0, password: '', expire_at: '', watermark_enabled: false, shuffle_enabled: false });
+  const [form, setForm] = useState({ min_retouch: 0, extra_price: 0, password: '', expire_at: '', watermark_enabled: false, shuffle_enabled: false, screenshot_guard: false, thumb_only: false });
   const [saving, setSaving] = useState(false);
 
   const [photos, setPhotos] = useState([]);
@@ -69,7 +69,9 @@ export default function SelectionAdmin() {
           password: '',
           expire_at: d.task.expire_at || '',
           watermark_enabled: !!d.task.watermark_enabled,
-          shuffle_enabled: !!d.task.shuffle_enabled
+          shuffle_enabled: !!d.task.shuffle_enabled,
+          screenshot_guard: !!d.task.screenshot_guard,
+          thumb_only: !!d.task.thumb_only
         });
       }
     } catch (e) { toast('加载失败：' + (e.response?.data?.error || e.message)); }
@@ -106,7 +108,9 @@ export default function SelectionAdmin() {
         password: form.password,
         expire_at: form.expire_at,
         watermark_enabled: form.watermark_enabled,
-        shuffle_enabled: form.shuffle_enabled
+        shuffle_enabled: form.shuffle_enabled,
+        screenshot_guard: form.screenshot_guard,
+        thumb_only: form.thumb_only
       });
       toast('配置已保存');
       loadTask(active.id);
@@ -272,6 +276,8 @@ export default function SelectionAdmin() {
                     <div style={{ display: 'flex', gap: 18, marginTop: 14 }}>
                       <Check label="图片水印" checked={form.watermark_enabled} onChange={(v) => setForm((f) => ({ ...f, watermark_enabled: v }))} />
                       <Check label="底片随机打乱" checked={form.shuffle_enabled} onChange={(v) => setForm((f) => ({ ...f, shuffle_enabled: v }))} />
+                      <Check label="防截图提示层" checked={form.screenshot_guard} onChange={(v) => setForm((f) => ({ ...f, screenshot_guard: v }))} />
+                      <Check label="未交付仅预览缩略图" checked={form.thumb_only} onChange={(v) => setForm((f) => ({ ...f, thumb_only: v }))} />
                     </div>
                     <div style={{ display: 'flex', gap: 10, marginTop: 16, flexWrap: 'wrap' }}>
                       <Btn onClick={saveConfig} disabled={saving} primary>{saving ? '保存中…' : '保存配置'}</Btn>
