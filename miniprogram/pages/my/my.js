@@ -33,6 +33,11 @@ Page({
     wx.navigateTo({ url });
   },
 
+  // 登录 / 个人中心：web-view 内嵌 H5 客户登录页（复用验证码登录 / 查单能力）
+  goLogin() {
+    wx.navigateTo({ url: '/pages/webview/webview?path=customer/login' });
+  },
+
   copyContact() {
     const wxid = (this.data.studio && this.data.studio.contact && this.data.studio.contact.wechat) || 'yezhe-studio';
     wx.setClipboardData({ data: wxid, success: () => wx.showToast({ title: '微信号已复制', icon: 'none' }) });

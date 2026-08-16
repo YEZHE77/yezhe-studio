@@ -1,7 +1,10 @@
 <view class="page">
   <customNav title="我的" showBack="{{true}}" />
   <view class="profile">
-    <view class="avatar">叶</view>
+    <view class="avatar" wx:if="{{studio.logo}}">
+      <image src="{{studio.logo}}" mode="aspectFill" />
+    </view>
+    <view class="avatar avatar-letter" wx:else>{{(studio.name || '叶哲 STUDIO')[0]}}</view>
     <view class="profile-info">
       <view class="profile-name">{{studio.name || '叶哲 STUDIO'}}</view>
       <view class="muted small">{{login ? '已登录' : '未登录'}}</view>
@@ -9,6 +12,9 @@
   </view>
 
   <view class="menu card">
+    <view class="menu-item" bindtap="goLogin">
+      <text>登录 / 个人中心</text><text class="muted">›</text>
+    </view>
     <view class="menu-item" data-url="/pkg/appointment/appointment" bindtap="go">
       <text>我的预约</text><text class="muted">›</text>
     </view>

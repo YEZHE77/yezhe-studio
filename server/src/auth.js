@@ -164,3 +164,22 @@ export function customerRequired(req, res, next) {
     res.status(401).json({ error: '登录已过期，请重新打开小程序' });
   }
 }
+
+// ===== 手机号查订单查询会话 token（C 端自助查单，验证码通过后签发）=====
+// 与商家/客户 JWT 隔离：payload 只含 phone + role='query'，短时效 30 分钟。
+// 用于订单详情 / 合同预览鉴权（免重复验证码），不可用于任何写操作。
+export function signQueryToken(phone) {
+  return jwt.sign({ phone, role: 'query' }, SECRET, { expiresIn: '30m' });
+}
+
+// 校验查询会话 token，成功返回绑定的手机号，失败/类型不符返回 null
+export function verifyQueryToken(token) {
+  if (!token) return null;
+  try {
+    const p = jwt.verify(token, SECRET);
+    if (p.role !== 'query') return null;
+    return String(p.phone || '');
+  } catch {
+    return null;
+  }
+}

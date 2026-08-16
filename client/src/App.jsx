@@ -59,6 +59,9 @@ const PhotoPackages = React.lazy(() => import('./pages/PhotoPackages.jsx'));
 const PackagePublic = React.lazy(() => import('./pages/PackagePublic.jsx'));
 const PackageCenter = React.lazy(() => import('./pages/PackageCenter.jsx'));
 const CustomerOrder = React.lazy(() => import('./pages/CustomerOrder.jsx'));
+const QueryOrder = React.lazy(() => import('./pages/QueryOrder.jsx'));
+const CustomerLogin = React.lazy(() => import('./pages/CustomerLogin.jsx'));
+const CustomerProfile = React.lazy(() => import('./pages/CustomerProfile.jsx'));
 const AppointmentForm = React.lazy(() => import('./pages/AppointmentForm.jsx'));
 const ContractTemplates = React.lazy(() => import('./pages/ContractTemplates.jsx'));
 const ContractAudit = React.lazy(() => import('./pages/ContractAudit.jsx'));
@@ -170,6 +173,18 @@ export default function App() {
       {/* C 端客户订单查看（/customer-order?token=customer_token）· 公开，只读 */}
       <Route path="/customer-order" element={
         <Suspense fallback={<PageLoader />}><CustomerOrder /></Suspense>
+      } />
+      {/* C 端客户自助查订单（/customer/query-order）· 手机号+图形验证码，只读，与 token 专属访问并行 */}
+      <Route path="/customer/query-order" element={
+        <Suspense fallback={<PageLoader />}><QueryOrder /></Suspense>
+      } />
+      {/* C 端客户手机号验证码登录（/customer/login）· 写入 HttpOnly 会话 cookie */}
+      <Route path="/customer/login" element={
+        <Suspense fallback={<PageLoader />}><CustomerLogin /></Suspense>
+      } />
+      {/* C 端客户个人中心（/customer/profile）· 仅登录可访问 */}
+      <Route path="/customer/profile" element={
+        <Suspense fallback={<PageLoader />}><CustomerProfile /></Suspense>
       } />
       {/* C 端公开预约表单 */}
       <Route path="/appointment-form" element={

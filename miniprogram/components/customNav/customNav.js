@@ -123,6 +123,21 @@ Component({
 
     goMy() { this._nav('/pages/my/my', false); },
 
+    // 联系我们：回首页并滚动到「联系我们」卡片（与 H5 抽屉「联系我们」行为一致）
+    goContact() {
+      this.closeDrawer();
+      setTimeout(() => {
+        wx.reLaunch({
+          url: '/pages/index/index',
+          success: () => {
+            setTimeout(() => {
+              wx.pageScrollTo({ selector: '.footer', duration: 300 });
+            }, 600);
+          }
+        });
+      }, 200);
+    },
+
     // 自定义返回箭头点击：有上一页则 navigateBack，无上一页（页面栈为空/直接打开）则回首页
     onBack() {
       const pages = getCurrentPages();

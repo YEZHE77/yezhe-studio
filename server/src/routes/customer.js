@@ -3,7 +3,7 @@
 import { Router } from 'express';
 import { query, get, insert, run } from '../db.js';
 import { parseRow } from '../schema.js';
-import { customerRequired } from '../auth.js';
+import { customerRequired, signCustomerToken } from '../auth.js';
 
 const router = Router();
 const JSON_COLS = ['package_snapshot', 'addons_snapshot', 'logs', 'questionnaire_answers'];
@@ -23,6 +23,45 @@ async function linkedWorks(orderId) {
   const rows = await query('SELECT id, title, cover_url, allow_download, is_public FROM works WHERE order_id = ? ORDER BY id DESC', [orderId]);
   return rows.map((r) => ({ ...r, allow_download: r.allow_download ? 1 : 0 }));
 }
+
+// ===== 0. H5 手机号登录（零成本，无短信验证，手机号即身份标识）=====
+// 用手机号生成确定性 openid（h5_<phone>），upsert customers，并回填该手机号名下尚无 openid 绑定的订单/预约
+router.post('/phone-login', async (req, res) => {
+  try {
+    const phone = String((req.body && req.body.phone) || '').trim();
+    if (!/^1\d{10}$/.test(phone)) return res.status(400).json({ error: '请输入正确的 11 位手机号' });
+    const openid = 'h5_' + phone;
+    const now = nowISO();
+    let c = await get('SELECT * FROM customers WHERE openid = ?', [openid]);
+    if (!c) {
+      const id = await insert('INSERT INTO customers (openid, phone, created_at, updated_at) VALUES (?,?,?,?)', [openid, phone, now, now]);
+      c = { id, openid, phone };
+    } else {
+      await run('UPDATE customers SET phone = ?, updated_at = ? WHERE id = ?', [phone, now, c.id]);
+      c.phone = phone;
+    }
+    // 回填：该手机号名下尚无 openid 绑定的订单/预约，绑定到本次登录的客户身份
+    await run("UPDATE orders SET openid = ? WHERE (openid IS NULL OR openid = '') AND (customer_phone = ? OR phones LIKE '%' || ? || '%')", [openid, phone, phone]);
+    await run("UPDATE appointments SET openid = ? WHERE (openid IS NULL OR openid = '') AND phone = ?", [openid, phone]);
+    const token = signCustomerToken({ openid: c.openid, id: c.id });
+    res.json({ token, openid: c.openid, customerId: c.id, phone });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ===== 0.1 当前客户信息（H5「我的」登录状态校验）=====
+router.get('/me', customerRequired, async (req, res) => {
+  try {
+    const c = await get('SELECT id, openid, nickname, avatar, phone FROM customers WHERE id = ?', [req.customer.customerId]);
+    if (!c) return res.status(404).json({ error: '客户不存在' });
+    let phone = c.phone || '';
+    if (!phone && c.openid && c.openid.startsWith('h5_')) phone = c.openid.slice(3);
+    res.json({ ...c, phone });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
 
 // ===== 1. 预约提交 =====
 router.post('/appointment/submit', customerRequired, async (req, res) => {

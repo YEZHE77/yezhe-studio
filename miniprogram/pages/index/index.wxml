@@ -1,7 +1,7 @@
 <view class="page" style="padding-top: {{navHeight}}px;">
-  <!-- 自定义顶部标题栏：白底黑字「叶哲 STUDIO」居中，固定置顶，避开系统状态栏；原生胶囊按钮在右上角不遮挡文字 -->
+  <!-- 自定义顶部标题栏：白底「{{studio.name}}」居中，固定置顶，避开系统状态栏；原生胶囊按钮在右上角不遮挡文字 -->
   <view class="topbar" style="padding-top: {{statusBarHeight}}px;">
-    <view class="topbar-title">叶哲 STUDIO</view>
+    <view class="topbar-title">{{studio.name || '叶哲 STUDIO'}}</view>
   </view>
 
   <!-- 顶部轮播 Banner：外层页面已用动态 navHeight 整体下偏移，避开自定义导航栏，轮播高度不变 -->
@@ -84,24 +84,26 @@
     <view wx:if="{{works.length && !hasMore}}" class="more-end">— 没有更多了 —</view>
   </view>
 
-  <!-- 底部联系信息 -->
+  <!-- 底部联系信息：3 行纯净 + 右侧悬浮 4 按钮（关注/复制/预约/我的） + 居中 添加客服 + slogan -->
   <view class="footer">
     <view class="footer-title">联系我们</view>
-    <view class="footer-line" wx:if="{{studio.contact.wechat}}">
-      <text class="footer-label">微信</text>
-      <text class="footer-value">{{studio.contact.wechat}}</text>
-      <text class="footer-action" bindtap="copyWechat">复制</text>
+    <view class="footer-lines">
+      <view class="footer-line" wx:if="{{studio.contact.wechat}}">
+        <text class="footer-label">微信</text>
+        <text class="footer-value">{{studio.contact.wechat}}</text>
+      </view>
+      <view class="footer-line" wx:if="{{studio.contact.phone}}">
+        <text class="footer-label">电话</text>
+        <text class="footer-value">{{studio.contact.phone}}</text>
+      </view>
+      <view class="footer-line" wx:if="{{studio.contact.address}}">
+        <text class="footer-label">地址</text>
+        <text class="footer-value">{{studio.contact.address}}</text>
+      </view>
     </view>
-    <view class="footer-line" wx:if="{{studio.contact.phone}}">
-      <text class="footer-label">电话</text>
-      <text class="footer-value">{{studio.contact.phone}}</text>
-      <text class="footer-action" bindtap="callPhone">拨打</text>
+    <view class="footer-service-wrap">
+      <view class="footer-service" bindtap="openServiceModal">添加客服 ›</view>
     </view>
-    <view class="footer-line" wx:if="{{studio.contact.address}}">
-      <text class="footer-label">地址</text>
-      <text class="footer-value">{{studio.contact.address}}</text>
-    </view>
-    <view class="footer-service" bindtap="openServiceModal">添加客服 ›</view>
     <view class="footer-copy" wx:if="{{studio.slogan}}">{{studio.name || '叶哲 STUDIO'}} · {{studio.slogan}}</view>
     <view class="footer-copy" wx:else>{{studio.name || '叶哲 STUDIO'}}</view>
   </view>
@@ -124,12 +126,13 @@
     </view>
   </view>
 
-  <!-- 右侧固定悬浮按钮组：right:40rpx / bottom:100rpx(右下角) / 间距16rpx / 圆形96rpx / 图标在上文字在下 -->
+  <!-- 右侧固定悬浮按钮组：4 个（关注 / 复制 / 预约 / 我的），与 H5 一致；复制为青绿文字无圆底 -->
   <view class="fab-group">
     <view class="fab fab-white" hover-class="fab-hover" bindtap="copyWechat">
       <view class="fab-ico fab-ico-heart"></view>
       <text class="fab-label">关注</text>
     </view>
+    <view class="fab-copy" hover-class="fab-hover" bindtap="copyWechat">复制</view>
     <view class="fab fab-primary" hover-class="fab-hover" bindtap="goAppointment">
       <view class="fab-ico fab-ico-chat"></view>
       <text class="fab-label">预约</text>

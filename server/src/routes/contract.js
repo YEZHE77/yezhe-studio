@@ -4,7 +4,7 @@ import { Router } from 'express';
 import multer from 'multer';
 import crypto from 'node:crypto';
 import { query, get, insert, run } from '../db.js';
-import { authRequired, requireRole, peekUser } from '../auth.js';
+import { authRequired, requireRole, peekUser, verifyQueryToken } from '../auth.js';
 import { saveBuffer, getObjectBuffer, deleteObjectByKey } from '../storage.js';
 import { emitMessage } from './message.js';
 
@@ -153,24 +153,26 @@ router.get('/download/:orderId', async (req, res) => {
   try {
     const o = await get('SELECT * FROM orders WHERE id = ?', [req.params.orderId]);
     if (!o || !o.contract_file_key) return res.status(404).json({ error: '合同不存在' });
-    // 鉴权：管理员登录态 或 客户 customer_token 匹配
+    // 鉴权：管理员登录态 或 客户 customer_token 匹配 或 手机号查订单查询会话 token 匹配
     const admin = peekUser(req);
     const ct = String(req.query.customer_token || '');
     const isCustomer = !!ct && !!o.customer_token && ct === o.customer_token;
-    if (!admin && !isCustomer) return res.status(403).json({ error: '无权限访问该合同' });
+    const qPhone = verifyQueryToken(req.query.query_token);
+    const isQuery = !!qPhone && String(o.customer_phone || '') === qPhone;
+    if (!admin && !isCustomer && !isQuery) return res.status(403).json({ error: '无权限访问该合同' });
     // 作废合同：客户不可下载（管理员仍可查看）
-    if (Number(o.contract_invalid) && isCustomer) return res.status(403).json({ error: '合同已作废，无法下载' });
+    if (Number(o.contract_invalid) && (isCustomer || isQuery)) return res.status(403).json({ error: '合同已作废，无法下载' });
     // 读文件 + md5 校验（篡改/损坏直接阻断）
     let buf;
     try { buf = await getObjectBuffer(o.contract_file_key); } catch (e) { return res.status(404).json({ error: '合同文件不存在，请重新生成' }); }
     if (o.contract_file_md5 && md5(buf) !== o.contract_file_md5) {
       return res.status(409).json({ error: '合同文件校验失败（已损坏或被篡改），请重新生成' });
     }
-    await audit(o.id, req, 'download', isCustomer ? '客户下载合同（customer_token）' : '管理员下载合同', admin || undefined);
+    await audit(o.id, req, 'download', isCustomer ? '客户下载合同（customer_token）' : (isQuery ? '客户下载合同（手机号查询）' : '管理员下载合同'), admin || undefined);
     // 下载记录（统一到 download_logs，B 端订单详情可查）
     try {
       await insert('INSERT INTO download_logs (order_id, item_type, item_name, operator_name, created_at) VALUES (?,?,?,?,?)',
-        [o.id, 'contract', '合同 PDF', isCustomer ? '客户' : ((admin && admin.username) || '管理员'), nowISO()]);
+        [o.id, 'contract', '合同 PDF', (isCustomer || isQuery) ? '客户' : ((admin && admin.username) || '管理员'), nowISO()]);
     } catch (e) { console.error('[download] 记录失败', e.message); }
     const dl = req.query.dl === '1';
     res.setHeader('Content-Type', 'application/pdf');

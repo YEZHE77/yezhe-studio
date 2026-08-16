@@ -691,6 +691,20 @@ export async function initSchema() {
   // 套系对外分享表（photo_package）
   for (const s of (dialect === 'pg' ? PG_PHOTO_PACKAGE : SQLITE_PHOTO_PACKAGE).split(';').map((x) => x.trim()).filter(Boolean)) await run(s);
 
+  // C 端客户手机号验证码登录体系（与管理员 users 表完全隔离）：手机号 + 最近登录 + 会话
+  const CUSTOMER_USER_DDL = dialect === 'pg'
+    ? `CREATE TABLE IF NOT EXISTS customer_user (
+        id SERIAL PRIMARY KEY, phone TEXT NOT NULL UNIQUE,
+        last_login_at TEXT, session_id TEXT, session_expire_at TEXT,
+        created_at TIMESTAMPTZ DEFAULT now()
+      )`
+    : `CREATE TABLE IF NOT EXISTS customer_user (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, phone TEXT NOT NULL UNIQUE,
+        last_login_at TEXT, session_id TEXT, session_expire_at TEXT,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP
+      )`;
+  for (const s of CUSTOMER_USER_DDL.split(';').map((x) => x.trim()).filter(Boolean)) await run(s);
+
   // 合同模板表（contract_template）
   for (const s of (dialect === 'pg' ? PG_CONTRACT_TEMPLATE : SQLITE_CONTRACT_TEMPLATE).split(';').map((x) => x.trim()).filter(Boolean)) await run(s);
   // 电子服务协议签署记录表（agreement_sign）

@@ -3,7 +3,8 @@
     "pages/index/index",
     "pages/works/works",
     "pages/package/package",
-    "pages/my/my"
+    "pages/my/my",
+    "pages/webview/webview"
   ],
   "lazyCodeLoading": "requiredComponents",
   "subPackages": [
@@ -35,8 +36,8 @@
   },
   "window": {
     "navigationBarTitleText": "叶哲 STUDIO",
-    "navigationBarBackgroundColor": "#111111",
-    "navigationBarTextStyle": "white",
+    "navigationBarBackgroundColor": "#ffffff",
+    "navigationBarTextStyle": "black",
     "backgroundColor": "#ffffff"
   },
   "sitemapLocation": "sitemap.json",

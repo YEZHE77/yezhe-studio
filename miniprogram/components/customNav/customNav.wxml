@@ -54,6 +54,7 @@
       <view class="menu-item" bindtap="goEvaluate">评价</view>
       <view class="menu-item" bindtap="goAbout">关于</view>
       <view class="menu-item" bindtap="goMy">我的</view>
+      <view class="menu-item" bindtap="goContact">联系我们</view>
     </scroll-view>
   </view>
 </view>

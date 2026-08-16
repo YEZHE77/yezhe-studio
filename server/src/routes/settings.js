@@ -42,7 +42,11 @@ const DEFAULT_STUDIO = {
   website: { enabled: false, domain: '' }, // 我的网站
   // 小程序：enabled 是否已配置；appid 客户小程序 AppID；qr 小程序码图片（B 端工作台首页「小程序」入口弹窗展示，微信内长按识别进入）
   miniProgram: { enabled: false, appid: '', qr: '' },
-  agreement: { enabled: false } // 顾客协议
+  agreement: { enabled: false }, // 顾客协议
+  // 客户自助查订单：价格是否对 C 端客户展示（默认关闭，保护报价隐私）
+  showPriceToCustomer: false,
+  // 公开作品集 H5 链接（客户自助查订单页的「查看作品集」跳转按钮；留空则隐藏按钮）
+  portfolioUrl: ''
 };
 
 function safeParse(v) {

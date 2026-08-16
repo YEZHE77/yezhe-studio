@@ -13,7 +13,11 @@ const EMPTY = {
   slogan: '拍摄有温度的照片，记录平凡生活中的美好。',
   contact: { phone: '', wechat: '', address: '' },
   // 客户小程序：qr 为小程序码图片（工作台首页「小程序」入口弹窗展示，微信内长按识别进入）
-  miniProgram: { enabled: false, appid: '', qr: '' }
+  miniProgram: { enabled: false, appid: '', qr: '' },
+  // 客户自助查订单：价格是否对 C 端客户展示（默认关闭，保护报价隐私）
+  showPriceToCustomer: false,
+  // 公开作品集 H5 链接（客户自助查订单页「查看作品集」跳转按钮；留空隐藏）
+  portfolioUrl: ''
 };
 
 const inputCls = 'w-full border border-line rounded-lg px-3 py-2 text-sm bg-panel text-fg outline-none focus:border-brand';
@@ -87,7 +91,9 @@ export default function Settings() {
           enabled: !!(d.miniProgram && (d.miniProgram.enabled || d.miniProgram.qr)),
           appid: (d.miniProgram && d.miniProgram.appid) || '',
           qr: (d.miniProgram && d.miniProgram.qr) || ''
-        }
+        },
+        showPriceToCustomer: !!d.showPriceToCustomer,
+        portfolioUrl: d.portfolioUrl || ''
       });
       setLoaded(true);
     }).catch(() => setLoaded(true));
@@ -299,6 +305,16 @@ export default function Settings() {
             <Field label="微信号"><input className={inputCls + ' max-md:py-2.5'} value={form.contact.wechat} onChange={(e) => set('wechat', e.target.value)} /></Field>
             <Field label="地址"><input className={inputCls + ' max-md:py-2.5'} value={form.contact.address} onChange={(e) => set('address', e.target.value)} /></Field>
           </div>
+          <Field label="客户自助查订单">
+            <div className="flex items-center gap-3">
+              <label className="flex items-center gap-2 cursor-pointer text-sm text-fg">
+                <input type="checkbox" checked={!!form.showPriceToCustomer} onChange={(e) => set('showPriceToCustomer', e.target.checked)} className="h-4 w-4 accent-[#7ECDBB]" />
+                向 C 端客户展示价格字段
+              </label>
+            </div>
+            <input className={inputCls + ' mt-3 max-md:py-2.5'} value={form.portfolioUrl} onChange={(e) => set('portfolioUrl', e.target.value)} placeholder="公开作品集 H5 链接（如 https://…/home）" />
+            <p className="text-xs text-muted mt-1 max-md:text-[11px] max-md:leading-relaxed">查订单页「查看作品集」跳转按钮的地址；留空则隐藏该按钮。价格开关默认关闭以保护报价隐私。</p>
+          </Field>
           <Field label="Logo">
             <div className="flex items-center gap-3 max-md:flex-col max-md:items-start">
               {form.logo && <img src={img(form.logo)} alt="" loading="lazy" decoding="async" className="w-14 h-14 rounded-lg object-cover border border-line max-md:w-16 max-md:h-16" />}

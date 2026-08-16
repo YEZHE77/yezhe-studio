@@ -168,25 +168,30 @@ page { background: #ffffff; }
   background: rgba(44, 44, 44, 0.82); border-radius: 24rpx; color: #fff;
 }
 .footer-title {
-  text-align: center; font-size: 32rpx; font-weight: 600; letter-spacing: 4rpx; margin-bottom: 30rpx;
+  text-align: center; font-size: 32rpx; font-weight: 400; letter-spacing: 4rpx; margin-bottom: 30rpx;
+}
+/* 左侧 3 行信息容器：右侧预留悬浮按钮宽度，避免信息行被遮挡 */
+.footer-lines {
+  display: flex; flex-direction: column; padding-right: 120rpx;
 }
 .footer-line {
   display: flex; align-items: center; margin-bottom: 18rpx; font-size: 26rpx;
 }
 .footer-label { width: 80rpx; color: #aaa; }
-.footer-value { flex: 1; color: #fff; }
-.footer-action {
-  margin-left: 16rpx; color: var(--brand-green); font-size: 24rpx;
-}
+.footer-value { flex: 1; color: #fff; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .footer-copy {
-  margin-top: 30rpx; text-align: center; font-size: 22rpx; color: #777;
+  margin-top: 24rpx; text-align: center; font-size: 22rpx; color: #777;
 }
-/* 添加客服：页脚文字按钮（胶囊样式，display:table 实现收缩居中，兼容各基础库版本） */
+/* 添加客服：胶囊按钮，外层 wrap 居中（兼容老基础库 display:table 兜底） */
+.footer-service-wrap {
+  display: flex; justify-content: center;
+  margin-top: 30rpx;
+}
 .footer-service {
   display: table;
-  margin: 30rpx auto 0;
+  margin: 0 auto;
   font-size: 26rpx; color: var(--brand-green);
-  padding: 10rpx 32rpx;
+  padding: 10rpx 36rpx;
   border: 1rpx solid var(--brand-green);
   border-radius: 999rpx;
 }
@@ -232,7 +237,7 @@ page { background: #ffffff; }
 }
 .svc-title {
   margin-top: 40rpx; margin-bottom: 48rpx;
-  text-align: center; font-size: 40rpx; font-weight: bold; color: #222222;
+  text-align: center; font-size: 40rpx; font-weight: 400; color: #222222;
 }
 /* 二维码容器：白色圆角卡片，宽度占弹窗内宽 88%；图片 widthFix 不裁切不拉伸 */
 .svc-qr-wrap {
@@ -309,5 +314,12 @@ page { background: #ffffff; }
 }
 .fab-white .fab-label { color: #666666; }
 .fab-primary .fab-label { color: #ffffff; }
+/* 复制：青绿文字按钮，无圆底，与 H5 一致 */
+.fab-copy {
+  background: transparent; color: var(--brand-green); font-size: 24rpx;
+  padding: 0 8rpx; line-height: 112rpx; text-align: center;
+  box-shadow: none;
+}
+.fab-copy::after { border: none; }
 /* 点击轻微缩放反馈 */
 .fab-hover { transform: scale(0.95); }
