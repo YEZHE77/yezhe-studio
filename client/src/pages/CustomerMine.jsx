@@ -23,7 +23,7 @@ const MENU = [
   { key: 'evaluates', label: '我的评价', tag: 'evaluates' },
   { key: 'schedules', label: '拍摄提醒订阅', tag: 'schedules' },
   { key: 'contact', label: '联系摄影师（复制微信号）', tag: 'contact' },
-  { key: 'about', label: '关于叶哲 Studio', tag: 'about' }
+  { key: 'about', label: '关于叶哲 STUDIO', tag: 'about' }
 ];
 // ⚠️ 注意：不包含「商家管理后台」——C 端客户完全隐藏，仅 admin 后台可见。
 
@@ -49,7 +49,7 @@ function Sheet({ title, onClose, children }) {
 
 export default function CustomerMine() {
   const nav = useNavigate();
-  const [studio, setStudio] = useState({ name: '叶哲 Studio', logo: '', contact: {} });
+  const [studio, setStudio] = useState({ name: '叶哲 STUDIO', logo: '', contact: {} });
   const [auth, setAuth] = useState(null);        // null=校验中 / {logged_in:false} / {logged_in:true,phone}
   const [biz, setBiz] = useState({ orders: [], appointments: [], schedules: [] });
   const [loginOpen, setLoginOpen] = useState(false);
@@ -151,7 +151,7 @@ export default function CustomerMine() {
           )}
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: 16, color: logged ? TEXT : SUB, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {logged ? (auth.phone || '已登录') : (studio.name || '叶哲 Studio')}
+              {logged ? (auth.phone || '已登录') : (studio.name || '叶哲 STUDIO')}
             </div>
             <div style={{ fontSize: 12, color: FAINT, marginTop: 4 }}>
               {logged ? '已登录' : '未登录 · 点击头像登录'}
@@ -261,7 +261,7 @@ export default function CustomerMine() {
         </Sheet>
       )}
       {sheet === 'about' && (
-        <Sheet title="关于叶哲 Studio" onClose={() => setSheet('')}>
+        <Sheet title="关于叶哲 STUDIO" onClose={() => setSheet('')}>
           <div style={{ fontSize: 13, color: SUB, lineHeight: 1.8, whiteSpace: 'pre-wrap' }}>{studio.intro || '叶哲 STUDIO — 用影像记录时光。'}</div>
         </Sheet>
       )}

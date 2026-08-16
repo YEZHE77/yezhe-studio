@@ -13,7 +13,7 @@ function loadImg(src) {
 }
 
 export default function BusinessCard() {
-  const [form, setForm] = useState({ name: '叶哲 Studio', intro: '海口婚礼 / 人像摄影', logo: '', phone: '', wechat: '', address: '' });
+  const [form, setForm] = useState({ name: '叶哲 STUDIO', intro: '海口婚礼 / 人像摄影', logo: '', phone: '', wechat: '', address: '' });
   const [qr, setQr] = useState(null); // dataURL
   const qrRef = useRef();
   const canvasRef = useRef();
@@ -22,7 +22,7 @@ export default function BusinessCard() {
     http.get('/api/settings/studio').then((r) => {
       const d = r.data || {};
       setForm({
-        name: d.name || '叶哲 Studio',
+        name: d.name || '叶哲 STUDIO',
         intro: d.slogan || d.intro || '海口婚礼 / 人像摄影',
         logo: d.logo || '',
         phone: (d.contact && d.contact.phone) || '',

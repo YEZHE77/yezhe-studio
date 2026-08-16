@@ -27,7 +27,7 @@ export default function Login() {
       <form onSubmit={submit} className="w-full max-w-[320px] mx-4 bg-panel border border-line rounded-xl2 p-6 sm:p-7">
         <div className="flex items-center gap-3 mb-6">
           <div className="w-9 h-9 rounded-lg bg-brand" />
-          <div className="text-lg text-white">叶哲 Studio</div>
+          <div className="text-lg text-white">叶哲 STUDIO</div>
         </div>
         <div className="text-sm text-muted mb-5">摄影工作室全链路管理系统</div>
         <input className="w-full mb-3 px-3 py-2 rounded bg-panel2 border border-line text-white outline-none"

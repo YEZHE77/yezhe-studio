@@ -98,7 +98,7 @@ function SidebarContent({ mobile = false }) {
         </button>
         <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={onPickAvatar} />
         <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 1, minWidth: 0 }}>
-          <span style={{ fontSize: 14, fontWeight: 400, color: '#111111', lineHeight: 1.3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>叶哲 Studio</span>
+          <span style={{ fontSize: 14, fontWeight: 400, color: '#111111', lineHeight: 1.3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>叶哲 STUDIO</span>
           <span style={{ fontSize: 11, color: '#999999', lineHeight: 1.3, whiteSpace: 'nowrap' }}>商家管理后台</span>
         </div>
       </div>

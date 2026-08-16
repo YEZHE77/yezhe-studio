@@ -25,7 +25,7 @@ const QUICK = [
 const INFO_CARDS = [
   { title: '我的小程序', desc: '一键更换模板，即时生效', to: '/mini-program-preview' },
   { title: '我的网站', desc: '支持独立域名，全网搜索', to: '/settings' },
-  { title: '叶哲 Studio × 公告', desc: '公告及功能更新' }
+  { title: '叶哲 STUDIO × 公告', desc: '公告及功能更新' }
 ];
 
 // 品牌管理（对外展示 / 获客）
@@ -146,7 +146,7 @@ export default function Dashboard() {
       <div className="flex flex-col lg:flex-row lg:items-start gap-6 lg:gap-[61px]">
         <div className="flex-1 min-w-0">
           <div className="pl-4 lg:pl-[90px]">
-            <div className="text-[20px]" style={{ color: '#222222', lineHeight: 1.4 }}>叶哲 Studio</div>
+            <div className="text-[20px]" style={{ color: '#222222', lineHeight: 1.4 }}>叶哲 STUDIO</div>
             <div className="flex flex-wrap gap-[10px] lg:gap-[15px] mt-6">
               {QUICK.map((q) => (
                 <button

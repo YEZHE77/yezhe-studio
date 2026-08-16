@@ -139,11 +139,11 @@ export default function My() {
           {studio.logo ? (
             <img src={img(studio.logo)} alt={studio.name || '商家头像'} className="h-full w-full object-cover" />
           ) : (
-            <span className="text-xl">{(studio.name || '叶哲 Studio')[0]}</span>
+            <span className="text-xl">{(studio.name || '叶哲 STUDIO')[0]}</span>
           )}
         </div>
         <div className="min-w-0 flex-1">
-          <div className="truncate text-base">{customer ? (maskPhone(customer.phone) || '已登录') : (studio.name || '叶哲 Studio')}</div>
+          <div className="truncate text-base">{customer ? (maskPhone(customer.phone) || '已登录') : (studio.name || '叶哲 STUDIO')}</div>
           <div className="mt-1 flex items-center gap-2 text-xs" style={{ color: 'rgba(255,255,255,0.5)' }}>
             {!authChecked ? (
               <span>…</span>
@@ -185,10 +185,10 @@ export default function My() {
         </div>
       </div>
 
-      {/* 关于叶哲 Studio */}
+      {/* 关于叶哲 STUDIO */}
       <div className="px-4 pb-10 pt-6">
         <div className="rounded-2xl bg-white p-5">
-          <div className="mb-3 text-sm" style={{ color: TEAL }}>关于叶哲 Studio ›</div>
+          <div className="mb-3 text-sm" style={{ color: TEAL }}>关于叶哲 STUDIO ›</div>
           <div className="whitespace-pre-line text-xs leading-relaxed" style={{ color: '#666' }}>{studio.intro || '叶哲 STUDIO — 用影像记录时光。'}</div>
         </div>
       </div>

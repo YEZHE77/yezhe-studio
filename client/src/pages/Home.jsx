@@ -349,7 +349,7 @@ export default function Home() {
             </button>
           </div>
         </div>
-        <div style={{ textAlign: 'center', fontSize: 12, color: '#888', marginTop: 16 }}>{studio.slogan || '叶哲 Studio · 记录婚礼，也记录爱发生的样子'}</div>
+        <div style={{ textAlign: 'center', fontSize: 12, color: '#888', marginTop: 16 }}>{studio.slogan || '叶哲 STUDIO · 记录婚礼，也记录爱发生的样子'}</div>
       </div>
 
       {/* 提示 / 弹层 */}

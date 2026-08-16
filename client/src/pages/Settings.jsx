@@ -3,7 +3,7 @@ import http, { img, compressImage, uploadImage, downloadBackup } from '../api.js
 import ImageCropper from '../components/ImageCropper.jsx';
 
 const EMPTY = {
-  name: '叶哲 Studio', logo: '', cover: '', heroImages: [],
+  name: '叶哲 STUDIO', logo: '', cover: '', heroImages: [],
   // 幻灯片背景音乐（BGM）HTTPS 地址；留空则用前端内置打包的本地 MP3（当前默认《The Way You Look Tonight - Tony Bennett》）
   bgmUrl: '',
   // 客服微信二维码：小程序首页「添加客服」弹窗展示，客户长按保存添加；不裁剪、保持完整

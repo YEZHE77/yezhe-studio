@@ -76,7 +76,7 @@ function Placeholder({ title, hint }) {
 
 function MobileSite() {
   const { user } = useAuth();
-  const name = user?.studioName || user?.name || user?.username || '叶哲 Studio';
+  const name = user?.studioName || user?.name || user?.username || '叶哲 STUDIO';
   return (
     <div style={{ minHeight: '100vh', background: '#F8F8F8', padding: 12 }}>
       <div style={{ background: 'linear-gradient(135deg,#60C4AA,#4BB399)', borderRadius: 12, padding: 20, color: '#fff' }}>
