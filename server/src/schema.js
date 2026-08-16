@@ -849,7 +849,8 @@ export async function initSchema() {
     ['schedule_id', 'INTEGER'],
     ['order_id', 'INTEGER'],
     ['handled_at', 'TEXT'],
-    ['spec_id', 'INTEGER'] // 客户预约时选中的套系规格（多规格场景下定位具体版本）
+    ['spec_id', 'INTEGER'], // 客户预约时选中的套系规格（多规格场景下定位具体版本）
+    ['style_req', 'TEXT'] // 风格需求（C 端预约表单填写，如 户外/室内/纪实/胶片）
   ];
   for (const [col, def] of APPOINTMENT_NEW_COLUMNS) await ensureColumn('appointments', col, def);
 

@@ -43,18 +43,27 @@ router.post('/appointment', async (req, res) => {
     }
 
     // 写入预约
+    const styleReq = String(b.style_req || '').trim();
     const id = await insert(
-      `INSERT INTO appointments (openid, name, phone, package_id, hope_date, remark, status, period, source, created_at)
-       VALUES (?,?,?,?,?,?,?,?,?,?)`,
-      [openid, name, phone, b.package_id || null, b.hope_date || '', b.remark || '', 'pending', period, 'h5', nowISO()]
+      `INSERT INTO appointments (openid, name, phone, package_id, hope_date, remark, status, period, source, style_req, created_at)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
+      [openid, name, phone, b.package_id || null, b.hope_date || '', b.remark || '', 'pending', period, 'h5', styleReq, nowISO()]
     );
 
     // 消息中心：客资新增 → customer_consult
     await emitMessage({
       message_type: 'customer_consult', business_event: 'customer_consult',
-      title: '新顾客咨询', content: `${name}（${phone}）提交了预约${b.hope_date ? '，期望日期 ' + b.hope_date : ''}`,
+      title: '新顾客咨询', content: `${name}（${phone}）提交了预约${b.hope_date ? '，期望日期 ' + b.hope_date : ''}${styleReq ? '，风格 ' + styleReq : ''}`,
       rel_id: openid, rel_model: 'customer'
     });
+
+    // 待办：新预约待确认（order_id=0 表示尚未转订单的预约待办；biz_key 关联预约 id 去重）
+    try {
+      await insert(
+        'INSERT INTO todo_items (order_id, todo_type, title, content, status, biz_key) VALUES (?,?,?,?,?,?)',
+        [0, 'appointment', '新预约待确认', `${name}（${phone}）提交预约${b.hope_date ? '，期望日期 ' + b.hope_date : ''}${styleReq ? '，风格 ' + styleReq : ''}${b.remark ? '，备注：' + b.remark : ''}`, 'pending', `appointment_${id}`]
+      );
+    } catch (e) { console.error('[public] 生成预约待办失败：', e.message); }
 
     res.json({ ok: true, message: '提交完成，请等待摄影师确认' });
   } catch (e) { res.status(500).json({ error: e.message }); }

@@ -14,7 +14,9 @@ const LINE = '#F0F0F0';
 
 // 横向卡片 Tab 定义（key 对应 todo_type，accent 为底部色条颜色）
 // 仅保留订单详情状态节点对应的 5 个阶段（regen_contract 重新生成合同 / order_request 客户申请 属事件待办，非状态节点，已删除）
+// 「预约」为预约提交待确认（order_id=0，商家确认/拒绝后归档），放在最前提醒商家处理
 const TAB_DEFS = [
+  { key: 'appointment', label: '预约', accent: '#FF7A45' },
   { key: 'deposit', label: '已付定金', accent: '#FE2C55' },
   { key: 'waiting_shoot', label: '等待拍摄', accent: GREEN },
   { key: 'selecting', label: '待选片', accent: '#2DB7F5' },
@@ -88,12 +90,14 @@ export default function Todo() {
   }, [activeKey]);
 
   const renderRow = (t) => {
-    const name = (t.customer_name || t.groom_name || '客户').toString();
+    const isAppointment = t.todo_type === 'appointment';
+    const name = isAppointment ? (t.title || '新预约') : (t.customer_name || t.groom_name || '客户').toString();
     const first = avatarText(name);
+    const rowNav = isAppointment ? '/appointments' : (t.order_id ? '/orders/' + t.order_id : null);
     return (
       <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 14px', borderBottom: '1px solid ' + LINE, background: '#fff' }}>
         <div style={{ width: 36, height: 36, borderRadius: '50%', background: avatarColor(name), color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 500, flexShrink: 0 }}>{first}</div>
-        <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 4, cursor: 'pointer' }} onClick={() => t.order_id && nav('/orders/' + t.order_id)}>
+        <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 4, cursor: rowNav ? 'pointer' : 'default' }} onClick={() => rowNav && nav(rowNav)}>
           <span style={{ fontSize: 14, color: TEXT, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</span>
           <div style={{ fontSize: 12, color: MUTED, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.content || t.title || ''}</div>
         </div>

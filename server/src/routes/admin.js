@@ -141,6 +141,8 @@ async function doConfirm(req, res) {
       "UPDATE appointments SET status = 'confirmed', schedule_id = ?, order_id = ?, period = ?, handled_at = ? WHERE id = ?",
       [scheduleId, orderId, period, nowISO(), a.id]
     );
+    // 归档该预约的「待确认」待办（预约已转订单处理完毕）
+    try { await run("UPDATE todo_items SET status='done', done_at=? WHERE biz_key=? AND status='pending'", [nowISO(), `appointment_${a.id}`]); } catch (e) { console.error('[admin] 归档预约待办失败', e.message); }
     res.json({ ok: true, orderId, order_no, scheduleId });
   } catch (e) { res.status(500).json({ error: e.message }); }
 }
@@ -159,6 +161,8 @@ router.post('/appointments/:id/reject', async (req, res) => {
     const reason = (req.body && req.body.reason) || '';
     await run("UPDATE appointments SET status = 'rejected', reject_reason = ?, handled_at = ? WHERE id = ?",
       [reason, nowISO(), a.id]);
+    // 归档该预约的「待确认」待办
+    try { await run("UPDATE todo_items SET status='done', done_at=? WHERE biz_key=? AND status='pending'", [nowISO(), `appointment_${a.id}`]); } catch (e) { console.error('[admin] 归档预约待办失败', e.message); }
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
