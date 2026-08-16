@@ -10,12 +10,13 @@ import { authRequired } from '../auth.js';
 
 const router = Router();
 
-// 业务类型枚举（与架构文档一致）
+// 业务类型枚举（与架构文档一致；customer_consult 为 PC 端消息中心顾客咨询）
 export const BIZ_TYPE = {
   SELECT_PHOTO: 'select_photo',
   SCHEDULE: 'schedule',
   ORDER: 'order',
-  SYSTEM: 'system'
+  SYSTEM: 'system',
+  CUSTOMER_CONSULT: 'customer_consult'
 };
 
 // 取所有 B 端员工 uid（admin/photographer/finance/selector）
@@ -45,17 +46,22 @@ export async function emitBizToStaff(opts) {
   return emitBizMessage({ ...opts, user_id: null });
 }
 
-// 消息列表（分页 + read_status 筛选：all / unread / read）
+// 消息列表（分页 + read_status 筛选：all / unread / read；PC 端附加 biz_type 筛选 + archived 归档开关）
 router.get('/list', authRequired, async (req, res) => {
   try {
     const uid = req.user && req.user.uid;
     const page = Math.max(1, parseInt(req.query.page, 10) || 1);
     const pageSize = Math.min(100, Math.max(1, parseInt(req.query.pageSize, 10) || 20));
     const readStatus = (req.query.read_status || 'all').toString();
+    const bizType = (req.query.biz_type || '').toString();
+    const archived = (req.query.archived || '').toString();
     const where = ['user_id = ?'];
     const params = [uid];
     if (readStatus === 'unread') where.push('is_read = 0');
     else if (readStatus === 'read') where.push('is_read = 1');
+    if (bizType) { where.push('biz_type = ?'); params.push(bizType); }
+    if (archived === '1') where.push('is_archived = 1');
+    else where.push('is_archived = 0');
     const total = (await get(`SELECT COUNT(*) AS c FROM biz_message WHERE ${where.join(' AND ')}`, params)).c;
     const rows = await query(
       `SELECT * FROM biz_message WHERE ${where.join(' AND ')} ORDER BY id DESC LIMIT ? OFFSET ?`,
@@ -80,6 +86,18 @@ router.put('/read-all', authRequired, async (req, res) => {
     const uid = req.user && req.user.uid;
     await run('UPDATE biz_message SET is_read = 1 WHERE user_id = ? AND is_read = 0', [uid]);
     res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// 归档 / 取消归档（PC 端消息中心）
+router.post('/:messageId/archive', authRequired, async (req, res) => {
+  try {
+    const uid = req.user && req.user.uid;
+    const m = await get('SELECT is_archived FROM biz_message WHERE id = ? AND user_id = ?', [req.params.messageId, uid]);
+    if (!m) return res.status(404).json({ error: '消息不存在' });
+    const next = m.is_archived ? 0 : 1;
+    await run('UPDATE biz_message SET is_archived = ? WHERE id = ?', [next, req.params.messageId]);
+    res.json({ ok: true, archived: !!next });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -129,6 +147,11 @@ router.get('/:messageId', authRequired, async (req, res) => {
         // system 无业务实体；biz_exist=true，biz_extra 携带 filename 决定是否显示下载按钮
         result.biz_exist = true;
         result.biz_extra = extra;
+        break;
+      }
+      case 'customer_consult': {
+        // 顾客咨询：跳转客户列表，无单实体删除风险，恒可跳
+        result.biz_exist = true;
         break;
       }
       default:

@@ -635,6 +635,8 @@ export async function initSchema() {
   // 移动端业务消息表（biz_message）
   for (const s of (dialect === 'pg' ? PG_BIZ_MESSAGE : SQLITE_BIZ_MESSAGE).split(';').map((x) => x.trim()).filter(Boolean)) await run(s);
   await ensureColumn('biz_message', 'biz_extra', 'TEXT');
+  // PC 端消息中心归档（PC/H5 共用一套 biz_message 数据，归档仅在 PC 端使用）
+  await ensureColumn('biz_message', 'is_archived', 'INTEGER NOT NULL DEFAULT 0');
 
   // 套系对外分享表（photo_package）
   for (const s of (dialect === 'pg' ? PG_PHOTO_PACKAGE : SQLITE_PHOTO_PACKAGE).split(';').map((x) => x.trim()).filter(Boolean)) await run(s);

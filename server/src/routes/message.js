@@ -9,10 +9,21 @@ const router = Router();
 const DEDUP_WINDOW_MS = 5 * 60 * 1000;
 
 // business_event → biz_message.biz_type 映射（emitMessage 双写移动端消息中心时用）
-// 仅 order_status 双写（order 类型，biz_id=order_id）；select_* 由 selection.js 手动 emitBizToStaff 传 task_id
+// select_* 由 selection.js 手动 emitBizToStaff（biz_id=task_id）避免重复，这里不映射。
+// customer_consult 的 business_event 是动态的（order_request_<id>），走 message_type 兜底映射。
 const BIZ_TYPE_BY_EVENT = {
+  order_created: 'order',
   order_status: 'order',
-  order_created: 'order'
+  agreement_signed: 'order',
+  contract_generated: 'order',
+  contract_updated: 'order',
+  package_view: 'system',
+  contract_invalidated: 'system'
+};
+// message_type → biz_type 兜底（customer_consult 动态 event、todo_alert 归为 system）
+const BIZ_TYPE_BY_MSG_TYPE = {
+  customer_consult: 'customer_consult',
+  todo_alert: 'system'
 };
 
 // 取所有 B 端员工 uid（admin/photographer/finance），消息接收人
@@ -38,8 +49,8 @@ export async function emitMessage({ receiver_uid = null, message_type, business_
         'INSERT INTO system_message (receiver_uid, message_type, business_event, title, content, rel_id, rel_model, can_wechat_push) VALUES (?,?,?,?,?,?,?,?)',
         [uid, message_type, business_event || null, title || '', content || '', rel_id != null ? String(rel_id) : null, rel_model || null, can_wechat_push ? 1 : 0]
       );
-      // 双写 biz_message（移动端消息中心）：仅业务事件（select_*/order_status）双写，其余（consult/todo/system）不写，避免误判下载按钮
-      const bizType = BIZ_TYPE_BY_EVENT[business_event || ''];
+      // 双写 biz_message（移动端消息中心，PC 端也已改读 biz_message）：按 business_event 精确映射，message_type 兜底
+      const bizType = BIZ_TYPE_BY_EVENT[business_event || ''] || BIZ_TYPE_BY_MSG_TYPE[message_type || ''];
       if (bizType && rel_id != null && rel_id !== '') {
         try {
           await insert(
