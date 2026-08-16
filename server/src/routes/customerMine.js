@@ -86,8 +86,8 @@ function buildOrder(o) {
     shoot_date: o.date_tbd ? '日期待定' : (o.shoot_date || '未排期'),
     package_name: pickText(pkg.name, o.package_name),
     status: o.status || '',
-    status_label: STATUS_LABEL[o.status] || o.status || '进行中',
-    remark: pickText(o.appointment_remark, o.external_remark, o.remark)
+    status_label: STATUS_LABEL[o.status] || o.status || '进行中'
+    // 安全：不返回备注(remark/appointment_remark/external_remark)与订单变更记录(logs)，C 端客户不可见
   };
 }
 
