@@ -37,13 +37,11 @@ const BRAND_CARDS = [
   { icon: 'marketing', title: '生成名片', desc: '朋友圈名片海报，更好的传播方式', btn: 'APP端使用', to: '/card' }
 ];
 
-// 日常管理（内部运营）
+// 日常管理（对外内容 + 选片，3 个固定入口）
 const OPS_CARDS = [
-  { icon: 'calendar', title: '档期排期', desc: '拍摄档期管理与冲突拦截', to: '/schedule' },
-  { icon: 'order', title: '订单中心', desc: '订单全生命周期与收款流水', to: '/orders' },
-  { icon: 'select', title: '在线选片', desc: '客户选片进度双向同步', to: '/orders?status=todo_selecting' },
-  { icon: 'finance', title: '财务管理', desc: '营收汇总 / 月度对账报表', to: '/finance' },
-  { icon: 'dashboard', title: '数据看板', desc: '经营概览与待办分布', to: '/datacharts' }
+  { icon: 'photo', title: '作品', desc: '作品管理与分类维护', to: '/works' },
+  { icon: 'package', title: '套系', desc: '对外报价套系与价格管理', to: '/photo-packages' },
+  { icon: 'select', title: '在线选片', desc: '客户选片进度双向同步', to: '/orders?status=todo_selecting' }
 ];
 
 // 大卡片（参考图：高 259、1px #E6E9EF 边框、顶部 30px 灰色图标、标题 15px、描述 2 行、底部蓝色圆角按钮）
@@ -262,7 +260,7 @@ export default function Dashboard() {
         </div>
         <div style={{ height: 1, background: '#E6E9EF', margin: '24px 0 16px' }} />
         <div className="text-[16px] mb-6" style={{ color: '#333333', fontWeight: 400 }}>日常管理</div>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-[10px]">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-[10px]">
           {OPS_CARDS.map((c) => <BigCard key={c.title} {...c} />)}
         </div>
       </div>
