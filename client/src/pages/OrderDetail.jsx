@@ -2607,9 +2607,15 @@ export default function OrderDetail() {
         <thead className="print-page-header" style={{ visibility: 'hidden', display: 'table-header-group' }}>
           <tr>
             <td style={{ width: '100%', padding: '4mm 15mm 3mm', borderBottom: '1px solid #555', background: '#fff' }}>
-              <div style={{ position: 'relative', fontSize: 12, color: '#555', letterSpacing: 1 }}>
-                <span style={{ fontSize: 11, color: '#888' }}>叶哲 STUDIO · 摄影工作室</span>
-                <span style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)', fontWeight: 500, fontSize: 14, color: '#333' }}>拍摄服务合同</span>
+              <div style={{ position: 'relative', minHeight: 18, fontSize: 12, color: '#555' }}>
+                {/* 居中：标题 */}
+                <span style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)', top: 0, fontWeight: 500, fontSize: 14, color: '#333', letterSpacing: 1, whiteSpace: 'nowrap' }}>拍摄服务合同</span>
+                {/* 最右：订单信息（3 行右对齐） */}
+                <div style={{ float: 'right', textAlign: 'right', lineHeight: 1.5, fontSize: 11, color: '#666' }}>
+                  <div>订单编号：{detail.order_no}</div>
+                  <div>创建时间：{detail.created_at ? new Date(detail.created_at).toLocaleString('zh-CN') : '—'}</div>
+                  <div>订单状态：{statusText || '—'}</div>
+                </div>
               </div>
             </td>
           </tr>
@@ -2618,13 +2624,7 @@ export default function OrderDetail() {
           <tr>
             <td>
               <div style={{ maxWidth: 700, margin: '0 auto', fontFamily: 'SimSun, STSong, serif', fontSize: 14, lineHeight: 1.8, color: '#222' }}>
-          {/* 订单信息（标题"拍摄服务合同"已挪到表头每页重复，这里只保留订单号/时间/状态） */}
-          <div style={{ textAlign: 'center', borderBottom: '2px solid #000', paddingBottom: 16, marginBottom: 12 }}>
-            <div style={{ fontSize: 13, lineHeight: 1.6, color: '#555' }}>订单编号：{detail.order_no}</div>
-            <div style={{ fontSize: 13, lineHeight: 1.6, marginTop: 4, color: '#555' }}>创建时间：{detail.created_at ? new Date(detail.created_at).toLocaleString('zh-CN') : '—'}　·　订单状态：{statusText || '—'}</div>
-          </div>
-
-          {/* 客户信息 */}
+          {/* 客户信息（订单号/创建时间/状态已挪到表头右侧） */}
           <div style={{ marginBottom: 12 }}>
             <div style={{ fontSize: 16, fontWeight: 400, borderBottom: '1px solid #ccc', paddingBottom: 6, marginBottom: 10 }}>客户信息</div>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14, lineHeight: 1.8 }}>
