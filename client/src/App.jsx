@@ -50,6 +50,7 @@ const SelectionAdmin = React.lazy(() => import('./pages/SelectionAdmin.jsx'));
 const ShareAlbum = React.lazy(() => import('./pages/ShareAlbum.jsx'));
 const SelectionClient = React.lazy(() => import('./pages/SelectionClient.jsx'));
 const CustomerSelectPhoto = React.lazy(() => import('./pages/CustomerSelectPhoto.jsx'));
+const WorksAlbumEdit = React.lazy(() => import('./pages/WorksAlbumEdit.jsx'));
 const CapacityManagement = React.lazy(() => import('./pages/CapacityManagement.jsx'));
 const Channels = React.lazy(() => import('./pages/Channels.jsx'));
 const Team = React.lazy(() => import('./pages/Team.jsx'));
@@ -100,6 +101,7 @@ function AppShell() {
                 <Route path="/works" element={<Works />} />
                 <Route path="/categories" element={<Categories />} />
                 <Route path="/works/:id/edit" element={<WorkDetail />} />
+                <Route path="/works/:id/album-edit" element={<WorksAlbumEdit />} />
                 <Route path="/works/new" element={<WorkDetail />} />
                 <Route path="/works/:id" element={<WorkPreview />} />
                 <Route path="/packages" element={<Packages />} />
