@@ -20,7 +20,6 @@ export default function Home() {
   const [categories, setCategories] = useState([]);
   const [activeCat, setActiveCat] = useState(0);
   const [works, setWorks] = useState([]);
-  const [pkgs, setPkgs] = useState([]);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [loading, setLoading] = useState(false);
@@ -98,11 +97,7 @@ export default function Home() {
       if (!mounted) return;
       setCategories(r.data || []);
     }).catch(() => {});
-    const fetchPkgs = http.get('/api/photo-package/public-list').then((r) => {
-      if (!mounted) return;
-      setPkgs((r.data && r.data.list) || []);
-    }).catch(() => {});
-    Promise.all([fetchStudio, fetchCats, fetchPkgs, loadWorksAsync(1, 0, true)]).finally(() => {
+    Promise.all([fetchStudio, fetchCats, loadWorksAsync(1, 0, true)]).finally(() => {
       if (mounted) setSyncing(false);
     });
     return () => { mounted = false; };
@@ -303,56 +298,6 @@ export default function Home() {
           <button onClick={loadMore} className="mx-auto mt-8 block h-[44px] w-[200px] rounded-lg border border-gray-300 text-sm text-gray-500">MORE</button>
         )}
         {works.length > 0 && !hasMore && <div className="mt-8 text-center text-sm text-gray-300">— 没有更多了 —</div>}
-      </div>
-
-      {/* 套系 / 价目（公开套系，价目透明） */}
-      <div id="package-section" className="mt-[70px] px-5 sm:px-8">
-        <div className="text-center text-2xl tracking-[4px]">套系价目</div>
-        <div className="mt-1 text-center text-xs tracking-[2px] text-gray-400">Package &amp; Pricing</div>
-        {pkgs.length > 0 ? (
-          <div className="mt-6 flex flex-col gap-4">
-            {pkgs.map((p) => (
-              <div key={p.id} onClick={() => nav('/package?token=' + (p.share_token || ''))} className="rounded-2xl bg-white p-5 shadow-sm" style={{ border: '1px solid #f0f0f0' }}>
-                <div className="flex items-start justify-between gap-4">
-                  <div className="min-w-0">
-                    <div className="truncate text-base text-[#333]">{p.package_name}</div>
-                    {p.package_desc && <div className="mt-1 line-clamp-2 text-xs text-gray-400">{p.package_desc}</div>}
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      {p.shoot_duration && <span className="rounded bg-gray-50 px-2 py-0.5 text-xs text-gray-500">{p.shoot_duration}</span>}
-                      {p.photo_total > 0 && <span className="rounded bg-gray-50 px-2 py-0.5 text-xs text-gray-500">{p.photo_total} 张</span>}
-                      {p.retouch_count > 0 && <span className="rounded bg-gray-50 px-2 py-0.5 text-xs text-gray-500">{p.retouch_count} 精修</span>}
-                    </div>
-                  </div>
-                  <div className="shrink-0 text-right">
-                    <div className="text-lg" style={{ color: '#2c2c2c' }}>¥{Number(p.price).toLocaleString()}</div>
-                    <div className="mt-1 text-xs" style={{ color: 'var(--brand-green)' }}>查看详情 ›</div>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="mt-6 py-10 text-center text-sm text-gray-400">套系价目整理中，敬请期待</div>
-        )}
-      </div>
-
-      {/* 常见问题 */}
-      <div id="faq-section" className="mt-[70px] px-5 sm:px-8">
-        <div className="text-center text-2xl tracking-[4px]">常见问题</div>
-        <div className="mt-1 text-center text-xs tracking-[2px] text-gray-400">FAQ</div>
-        <div className="mt-6 flex flex-col gap-3">
-          {[
-            { q: '怎么预约拍摄档期？', a: '在本页下方点击「预约」填写表单提交，摄影师确认后与您联系锁定档期。' },
-            { q: '拍摄多久能拿到成片？', a: '底片通常在拍摄后 1-7 天内交付，精修片按套系约定时间交付。' },
-            { q: '可以自选精修片吗？', a: '可以，自选精修片请提前告知摄影师；如自选则不再赠送婚礼预告片服务。' },
-            { q: '海口市区外拍摄怎么收费？', a: '市区外拍摄需承担摄影师的住宿费及路费（实报实销）。' }
-          ].map((f, i) => (
-            <div key={i} className="rounded-2xl bg-white p-4" style={{ border: '1px solid #f0f0f0' }}>
-              <div className="text-sm text-[#333]">{f.q}</div>
-              <div className="mt-1.5 text-xs leading-relaxed text-gray-400">{f.a}</div>
-            </div>
-          ))}
-        </div>
       </div>
 
       {/* 底部联系卡片：对齐小程序样式 — 左侧信息+添加客服 / 右侧纵向三按钮 / 底部 slogan */}
