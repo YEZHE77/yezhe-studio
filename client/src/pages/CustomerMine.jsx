@@ -122,13 +122,11 @@ export default function CustomerMine() {
   };
 
   // 查看订单详情（只读；接口不返回备注与变更记录）
-  const openOrderDetail = async (id) => {
-    try {
-      const r = await customerHttp.get('/api/customer/order-detail', { params: { id } });
-      setOrderDetail(r.data);
-    } catch (e) {
-      flashToast((e.response && e.response.data && e.response.data.error) || '加载失败');
-    }
+  const openOrderDetail = (id) => {
+    setSheet(''); // 先关闭订单列表 sheet，避免与详情 sheet 同时渲染被遮挡
+    customerHttp.get('/api/customer/order-detail', { params: { id } })
+      .then((r) => setOrderDetail(r.data))
+      .catch((e) => flashToast((e.response && e.response.data && e.response.data.error) || '加载失败'));
   };
 
   if (auth === null) {
@@ -280,7 +278,7 @@ export default function CustomerMine() {
 
       {/* 订单详情（只读：不展示备注与订单变更记录） */}
       {orderDetail && (
-        <Sheet title="订单详情" onClose={() => setOrderDetail(null)}>
+        <Sheet title="订单详情" onClose={() => { setOrderDetail(null); setSheet('orders'); }}>
           <div style={{ padding: '13px 0', borderBottom: '1px solid ' + LINE, display: 'flex', justifyContent: 'space-between' }}>
             <span style={{ fontSize: 13, color: SUB }}>订单号</span>
             <span style={{ fontSize: 14, color: TEXT }}>{orderDetail.order_no || '—'}</span>
