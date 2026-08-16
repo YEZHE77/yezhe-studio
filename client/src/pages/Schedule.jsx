@@ -1185,9 +1185,10 @@ function ScheduleDialog({ dlg, personnel, onClose, onSaved }) {
   };
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: '#F7F7F7' }}>
-      {/* 标题栏：左侧返回 + 居中标题 + 右侧保存（与新增订单全屏页一致） */}
-      <div className="relative flex items-center justify-center px-5 py-4 border-b shrink-0" style={{ borderColor: '#EEEEEE', background: '#fff' }}>
+    <div onClick={onClose} className="fixed inset-0 flex items-center justify-center z-50 p-4" style={{ background: 'rgba(0,0,0,0.4)' }}>
+      <div onClick={(e) => e.stopPropagation()} className="w-full max-w-2xl bg-white rounded-lg flex flex-col" style={{ maxHeight: '85vh', overflow: 'hidden' }}>
+      {/* 标题栏：左侧返回 + 居中标题 + 右侧保存 */}
+      <div className="relative flex items-center justify-center px-5 py-4 border-b shrink-0" style={{ borderColor: '#EEEEEE', background: '#fff', borderTopLeftRadius: 8, borderTopRightRadius: 8 }}>
         <button onClick={onClose} aria-label="返回"
           className="absolute left-4 top-1/2 -translate-y-1/2 w-8 h-8 rounded-md flex items-center justify-center"
           style={{ color: '#666666', background: 'none', border: 'none', cursor: 'pointer' }}>
@@ -1275,6 +1276,7 @@ function ScheduleDialog({ dlg, personnel, onClose, onSaved }) {
 
           {localErr && <div style={{ fontSize: 12, color: '#F53F3F', marginTop: 8 }}>{localErr}</div>}
         </div>
+      </div>
     </div>
   );
 }
