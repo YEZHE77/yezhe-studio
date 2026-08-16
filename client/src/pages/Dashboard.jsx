@@ -57,7 +57,7 @@ function BigCard({ icon, title, desc, btn, to, onClick }) {
   return (
     <div
       onClick={go}
-      className="bg-white border cursor-pointer hover:shadow-sm hover:border-brand/30 transition text-center flex flex-col items-center"
+      className="bg-white border cursor-pointer transition-all duration-200 ease-out hover:-translate-y-1 hover:shadow-[0_10px_30px_rgba(31,35,41,0.12)] hover:border-brand/30 text-center flex flex-col items-center"
       style={{ borderRadius: 8, borderColor: '#E6E9EF', padding: '24px 12px', height: 'auto', minHeight: 200 }}
     >
       <div className="flex items-center justify-center" style={{ color: '#666666' }}>
@@ -182,7 +182,7 @@ export default function Dashboard() {
               key={c.title}
               type="button"
               onClick={() => c.to && nav(c.to)}
-              className="w-full text-left bg-white border hover:shadow-sm transition"
+              className="w-full text-left bg-white border transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-[0_8px_20px_rgba(31,35,41,0.10)]"
               style={{ borderRadius: 4, borderColor: '#F0F0F0', padding: '20px 15px 20px 20px', height: 'auto', minHeight: 80 }}
             >
               <div className="text-[14px]" style={{ color: '#333333' }}>{c.title}</div>
