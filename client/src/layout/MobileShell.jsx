@@ -32,6 +32,7 @@ const MobileMessageDetail = React.lazy(() => import('../pages/MobileMessageDetai
 const SelectionAdmin = React.lazy(() => import('../pages/SelectionAdmin.jsx'));
 const CapacityManagement = React.lazy(() => import('../pages/CapacityManagement.jsx'));
 const Channels = React.lazy(() => import('../pages/Channels.jsx'));
+const Team = React.lazy(() => import('../pages/Team.jsx'));
 const Finance = React.lazy(() => import('../pages/Finance.jsx'));
 const MessageCenter = React.lazy(() => import('../pages/MessageCenter.jsx'));
 const PhotoPackages = React.lazy(() => import('../pages/PhotoPackages.jsx'));
@@ -287,6 +288,7 @@ export default function MobileShell() {
                 <Route path="/channels" element={<Channels />} />
                 <Route path="/finance" element={<Finance />} />
                 <Route path="/capacity" element={<CapacityManagement />} />
+                <Route path="/team" element={<Team />} />
                 <Route path="/contract-templates" element={<ContractTemplates />} />
                 <Route path="/contract-audit" element={<ContractAudit />} />
                 <Route path="/consistency-check" element={<ConsistencyCheck />} />

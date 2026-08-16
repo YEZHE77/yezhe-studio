@@ -25,7 +25,7 @@ const ITEMS = [
   { label: '在线选片', to: '/selections', icon: 'select' },
   { label: '合同模板', to: '/contract-templates', icon: 'order' },
   { label: '客户管理', to: '/customers', icon: 'customer', sep: true },
-  { label: '团队管理', icon: 'team' },
+  { label: '团队管理', to: '/team', icon: 'team' },
   { label: '容量管理', to: '/capacity', icon: 'storage', expandable: true },
   { label: '数据统计', to: '/datacharts', icon: 'finance', sep: true }
 ];

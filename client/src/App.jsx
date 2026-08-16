@@ -51,6 +51,7 @@ const ShareAlbum = React.lazy(() => import('./pages/ShareAlbum.jsx'));
 const SelectionClient = React.lazy(() => import('./pages/SelectionClient.jsx'));
 const CapacityManagement = React.lazy(() => import('./pages/CapacityManagement.jsx'));
 const Channels = React.lazy(() => import('./pages/Channels.jsx'));
+const Team = React.lazy(() => import('./pages/Team.jsx'));
 const MessageCenter = React.lazy(() => import('./pages/MessageCenter.jsx'));
 const PhotoPackages = React.lazy(() => import('./pages/PhotoPackages.jsx'));
 const PackagePublic = React.lazy(() => import('./pages/PackagePublic.jsx'));
@@ -127,6 +128,7 @@ function AppShell() {
                 <Route path="/channels" element={<Channels />} />
                 <Route path="/finance" element={<Finance />} />
                 <Route path="/capacity" element={<CapacityManagement />} />
+                <Route path="/team" element={<Team />} />
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
             </Suspense>

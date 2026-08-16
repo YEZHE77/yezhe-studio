@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import http, { img, BASE } from '../api.js';
 import { getRefundText, getRefundParagraphs, normalizePolicy } from '../utils/refundPolicy.js';
+import { getServiceAgreement, toParagraphs } from '../utils/customerAgreement.js';
 
 // ===== C 端客户订单查看页（/customer-order?token=customer_token）=====
 // customer_token 鉴权，与 B 端订单详情同口径：套系详细内容 + 拍摄档期/时间/地点 + 执行人 + 消费明细 + 选片入口
@@ -53,6 +54,12 @@ export default function CustomerOrder() {
   const [reqReason, setReqReason] = useState('');
   const [reqDate, setReqDate] = useState('');
   const [reqBusy, setReqBusy] = useState(false);
+  // 电子服务协议签署
+  const [agreement, setAgreement] = useState({ force_agreement: false, agreement_signed: false, history: [] });
+  const [signOpen, setSignOpen] = useState(false);
+  const [signBusy, setSignBusy] = useState(false);
+  const signCanvasRef = useRef(null);
+  const signDrawingRef = useRef(false);
 
   useEffect(() => {
     if (!token) { setErr('无权限访问'); setLoading(false); return; }
@@ -60,7 +67,46 @@ export default function CustomerOrder() {
       .then((r) => setData(r.data))
       .catch((e) => setErr((e.response && e.response.data && e.response.data.error) || '加载失败'))
       .finally(() => setLoading(false));
+    // 拉取协议签署状态（不阻塞订单数据展示）
+    http.get('/api/public/order/' + token + '/agreement')
+      .then((r) => setAgreement(r.data))
+      .catch(() => {});
   }, [token]);
+
+  // 手写签名 canvas（pointer 事件，兼容触屏 + 鼠标）
+  const signStart = (e) => { signDrawingRef.current = true; const c = signCanvasRef.current; const r = c.getBoundingClientRect(); const ctx = c.getContext('2d'); ctx.beginPath(); ctx.moveTo(e.clientX - r.left, e.clientY - r.top); };
+  const signMove = (e) => {
+    if (!signDrawingRef.current) return;
+    const c = signCanvasRef.current; const r = c.getBoundingClientRect(); const ctx = c.getContext('2d');
+    ctx.lineWidth = 2; ctx.lineCap = 'round'; ctx.strokeStyle = '#1D1D1F';
+    ctx.lineTo(e.clientX - r.left, e.clientY - r.top); ctx.stroke();
+  };
+  const signEnd = () => { signDrawingRef.current = false; };
+  const clearSign = () => { const c = signCanvasRef.current; if (c) c.getContext('2d').clearRect(0, 0, c.width, c.height); };
+
+  const submitSign = async () => {
+    const c = signCanvasRef.current;
+    if (!c) return;
+    const dataUrl = c.toDataURL('image/png');
+    // 检测是否为空签名（canvas 全透明）
+    const ctx = c.getContext('2d');
+    const imgData = ctx.getImageData(0, 0, c.width, c.height).data;
+    let hasInk = false;
+    for (let i = 3; i < imgData.length; i += 4) { if (imgData[i] > 0) { hasInk = true; break; } }
+    if (!hasInk) { alert('请先在签名区手写签名'); return; }
+    setSignBusy(true);
+    try {
+      const content = getServiceAgreement(data && data.package ? data.package.details || {} : {});
+      await http.post('/api/public/order/' + token + '/agreement/sign', {
+        signature: dataUrl, content_snapshot: content,
+        customer_name: data && data.customer_name ? data.customer_name : ''
+      });
+      setSignOpen(false);
+      setAgreement((a) => ({ ...a, agreement_signed: true }));
+      alert('签署成功，感谢确认');
+    } catch (e) { alert((e.response && e.response.data && e.response.data.error) || '签署失败'); }
+    finally { setSignBusy(false); }
+  };
 
   const openReq = (type) => { setReqType(type); setReqReason(''); setReqDate(''); setReqOpen(true); };
   const submitReq = async () => {
@@ -216,6 +262,33 @@ export default function CustomerOrder() {
         </Card>
       )}
 
+      {/* 电子服务协议签署（订单维度强制签署；手写签名绑定订单） */}
+      {(agreement.force_agreement || agreement.agreement_signed) && (
+        <Card style={{ marginTop: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div>
+              <div style={{ fontSize: 13, color: TEXT }}>电子服务协议</div>
+              <div style={{ fontSize: 12, color: agreement.agreement_signed ? BRAND : '#F5A623', marginTop: 4 }}>
+                {agreement.agreement_signed ? '已签署' : '待签署（商家要求签署后交付）'}
+              </div>
+            </div>
+            {!agreement.agreement_signed && (
+              <button type="button" onClick={() => setSignOpen(true)}
+                style={{ padding: '9px 18px', borderRadius: 12, border: 'none', background: BRAND, color: '#fff', fontSize: 13, cursor: 'pointer' }}>
+                去签署
+              </button>
+            )}
+          </div>
+          {agreement.history && agreement.history.length > 0 && (
+            <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid ' + LINE, fontSize: 12, color: SUB }}>
+              {agreement.history.map((h) => (
+                <div key={h.id} style={{ padding: '3px 0' }}>签署记录：{h.customer_name || '客户'} · {fmtTime(h.signed_at)}</div>
+              ))}
+            </div>
+          )}
+        </Card>
+      )}
+
       {/* 选片入口 */}
       {data.selection_url && (
         <button onClick={() => nav(data.selection_url)}
@@ -262,6 +335,31 @@ export default function CustomerOrder() {
                 {reqBusy ? '提交中…' : '提交申请'}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* 电子服务协议签署弹窗（协议内容 + 手写签名） */}
+      {signOpen && (
+        <div onClick={() => setSignOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 120, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ background: '#fff', borderRadius: 16, padding: '20px', width: '100%', maxWidth: 420, maxHeight: '86vh', overflowY: 'auto' }}>
+            <div style={{ fontSize: 16, color: TEXT, marginBottom: 4 }}>签署电子服务协议</div>
+            <div style={{ fontSize: 12, color: FAINT, marginBottom: 12 }}>请阅读下方协议后，在签名区手写签名确认</div>
+            <div style={{ maxHeight: '40vh', overflowY: 'auto', fontSize: 12, color: SUB, lineHeight: 1.7, whiteSpace: 'pre-wrap', background: '#FAFAFA', borderRadius: 10, padding: 12 }}>
+              {(() => { const paras = toParagraphs(getServiceAgreement(data && data.package ? data.package.details || {} : {})); return paras.map((p, i) => <div key={i} style={{ marginBottom: 4 }}>{p}</div>); })()}
+            </div>
+            <div style={{ fontSize: 13, color: SUB, margin: '14px 0 8px' }}>手写签名区</div>
+            <canvas ref={signCanvasRef} width={380} height={140}
+              onPointerDown={signStart} onPointerMove={signMove} onPointerUp={signEnd} onPointerLeave={signEnd}
+              style={{ width: '100%', height: 140, border: '1px solid #E8E8EA', borderRadius: 10, background: '#fff', touchAction: 'none', display: 'block' }} />
+            <div style={{ display: 'flex', gap: 10, marginTop: 14 }}>
+              <button type="button" onClick={clearSign} style={{ flex: 1, padding: '11px 0', borderRadius: 10, background: '#F0F0F2', color: SUB, fontSize: 14, border: 'none' }}>清除</button>
+              <button type="button" onClick={submitSign} disabled={signBusy}
+                style={{ flex: 2, padding: '11px 0', borderRadius: 10, background: BRAND, color: '#fff', fontSize: 14, border: 'none', opacity: signBusy ? 0.6 : 1 }}>
+                {signBusy ? '提交中…' : '确认签署'}
+              </button>
+            </div>
+            <button type="button" onClick={() => setSignOpen(false)} style={{ width: '100%', marginTop: 10, padding: '10px 0', borderRadius: 10, background: 'none', color: SUB, fontSize: 13, border: 'none' }}>取消</button>
           </div>
         </div>
       )}

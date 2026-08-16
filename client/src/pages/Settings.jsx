@@ -248,7 +248,10 @@ export default function Settings() {
 
   async function changePassword() {
     setPwTip('');
-    if (pwNew.length < 6) { setPwTip('新密码至少 6 位'); return; }
+    if (pwNew.length < 8) { setPwTip('新密码至少 8 位'); return; }
+    if (!/[A-Z]/.test(pwNew)) { setPwTip('新密码需包含大写字母'); return; }
+    if (!/[a-z]/.test(pwNew)) { setPwTip('新密码需包含小写字母'); return; }
+    if (!/[0-9]/.test(pwNew)) { setPwTip('新密码需包含数字'); return; }
     if (pwNew !== pwConfirm) { setPwTip('两次输入的新密码不一致'); return; }
     setPwSaving(true);
     try {

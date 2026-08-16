@@ -22,7 +22,11 @@ function sanitize(u) {
 router.get('/', authRequired, requireRole('admin'), async (req, res) => {
   try {
     const rows = await query('SELECT id, username, role, name, permissions, disabled, created_at FROM users ORDER BY id ASC');
-    res.json({ list: rows.map(sanitize), preset_roles: PRESET_ROLES, permission_labels: PERMISSION_LABELS });
+    res.json({
+      list: rows.map(sanitize),
+      me: { id: req.user.uid, username: req.user.username, role: req.user.role, name: req.user.name || '', permissions: req.user.permissions || [], disabled: false },
+      preset_roles: PRESET_ROLES, permission_labels: PERMISSION_LABELS
+    });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
