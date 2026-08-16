@@ -140,7 +140,9 @@ export async function runConsistencyCheck() {
   await safe('档期冲突', checkScheduleConflict);
   await safe('精修超额', checkRetouchExceed);
   await safe('合同快照', checkContractStale);
-  await safe('套系绑定', checkPkgMissingTemplate);
+  // 跳过「套系绑定合同模板」巡检：顾客服务协议走默认文案快照（customer_agreement_enabled），与 contract_template（合同模板/PDF）是两套体系，
+  // 套系开协议不要求必须绑 contract_template（用户复盘反馈：当前填写的就是固定/默认模板）。如未来需强制绑，自行开启下方注释。
+  // await safe('套系绑定', checkPkgMissingTemplate);
   await safe('选片统计', checkSelectionStatsDrift);
 
   // 只存最近一次巡检异常清单（巡检报告反映当前状态，历史脏数据已实时拦截，无需累积）
