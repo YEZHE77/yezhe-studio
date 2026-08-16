@@ -422,7 +422,7 @@ export default function Home() {
           style={{ pointerEvents: drawerOpen ? 'auto' : 'none' }}
           onClick={() => setDrawerOpen(false)}
         />
-        <div className={'absolute top-0 right-0 bottom-0 w-[280px] bg-white text-[#2c2c2c] flex flex-col transition-transform duration-300 ' + (drawerOpen ? 'translate-x-0' : 'translate-x-full')}>
+        <div className={'absolute top-0 right-0 bottom-0 w-[280px] bg-white text-[#2c2c2c] flex flex-col transition-transform duration-300 ' + (drawerOpen ? 'translate-x-0' : 'translate-x-full')} style={{ pointerEvents: drawerOpen ? 'auto' : 'none' }}>
           <div className="px-6 py-6 border-b border-gray-100 flex items-center">
             <span className="text-base truncate">{studio.name || ''}</span>
           </div>
