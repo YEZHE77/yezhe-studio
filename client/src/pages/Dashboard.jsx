@@ -37,30 +37,36 @@ const BRAND_CARDS = [
   { icon: 'marketing', title: '生成名片', desc: '朋友圈名片海报，更好的传播方式', btn: 'APP端使用', to: '/card' }
 ];
 
-// 日常管理（对外内容 + 选片，3 个固定入口）
+// 日常管理（picbling 参考图风格，5+4 大卡片）
 const OPS_CARDS = [
-  { icon: 'photo', title: '作品', desc: '作品管理与分类维护', to: '/works' },
-  { icon: 'package', title: '套系', desc: '对外报价套系与价格管理', to: '/photo-packages' },
-  { icon: 'select', title: '在线选片', desc: '客户选片进度双向同步', to: '/orders?status=todo_selecting' }
+  { icon: 'photo', title: '我的作品', desc: '多种展示方式，留住客户的心', to: '/works', btn: '立即上传' },
+  { icon: 'package', title: '我的套系', desc: '展示套系，多渠道下单', to: '/photo-packages', btn: '立即使用', active: true },
+  { icon: 'order', title: '我的订单', desc: '轻松管理订单，让信息一目了然', to: '/orders', btn: '立即使用' },
+  { icon: 'select', title: '在线选片', desc: '客户端选片，电脑端轻松选', to: '/orders?status=todo_selecting', btn: '立即使用' },
+  { icon: 'customer', title: '客户管理', desc: 'APP小程序，管理现有客户', to: '/customers', btn: 'APP端使用' },
+  { icon: 'team', title: '团队管理', desc: '团队成员建立子账号，并分工', to: '/team', btn: '立即使用' },
+  { icon: 'calendar', title: '档期管理', desc: '高级档期预约，可视化的共享日程', to: '/schedule', btn: '立即使用' },
+  { icon: 'storage', title: '容量管理', desc: '存储用量告警，让共享更便捷', to: '/capacity', btn: '立即使用' },
+  { icon: 'review', title: '评价管理', desc: '提供编辑评价，邀请评价', to: '/reviews', btn: '立即使用' }
 ];
 
-// 大卡片（参考图：高 259、1px #E6E9EF 边框、顶部 30px 灰色图标、标题 15px、描述 2 行、底部蓝色圆角按钮）
-function BigCard({ icon, title, desc, btn, to, onClick }) {
+// 大卡片（参考图：圆角 8、1px #E6E9EF 边框、顶部 30px 灰色图标、标题 15px、描述 2 行、底部蓝色圆角按钮）
+function BigCard({ icon, title, desc, btn, to, onClick, active }) {
   const nav = useNavigate();
   const go = () => { if (onClick) onClick(); else if (to) nav(to); };
   return (
     <div
       onClick={go}
-      className="bg-white border cursor-pointer hover:shadow-sm hover:border-brand/30 transition text-center flex flex-col items-center"
-      style={{ borderRadius: 4, borderColor: '#E6E9EF', padding: '24px 12px', height: 'auto', minHeight: 180 }}
+      className={'bg-white border cursor-pointer hover:shadow-sm hover:border-brand/30 transition text-center flex flex-col items-center ' + (active ? 'ring-1 ring-brand/30' : '')}
+      style={{ borderRadius: 8, borderColor: active ? '#ABE2FB' : '#E6E9EF', padding: '24px 12px', height: 'auto', minHeight: 200 }}
     >
       <div className="flex items-center justify-center" style={{ color: '#666666' }}>
         <Icon name={icon} className="w-7 h-7 lg:w-8 lg:h-8" strokeWidth={1.4} />
       </div>
-      <div className="text-[15px] mt-2 whitespace-nowrap" style={{ color: '#333333' }}>{title}</div>
+      <div className="text-[15px] mt-3 whitespace-nowrap" style={{ color: '#333333' }}>{title}</div>
       <div className="text-xs mt-2 leading-[20px] line-clamp-2 px-1" style={{ color: '#AAAAAA' }}>{desc}</div>
       <div className="mt-auto pt-5 w-full">
-        <span className="inline-flex items-center px-3 lg:px-[15px] h-[30px] rounded-full text-xs" style={{ color: '#2DB7F6', background: '#fff', border: '1px solid #ABE2FB', minWidth: 72, justifyContent: 'center' }}>{btn || '进入'}</span>
+        <span className="inline-flex items-center px-3 lg:px-[15px] h-[30px] rounded-full text-xs" style={{ color: '#2DB7F6', background: '#fff', border: '1px solid #ABE2FB', minWidth: 72, justifyContent: 'center' }}>{btn || '立即使用'}</span>
       </div>
     </div>
   );
@@ -260,7 +266,7 @@ export default function Dashboard() {
         </div>
         <div style={{ height: 1, background: '#E6E9EF', margin: '24px 0 16px' }} />
         <div className="text-[16px] mb-6" style={{ color: '#333333', fontWeight: 400 }}>日常管理</div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-[10px]">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-[10px]">
           {OPS_CARDS.map((c) => <BigCard key={c.title} {...c} />)}
         </div>
       </div>
