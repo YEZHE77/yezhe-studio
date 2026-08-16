@@ -28,6 +28,7 @@ const Customers = React.lazy(() => import('../pages/Customers.jsx'));
 const DataCharts = React.lazy(() => import('../pages/DataCharts.jsx'));
 const BusinessCard = React.lazy(() => import('../pages/BusinessCard.jsx'));
 const MobileMessage = React.lazy(() => import('../pages/MobileMessage.jsx'));
+const MobileMessageDetail = React.lazy(() => import('../pages/MobileMessageDetail.jsx'));
 const SelectionAdmin = React.lazy(() => import('../pages/SelectionAdmin.jsx'));
 const CapacityManagement = React.lazy(() => import('../pages/CapacityManagement.jsx'));
 const Channels = React.lazy(() => import('../pages/Channels.jsx'));
@@ -211,9 +212,9 @@ export default function MobileShell() {
   const [sheetOpen, setSheetOpen] = useState(false);
   const [unread, setUnread] = useState(0);
 
-  // 消息未读红点：轮询 message 表（多设备同步），onFocus 切回激活强制拉取一次
+  // 消息未读红点：轮询 biz_message 表（多设备同步），onFocus 切回激活强制拉取一次
   const pullUnread = () => {
-    http.get('/api/message/unread-count').then((r) => setUnread(r.data.count || 0)).catch(() => {});
+    http.get('/api/mobile/message/unread-count').then((r) => setUnread(r.data.count || 0)).catch(() => {});
   };
   useEffect(() => {
     pullUnread();
@@ -252,6 +253,7 @@ export default function MobileShell() {
                 <Route path="/home" element={<Home />} />
                 <Route path="/m/site" element={<MobileSite />} />
                 <Route path="/m/msg" element={<MobileMessage />} />
+                <Route path="/m/msg/:id" element={<MobileMessageDetail />} />
                 <Route path="/photo-packages" element={<PhotoPackages />} />
                 {/* 复用现有 B 端页面，保持与桌面端同一套业务逻辑 */}
                 <Route path="/works" element={<Works />} />

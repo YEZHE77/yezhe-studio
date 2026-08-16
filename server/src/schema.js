@@ -351,6 +351,30 @@ CREATE TABLE IF NOT EXISTS system_message (
 CREATE INDEX IF NOT EXISTS idx_system_message_receiver ON system_message(receiver_uid, is_read, is_archived);
 CREATE INDEX IF NOT EXISTS idx_system_message_dedup ON system_message(business_event, rel_id, create_time);`;
 
+// 移动端业务消息中心：biz_message（与 system_message 独立，与 todo_items 独立）
+// user_id 账号隔离；biz_type 业务来源（select_photo/schedule/order/system）；biz_id 关联业务主键
+// 仅做业务事件通知，非 IM；PC + H5 共用一套数据
+const PG_BIZ_MESSAGE = `
+CREATE TABLE IF NOT EXISTS biz_message (
+  id SERIAL PRIMARY KEY, user_id INTEGER NOT NULL,
+  title TEXT NOT NULL, content TEXT,
+  biz_type TEXT NOT NULL DEFAULT 'system', biz_id TEXT,
+  is_read INTEGER NOT NULL DEFAULT 0,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_biz_message_user ON biz_message(user_id, is_read);
+CREATE INDEX IF NOT EXISTS idx_biz_message_biz ON biz_message(biz_type, biz_id);`;
+const SQLITE_BIZ_MESSAGE = `
+CREATE TABLE IF NOT EXISTS biz_message (
+  id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL,
+  title TEXT NOT NULL, content TEXT,
+  biz_type TEXT NOT NULL DEFAULT 'system', biz_id TEXT,
+  is_read INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_biz_message_user ON biz_message(user_id, is_read);
+CREATE INDEX IF NOT EXISTS idx_biz_message_biz ON biz_message(biz_type, biz_id);`;
+
 // 套系对外分享（C 端浏览报价）：photo_package 套系表（独立于 B 端内部 packages）
 // share_token 随机不可猜测字符串，对外鉴权；is_enable 控制外部访问
 const PG_PHOTO_PACKAGE = `
@@ -587,6 +611,8 @@ export async function initSchema() {
 
   // 消息中心表（system_message）
   for (const s of (dialect === 'pg' ? PG_MESSAGE_TABLES : SQLITE_MESSAGE_TABLES).split(';').map((x) => x.trim()).filter(Boolean)) await run(s);
+  // 移动端业务消息表（biz_message）
+  for (const s of (dialect === 'pg' ? PG_BIZ_MESSAGE : SQLITE_BIZ_MESSAGE).split(';').map((x) => x.trim()).filter(Boolean)) await run(s);
 
   // 套系对外分享表（photo_package）
   for (const s of (dialect === 'pg' ? PG_PHOTO_PACKAGE : SQLITE_PHOTO_PACKAGE).split(';').map((x) => x.trim()).filter(Boolean)) await run(s);
