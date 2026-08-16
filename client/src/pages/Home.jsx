@@ -287,55 +287,69 @@ export default function Home() {
         {works.length > 0 && !hasMore && <div className="mt-8 text-center text-sm text-gray-300">— 没有更多了 —</div>}
       </div>
 
-      {/* 底部联系卡片：白色统一规格字体 + 居中"添加客服" + 右侧 4 按钮绝对定位悬浮浮层（脱离 flex 流） */}
-      <div id="footer-section" className="relative m-4 mt-[70px] rounded-2xl p-5 text-white sm:m-8 sm:rounded-3xl sm:p-8" style={{ background: '#2c2c2c' }}>
+      {/* 底部联系卡片：左侧信息+添加客服 / 右侧纵向三按钮（关注/预约/我的）/ 底部 slogan */}
+      <div id="footer-section" className="m-4 mt-[70px] rounded-2xl p-5 text-white sm:m-8 sm:rounded-3xl sm:p-8" style={{ background: '#2c2c2c' }}>
         <div style={{ textAlign: 'center', fontSize: 18, fontWeight: 400, letterSpacing: 4, marginBottom: 18 }}>联系我们</div>
-        {/* 信息行：右侧预留 56px 给悬浮按钮，不被遮挡 */}
-        <div style={{ paddingRight: 56 }}>
-          {studio.contact && studio.contact.wechat && (
-            <div style={{ display: 'flex', alignItems: 'center', fontSize: 13, marginBottom: 10, gap: 8 }}>
-              <span style={{ width: 36, color: '#999', flexShrink: 0 }}>微信</span>
-              <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 14 }}>{studio.contact.wechat}</span>
-            </div>
-          )}
-          {studio.contact && studio.contact.phone && (
-            <div style={{ display: 'flex', alignItems: 'center', fontSize: 13, marginBottom: 10, gap: 8 }}>
-              <span style={{ width: 36, color: '#999', flexShrink: 0 }}>电话</span>
-              <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 14 }}>{studio.contact.phone}</span>
-            </div>
-          )}
-          {studio.contact && studio.contact.address && (
-            <div style={{ display: 'flex', alignItems: 'center', fontSize: 13, marginBottom: 0, gap: 8 }}>
-              <span style={{ width: 36, color: '#999', flexShrink: 0 }}>地址</span>
-              <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 14 }}>{studio.contact.address}</span>
-            </div>
-          )}
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+          {/* 左侧联系信息（微信行内复制） */}
+          <div style={{ flex: 1, minWidth: 0 }}>
+            {studio.contact && studio.contact.wechat && (
+              <div style={{ display: 'flex', alignItems: 'center', fontSize: 13, marginBottom: 10, gap: 8 }}>
+                <span style={{ width: 36, color: '#999', flexShrink: 0 }}>微信</span>
+                <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 14 }}>{studio.contact.wechat}</span>
+                <span style={{ color: '#7ecdbb', fontSize: 12, cursor: 'pointer', flexShrink: 0 }} onClick={copyWechat}>复制</span>
+              </div>
+            )}
+            {studio.contact && studio.contact.phone && (
+              <div style={{ display: 'flex', alignItems: 'center', fontSize: 13, marginBottom: 10, gap: 8 }}>
+                <span style={{ width: 36, color: '#999', flexShrink: 0 }}>电话</span>
+                <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 14 }}>{studio.contact.phone}</span>
+              </div>
+            )}
+            {studio.contact && studio.contact.address && (
+              <div style={{ display: 'flex', alignItems: 'center', fontSize: 13, marginBottom: 10, gap: 8 }}>
+                <span style={{ width: 36, color: '#999', flexShrink: 0 }}>地址</span>
+                <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 14 }}>{studio.contact.address}</span>
+              </div>
+            )}
+            <button onClick={() => setShowServiceQr(true)}
+              style={{ marginTop: 4, padding: '5px 14px', borderRadius: 20, border: '1px solid #7ecdbb', color: '#7ecdbb', fontSize: 12, background: 'transparent', display: 'flex', alignItems: 'center', gap: 4 }}>
+              添加客服 <span style={{ fontSize: 10 }}>&gt;</span>
+            </button>
+          </div>
+          {/* 右侧纵向三按钮 */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'center', flexShrink: 0 }}>
+            {/* 关注：白底 + 空心爱心灰 + 文字灰 */}
+            <button onClick={copyWechat}
+              style={{ width: 44, height: 44, borderRadius: '50%', background: '#fff', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#666', fontSize: 9, boxShadow: '0 2px 8px rgba(0,0,0,0.12)' }} aria-label="关注">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round">
+                <path d="M12 20.3l-1.45-1.32C5.4 14.24 2 11.16 2 7.5 2 4.42 4.42 2 7.5 2c1.74 0 3.41.81 4.5 2.09C13.09 2.81 14.76 2 16.5 2 19.58 2 22 4.42 22 7.5c0 3.66-3.4 6.74-8.55 11.49L12 20.3z" />
+              </svg>
+              <span style={{ marginTop: 1, fontSize: 9 }}>关注</span>
+            </button>
+            {/* 预约：青绿底 + 白色对话气泡(三点) + 文字白 */}
+            <button onClick={() => setContactOpen(true)}
+              style={{ width: 44, height: 44, borderRadius: '50%', background: '#7ecdbb', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 9, boxShadow: '0 2px 8px rgba(96,196,170,0.35)' }} aria-label="预约">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round">
+                <path d="M4 5h16a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H10l-4 3v-3H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z" />
+                <circle cx="9" cy="11" r="1" fill="currentColor" stroke="none" />
+                <circle cx="12" cy="11" r="1" fill="currentColor" stroke="none" />
+                <circle cx="15" cy="11" r="1" fill="currentColor" stroke="none" />
+              </svg>
+              <span style={{ marginTop: 1, fontSize: 9 }}>预约</span>
+            </button>
+            {/* 我的：白底 + 灰色人形轮廓 + 文字灰 */}
+            <button onClick={() => nav('/my')}
+              style={{ width: 44, height: 44, borderRadius: '50%', background: '#fff', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#666', fontSize: 9, boxShadow: '0 2px 8px rgba(0,0,0,0.12)' }} aria-label="我的">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
+                <circle cx="12" cy="8" r="3.2" />
+                <path d="M5 20a7 7 0 0 1 14 0" />
+              </svg>
+              <span style={{ marginTop: 1, fontSize: 9 }}>我的</span>
+            </button>
+          </div>
         </div>
-        {/* 添加客服按钮 — 居中（参考图位置） */}
-        <div style={{ display: 'flex', justifyContent: 'center', marginTop: 16 }}>
-          <button onClick={() => setShowServiceQr(true)}
-            style={{ padding: '6px 20px', borderRadius: 22, border: '1px solid #7ecdbb', color: '#7ecdbb', fontSize: 13, background: 'transparent', display: 'flex', alignItems: 'center', gap: 4 }}>
-            添加客服 <span style={{ fontSize: 10 }}>&gt;</span>
-          </button>
-        </div>
-        <div style={{ textAlign: 'center', fontSize: 12, color: '#888', marginTop: 14 }}>{studio.slogan || '叶哲 Studio · 记录婚礼，也记录爱发生的样子'}</div>
-
-        {/* 右侧悬浮浮层：绝对定位脱离 flex 流，悬浮在卡片表面右缘外 */}
-        <div className="absolute flex flex-col items-center" style={{ right: -18, top: 52, gap: 6 }}>
-          <button onClick={copyWechat} className="flex h-11 w-11 flex-col items-center justify-center rounded-full bg-white text-[#666]" style={{ fontSize: 9, boxShadow: '0 2px 8px rgba(0,0,0,0.12)' }} aria-label="关注">
-            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round"><path d="M12 20.3l-1.45-1.32C5.4 14.24 2 11.16 2 7.5 2 4.42 4.42 2 7.5 2c1.74 0 3.41.81 4.5 2.09C13.09 2.81 14.76 2 16.5 2 19.58 2 22 4.42 22 7.5c0 3.66-3.4 6.74-8.55 11.49L12 20.3z" /></svg>
-            <span style={{ marginTop: 1, fontSize: 9 }}>关注</span>
-          </button>
-          <button onClick={copyWechat} style={{ background: 'transparent', color: '#7ecdbb', fontSize: 12, padding: '4px 0', lineHeight: 1 }} aria-label="复制微信号">复制</button>
-          <button onClick={() => setContactOpen(true)} className="flex h-11 w-11 flex-col items-center justify-center rounded-full bg-[#7ecdbb] text-white" style={{ fontSize: 9, boxShadow: '0 2px 8px rgba(96,196,170,0.35)' }} aria-label="预约">
-            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round"><path d="M4 5h16a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H10l-4 3v-3H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z" /><circle cx="9" cy="11" r="1" fill="currentColor" stroke="none" /><circle cx="12" cy="11" r="1" fill="currentColor" stroke="none" /><circle cx="15" cy="11" r="1" fill="currentColor" stroke="none" /></svg>
-            <span style={{ marginTop: 1, fontSize: 9 }}>预约</span>
-          </button>
-          <button onClick={() => nav('/my')} className="flex h-11 w-11 flex-col items-center justify-center rounded-full bg-white text-[#666]" style={{ fontSize: 9, boxShadow: '0 2px 8px rgba(0,0,0,0.12)' }} aria-label="我的">
-            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"><circle cx="12" cy="8" r="3.2" /><path d="M5 20a7 7 0 0 1 14 0" /></svg>
-            <span style={{ marginTop: 1, fontSize: 9 }}>我的</span>
-          </button>
-        </div>
+        <div style={{ textAlign: 'center', fontSize: 12, color: '#888', marginTop: 16 }}>{studio.slogan || '叶哲 Studio · 记录婚礼，也记录爱发生的样子'}</div>
       </div>
 
       {/* 提示 / 弹层 */}
