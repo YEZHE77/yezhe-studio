@@ -128,9 +128,9 @@ export default function Todo() {
           <line x1="8" y1="3" x2="8" y2="7" />
           <line x1="16" y1="3" x2="16" y2="7" />
         </svg>
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
           <span style={{ fontSize: 36, fontWeight: 600, lineHeight: 1, letterSpacing: -1 }}>{today.big}</span>
-          <span style={{ fontSize: 13, color: '#cfcfcf' }}>{today.monthName}</span>
+          <span style={{ fontSize: 13, color: '#cfcfcf', marginTop: 4, lineHeight: 1.2 }}>{today.monthName}</span>
         </div>
         <div style={{ width: 1, height: 30, background: 'rgba(255,255,255,0.18)' }} />
         <div style={{ display: 'flex', flexDirection: 'column', fontSize: 13, color: '#cfcfcf', lineHeight: 1.6 }}>
