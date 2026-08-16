@@ -27,6 +27,7 @@ const Settings = React.lazy(() => import('../pages/Settings.jsx'));
 const Customers = React.lazy(() => import('../pages/Customers.jsx'));
 const DataCharts = React.lazy(() => import('../pages/DataCharts.jsx'));
 const BusinessCard = React.lazy(() => import('../pages/BusinessCard.jsx'));
+const MobileMessage = React.lazy(() => import('../pages/MobileMessage.jsx'));
 const SelectionAdmin = React.lazy(() => import('../pages/SelectionAdmin.jsx'));
 const CapacityManagement = React.lazy(() => import('../pages/CapacityManagement.jsx'));
 const Channels = React.lazy(() => import('../pages/Channels.jsx'));
@@ -250,7 +251,7 @@ export default function MobileShell() {
                 <Route path="/" element={<MobileWorkbench />} />
                 <Route path="/home" element={<Home />} />
                 <Route path="/m/site" element={<MobileSite />} />
-                <Route path="/m/msg" element={<MessageCenter />} />
+                <Route path="/m/msg" element={<MobileMessage />} />
                 <Route path="/photo-packages" element={<PhotoPackages />} />
                 {/* 复用现有 B 端页面，保持与桌面端同一套业务逻辑 */}
                 <Route path="/works" element={<Works />} />
