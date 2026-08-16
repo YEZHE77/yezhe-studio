@@ -2612,7 +2612,7 @@ export default function OrderDetail() {
 
           {/* 客户信息 */}
           <div style={{ marginBottom: 12 }}>
-            <div style={{ fontSize: 16, fontWeight: 400, borderBottom: '1px solid #ccc', paddingBottom: 6, marginBottom: 10 }}>客户信息</div>
+            <div style={{ fontSize: 16, fontWeight: 400, paddingBottom: 4, marginBottom: 10 }}>客户信息</div>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14, lineHeight: 1.8 }}>
               <tbody>
                 <tr>
@@ -2643,7 +2643,7 @@ export default function OrderDetail() {
 
           {/* 套系详情：根据实际选择的套系显示完整模板字段（pkgInfo.details 来自 package_snapshot；订单特定金额从 orders 表读取） */}
           <div style={{ marginBottom: 12 }}>
-            <div style={{ fontSize: 16, fontWeight: 400, borderBottom: '1px solid #ccc', paddingBottom: 6, marginBottom: 10 }}>套系详情</div>
+            <div style={{ fontSize: 16, fontWeight: 400, paddingBottom: 4, marginBottom: 10 }}>套系详情</div>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14, lineHeight: 1.8 }}>
               <tbody>
                 <tr>
@@ -2694,7 +2694,7 @@ export default function OrderDetail() {
 
           {/* 收款信息 */}
           <div style={{ marginBottom: 12 }}>
-            <div style={{ fontSize: 16, fontWeight: 400, borderBottom: '1px solid #ccc', paddingBottom: 6, marginBottom: 10 }}>收款信息</div>
+            <div style={{ fontSize: 16, fontWeight: 400, paddingBottom: 4, marginBottom: 10 }}>收款信息</div>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14, lineHeight: 1.8 }}>
               <tbody>
                 <tr>
@@ -2738,7 +2738,7 @@ export default function OrderDetail() {
 
           {/* 服务详情（订单套系快照；空时用官方默认模板） */}
           <div style={{ marginBottom: 12 }}>
-            <div style={{ fontSize: 16, fontWeight: 400, borderBottom: '1px solid #ccc', paddingBottom: 6, marginBottom: 12 }}>服务详情</div>
+            <div style={{ fontSize: 16, fontWeight: 400, paddingBottom: 4, marginBottom: 12 }}>服务详情</div>
             <div style={{ fontSize: 14, lineHeight: 1.8, color: '#222', whiteSpace: 'pre-wrap', textIndent: '2em' }}>
               {((pkgInfo && pkgInfo.details && pkgInfo.details.service_detail_text) || DEFAULT_SERVICE_DETAIL)}
             </div>
@@ -2751,7 +2751,7 @@ export default function OrderDetail() {
             if (!paras.length) return null;
             return (
               <div style={{ marginBottom: 12 }}>
-                <div style={{ fontSize: 16, fontWeight: 400, borderBottom: '1px solid #ccc', paddingBottom: 6, marginBottom: 12 }}>
+                <div style={{ fontSize: 16, fontWeight: 400, paddingBottom: 4, marginBottom: 12 }}>
                   顾客服务协议
                 </div>
                 <div style={{ fontSize: 14, lineHeight: 1.8, color: '#222' }}>
@@ -2773,7 +2773,7 @@ export default function OrderDetail() {
             if (!paras.length) return null;
             return (
               <div style={{ marginBottom: 12 }}>
-                <div style={{ fontSize: 16, fontWeight: 400, borderBottom: '1px solid #ccc', paddingBottom: 6, marginBottom: 12 }}>
+                <div style={{ fontSize: 16, fontWeight: 400, paddingBottom: 4, marginBottom: 12 }}>
                   顾客照片授权协议
                 </div>
                 <div style={{ fontSize: 14, lineHeight: 1.8, color: '#222' }}>
@@ -2796,7 +2796,7 @@ export default function OrderDetail() {
             if (!paras.length) return null;
             return (
               <div style={{ marginBottom: 12 }}>
-                <div style={{ fontSize: 16, fontWeight: 400, borderBottom: '1px solid #ccc', paddingBottom: 6, marginBottom: 12 }}>
+                <div style={{ fontSize: 16, fontWeight: 400, paddingBottom: 4, marginBottom: 12 }}>
                   退订政策（{policy}）
                 </div>
                 <div style={{ fontSize: 14, lineHeight: 1.8, color: '#222' }}>
@@ -2811,13 +2811,13 @@ export default function OrderDetail() {
           {/* 备注：客户备注 + 商家内部备注（开关控制，默认关，内部备注敏感） */}
           {detail.remark && (
             <div style={{ marginBottom: 12 }}>
-              <div style={{ fontSize: 16, fontWeight: 400, borderBottom: '1px solid #ccc', paddingBottom: 6, marginBottom: 12 }}>客户备注</div>
+              <div style={{ fontSize: 16, fontWeight: 400, paddingBottom: 4, marginBottom: 12 }}>客户备注</div>
               <div style={{ fontSize: 14, lineHeight: 1.8, color: '#222', whiteSpace: 'pre-wrap', textIndent: '2em' }}>{detail.remark}</div>
             </div>
           )}
           {printInternal && detail.internal_remark && (
             <div style={{ marginBottom: 12 }}>
-              <div style={{ fontSize: 16, fontWeight: 400, borderBottom: '1px solid #ccc', paddingBottom: 6, marginBottom: 12 }}>商家内部备注</div>
+              <div style={{ fontSize: 16, fontWeight: 400, paddingBottom: 4, marginBottom: 12 }}>商家内部备注</div>
               <div style={{ fontSize: 14, lineHeight: 1.8, color: '#222', whiteSpace: 'pre-wrap', textIndent: '2em' }}>{detail.internal_remark}</div>
             </div>
           )}
