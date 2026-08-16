@@ -40,7 +40,7 @@ const BRAND_CARDS = [
 // 日常管理（picbling 参考图风格，5+4 大卡片）
 const OPS_CARDS = [
   { icon: 'photo', title: '我的作品', desc: '多种展示方式，留住客户的心', to: '/works', btn: '立即上传' },
-  { icon: 'package', title: '我的套系', desc: '展示套系，多渠道下单', to: '/photo-packages', btn: '立即使用', active: true },
+  { icon: 'package', title: '我的套系', desc: '展示套系，多渠道下单', to: '/photo-packages', btn: '立即使用' },
   { icon: 'order', title: '我的订单', desc: '轻松管理订单，让信息一目了然', to: '/orders', btn: '立即使用' },
   { icon: 'select', title: '在线选片', desc: '客户端选片，电脑端轻松选', to: '/orders?status=todo_selecting', btn: '立即使用' },
   { icon: 'customer', title: '客户管理', desc: 'APP小程序，管理现有客户', to: '/customers', btn: 'APP端使用' },
@@ -51,14 +51,14 @@ const OPS_CARDS = [
 ];
 
 // 大卡片（参考图：圆角 8、1px #E6E9EF 边框、顶部 30px 灰色图标、标题 15px、描述 2 行、底部蓝色圆角按钮）
-function BigCard({ icon, title, desc, btn, to, onClick, active }) {
+function BigCard({ icon, title, desc, btn, to, onClick }) {
   const nav = useNavigate();
   const go = () => { if (onClick) onClick(); else if (to) nav(to); };
   return (
     <div
       onClick={go}
-      className={'bg-white border cursor-pointer hover:shadow-sm hover:border-brand/30 transition text-center flex flex-col items-center ' + (active ? 'ring-1 ring-brand/30' : '')}
-      style={{ borderRadius: 8, borderColor: active ? '#ABE2FB' : '#E6E9EF', padding: '24px 12px', height: 'auto', minHeight: 200 }}
+      className="bg-white border cursor-pointer hover:shadow-sm hover:border-brand/30 transition text-center flex flex-col items-center"
+      style={{ borderRadius: 8, borderColor: '#E6E9EF', padding: '24px 12px', height: 'auto', minHeight: 200 }}
     >
       <div className="flex items-center justify-center" style={{ color: '#666666' }}>
         <Icon name={icon} className="w-7 h-7 lg:w-8 lg:h-8" strokeWidth={1.4} />
