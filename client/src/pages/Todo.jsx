@@ -173,12 +173,13 @@ export default function Todo() {
                   flex: '0 0 auto', minWidth: 86,
                   padding: '12px 6px 10px', margin: 0, border: 0,
                   background: isActive ? GREEN : 'transparent',
+                  borderRadius: isActive ? 8 : 0,
                   display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
                   position: 'relative', cursor: 'pointer', color: isActive ? '#fff' : TEXT
                 }}
               >
-                <span style={{ fontSize: 18, fontWeight: 600, lineHeight: 1 }}>{count || 0}</span>
-                <span style={{ fontSize: 12, opacity: isActive ? 0.9 : 0.7 }}>{t.label}</span>
+                <span style={{ fontSize: 18, fontWeight: 600, lineHeight: 1, color: isActive ? '#fff' : t.accent }}>{count || 0}</span>
+                <span style={{ fontSize: 12, opacity: isActive ? 0.9 : 0.7, color: isActive ? '#fff' : t.accent }}>{t.label}</span>
                 {!isActive && (
                   <span style={{ position: 'absolute', left: '20%', right: '20%', bottom: 0, height: 3, background: t.accent, borderRadius: 2 }} />
                 )}
