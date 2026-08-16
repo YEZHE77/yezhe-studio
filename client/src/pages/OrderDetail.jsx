@@ -2691,9 +2691,17 @@ export default function OrderDetail() {
         </>
       )}
 
-      {/* 打印单据内容（离屏渲染；html2canvas 直接抓取，不再走 window.print） */}
+      {/* 打印单据内容（离屏渲染；html2canvas 直接抓取；window.print 通道 @media print 移入视口打印） */}
       <div className="print-order-sheet" style={{ position: 'fixed', left: -10000, top: 0, width: '700px' }}>
-        <div style={{ maxWidth: 700, margin: '0 auto', fontFamily: 'SimSun, STSong, serif', fontSize: 14, lineHeight: 1.8, color: '#222', background: '#fff', padding: '8mm 0' }}>
+        {/* 页眉（window.print 走 sheet 通道直出；下载 PDF 走 downloadPrintPdf 自行 addImage 互相独立） */}
+        <div className="print-header">
+          <div className="print-header-title">拍摄服务合同</div>
+          <div className="print-header-meta">订单编号：{detail.order_no}</div>
+          <div className="print-header-meta2">
+            创建时间：{detail.created_at ? new Date(detail.created_at).toLocaleString('zh-CN') : '—'}　·　订单状态：{statusText || '—'}
+          </div>
+        </div>
+        <div style={{ maxWidth: 700, margin: '0 auto', fontFamily: 'SimSun, STSong, serif', fontSize: 14, lineHeight: 1.8, color: '#222', background: '#fff', padding: '4mm 0' }}>
 
           {/* 客户信息 */}
           <div style={{ marginBottom: 12 }}>
@@ -2908,6 +2916,11 @@ export default function OrderDetail() {
           )}
 
           </div>
+        {/* 页脚（window.print 通道直出，与 PDF 路径 addImage 页眉页脚内容一致） */}
+        <div className="print-footer">
+          <span>叶哲 STUDIO · 摄影工作室管理系统</span>
+          <span>打印时间：{new Date().toLocaleString('zh-CN')}</span>
+        </div>
       </div>
 
       {/* 订单记录全屏页（点击底部订单变更记录跳转，校 IMG_7533） */}
