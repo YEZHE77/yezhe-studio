@@ -2,25 +2,58 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import http from '../api.js';
 
-// 移动端「访客设置」页 —— Glassmorphism + Soft-UI，禁止字体加粗
-// 已移除：访客微信授权、仅显示有昵称记录、手机验证、微信额度提示（H5 无小程序接口）
+// 移动端「访客设置」页 —— iOS 设置风格复刻（白底 + 浅分隔线 + 分组标题 + 圆形 emoji 图标）
+// 规范：禁止字体加粗，仅灰度 / 字号 / 间距区分层级
+// 已按需求移除：访客微信授权 / 仅显示有昵称记录 / 访客手机验证 / 微信额度提示（H5 无小程序接口）
 // 保留：黑名单 / 免打扰 / 访客密码 / 导出访客Excel
 const TEXT = '#1f2329';
 const SUB = '#6E6E73';
 const FAINT = '#AEAEB2';
-const DIV = '#EEF0F3';
-const BRAND = '#4A9FD8';
+const MUTED = '#8E8E93';
+const DIV = '#EFEFF1';
+const BRAND = '#007AFF';
 
+// ===== 返回 / 帮助图标 =====
 const BackIcon = () => (
   <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#1f2329" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
     <path d="M15 18l-6-6 6-6" />
   </svg>
 );
-const Chevron = () => (
+const HelpIcon = () => (
   <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#AEAEB2" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="12" r="10" />
+    <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+    <line x1="12" y1="17" x2="12.01" y2="17" />
+  </svg>
+);
+const Chevron = () => (
+  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#C8C8CC" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M9 6l6 6-6 6" />
   </svg>
 );
+
+// 圆形 emoji 图标（参考图风格：emoji 在柔和彩色圆形里，字号=圆形直径的50%）
+function RoundIcon({ emoji, bg, size = 30 }) {
+  return (
+    <div style={{ width: size, height: size, borderRadius: size / 2, background: bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: Math.round(size * 0.5), lineHeight: 1 }}>{emoji}</div>
+  );
+}
+
+// ===== 列表项（iOS 风格：白底 + 1px 浅分隔线 + 圆形 emoji 图标 + chevron）=====
+function Row({ emoji, bg, title, subtitle, right, onClick, last }) {
+  return (
+    <button onClick={onClick}
+      style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 14, padding: '14px 16px', border: 'none', background: '#fff', textAlign: 'left', cursor: 'pointer', borderBottom: last ? 'none' : `1px solid ${DIV}` }}>
+      <RoundIcon emoji={emoji} bg={bg} />
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 15, color: TEXT }}>{title}</div>
+        {subtitle && <div style={{ fontSize: 12, color: MUTED, marginTop: 3, lineHeight: 1.5 }}>{subtitle}</div>}
+      </div>
+      {right !== undefined && <span style={{ fontSize: 14, color: SUB, flexShrink: 0, marginRight: 2 }}>{right}</span>}
+      <Chevron />
+    </button>
+  );
+}
 
 export default function VisitorSettings() {
   const nav = useNavigate();
@@ -31,6 +64,7 @@ export default function VisitorSettings() {
   const [pwdInput, setPwdInput] = useState('');
   const [pwdBusy, setPwdBusy] = useState(false);
   const [pwdTip, setPwdTip] = useState('');
+  const [helpOpen, setHelpOpen] = useState(false);
 
   useEffect(() => {
     http.get('/api/visitor/blacklist').then((r) => setBlackCount(r.data.count || 0)).catch(() => {});
@@ -43,7 +77,6 @@ export default function VisitorSettings() {
     setPwdTip('');
     try {
       if (pwdEnabled && !pwdInput) {
-        // 清除密码
         await http.put('/api/visitor/password', { password: '' });
         setPwdEnabled(false);
         setPwdOpen(false);
@@ -72,55 +105,55 @@ export default function VisitorSettings() {
     } catch {}
   };
 
-  const Row = ({ icon, title, subtitle, right, onClick }) => (
-    <button onClick={onClick}
-      style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 12, padding: '15px 16px', border: 'none', background: '#fff', textAlign: 'left', cursor: 'pointer', borderBottom: `1px solid ${DIV}` }}>
-      <div style={{ width: 36, height: 36, borderRadius: 10, background: '#EAF3FB', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 18 }}>{icon}</div>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 15, color: TEXT }}>{title}</div>
-        {subtitle && <div style={{ fontSize: 12, color: FAINT, marginTop: 2 }}>{subtitle}</div>}
-      </div>
-      {right !== undefined && <span style={{ fontSize: 13, color: SUB, flexShrink: 0 }}>{right}</span>}
-      <Chevron />
-    </button>
-  );
-
   return (
-    <div style={{ minHeight: '100vh', background: 'linear-gradient(180deg, #EEF1F5 0%, #F5F7FA 100%)', display: 'flex', flexDirection: 'column' }}>
-      {/* 顶部玻璃栏 */}
-      <div style={{ position: 'sticky', top: 0, zIndex: 10, background: 'rgba(255,255,255,0.66)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', borderBottom: '1px solid rgba(255,255,255,0.6)' }}>
+    <div style={{ minHeight: '100vh', background: '#F2F2F4', display: 'flex', flexDirection: 'column' }}>
+      {/* 顶部：白底 + sticky + 底分隔线（iOS 简洁顶栏） */}
+      <div style={{ position: 'sticky', top: 0, zIndex: 10, background: '#fff', borderBottom: `1px solid ${DIV}` }}>
         <div style={{ position: 'relative', display: 'flex', alignItems: 'center', height: 44, padding: '0 12px' }}>
-          <button onClick={() => nav(-1)} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', padding: 4, display: 'flex', alignItems: 'center' }}><BackIcon /></button>
+          <button onClick={() => nav(-1)} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', padding: 4, display: 'flex', alignItems: 'center' }} aria-label="返回"><BackIcon /></button>
           <div style={{ position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%, -50%)', fontSize: 17, color: TEXT }}>访客设置</div>
+          <button onClick={() => setHelpOpen(true)} style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', padding: '4px 6px', display: 'flex', alignItems: 'center', gap: 3, cursor: 'pointer' }}>
+            <HelpIcon />
+            <span style={{ fontSize: 14, color: BRAND }}>帮助</span>
+          </button>
         </div>
       </div>
 
-      {/* 功能列表 */}
-      <div style={{ background: '#FFFFFF', margin: '12px', borderRadius: 16, overflow: 'hidden', boxShadow: '0 8px 24px rgba(31,35,41,0.06), 0 1px 3px rgba(31,35,41,0.04)' }}>
-        <Row icon="🚫" title="黑名单" subtitle="黑名单访客访问微官网将被直接拦截" right={`${blackCount} 人`} onClick={() => nav('/visitor-blacklist?type=blacklist')} />
-        <Row icon="🔕" title="免打扰" subtitle="免打扰访客不产生消息提醒，保留访问日志" right={`${noDisturbCount} 人`} onClick={() => nav('/visitor-blacklist?type=no-disturb')} />
-        <Row icon="🔒" title="访客密码" subtitle="开启后访问作品主页需输入密码" right={pwdEnabled ? '已开启' : '未开启'} onClick={() => { setPwdOpen(true); setPwdTip(''); }} />
-        <button onClick={exportExcel}
-          style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 12, padding: '15px 16px', border: 'none', background: '#fff', textAlign: 'left', cursor: 'pointer' }}>
-          <div style={{ width: 36, height: 36, borderRadius: 10, background: '#E5F5F2', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 18 }}>📥</div>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 15, color: TEXT }}>导出访客 Excel</div>
-            <div style={{ fontSize: 12, color: FAINT, marginTop: 2 }}>导出全部访客记录，无条数限制</div>
-          </div>
-          <Chevron />
-        </button>
+      {/* 分组标题 */}
+      <div style={{ fontSize: 13, color: MUTED, padding: '14px 16px 8px', letterSpacing: 0.2 }}>访客名单</div>
+
+      {/* 列表卡（白底 + 圆角 12 + 每项 1px 浅分隔线；底部分隔线由 last 控制） */}
+      <div style={{ margin: '0 12px', background: '#fff', borderRadius: 12, overflow: 'hidden' }}>
+        <Row emoji="🚫" bg="#FDEBEB" title="黑名单" subtitle="黑名单访客访问微官网将被直接拦截" right={`${blackCount} 人`} onClick={() => nav('/visitor-blacklist?type=blacklist')} />
+        <Row emoji="🔕" bg="#FFF4E5" title="免打扰" subtitle="免打扰访客不产生消息提醒，保留访问日志" right={`${noDisturbCount} 人`} onClick={() => nav('/visitor-blacklist?type=no-disturb')} />
+        <Row emoji="🔒" bg="#EAF3FB" title="访客密码" subtitle="开启后访问作品主页需输入密码" right={pwdEnabled ? '已开启' : '未开启'} onClick={() => { setPwdOpen(true); setPwdTip(''); }} />
+        <Row emoji="📥" bg="#E5F5F2" title="导出访客 Excel" subtitle="导出全部访客记录，无条数限制" onClick={exportExcel} last />
       </div>
 
-      <div style={{ fontSize: 12, color: FAINT, padding: '0 20px', lineHeight: 1.6 }}>
+      {/* 底部说明 */}
+      <div style={{ fontSize: 12, color: MUTED, padding: '14px 20px 24px', lineHeight: 1.6 }}>
         说明：本项目为 H5 网页，无微信企业小程序环境，无法获取访客微信昵称与手机号，访客以设备标识展示。所有功能均无 VIP 付费限制。
       </div>
 
-      {/* 访客密码设置弹窗 */}
+      {/* 帮助弹窗 */}
+      {helpOpen && (
+        <div onClick={() => setHelpOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)', zIndex: 60, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ background: '#fff', borderRadius: 14, padding: 20, width: '100%', maxWidth: 320, boxShadow: '0 16px 48px rgba(0,0,0,0.16)' }}>
+            <div style={{ fontSize: 15, color: TEXT, marginBottom: 10 }}>访客设置说明</div>
+            <div style={{ fontSize: 13, color: SUB, lineHeight: 1.7 }}>
+              在这里管理访客访问权限：黑名单拦截不受欢迎访客；免打扰抑制消息提醒但保留访问日志；访客密码保护作品内容；导出 Excel 备份完整访问记录。所有功能无条数限制、无 VIP 付费。
+            </div>
+            <button onClick={() => setHelpOpen(false)} style={{ width: '100%', marginTop: 16, padding: '10px', borderRadius: 10, border: 'none', background: BRAND, color: '#fff', fontSize: 15 }}>知道了</button>
+          </div>
+        </div>
+      )}
+
+      {/* 访客密码弹窗 */}
       {pwdOpen && (
         <div onClick={() => setPwdOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)', zIndex: 60, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
-          <div onClick={(e) => e.stopPropagation()} style={{ background: '#fff', borderRadius: 16, padding: 20, width: '100%', maxWidth: 320, boxShadow: '0 16px 48px rgba(0,0,0,0.16)' }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ background: '#fff', borderRadius: 14, padding: 20, width: '100%', maxWidth: 320, boxShadow: '0 16px 48px rgba(0,0,0,0.16)' }}>
             <div style={{ fontSize: 15, color: TEXT, marginBottom: 12 }}>{pwdEnabled ? '访客密码' : '开启访客密码'}</div>
-            {pwdEnabled && <div style={{ fontSize: 12, color: FAINT, marginBottom: 12 }}>输入新密码修改，留空并确认则清除密码</div>}
+            {pwdEnabled && <div style={{ fontSize: 12, color: MUTED, marginBottom: 12 }}>输入新密码修改，留空并确认则清除密码</div>}
             <input type="password" value={pwdInput} onChange={(e) => setPwdInput(e.target.value)} placeholder={pwdEnabled ? '留空清除密码' : '设置访问密码（至少4位）'}
               style={{ width: '100%', boxSizing: 'border-box', border: `1px solid ${DIV}`, borderRadius: 10, padding: '11px 12px', fontSize: 14, color: TEXT, outline: 'none', marginBottom: 8 }} />
             {pwdTip && <div style={{ fontSize: 12, color: '#E5484D', marginBottom: 8 }}>{pwdTip}</div>}
