@@ -39,12 +39,41 @@ function IconPlay() {
   return <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#999" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg>;
 }
 
+// PC 端元信息行：标签 + 值（灰度、字号、间距分层，不加粗）
+function MetaItem({ label, value }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+      <span style={{ fontSize: 12, color: '#999', flexShrink: 0 }}>{label}</span>
+      <span style={{ fontSize: 13, color: '#333', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{value}</span>
+    </div>
+  );
+}
+
+// PC 端标签行：JSON 数组形式，浅灰胶囊
+function MetaTags({ tags }) {
+  return (
+    <div style={{ marginTop: 14, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+      <span style={{ fontSize: 12, color: '#999' }}>标签</span>
+      {tags.map((t, i) => (
+        <span key={i} style={{ fontSize: 12, color: '#666', background: '#f5f5f5', padding: '3px 10px', borderRadius: 4 }}>{t}</span>
+      ))}
+    </div>
+  );
+}
+
 export default function WorkPreview() {
   const { id } = useParams();
   const nav = useNavigate();
   const gate = useVisitorGate({ page: '/works/' + (id || ''), source: 'h5', needPassword: true });
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  // 响应式：PC 端走受限布局（封面不全屏、标题卡片化、相册 3 列、品牌栏 static），移动端保持原 3/4 全屏 + fixed 品牌栏
+  const [isMobile, setIsMobile] = useState(() => (typeof window !== 'undefined' ? window.innerWidth < 768 : true));
+  useEffect(() => {
+    const onResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
   // 工作室资料（品牌栏 + 关于我们，接口驱动）
   const [studio, setStudio] = useState(null);
   const [actionSheetOpen, setActionSheetOpen] = useState(false);
@@ -199,94 +228,215 @@ export default function WorkPreview() {
   if (gate.status === 'needPwd') return <VisitorPasswordView gate={gate} />;
 
   return (
-    <div style={{ minHeight: '100vh', background: '#fff', paddingBottom: 'calc(70px + env(safe-area-inset-bottom))' }}>
-      {/* 顶部导航（透明背景，悬浮在图片上） */}
-      <div style={{
-        position: 'fixed', top: 0, left: 0, right: 0, zIndex: 50,
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        padding: '8px 12px', paddingTop: 'calc(8px + env(safe-area-inset-top))',
-        background: 'linear-gradient(to bottom, rgba(0,0,0,0.35), transparent)'
-      }}>
-        <button onClick={() => nav('/works')} style={{ background: 'none', border: 'none', padding: 4, display: 'flex', alignItems: 'center' }}>
-          <IconBack />
-        </button>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <button onClick={handleShare} disabled={shareBusy} style={{ width: 32, height: 32, borderRadius: '50%', background: MRED, border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: shareBusy ? 0.5 : 1 }}>
-            <IconShare />
+    <div style={{
+      minHeight: '100vh',
+      background: isMobile ? '#fff' : '#f8f8f8',
+      paddingBottom: isMobile ? 'calc(70px + env(safe-area-inset-bottom))' : 40
+    }}>
+      {/* 顶部导航：移动端 fixed 透明悬浮在图片上 / PC 端 static 白底栏 */}
+      {isMobile ? (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, zIndex: 50,
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: '8px 12px', paddingTop: 'calc(8px + env(safe-area-inset-top))',
+          background: 'linear-gradient(to bottom, rgba(0,0,0,0.35), transparent)'
+        }}>
+          <button onClick={() => nav('/works')} style={{ background: 'none', border: 'none', padding: 4, display: 'flex', alignItems: 'center' }}>
+            <IconBack />
           </button>
-          <button onClick={() => setActionSheetOpen(true)} style={{ background: 'none', border: 'none', padding: 4, display: 'flex' }}>
-            <IconMore />
-          </button>
-        </div>
-      </div>
-
-      {/* 封面大图 */}
-      <div style={{ width: '100%', aspectRatio: '3/4', background: '#1a1a1a', position: 'relative', overflow: 'hidden' }}>
-        {cover ? (
-          <img src={img(cover)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-        ) : albums[0] ? (
-          <img src={img(albums[0].photo_url)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-        ) : (
-          <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#666', fontSize: 14 }}>暂无封面</div>
-        )}
-      </div>
-
-      {/* 标题 + 分类 + 描述 */}
-      <div style={{ padding: '16px 16px 12px' }}>
-        <div style={{ fontSize: 20, fontWeight: 600, color: '#1f2329', lineHeight: 1.4 }}>{w.title || '未命名作品'}</div>
-        {catName && (
-          <div style={{ marginTop: 8, display: 'inline-block', fontSize: 12, color: '#999', background: '#f5f5f5', padding: '3px 10px', borderRadius: 4 }}>{catName}</div>
-        )}
-        {w.description && (
-          <div style={{ marginTop: 12, fontSize: 14, color: '#555', lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>{w.description}</div>
-        )}
-      </div>
-
-      {/* 相册样片网格 */}
-      {albums.length > 0 && (
-        <div style={{ padding: '0 16px 20px' }}>
-          <div style={{ fontSize: 15, fontWeight: 600, color: '#333', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span style={{ width: 3, height: 14, background: MRED, borderRadius: 2, display: 'inline-block' }} />
-            作品相册
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <button onClick={handleShare} disabled={shareBusy} style={{ width: 32, height: 32, borderRadius: '50%', background: MRED, border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: shareBusy ? 0.5 : 1 }}>
+              <IconShare />
+            </button>
+            <button onClick={() => setActionSheetOpen(true)} style={{ background: 'none', border: 'none', padding: 4, display: 'flex' }}>
+              <IconMore />
+            </button>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 4 }}>
-            {albums.map((a, i) => (
-              <div key={a.id || i} style={{ aspectRatio: '1', background: '#f5f5f5', borderRadius: 4, overflow: 'hidden' }}>
-                <img src={img(a.thumb_url || a.photo_url)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} loading="lazy" />
-              </div>
-            ))}
+        </div>
+      ) : (
+        <div style={{ background: '#fff', borderBottom: '1px solid ' + MBORDER }}>
+          <div style={{ maxWidth: 1100, margin: '0 auto', display: 'flex', alignItems: 'center', padding: '12px 24px', gap: 16 }}>
+            <button onClick={() => nav('/works')} style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', color: '#666', fontSize: 14, cursor: 'pointer' }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+              返回列表
+            </button>
+            <div style={{ flex: 1, fontSize: 16, color: '#1f2329', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{w.title || '未命名作品'}</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <button onClick={handleShare} disabled={shareBusy} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', borderRadius: 6, border: '1px solid ' + MBORDER, background: '#fff', color: '#333', fontSize: 13, cursor: 'pointer' }}>
+                <IconShare /> 分享
+              </button>
+              <button onClick={() => setActionSheetOpen(true)} style={{ padding: '6px 10px', borderRadius: 6, border: '1px solid ' + MBORDER, background: '#fff', color: '#666', fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+                <IconMore /> 更多
+              </button>
+            </div>
           </div>
         </div>
       )}
 
-      {/* 底部品牌栏（模拟截图底部） */}
-      <div style={{
-        position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 50,
-        background: '#fff', borderTop: '1px solid ' + MBORDER,
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        padding: '10px 16px', paddingBottom: 'calc(10px + env(safe-area-inset-bottom))'
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, minWidth: 0 }}>
-          <div style={{ width: 36, height: 36, borderRadius: '50%', background: '#f2f2f2', overflow: 'hidden', flexShrink: 0 }}>
-            {brandLogo ? <img src={img(brandLogo)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : null}
-          </div>
-          <div style={{ minWidth: 0 }}>
-            <div style={{ fontSize: 13, fontWeight: 500, color: '#333', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{brandName}</div>
-            {brandSlogan ? <div style={{ fontSize: 11, color: '#999', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{brandSlogan}</div> : null}
+      {/* 封面大图：移动端 aspectRatio 3/4 全屏 / PC 端 max-height:60vh 居中 contain 不裁剪 */}
+      {isMobile ? (
+        <div style={{ width: '100%', aspectRatio: '3/4', background: '#1a1a1a', position: 'relative', overflow: 'hidden' }}>
+          {cover ? (
+            <img src={img(cover)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          ) : albums[0] ? (
+            <img src={img(albums[0].photo_url)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          ) : (
+            <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#666', fontSize: 14 }}>暂无封面</div>
+          )}
+        </div>
+      ) : (
+        <div style={{ maxWidth: 900, margin: '24px auto 0', padding: '0 24px' }}>
+          <div style={{ width: '100%', maxHeight: '60vh', minHeight: 320, background: '#1a1a1a', borderRadius: 12, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            {cover ? (
+              <img src={img(cover)} alt="" style={{ maxWidth: '100%', maxHeight: '60vh', objectFit: 'contain' }} />
+            ) : albums[0] ? (
+              <img src={img(albums[0].photo_url)} alt="" style={{ maxWidth: '100%', maxHeight: '60vh', objectFit: 'contain' }} />
+            ) : (
+              <div style={{ color: '#666', fontSize: 14 }}>暂无封面</div>
+            )}
           </div>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexShrink: 0 }}>
-          <button onClick={openComments} style={{ background: 'none', border: 'none', padding: 0, display: 'flex' }}>
-            <IconComment />
-          </button>
-          <button onClick={openVisits} style={{ background: 'none', border: 'none', padding: 0, display: 'flex' }}>
-            <IconVisitor />
-          </button>
-          <button onClick={startSlide} disabled={slidePhotos.length === 0} style={{ background: 'none', border: 'none', padding: 0, display: 'flex', opacity: slidePhotos.length === 0 ? 0.4 : 1 }}>
-            <IconPlay />
-          </button>
+      )}
+
+      {/* 标题 + 元信息 + 描述：移动端单列 / PC 端卡片化 */}
+      {isMobile ? (
+        <div style={{ padding: '16px 16px 12px' }}>
+          <div style={{ fontSize: 20, color: '#1f2329', lineHeight: 1.4 }}>{w.title || '未命名作品'}</div>
+          {catName && (
+            <div style={{ marginTop: 8, display: 'inline-block', fontSize: 12, color: '#999', background: '#f5f5f5', padding: '3px 10px', borderRadius: 4 }}>{catName}</div>
+          )}
+          {w.description && (
+            <div style={{ marginTop: 12, fontSize: 14, color: '#555', lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>{w.description}</div>
+          )}
         </div>
-      </div>
+      ) : (
+        <div style={{ maxWidth: 900, margin: '20px auto 0', padding: '0 24px' }}>
+          <div style={{ background: '#fff', borderRadius: 12, padding: '24px 28px', boxShadow: '0 1px 3px rgba(31,35,41,0.04), 0 6px 20px rgba(31,35,41,0.04)' }}>
+            <div style={{ fontSize: 22, color: '#1f2329', lineHeight: 1.4 }}>{w.title || '未命名作品'}</div>
+            {/* 元信息网格：分类 / 客户 / 浏览量 / 创建时间 */}
+            <div style={{ marginTop: 16, display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px 24px' }}>
+              {catName && (
+                <MetaItem label="分类" value={catName} />
+              )}
+              {w.customer_name && (
+                <MetaItem label="关联客户" value={w.customer_name} />
+              )}
+              <MetaItem label="浏览量" value={Number(w.views) || 0} />
+              <MetaItem label="创建时间" value={w.created_at ? new Date(w.created_at).toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—'} />
+            </div>
+            {/* 标签 */}
+            {w.tags && (() => { try { const arr = JSON.parse(w.tags); return Array.isArray(arr) && arr.length > 0; } catch { return false; } })() && (
+              <MetaTags tags={(() => { try { return JSON.parse(w.tags); } catch { return []; } })()} />
+            )}
+            {/* 描述 */}
+            {w.description && (
+              <div style={{ marginTop: 18, paddingTop: 16, borderTop: '1px solid ' + MBORDER }}>
+                <div style={{ fontSize: 13, color: '#999', marginBottom: 8 }}>作品描述</div>
+                <div style={{ fontSize: 14, color: '#333', lineHeight: 1.8, whiteSpace: 'pre-wrap' }}>{w.description}</div>
+              </div>
+            )}
+            {/* 温馨寄语 */}
+            {w.blessing && (
+              <div style={{ marginTop: 14, padding: '12px 14px', background: '#faf5f0', borderRadius: 8, borderLeft: '3px solid #C9A876' }}>
+                <div style={{ fontSize: 12, color: '#a8825a', marginBottom: 4 }}>温馨寄语</div>
+                <div style={{ fontSize: 14, color: '#5b4a2f', lineHeight: 1.7 }}>{w.blessing}</div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* 相册样片网格：移动端 2 列 / PC 端 3 列 */}
+      {albums.length > 0 && (
+        isMobile ? (
+          <div style={{ padding: '0 16px 20px' }}>
+            <div style={{ fontSize: 15, color: '#333', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ width: 3, height: 14, background: MRED, borderRadius: 2, display: 'inline-block' }} />
+              作品相册
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 4 }}>
+              {albums.map((a, i) => (
+                <div key={a.id || i} style={{ aspectRatio: '1', background: '#f5f5f5', borderRadius: 4, overflow: 'hidden' }}>
+                  <img src={img(a.thumb_url || a.photo_url)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} loading="lazy" />
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <div style={{ maxWidth: 900, margin: '20px auto 0', padding: '0 24px' }}>
+            <div style={{ background: '#fff', borderRadius: 12, padding: '20px 28px', boxShadow: '0 1px 3px rgba(31,35,41,0.04), 0 6px 20px rgba(31,35,41,0.04)' }}>
+              <div style={{ fontSize: 15, color: '#333', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ width: 3, height: 14, background: MRED, borderRadius: 2, display: 'inline-block' }} />
+                作品相册
+                <span style={{ fontSize: 12, color: '#999' }}>（{albums.length} 张）</span>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+                {albums.map((a, i) => (
+                  <div key={a.id || i} style={{ aspectRatio: '1', background: '#f5f5f5', borderRadius: 6, overflow: 'hidden', cursor: 'pointer' }}>
+                    <img src={img(a.thumb_url || a.photo_url)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} loading="lazy" />
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )
+      )}
+
+      {/* 底部品牌栏：移动端 fixed 浮层 / PC 端 static 内嵌在文档流（不遮挡内容） */}
+      {isMobile ? (
+        <div style={{
+          position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 50,
+          background: '#fff', borderTop: '1px solid ' + MBORDER,
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: '10px 16px', paddingBottom: 'calc(10px + env(safe-area-inset-bottom))'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, minWidth: 0 }}>
+            <div style={{ width: 36, height: 36, borderRadius: '50%', background: '#f2f2f2', overflow: 'hidden', flexShrink: 0 }}>
+              {brandLogo ? <img src={img(brandLogo)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : null}
+            </div>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontSize: 13, color: '#333', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{brandName}</div>
+              {brandSlogan ? <div style={{ fontSize: 11, color: '#999', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{brandSlogan}</div> : null}
+            </div>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexShrink: 0 }}>
+            <button onClick={openComments} style={{ background: 'none', border: 'none', padding: 0, display: 'flex' }}>
+              <IconComment />
+            </button>
+            <button onClick={openVisits} style={{ background: 'none', border: 'none', padding: 0, display: 'flex' }}>
+              <IconVisitor />
+            </button>
+            <button onClick={startSlide} disabled={slidePhotos.length === 0} style={{ background: 'none', border: 'none', padding: 0, display: 'flex', opacity: slidePhotos.length === 0 ? 0.4 : 1 }}>
+              <IconPlay />
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div style={{ maxWidth: 900, margin: '20px auto 0', padding: '0 24px 24px' }}>
+          <div style={{ background: '#fff', borderRadius: 12, padding: '14px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', boxShadow: '0 1px 3px rgba(31,35,41,0.04), 0 6px 20px rgba(31,35,41,0.04)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1, minWidth: 0 }}>
+              <div style={{ width: 40, height: 40, borderRadius: '50%', background: '#f2f2f2', overflow: 'hidden', flexShrink: 0 }}>
+                {brandLogo ? <img src={img(brandLogo)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : null}
+              </div>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontSize: 14, color: '#333', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{brandName}</div>
+                {brandSlogan ? <div style={{ fontSize: 12, color: '#999', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{brandSlogan}</div> : null}
+              </div>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexShrink: 0 }}>
+              <button onClick={openComments} style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', color: '#666', fontSize: 13, cursor: 'pointer' }}>
+                <IconComment /> 评论
+              </button>
+              <button onClick={openVisits} style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', color: '#666', fontSize: 13, cursor: 'pointer' }}>
+                <IconVisitor /> 访客
+              </button>
+              <button onClick={startSlide} disabled={slidePhotos.length === 0} style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', color: slidePhotos.length === 0 ? '#ccc' : '#666', fontSize: 13, cursor: slidePhotos.length === 0 ? 'not-allowed' : 'pointer' }}>
+                <IconPlay /> 幻灯片
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 全屏幻灯片播放（点击播放按钮进入，3s 自动切换） */}
       {slideOpen && (
