@@ -320,7 +320,15 @@ router.post('/c/:token/submit', async (req, res) => {
 
     // 写入订单变更记录（客户提交）
     await appendOrderLog(order.id, `客户提交选片：保留 ${summary.stats.keep} 张、加选 ${summary.extra.extraCount} 张，进入「${nextStatus === TASK_STATUS.PENDING_PAYMENT ? '待支付加片费' : '已完成'}」`);
-    // 移动端业务消息已由 emitMessage 双写 biz_message 覆盖（select_pending_pay/select_finish → select_photo）
+    // 移动端业务消息（select_photo，biz_id=task_id，biz_extra 携带 orderId 供路由跳转）
+    try {
+      await emitBizToStaff({
+        title: '新选片提交',
+        content: `客户「${order.customer_name || ''}」提交选片（保留 ${summary.stats.keep} 张，加选 ${summary.extra.extraCount} 张）`,
+        biz_type: BIZ_TYPE.SELECT_PHOTO, biz_id: task.id,
+        biz_extra: JSON.stringify({ orderId: order.id })
+      });
+    } catch (e) { console.error('[selection] 选片消息生成失败', e.message); }
 
     res.json({ ok: true, status: nextStatus, stats: summary.stats, extra: summary.extra, pending_fee: hasFee ? summary.extra.extraFee : 0 });
   } catch (e) { res.status(500).json({ error: e.message }); }
@@ -492,8 +500,8 @@ router.delete('/orders/:orderId/photos/:photoId', authRequired, requireRole(...S
     });
     // 写入订单变更记录（删除底片）
     await appendOrderLog(o.id, `删除底片（photo_id=${photoId}）`);
-    // 移动端业务消息（删底片 + 备份导出）
-    if (backup && backup.ok) { try { await emitBizToStaff({ title: '底片删除：备份文件已生成', content: `订单 ${o.order_no || o.id} 已删除底片，自动备份 ${backup.filename} 已生成`, biz_type: BIZ_TYPE.SYSTEM, biz_id: backup.filename }); } catch {} }
+    // 移动端业务消息（删底片 + 备份导出，system 类型 biz_id=null，biz_extra 存 filename）
+    if (backup && backup.ok) { try { await emitBizToStaff({ title: '底片删除：备份文件已生成', content: `订单 ${o.order_no || o.id} 已删除底片，自动备份 ${backup.filename} 已生成`, biz_type: BIZ_TYPE.SYSTEM, biz_id: null, biz_extra: JSON.stringify({ filename: backup.filename }) }); } catch {} }
     res.json({ ok: true, backup: backup && backup.ok ? { filename: backup.filename, localPath: backup.localPath } : null });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -546,8 +554,8 @@ router.post('/orders/:orderId/reset', authRequired, requireRole(...SELECTION_ADM
     try {
       await generateEventTodo(o.id, 'select_reset', '待客户重新选片', `商家已重置选片（第 ${version} 轮），客户需重新选片`, `reset_${resetAt}`);
       await emitMessage({ message_type: 'order_msg', business_event: 'select_reset', title: '选片已重置', content: `订单 ${o.order_no || o.id} 选片已重置，客户需重新选片`, rel_id: String(o.id), rel_model: 'order' });
-      // 移动端业务消息（重置选片 + 备份导出）
-      if (backup && backup.ok) await emitBizToStaff({ title: '重置选片：备份文件已生成', content: `订单 ${o.order_no || o.id} 选片已重置，自动备份 ${backup.filename} 已生成`, biz_type: BIZ_TYPE.SYSTEM, biz_id: backup.filename });
+      // 移动端业务消息（重置选片 + 备份导出，system 类型 biz_id=null，biz_extra 存 filename）
+      if (backup && backup.ok) await emitBizToStaff({ title: '重置选片：备份文件已生成', content: `订单 ${o.order_no || o.id} 选片已重置，自动备份 ${backup.filename} 已生成`, biz_type: BIZ_TYPE.SYSTEM, biz_id: null, biz_extra: JSON.stringify({ filename: backup.filename }) });
     } catch (e) { console.error('[selection] 重置后通知失败', e.message); }
     res.json({ ok: true, version, status: TASK_STATUS.SELECTING, backup: backup && backup.ok ? { filename: backup.filename, localPath: backup.localPath } : null });
   } catch (e) { res.status(500).json({ error: e.message }); }
@@ -582,7 +590,13 @@ router.post('/orders/:orderId/pay', authRequired, requireRole(...PAY_ROLES), asy
     const r = await markPaid(req.params.orderId, String(b.pay_flow_no || '').trim(), b.channel || 'cash', 'offline');
     // 审计：支付成功（操作人 + 状态变更前后值）
     if (!r.already) await appendOrderLog(req.params.orderId, `选片加片费已支付 ¥${Number(r.fee || 0).toFixed(2)}（${b.channel || 'cash'}）`);
-    // 移动端业务消息已由 emitMessage 双写覆盖（select_paid → select_photo）
+    // 移动端业务消息（select_photo，biz_id=task_id，biz_extra 携带 orderId）
+    if (!r.already) {
+      try {
+        const payTask = await get('SELECT id FROM order_select_task WHERE order_id = ?', [req.params.orderId]);
+        if (payTask) await emitBizToStaff({ title: '选片-客户已完成付款', content: `订单 ${req.params.orderId} 选片加片费已支付 ¥${Number(r.fee || 0).toFixed(2)}`, biz_type: BIZ_TYPE.SELECT_PHOTO, biz_id: payTask.id, biz_extra: JSON.stringify({ orderId: Number(req.params.orderId) }) });
+      } catch {}
+    }
     try {
       await emitMessage({ message_type: 'order_msg', business_event: 'select_paid', title: '选片加片费已支付', content: `订单 ${req.params.orderId} 选片加片费已支付`, rel_id: String(req.params.orderId), rel_model: 'order' });
     } catch {}

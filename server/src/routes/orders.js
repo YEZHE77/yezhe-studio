@@ -9,6 +9,7 @@ import { authRequired, requireRole } from '../auth.js';
 import { parseRow } from '../schema.js';
 import { scheduleConflict, occupySchedule, releaseSchedule, conflictText, capacityConflict } from './schedules.js';
 import { emitMessage } from './message.js';
+import { emitBizToStaff, BIZ_TYPE } from './mobileMessage.js';
 import { syncOrderTodos, generateEventTodo, archiveOrderTodos } from '../todo.js';
 
 const router = Router();
@@ -771,6 +772,8 @@ router.post('/:id/payments', authRequired, requireRole(['admin', 'photographer',
     await run('UPDATE orders SET paid_amount = ? WHERE id = ?', [paid, o.id]);
     const TYPE_LABEL = { deposit: '定金', balance: '尾款', extra: '加片/增值', refund: '退款' };
     await appendLog(o.id, `收款登记：${TYPE_LABEL[type]} ¥${amount}（${channelLabel(b.method, b.channel)}）`);
+    // 移动端业务消息（订单金额变动）
+    try { await emitBizToStaff({ title: '订单金额变动', content: `订单 ${o.order_no || o.id} 收款登记：${TYPE_LABEL[type]} ¥${amount}（${channelLabel(b.method, b.channel)}）`, biz_type: BIZ_TYPE.ORDER, biz_id: o.id }); } catch {}
     // 收到定金确保订单处于「已付定金」状态（兼容旧数据由 unpaid 归一）
     if (type === 'deposit' && o.status !== 'deposit') {
       await run("UPDATE orders SET status = 'deposit' WHERE id = ?", [o.id]);

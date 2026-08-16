@@ -9,12 +9,10 @@ const router = Router();
 const DEDUP_WINDOW_MS = 5 * 60 * 1000;
 
 // business_event → biz_message.biz_type 映射（emitMessage 双写移动端消息中心时用）
-// select_* 选片 / order_status 订单 / 其余默认 system
+// 仅 order_status 双写（order 类型，biz_id=order_id）；select_* 由 selection.js 手动 emitBizToStaff 传 task_id
 const BIZ_TYPE_BY_EVENT = {
-  select_pending_pay: 'select_photo',
-  select_finish: 'select_photo',
-  select_paid: 'select_photo',
-  order_status: 'order'
+  order_status: 'order',
+  order_created: 'order'
 };
 
 // 取所有 B 端员工 uid（admin/photographer/finance），消息接收人

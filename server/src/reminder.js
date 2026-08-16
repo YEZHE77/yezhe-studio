@@ -28,12 +28,13 @@ async function scanSelectionExpiry() {
     const exp = new Date(t.expire_at).getTime();
     if (isNaN(exp)) continue;
     if (exp <= now || exp > now + DAY) continue; // 已过期或超过 24h 窗口
-    if (await alreadyNotified(BIZ_TYPE.SELECT_PHOTO, t.order_id)) continue;
+    if (await alreadyNotified(BIZ_TYPE.SELECT_PHOTO, t.id)) continue;
     const o = await get('SELECT order_no, customer_name FROM orders WHERE id = ?', [t.order_id]);
     await emitBizToStaff({
       title: '选片任务即将到期',
       content: `订单 ${(o && o.order_no) || t.order_id}（${(o && o.customer_name) || '客户'}）的选片任务即将到期，请提醒客户尽快完成选片`,
-      biz_type: BIZ_TYPE.SELECT_PHOTO, biz_id: t.order_id
+      biz_type: BIZ_TYPE.SELECT_PHOTO, biz_id: t.id,
+      biz_extra: JSON.stringify({ orderId: t.order_id })
     });
     count++;
   }

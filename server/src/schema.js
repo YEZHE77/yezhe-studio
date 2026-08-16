@@ -358,7 +358,7 @@ const PG_BIZ_MESSAGE = `
 CREATE TABLE IF NOT EXISTS biz_message (
   id SERIAL PRIMARY KEY, user_id INTEGER NOT NULL,
   title TEXT NOT NULL, content TEXT,
-  biz_type TEXT NOT NULL DEFAULT 'system', biz_id TEXT,
+  biz_type TEXT NOT NULL DEFAULT 'system', biz_id TEXT, biz_extra TEXT,
   is_read INTEGER NOT NULL DEFAULT 0,
   created_at TIMESTAMPTZ DEFAULT now()
 );
@@ -368,7 +368,7 @@ const SQLITE_BIZ_MESSAGE = `
 CREATE TABLE IF NOT EXISTS biz_message (
   id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL,
   title TEXT NOT NULL, content TEXT,
-  biz_type TEXT NOT NULL DEFAULT 'system', biz_id TEXT,
+  biz_type TEXT NOT NULL DEFAULT 'system', biz_id TEXT, biz_extra TEXT,
   is_read INTEGER NOT NULL DEFAULT 0,
   created_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
@@ -613,6 +613,7 @@ export async function initSchema() {
   for (const s of (dialect === 'pg' ? PG_MESSAGE_TABLES : SQLITE_MESSAGE_TABLES).split(';').map((x) => x.trim()).filter(Boolean)) await run(s);
   // 移动端业务消息表（biz_message）
   for (const s of (dialect === 'pg' ? PG_BIZ_MESSAGE : SQLITE_BIZ_MESSAGE).split(';').map((x) => x.trim()).filter(Boolean)) await run(s);
+  await ensureColumn('biz_message', 'biz_extra', 'TEXT');
 
   // 套系对外分享表（photo_package）
   for (const s of (dialect === 'pg' ? PG_PHOTO_PACKAGE : SQLITE_PHOTO_PACKAGE).split(';').map((x) => x.trim()).filter(Boolean)) await run(s);

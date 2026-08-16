@@ -3,7 +3,8 @@ import { useNavigate, useParams } from 'react-router-dom';
 import http from '../api.js';
 
 // 移动端「消息」详情页 —— 二级页面（/mobile/message/:messageId）
-// 返回栏 / 完整标题+正文 / 业务跳转按钮（动态）/ 创建时间；进入即标记已读（后端处理）
+// 返回栏 / 完整标题+正文 / 业务跳转按钮（按 biz_exist + biz_extra 动态渲染）/ 创建时间
+// 进入即标记已读（后端处理）；业务已删除则按钮置灰
 const TEXT = '#1f2329';
 const SUB = '#6E6E73';
 const FAINT = '#AEAEB2';
@@ -17,13 +18,17 @@ const BIZ_META = {
   system: { label: '系统', color: '#8E8E93', bg: 'rgba(142,142,147,0.12)' }
 };
 
-// 业务按钮描述：无关联业务返回 null（隐藏）；system 备份返回 download 类型
-function bizAction(biz_type, biz_id) {
-  switch (biz_type) {
-    case 'select_photo': return biz_id ? { label: '查看选片任务', kind: 'order', id: biz_id } : null;
-    case 'order': return biz_id ? { label: '查看订单', kind: 'order', id: biz_id } : null;
-    case 'schedule': return biz_id ? { label: '查看摄影日程', kind: 'schedule', id: biz_id } : null;
-    case 'system': return biz_id ? { label: '下载备份文件', kind: 'download', id: biz_id } : null;
+// 业务按钮：根据 biz_type + biz_exist + biz_extra 决定
+// 返回 null（隐藏）或 { label, kind: 'order'|'schedule'|'download', id }
+function bizAction(m) {
+  const extra = m.biz_extra || {};
+  switch (m.biz_type) {
+    // 选片：biz_id=task_id，biz_extra.orderId 用于路由
+    case 'select_photo': return m.biz_exist && extra.orderId ? { label: '查看选片任务', kind: 'order', id: extra.orderId } : null;
+    case 'order': return m.biz_id ? { label: '查看订单', kind: 'order', id: m.biz_id } : null;
+    case 'schedule': return m.biz_id ? { label: '查看摄影日程', kind: 'schedule', id: m.biz_id } : null;
+    // system：biz_extra.filename 存在则显示下载按钮，否则隐藏
+    case 'system': return extra.filename ? { label: '下载备份文件', kind: 'download', id: extra.filename } : null;
     default: return null;
   }
 }
@@ -41,37 +46,24 @@ export default function MobileMessageDetail() {
   const { messageId } = useParams();
   const [m, setM] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [bizDeleted, setBizDeleted] = useState(false); // 关联业务已删除 → 按钮置灰
   const [downloading, setDownloading] = useState(false);
 
-  // 拉取详情（后端自动置已读）
+  // 拉取详情（后端自动置已读 + 校验业务存在性 + 返回 biz_extra）
   useEffect(() => {
     http.get('/api/mobile/message/' + messageId)
       .then((r) => {
         setM(r.data);
-        // 通知底部 Tab 刷新未读角标（多端同步）
         try { window.dispatchEvent(new CustomEvent('biz-message-read')); } catch {}
       })
       .catch(() => setM(null))
       .finally(() => setLoading(false));
   }, [messageId]);
 
-  // 校验关联业务是否存在（订单/日程）；已删除则按钮置灰
-  useEffect(() => {
-    if (!m) return;
-    const action = bizAction(m.biz_type, m.biz_id);
-    if (!action) return;
-    if (action.kind === 'order') {
-      http.get('/api/orders/' + action.id).then(() => setBizDeleted(false)).catch(() => setBizDeleted(true));
-    } else if (action.kind === 'schedule') {
-      http.get('/api/schedules/' + action.id).then(() => setBizDeleted(false)).catch(() => setBizDeleted(true));
-    }
-  }, [m]);
-
-  const action = m ? bizAction(m.biz_type, m.biz_id) : null;
   const meta = m ? (BIZ_META[m.biz_type] || BIZ_META.system) : null;
+  const action = m ? bizAction(m) : null;
+  // 业务已删除（biz_exist=false 且非 system）：按钮置灰
+  const deleted = m && m.biz_exist === false && m.biz_type !== 'system';
 
-  // 下载备份文件（system 类型）
   const downloadBackup = async () => {
     if (!action || downloading) return;
     setDownloading(true);
@@ -86,14 +78,14 @@ export default function MobileMessageDetail() {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
     } catch (e) {
-      alert((e.response && e.response.data && e.response.data.error) || '下载失败');
+      alert('下载失败，备份文件可能已被清理');
     } finally { setDownloading(false); }
   };
 
   const onClickAction = () => {
     if (!action) return;
     if (action.kind === 'download') { downloadBackup(); return; }
-    if (bizDeleted) return; // 业务已删除，置灰不可点
+    if (deleted) return;
     if (action.kind === 'order') nav('/orders/' + action.id);
     else if (action.kind === 'schedule') nav('/schedule');
   };
@@ -131,14 +123,14 @@ export default function MobileMessageDetail() {
 
             {/* 业务操作按钮 */}
             {action && (
-              <button onClick={onClickAction} disabled={action.kind !== 'download' && bizDeleted}
+              <button onClick={onClickAction} disabled={deleted}
                 style={{
                   marginTop: 20, width: '100%', padding: '12px 0', borderRadius: 10, border: 'none',
-                  background: (action.kind !== 'download' && bizDeleted) ? '#E8E8EA' : GREEN,
-                  color: (action.kind !== 'download' && bizDeleted) ? '#AEAEB2' : '#fff',
-                  fontSize: 15, cursor: (action.kind !== 'download' && bizDeleted) ? 'not-allowed' : 'pointer'
+                  background: deleted ? '#E8E8EA' : GREEN,
+                  color: deleted ? '#AEAEB2' : '#fff',
+                  fontSize: 15, cursor: deleted ? 'not-allowed' : 'pointer'
                 }}>
-                {downloading ? '下载中…' : (action.kind !== 'download' && bizDeleted ? '业务已删除' : action.label)}
+                {downloading ? '下载中…' : (deleted ? '关联业务已删除' : action.label)}
               </button>
             )}
           </div>

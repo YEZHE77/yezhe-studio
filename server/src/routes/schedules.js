@@ -3,6 +3,7 @@ import { Router } from 'express';
 import crypto from 'node:crypto';
 import { query, get, insert, run } from '../db.js';
 import { authRequired, requireRole } from '../auth.js';
+import { emitBizToStaff, BIZ_TYPE } from './mobileMessage.js';
 import { Solar } from 'lunar-javascript';
 import { buildShareUrl, genQr } from '../shareUtil.js';
 
@@ -365,6 +366,10 @@ router.post('/', authRequired, requireRole(['admin', 'photographer']), async (re
        b.groom_name || '', b.bride_name || '', b.contact_phone || '', b.address || '']
     );
     res.json({ id });
+    // 移动端业务消息（新增摄影日程）
+    if (status === 'booked' || status === 'locked') {
+      try { await emitBizToStaff({ title: '新增摄影日程', content: `新增摄影日程 ${b.date}（${(b.groom_name && b.bride_name) ? `${b.groom_name} & ${b.bride_name}` : (b.order_no || '客户')}）`, biz_type: BIZ_TYPE.SCHEDULE, biz_id: id }); } catch {}
+    }
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -442,8 +447,13 @@ router.put('/:id', authRequired, requireRole(['admin', 'photographer']), async (
 // 删除
 router.delete('/:id', authRequired, requireRole(['admin', 'photographer']), async (req, res) => {
   try {
+    const s = await get('SELECT date, order_no, groom_name, bride_name, status FROM schedules WHERE id = ?', [req.params.id]);
     await run('DELETE FROM schedules WHERE id = ?', [req.params.id]);
     res.json({ ok: true });
+    // 移动端业务消息（日程删除，仅占用型日程通知）
+    if (s && (s.status === 'booked' || s.status === 'locked')) {
+      try { await emitBizToStaff({ title: '日程删除', content: `摄影日程 ${s.date}（${(s.groom_name && s.bride_name) ? `${s.groom_name} & ${s.bride_name}` : (s.order_no || '客户')}）已删除`, biz_type: BIZ_TYPE.SCHEDULE, biz_id: req.params.id }); } catch {}
+    }
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
