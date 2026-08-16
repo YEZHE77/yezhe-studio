@@ -27,6 +27,14 @@ body {
 .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 .hide-scrollbar::-webkit-scrollbar { display: none; }
 
+/* 打印：仅显示 .print-order-sheet（订单/合同单据），隐藏侧边栏/顶栏/订单详情其他内容 */
+@media print {
+  body * { visibility: hidden; }
+  .print-order-sheet, .print-order-sheet * { visibility: visible; }
+  .print-order-sheet { position: absolute !important; left: 0 !important; top: 0 !important; width: 700px; margin: 0 auto; }
+  @page { size: A4; margin: 12mm; }
+}
+
 @layer base {
   /* 浅色主题迁移：
      原深色设计大量使用 text-white，在浅底上改为深灰正文；

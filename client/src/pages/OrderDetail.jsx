@@ -714,7 +714,13 @@ export default function OrderDetail() {
   function printOrder() {
     if (!detail) return;
     setMoreMenu(false);
-    // 统一走 html2pdf 生成多页 PDF（每页都带页眉页脚），浏览器/独立 PWA/微信都一致
+    // PC / 普通浏览器优先走 window.print() 弹原生打印对话框（含打印机选择 + 预览）；微信 / PWA 环境 window.print 无效，fallback 到 PDF 下载
+    const isWechat = /MicroMessenger/i.test(navigator.userAgent);
+    const isStandalone = typeof window.matchMedia === 'function' && window.matchMedia('(display-mode: standalone)').matches;
+    if (!isWechat && !isStandalone && typeof window.print === 'function') {
+      window.print();
+      return;
+    }
     downloadPrintPdf();
   }
   async function restoreOrder() {
