@@ -42,6 +42,7 @@ const Team = React.lazy(() => import('../pages/Team.jsx'));
 const Finance = React.lazy(() => import('../pages/Finance.jsx'));
 const MessageCenter = React.lazy(() => import('../pages/MessageCenter.jsx'));
 const PhotoPackages = React.lazy(() => import('../pages/PhotoPackages.jsx'));
+const PackageCenter = React.lazy(() => import('../pages/PackageCenter.jsx'));
 const ContractTemplates = React.lazy(() => import('../pages/ContractTemplates.jsx'));
 const ContractAudit = React.lazy(() => import('../pages/ContractAudit.jsx'));
 const ConsistencyCheck = React.lazy(() => import('../pages/ConsistencyCheck.jsx'));
@@ -118,7 +119,7 @@ const TABS = [
   { key: 'home', label: '工作台', icon: 'monitor', to: '/' },
   { key: 'site', label: '微官网', icon: 'home', to: '/m/site' },
   { key: 'plus', label: '', icon: 'plus', to: '' },
-  { key: 'packages', label: '套系', icon: 'package', to: '/photo-packages' },
+  { key: 'packages', label: '套系', icon: 'package', to: '/package-center' },
   { key: 'msg', label: '消息', icon: 'bell', to: '/m/msg' }
 ];
 
@@ -233,7 +234,7 @@ export default function MobileShell() {
     return () => { clearInterval(t); window.removeEventListener('focus', onFocus); window.removeEventListener('biz-message-read', onMsgRead); };
   }, []);
 
-  const tabRoots = ['/', '/m/site', '/photo-packages', '/m/msg'];
+  const tabRoots = ['/', '/m/site', '/package-center', '/m/msg'];
   const hideTopBackRoutes = ['/works', '/packages', '/schedule', '/orders', '/todo'];
   const isTab = tabRoots.includes(location.pathname);
   // /packages/* /orders/* /schedule/* 等子路由由页面内自带顶部导航，避免双层 TopBack
@@ -242,7 +243,7 @@ export default function MobileShell() {
   const activeKey = (() => {
     if (location.pathname === '/') return 'home';
     if (location.pathname.startsWith('/m/site')) return 'site';
-    if (location.pathname.startsWith('/photo-packages')) return 'packages';
+    if (location.pathname.startsWith('/package-center')) return 'packages';
     if (location.pathname.startsWith('/m/msg') || location.pathname.startsWith('/m/messages')) return 'msg';
     return '';
   })();
@@ -269,6 +270,7 @@ export default function MobileShell() {
                 <Route path="/visitor/:visitorId" element={<VisitorDetail />} />
                 <Route path="/visitor-settings" element={<VisitorSettings />} />
                 <Route path="/visitor-blacklist" element={<VisitorBlacklist />} />
+                <Route path="/package-center" element={<PackageCenter />} />
                 <Route path="/photo-packages" element={<PhotoPackages />} />
                 {/* 复用现有 B 端页面，保持与桌面端同一套业务逻辑 */}
                 <Route path="/works" element={<Works />} />

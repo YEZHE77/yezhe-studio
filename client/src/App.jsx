@@ -55,6 +55,7 @@ const Team = React.lazy(() => import('./pages/Team.jsx'));
 const MessageCenter = React.lazy(() => import('./pages/MessageCenter.jsx'));
 const PhotoPackages = React.lazy(() => import('./pages/PhotoPackages.jsx'));
 const PackagePublic = React.lazy(() => import('./pages/PackagePublic.jsx'));
+const PackageCenter = React.lazy(() => import('./pages/PackageCenter.jsx'));
 const CustomerOrder = React.lazy(() => import('./pages/CustomerOrder.jsx'));
 const AppointmentForm = React.lazy(() => import('./pages/AppointmentForm.jsx'));
 const ContractTemplates = React.lazy(() => import('./pages/ContractTemplates.jsx'));
@@ -172,6 +173,7 @@ export default function App() {
           <Route path="/home" element={<Suspense fallback={<PageLoader />}><Home /></Suspense>} />
           <Route path="/my" element={<Suspense fallback={<PageLoader />}><My /></Suspense>} />
           <Route path="/w/:id" element={<Suspense fallback={<PageLoader />}><WorkPublic /></Suspense>} />
+          <Route path="/package-center" element={<Suspense fallback={<PageLoader />}><PackageCenter /></Suspense>} />
           <Route path="*" element={<Navigate to="/login" replace />} />
         </>
       )}

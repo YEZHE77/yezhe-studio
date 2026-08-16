@@ -94,7 +94,7 @@ router.post('/:id/share', authRequired, requireRole(...STAFF_ROLES), async (req,
 // 公开套系列表（C 端首页「套系/价目」区块，仅返回已启用的套系）
 router.get('/public-list', async (req, res) => {
   try {
-    const rows = await query('SELECT id, package_name, cover_image, package_desc, shoot_duration, shoot_scope, photo_total, retouch_count, original_file, price, additional_price, other_service, notice FROM photo_package WHERE is_enable = 1 ORDER BY id ASC');
+    const rows = await query('SELECT id, package_name, cover_image, package_desc, shoot_duration, shoot_scope, photo_total, retouch_count, original_file, price, additional_price, other_service, notice, share_token FROM photo_package WHERE is_enable = 1 ORDER BY id ASC');
     res.json({ list: rows });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });

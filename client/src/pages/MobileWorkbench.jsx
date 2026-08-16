@@ -93,6 +93,7 @@ const SECTIONS = [
     title: '其他功能',
     items: [
       { label: '相册印刷', icon: Printer, color: MINT, to: '/settings', tag: 'NEW' },
+      { label: '套系管理', icon: Tag, color: MINT, to: '/photo-packages' },
       { label: '存储空间', icon: HardDrive, color: MINT, to: '/capacity' },
       { label: '容量管理', icon: Gauge, color: MINT, to: '/capacity' },
       { label: '访客', icon: User, color: MINT, to: '/visitors' },
