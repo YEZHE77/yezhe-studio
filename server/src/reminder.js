@@ -66,14 +66,40 @@ async function scanScheduleReminder() {
   return count;
 }
 
+// ③ 文件到期清理提醒（sub_type=file_expire；仅生成提醒，不删原图——删除逻辑后续单独排期）
+async function scanFileExpiry() {
+  const now = new Date();
+  const p = (n) => String(n).padStart(2, '0');
+  const today = `${now.getFullYear()}-${p(now.getMonth() + 1)}-${p(now.getDate())}`;
+  const rows = await query(
+    "SELECT id, order_no, customer_name, retouch_expire_at FROM orders WHERE retouch_expire_at IS NOT NULL AND retouch_expire_at != '' AND retouch_expire_at <= ? AND cancelled = 0 AND is_deleted = 0",
+    [today]
+  );
+  let count = 0;
+  for (const o of rows) {
+    // 去重：同订单只生成一次 file_expire 提醒（sub_type 维度，避免每日重复）
+    const exist = await get('SELECT id FROM biz_message WHERE biz_type = ? AND sub_type = ? AND biz_id = ? LIMIT 1', [BIZ_TYPE.ORDER, 'file_expire', String(o.id)]);
+    if (exist) continue;
+    await emitBizToStaff({
+      title: '文件保存期已到期',
+      content: `订单 ${(o.order_no) || o.id}（${(o.customer_name) || '客户'}）的精修大图保存期已到，即将自动清理（缩略图保留），请及时下载存档`,
+      biz_type: BIZ_TYPE.ORDER, biz_id: o.id, sub_type: 'file_expire',
+      biz_extra: JSON.stringify({ orderId: o.id })
+    });
+    count++;
+  }
+  return count;
+}
+
 // 执行一次扫描（导出供手动触发/测试）
 export async function runReminderScan() {
   try {
     const sel = await scanSelectionExpiry();
     const sch = await scanScheduleReminder();
-    console.log(`[reminder] 扫描完成：选片到期 ${sel} 条，日程临近 ${sch} 条`);
-    return { selection: sel, schedule: sch };
-  } catch (e) { console.error('[reminder] 扫描失败：', e.message); return { selection: 0, schedule: 0 }; }
+    const fe = await scanFileExpiry();
+    console.log(`[reminder] 扫描完成：选片到期 ${sel} 条，日程临近 ${sch} 条，文件到期 ${fe} 条`);
+    return { selection: sel, schedule: sch, fileExpire: fe };
+  } catch (e) { console.error('[reminder] 扫描失败：', e.message); return { selection: 0, schedule: 0, fileExpire: 0 }; }
 }
 
 // 定时调度：每日 08:00 执行（避开凌晨备份/巡检时段）

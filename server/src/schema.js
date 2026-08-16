@@ -637,6 +637,8 @@ export async function initSchema() {
   await ensureColumn('biz_message', 'biz_extra', 'TEXT');
   // PC 端消息中心归档（PC/H5 共用一套 biz_message 数据，归档仅在 PC 端使用）
   await ensureColumn('biz_message', 'is_archived', 'INTEGER NOT NULL DEFAULT 0');
+  // 订单消息子类型（order_status_change 状态变更 / file_expire 文件到期 / reserve 预约）
+  await ensureColumn('biz_message', 'sub_type', 'TEXT');
 
   // 套系对外分享表（photo_package）
   for (const s of (dialect === 'pg' ? PG_PHOTO_PACKAGE : SQLITE_PHOTO_PACKAGE).split(';').map((x) => x.trim()).filter(Boolean)) await run(s);

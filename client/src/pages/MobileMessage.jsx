@@ -110,7 +110,11 @@ export default function MobileMessage() {
     http.get('/api/settings/studio').then((r) => setStudio(r.data)).catch(() => {});
   }, []);
 
-  const openConsult = (key) => nav('/m/messages?type=' + key);
+  const openConsult = (key) => {
+    // 订单消息走专属二级页（含预约消息入口 + 批量已读/清空）；其余走通用消息列表
+    if (key === 'order') nav('/m/order-messages');
+    else nav('/m/messages?type=' + key);
+  };
 
   const used = storage ? formatBytes(storage.totalUsedBytes || 0) : '--';
   const limit = storage && storage.alertThreshold ? formatBytes(storage.alertThreshold) : '';

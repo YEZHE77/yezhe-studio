@@ -524,7 +524,7 @@ router.post('/', authRequired, requireRole(['admin', 'photographer', 'finance'])
     await emitMessage({
       message_type: 'order_msg', business_event: 'order_created',
       title: '新建订单', content: `${customer_name || '客户'} 新建了订单 ${order_no}`,
-      rel_id: String(id), rel_model: 'order'
+      rel_id: String(id), rel_model: 'order', sub_type: 'order_status_change'
     });
     // 待办：新建订单生成当前阶段待办（deposit / 已付定金）
     try { await syncOrderTodos(id); } catch (e) { console.error('[todo] 新建订单待办同步失败', e.message); }
@@ -671,7 +671,7 @@ router.put('/:id', authRequired, requireRole(['admin', 'photographer', 'finance'
       await emitMessage({
         message_type: 'order_msg', business_event: 'order_status',
         title: '订单状态变更', content: `${customer_name || '客户'} 的订单已进入「${MAP[status] || status}」`,
-        rel_id: String(cur.id), rel_model: 'order'
+        rel_id: String(cur.id), rel_model: 'order', sub_type: 'order_status_change'
       });
       // 待办同步：订单阶段变化 → 归档旧阶段待办 + 生成新阶段待办（仅提醒，不改订单业务数据）
       try { await syncOrderTodos(cur.id); } catch (e) { console.error('[todo] 阶段待办同步失败', e.message); }

@@ -4,6 +4,7 @@
 import { Router } from 'express';
 import { query, get, insert, run } from '../db.js';
 import { emitMessage } from './message.js';
+import { emitBizToStaff, BIZ_TYPE } from './mobileMessage.js';
 import { generateEventTodo } from '../todo.js';
 
 const router = Router();
@@ -56,6 +57,15 @@ router.post('/appointment', async (req, res) => {
       title: '新顾客咨询', content: `${name}（${phone}）提交了预约${b.hope_date ? '，期望日期 ' + b.hope_date : ''}${styleReq ? '，风格 ' + styleReq : ''}`,
       rel_id: openid, rel_model: 'customer'
     });
+
+    // 订单消息子类型：预约消息 reserve（订单消息二级页「预约消息」入口展示；biz_id 存预约 id，点击跳预约管理页）
+    try {
+      await emitBizToStaff({
+        title: '新预约', content: `${name}（${phone}）提交了预约${b.hope_date ? '，期望日期 ' + b.hope_date : ''}${styleReq ? '，风格 ' + styleReq : ''}`,
+        biz_type: BIZ_TYPE.ORDER, biz_id: id, sub_type: 'reserve',
+        biz_extra: JSON.stringify({ appointmentId: id })
+      });
+    } catch (e) { console.error('[public] 生成预约消息失败：', e.message); }
 
     // 待办：新预约待确认（order_id=0 表示尚未转订单的预约待办；biz_key 关联预约 id 去重）
     try {

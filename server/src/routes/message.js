@@ -34,7 +34,7 @@ export async function staffUids() {
 
 // 消息触发（去重：business_event + rel_id，5 分钟内相同事件不重复生成）
 // receiver_uid 为 null 时广播给全体 staff
-export async function emitMessage({ receiver_uid = null, message_type, business_event, title, content, rel_id, rel_model, can_wechat_push = 0 }) {
+export async function emitMessage({ receiver_uid = null, message_type, business_event, title, content, rel_id, rel_model, can_wechat_push = 0, sub_type = null }) {
   try {
     if (business_event && rel_id != null && rel_id !== '') {
       const recent = await get(
@@ -54,8 +54,8 @@ export async function emitMessage({ receiver_uid = null, message_type, business_
       if (bizType && rel_id != null && rel_id !== '') {
         try {
           await insert(
-            'INSERT INTO biz_message (user_id, title, content, biz_type, biz_id) VALUES (?,?,?,?,?)',
-            [uid, title || '', content || '', bizType, String(rel_id)]
+            'INSERT INTO biz_message (user_id, title, content, biz_type, biz_id, sub_type) VALUES (?,?,?,?,?,?)',
+            [uid, title || '', content || '', bizType, String(rel_id), sub_type || null]
           );
         } catch (e) { console.error('[message] biz_message 双写失败：', e.message); }
       }

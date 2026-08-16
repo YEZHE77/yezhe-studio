@@ -28,13 +28,13 @@ async function staffUids() {
 // 异步消息生成：主业务成功后调用；user_id 为 null 时广播给全体 staff。
 // 消息写入失败仅打日志，绝不回滚/阻塞主业务（附属异步逻辑）。
 // biz_extra：附属参数（JSON 字符串），如 select_photo 存 {"orderId":N}、system 存 {"filename":"..."}
-export async function emitBizMessage({ user_id = null, title, content = '', biz_type, biz_id = null, biz_extra = null }) {
+export async function emitBizMessage({ user_id = null, title, content = '', biz_type, biz_id = null, biz_extra = null, sub_type = null }) {
   try {
     const receivers = user_id != null ? [user_id] : await staffUids();
     for (const uid of receivers) {
       await insert(
-        'INSERT INTO biz_message (user_id, title, content, biz_type, biz_id, biz_extra) VALUES (?,?,?,?,?,?)',
-        [uid, title || '', content || '', biz_type || BIZ_TYPE.SYSTEM, biz_id != null ? String(biz_id) : null, biz_extra || null]
+        'INSERT INTO biz_message (user_id, title, content, biz_type, biz_id, biz_extra, sub_type) VALUES (?,?,?,?,?,?,?)',
+        [uid, title || '', content || '', biz_type || BIZ_TYPE.SYSTEM, biz_id != null ? String(biz_id) : null, biz_extra || null, sub_type || null]
       );
     }
     return receivers.length;
@@ -55,11 +55,15 @@ router.get('/list', authRequired, async (req, res) => {
     const readStatus = (req.query.read_status || 'all').toString();
     const bizType = (req.query.biz_type || '').toString();
     const archived = (req.query.archived || '').toString();
+    const subType = (req.query.sub_type || '').toString();
+    const subTypeNot = (req.query.sub_type_not || '').toString();
     const where = ['user_id = ?'];
     const params = [uid];
     if (readStatus === 'unread') where.push('is_read = 0');
     else if (readStatus === 'read') where.push('is_read = 1');
     if (bizType) { where.push('biz_type = ?'); params.push(bizType); }
+    if (subType) { where.push('sub_type = ?'); params.push(subType); }
+    if (subTypeNot) { where.push('(sub_type IS NULL OR sub_type != ?)'); params.push(subTypeNot); }
     if (archived === '1') where.push('is_archived = 1');
     else where.push('is_archived = 0');
     const total = (await get(`SELECT COUNT(*) AS c FROM biz_message WHERE ${where.join(' AND ')}`, params)).c;
@@ -80,11 +84,47 @@ router.get('/unread-count', authRequired, async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// 全部标为已读
+// 全部标为已读（可选 biz_type / sub_type / sub_type_not 限定范围，供订单消息页「批量标记已读」）
 router.put('/read-all', authRequired, async (req, res) => {
   try {
     const uid = req.user && req.user.uid;
-    await run('UPDATE biz_message SET is_read = 1 WHERE user_id = ? AND is_read = 0', [uid]);
+    const bizType = (req.query.biz_type || '').toString();
+    const subType = (req.query.sub_type || '').toString();
+    const subTypeNot = (req.query.sub_type_not || '').toString();
+    const where = ['user_id = ?', 'is_read = 0'];
+    const params = [uid];
+    if (bizType) { where.push('biz_type = ?'); params.push(bizType); }
+    if (subType) { where.push('sub_type = ?'); params.push(subType); }
+    if (subTypeNot) { where.push('(sub_type IS NULL OR sub_type != ?)'); params.push(subTypeNot); }
+    await run(`UPDATE biz_message SET is_read = 1 WHERE ${where.join(' AND ')}`, params);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// 单条标记已读（订单消息页点击跳转前调用）
+router.put('/:messageId/read', authRequired, async (req, res) => {
+  try {
+    const uid = req.user && req.user.uid;
+    const m = await get('SELECT id FROM biz_message WHERE id = ? AND user_id = ?', [req.params.messageId, uid]);
+    if (!m) return res.status(404).json({ error: '消息不存在' });
+    await run('UPDATE biz_message SET is_read = 1 WHERE id = ?', [m.id]);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// 清空消息（可选 biz_type / sub_type / sub_type_not 限定范围，供订单消息页「清空消息」）
+router.delete('/clear', authRequired, async (req, res) => {
+  try {
+    const uid = req.user && req.user.uid;
+    const bizType = (req.query.biz_type || '').toString();
+    const subType = (req.query.sub_type || '').toString();
+    const subTypeNot = (req.query.sub_type_not || '').toString();
+    const where = ['user_id = ?'];
+    const params = [uid];
+    if (bizType) { where.push('biz_type = ?'); params.push(bizType); }
+    if (subType) { where.push('sub_type = ?'); params.push(subType); }
+    if (subTypeNot) { where.push('(sub_type IS NULL OR sub_type != ?)'); params.push(subTypeNot); }
+    await run(`DELETE FROM biz_message WHERE ${where.join(' AND ')}`, params);
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
