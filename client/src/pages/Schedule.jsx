@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import http from '../api.js';
 import { useViewState } from '../tabMemory.js';
+import OrderCreateModal from '../components/OrderCreateModal.jsx';
 
 const WEEK = ['日', '一', '二', '三', '四', '五', '六'];
 const WEEK_FULL = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
@@ -100,6 +101,8 @@ export default function Schedule() {
   const [share, setShare] = useState(null);
   // 手机端订单卡底部操作面板（选中档期行）
   const [orderSheet, setOrderSheet] = useState(null);
+  // 电脑端「新建订单」弹窗（替代跳 /schedule/new 全屏路由）：存日期，未传表示弹窗关闭
+  const [newOrderDlg, setNewOrderDlg] = useState(null);
   // 日历单元格 Tooltip 悬浮气泡（spec：200ms 延迟显示 / 300ms 淡出 / 边缘箭头翻转）
   // hoverTooltip: { date, rect, visible } —— visible=false 时仍渲染但 opacity=0（淡出动画）
   const [hoverTooltip, setHoverTooltip] = useState(null);
@@ -177,13 +180,19 @@ export default function Schedule() {
     };
   }, []);
 
-  // 从其他页面跳转过来要求打开新建订单（桌面弹窗 / 移动端跳转独立页）
+  // 从其他页面跳转过来要求打开新建订单（电脑端弹窗 / 移动端跳转独立页）
   useEffect(() => {
     if (location.state?.openNew) {
       const date = selDate || todayStr;
       setErr('');
-      // 桌面端与移动端统一：都走 /schedule/new 路由 + ScheduleNewOrder 组件（与新建订单页字段/校验/保存逻辑完全一致）
-      nav('/schedule/new', { state: { date } });
+      // 电脑端：直接打开 OrderCreateModal 弹窗（与「订单中心 + 新建订单」风格一致）；移动端走 /schedule/new 路由（<768）
+      if (window.innerWidth >= 768) {
+        setNewOrderDlg({ date });
+        // 清掉 history state，避免反复触发
+        window.history.replaceState({}, '');
+      } else {
+        nav('/schedule/new', { state: { date } });
+      }
       return;
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -234,8 +243,12 @@ export default function Schedule() {
     else if (day) date = `${y}-${pad(m)}-${pad(day)}`;
     else date = selDate || todayStr;
     setErr('');
-    // 桌面端与移动端统一：都走 /schedule/new 路由 + ScheduleNewOrder 组件（与新建订单页字段/校验/保存逻辑完全一致）
-    nav('/schedule/new', { state: { date } });
+    // 电脑端（>=768）：直接打开 OrderCreateModal 弹窗，不再跳路由；移动端（<768）：走 /schedule/new 全屏路由
+    if (window.innerWidth >= 768) {
+      setNewOrderDlg({ date });
+    } else {
+      nav('/schedule/new', { state: { date } });
+    }
   };
   const openEdit = (row) => {
     setErr('');
@@ -986,6 +999,16 @@ export default function Schedule() {
       )}
 
       <FloatingTools />
+
+      {/* 电脑端「新建订单」弹窗（替代 /schedule/new 全屏路由；与订单中心 OrderCreateModal 共用同一组件，字段/校验/保存逻辑一致） */}
+      <OrderCreateModal
+        visible={!!newOrderDlg}
+        pageMode={false}
+        packages={pkgList}
+        initialDate={newOrderDlg ? newOrderDlg.date : ''}
+        onClose={() => setNewOrderDlg(null)}
+        onAfterCreate={() => { setNewOrderDlg(null); load(); }}
+      />
     </div>
   );
 }
