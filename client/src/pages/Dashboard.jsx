@@ -23,7 +23,7 @@ const QUICK = [
 
 // 右侧信息列（参考图：w=205 卡片，pad 30/15/30/20）
 const INFO_CARDS = [
-  { title: '我的小程序', desc: '一键更换模板，即时生效', to: '/settings' },
+  { title: '我的小程序', desc: '一键更换模板，即时生效', to: '/mini-program-preview' },
   { title: '我的网站', desc: '支持独立域名，全网搜索', to: '/settings' },
   { title: '叶哲 Studio × 公告', desc: '公告及功能更新' }
 ];

@@ -61,6 +61,7 @@ const AppointmentForm = React.lazy(() => import('./pages/AppointmentForm.jsx'));
 const ContractTemplates = React.lazy(() => import('./pages/ContractTemplates.jsx'));
 const ContractAudit = React.lazy(() => import('./pages/ContractAudit.jsx'));
 const ConsistencyCheck = React.lazy(() => import('./pages/ConsistencyCheck.jsx'));
+const MiniProgramPreview = React.lazy(() => import('./pages/MiniProgramPreview.jsx'));
 const CustomerAgreement = React.lazy(() => import('./pages/CustomerAgreement.jsx'));
 const CustomerAgreementEdit = React.lazy(() => import('./pages/CustomerAgreementEdit.jsx'));
 const RefundPolicyEdit = React.lazy(() => import('./pages/RefundPolicyEdit.jsx'));
@@ -129,6 +130,7 @@ function AppShell() {
                 <Route path="/channels" element={<Channels />} />
                 <Route path="/finance" element={<Finance />} />
                 <Route path="/capacity" element={<CapacityManagement />} />
+                <Route path="/mini-program-preview" element={<MiniProgramPreview />} />
                 <Route path="/team" element={<Team />} />
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>

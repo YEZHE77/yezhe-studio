@@ -15,7 +15,7 @@ import Icon from '../components/Icon.jsx';
 // sep: 该项后插入分组分隔线
 const ITEMS = [
   { label: '工作台', to: '/', icon: 'dashboard', sep: true },
-  { label: '小程序', icon: 'miniapp', expandable: true },
+  { label: '小程序', icon: 'miniapp', to: '/mini-program-preview' },
   { label: '网站', icon: 'website', expandable: true },
   { label: '资料设置', to: '/settings', icon: 'settings', expandable: true, sep: true },
   { label: '套系', to: '/packages', icon: 'package' },
