@@ -31,7 +31,7 @@ const INFO_CARDS = [
 // 品牌管理（对外展示 / 获客）
 const BRAND_CARDS = [
   { icon: 'settings', title: '资料设置', desc: '上传封面，编辑姓名、简介、成员等', btn: '立即编辑', to: '/settings' },
-  { icon: 'miniapp', title: '小程序', desc: '可定制专属小程序，并关联公众号', btn: '立即使用', onClick: () => alert('C 端为微信原生小程序：在开发者工具勾选「不校验合法域名」后编译即可真机预览；正式发布需自备备案域名。') },
+  { icon: 'miniapp', title: '小程序', desc: '可定制专属小程序，并关联公众号', to: '/mini-program-preview', btn: '立即使用' },
   { icon: 'website', title: '我的网站', desc: '打造专属工作室品牌和独立域名', btn: '立即使用', to: '/settings' },
   { icon: 'link', title: '关联公众号', desc: '设置公众号菜单和顾客提醒', btn: '点击查看', onClick: () => alert('公众号关联功能规划中：后续可在「资料设置」中配置公众号菜单与顾客提醒。') },
   { icon: 'marketing', title: '生成名片', desc: '朋友圈名片海报，更好的传播方式', btn: 'APP端使用', to: '/card' }
