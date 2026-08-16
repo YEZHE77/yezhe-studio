@@ -92,9 +92,6 @@ function AppShell() {
       <div className="flex-1 flex flex-col min-w-0">
         {!hideTopbar && <Topbar onMenu={() => setNavOpen(true)} />}
         <main className="flex-1 p-3 md:p-4 lg:p-6 min-w-0 overflow-x-hidden" style={{ background: '#F8F8F8', position: 'relative' }}>
-          {/* 1px 浅灰辅助分隔线：fixed 顶部（Topbar 下沿 56px）到底部视口，xl:block 与 Sidebar 固定 300 同步显示。
-              left = sidebar 右侧 + main padding 24 + 8px gap ≈ 332px，紧贴主内容最左缘；不贯穿卡片本身。 */}
-          <div className="hidden xl:block fixed top-[56px] bottom-0 w-px pointer-events-none z-30" style={{ left: '332px', background: '#E6E9EF' }} />
           <Breadcrumb />
           <ErrorBoundary resetKeys={[location.pathname]}>
             <Suspense fallback={<PageLoader />}>
