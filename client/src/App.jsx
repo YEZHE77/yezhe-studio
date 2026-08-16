@@ -89,7 +89,7 @@ function AppShell() {
       <Sidebar open={navOpen} onClose={() => setNavOpen(false)} />
       <div className="flex-1 flex flex-col min-w-0">
         {!hideTopbar && <Topbar onMenu={() => setNavOpen(true)} />}
-        <main className="flex-1 p-3 lg:p-6" style={{ background: '#F8F8F8' }}>
+        <main className="flex-1 p-3 md:p-4 lg:p-6 min-w-0 overflow-x-hidden" style={{ background: '#F8F8F8' }}>
           <Breadcrumb />
           <ErrorBoundary resetKeys={[location.pathname]}>
             <Suspense fallback={<PageLoader />}>

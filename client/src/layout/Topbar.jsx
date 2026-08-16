@@ -33,7 +33,7 @@ export default function Topbar({ onMenu }) {
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
         <button
           onClick={onMenu}
-          className="lg:hidden -ml-1 p-2"
+          className="xl:hidden -ml-1 p-2"
           style={{ color: '#333333' }}
           aria-label="菜单"
         >

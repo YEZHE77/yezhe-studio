@@ -160,13 +160,13 @@ function SidebarContent({ mobile = false }) {
 export default function Sidebar({ open = false, onClose }) {
   return (
     <>
-      {/* 移动端抽屉浮层 */}
-      <div className={'lg:hidden fixed inset-0 z-50 ' + (open ? '' : 'hidden')}>
+      {/* 移动端/窄窗口抽屉浮层（<1280px 收起为抽屉，避免挤压主内容） */}
+      <div className={'xl:hidden fixed inset-0 z-50 ' + (open ? '' : 'hidden')}>
         <div className="absolute inset-0" style={{ background: 'rgba(0,0,0,0.4)' }} onClick={onClose} />
         <div className="absolute left-0 top-0 bottom-0"><SidebarContent mobile /></div>
       </div>
-      {/* 桌面静态侧栏 */}
-      <div className="hidden lg:block"><SidebarContent /></div>
+      {/* 桌面静态侧栏（>=1280px 固定显示） */}
+      <div className="hidden xl:block"><SidebarContent /></div>
     </>
   );
 }
