@@ -420,15 +420,16 @@ export default function Home() {
           style={{ pointerEvents: drawerOpen ? 'auto' : 'none' }}
           onClick={() => setDrawerOpen(false)}
         />
-        <div className={'absolute top-0 right-0 bottom-0 w-[280px] bg-[#1a1a1a] text-white flex flex-col transition-transform duration-300 ' + (drawerOpen ? 'translate-x-0' : 'translate-x-full')}>
-          <div className="px-6 py-6 border-b border-white/10 flex items-center">
+        <div className={'absolute top-0 right-0 bottom-0 w-[280px] bg-white text-[#2c2c2c] flex flex-col transition-transform duration-300 ' + (drawerOpen ? 'translate-x-0' : 'translate-x-full')}>
+          <div className="px-6 py-6 border-b border-gray-100 flex items-center">
             <span className="text-base truncate">{studio.name || '叶哲 STUDIO'}</span>
           </div>
           <nav className="flex-1">
-            <button onClick={() => { setDrawerOpen(false); nav('/'); }} className="w-full text-left px-6 py-4 border-b border-white/5">主页</button>
-            <button onClick={() => scrollTo('gallery-section')} className="w-full text-left px-6 py-4 border-b border-white/5">作品</button>
-            <button onClick={() => { setDrawerOpen(false); nav('/my'); }} className="w-full text-left px-6 py-4 border-b border-white/5">我的</button>
-            <button onClick={() => scrollTo('footer-section')} className="w-full text-left px-6 py-4 border-b border-white/5">联系我们</button>
+            <button onClick={() => { setDrawerOpen(false); nav('/'); }} className="w-full text-left px-6 py-4 border-b border-gray-100">主页</button>
+            <button onClick={() => scrollTo('gallery-section')} className="w-full text-left px-6 py-4 border-b border-gray-100">作品</button>
+            <button onClick={() => { setDrawerOpen(false); nav('/package-center'); }} className="w-full text-left px-6 py-4 border-b border-gray-100">套系</button>
+            <button onClick={() => { setDrawerOpen(false); nav('/my'); }} className="w-full text-left px-6 py-4 border-b border-gray-100">我的</button>
+            <button onClick={() => scrollTo('footer-section')} className="w-full text-left px-6 py-4 border-b border-gray-100">联系我们</button>
           </nav>
         </div>
       </div>
