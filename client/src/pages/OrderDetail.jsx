@@ -2592,37 +2592,37 @@ export default function OrderDetail() {
         </>
       )}
 
-      {/* 打印单据：table + thead/tbody/tfoot 结构，thead 每页重复做页眉，tfoot 每页重复做页脚 */}
-      <div className="print-order-sheet" style={{ position: 'fixed', left: -10000, top: 0, width: '100%', padding: '20mm 15mm' }}>
+      {/* 打印单据：简单 div 结构（table-header-group 在用户 Chrome 上不能稳定重复每页页眉）；页眉页脚用 position:fixed 兜底，padding 加大避免字贴边 */}
+      <>
+      {/* 每页页眉（position:fixed 打印时 Chrome 应跨页重复；normal 模式 visibility:hidden + zIndex:-1 保留在文档流里，不能 left:-10000 离屏——Chrome 会跳过完全离屏元素不重复） */}
+      <div className="print-page-header" style={{ position: 'fixed', top: 0, left: 0, right: 0, padding: '8mm 20mm 4mm', background: '#fff', borderBottom: '1px solid #555', visibility: 'hidden', zIndex: -1 }}>
+        <div style={{ maxWidth: 700, margin: '0 auto', textAlign: 'center' }}>
+          <div style={{ fontSize: 22, fontWeight: 400, letterSpacing: 4 }}>拍摄服务合同</div>
+          <div style={{ fontSize: 13, marginTop: 8, color: '#555' }}>订单编号：{detail.order_no}</div>
+          <div style={{ fontSize: 12, marginTop: 4, color: '#555' }}>创建时间：{detail.created_at ? new Date(detail.created_at).toLocaleString('zh-CN') : '—'}　·　订单状态：{statusText || '—'}</div>
+        </div>
+      </div>
+      {/* 每页页脚 */}
+      <div className="print-page-footer" style={{ position: 'fixed', bottom: 0, left: 0, right: 0, padding: '4mm 20mm 6mm', background: '#fff', borderTop: '1px solid #ccc', visibility: 'hidden', zIndex: -1 }}>
+        <div style={{ maxWidth: 700, margin: '0 auto', display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#999' }}>
+          <span>叶哲 STUDIO · 摄影工作室管理系统</span>
+          <span>打印时间：{new Date().toLocaleString('zh-CN')}</span>
+        </div>
+      </div>
+      <div className="print-order-sheet" style={{ position: 'fixed', left: -10000, top: 0, width: '100%', padding: '28mm 20mm 24mm' }}>
         <style>{`
           @media print {
             body * { visibility: hidden; }
             .print-order-sheet, .print-order-sheet * { visibility: visible; }
-            .print-order-sheet > table { border-collapse: collapse !important; width: 100% !important; }
-            .print-order-sheet > table > thead > tr > td,
-            .print-order-sheet > table > tfoot > tr > td { padding: 0 !important; }
-            .print-order-sheet { position: absolute !important; left: 0 !important; top: 0 !important; width: 100% !important; padding: 20mm 15mm !important; }
+            .print-page-header, .print-page-header * { visibility: visible !important; }
+            .print-page-footer, .print-page-footer * { visibility: visible !important; }
+            .print-page-header { position: fixed !important; top: 0 !important; left: 0 !important; right: 0 !important; z-index: 9999 !important; }
+            .print-page-footer { position: fixed !important; bottom: 0 !important; left: 0 !important; right: 0 !important; z-index: 9999 !important; }
+            .print-order-sheet { position: absolute !important; left: 0 !important; top: 0 !important; width: 100% !important; padding: 28mm 20mm 24mm !important; }
             @page { size: A4; margin: 0; }
           }
         `}</style>
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: 'SimSun, STSong, serif' }}>
-          {/* 每页页眉（Chrome 打印引擎在表分页时自动复制 thead 到下一页顶部） */}
-          <thead style={{ display: 'table-header-group', visibility: 'hidden' }}>
-            <tr>
-              <td style={{ width: '100%', paddingBottom: 12 }}>
-                <div style={{ textAlign: 'center', borderBottom: '2px solid #000', paddingBottom: 16 }}>
-                  <div style={{ fontSize: 22, fontWeight: 400, letterSpacing: 4 }}>拍摄服务合同</div>
-                  <div style={{ fontSize: 14, marginTop: 8, color: '#555' }}>订单编号：{detail.order_no}</div>
-                  <div style={{ fontSize: 13, marginTop: 4, color: '#555' }}>创建时间：{detail.created_at ? new Date(detail.created_at).toLocaleString('zh-CN') : '—'}　·　订单状态：{statusText || '—'}</div>
-                </div>
-              </td>
-            </tr>
-          </thead>
-          {/* 正文（一次性内容） */}
-          <tbody>
-            <tr>
-              <td style={{ padding: 0 }}>
-                <div style={{ maxWidth: 700, margin: '0 auto', fontFamily: 'SimSun, STSong, serif', fontSize: 14, lineHeight: 1.8, color: '#222' }}>
+        <div style={{ maxWidth: 700, margin: '0 auto', fontFamily: 'SimSun, STSong, serif', fontSize: 14, lineHeight: 1.8, color: '#222' }}>
 
           {/* 客户信息 */}
           <div style={{ marginBottom: 12 }}>
@@ -2836,25 +2836,9 @@ export default function OrderDetail() {
             </div>
           )}
 
-          {/* 原页脚 div 已删除——改用下方 <tfoot> 做每页页脚 */}
-
-                </div>
-              </td>
-            </tr>
-          </tbody>
-          {/* 每页页脚（Chrome 打印引擎在表分页时自动复制 tfoot 到下一页底部） */}
-          <tfoot style={{ display: 'table-footer-group', visibility: 'hidden' }}>
-            <tr>
-              <td style={{ width: '100%', paddingTop: 12, borderTop: '1px solid #ccc' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12, color: '#999' }}>
-                  <span>叶哲 STUDIO · 摄影工作室管理系统</span>
-                  <span>打印时间：{new Date().toLocaleString('zh-CN')}</span>
-                </div>
-              </td>
-            </tr>
-          </tfoot>
-        </table>
+          </div>
       </div>
+      </>
 
       {/* 订单记录全屏页（点击底部订单变更记录跳转，校 IMG_7533） */}
       {logModal && (
