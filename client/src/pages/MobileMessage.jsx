@@ -9,10 +9,7 @@ const SUB = '#6E6E73';
 const FAINT = '#AEAEB2';
 const DIV = '#F0F0F2';
 
-// VIP 卡背景：金棕渐变（参考图实测色）
-const VIP_BG = 'linear-gradient(135deg, #B8985C 0%, #9A7D40 50%, #7E6432 100%)';
-
-// 三个咨询消息分类（参考图：顾客咨询 🔔 / 订单消息 📋 / 系统通知 📧）
+// 三个咨询消息分类（参考图：顾客咨询 🔔 / 订单消息 � / 系统通知 📧）
 const CONSULT = [
   { key: 'customer_consult', label: '顾客咨询', icon: '🔔' },
   { key: 'order_msg', label: '订单消息', icon: '📋' },
@@ -59,25 +56,13 @@ export default function MobileMessage() {
 
   return (
     <div style={{ minHeight: '100vh', background: '#F5F5F7', display: 'flex', flexDirection: 'column' }}>
-      {/* 顶部粉色渐变区（容纳导航 + VIP 卡） */}
-      <div style={{ background: 'linear-gradient(180deg, #FCE5E5 0%, #FAF0F0 35%, #F5F5F7 100%)', paddingBottom: 8 }}>
-        {/* 导航栏 */}
-        <div style={{ position: 'relative', display: 'flex', alignItems: 'center', height: 44, padding: '0 12px' }}>
-          <button aria-label="扫码" style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', padding: 4, display: 'flex', alignItems: 'center' }}><NavScan /></button>
-          <div style={{ position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%, -50%)', fontSize: 17, color: TEXT, fontWeight: 500 }}>消息</div>
-          <div style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', display: 'flex', alignItems: 'center', gap: 12 }}>
-            <button aria-label="通知" style={{ background: 'none', border: 'none', padding: 4, display: 'flex', alignItems: 'center' }}><NavBell /></button>
-            <button aria-label="设置" style={{ background: 'none', border: 'none', padding: 4, display: 'flex', alignItems: 'center' }}><NavSetting /></button>
-          </div>
-        </div>
-
-        {/* VIP 卡（金棕渐变圆角） */}
-        <div style={{ margin: '4px 12px 12px', borderRadius: 14, background: VIP_BG, padding: '16px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', boxShadow: '0 4px 14px rgba(184,152,92,0.18)' }}>
-          <div>
-            <div style={{ fontSize: 18, color: '#fff', fontWeight: 500 }}>开通 VIP</div>
-            <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.78)', marginTop: 4 }}>定制版 VIP 已过期，续费后自动恢复</div>
-          </div>
-          <button style={{ padding: '8px 16px', borderRadius: 999, border: 'none', background: '#1f1f1f', color: '#fff', fontSize: 13, fontWeight: 500, cursor: 'pointer' }}>VIP 续费</button>
+      {/* 导航栏 */}
+      <div style={{ position: 'relative', display: 'flex', alignItems: 'center', height: 44, padding: '0 12px', background: '#fff' }}>
+        <button aria-label="扫码" style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', padding: 4, display: 'flex', alignItems: 'center' }}><NavScan /></button>
+        <div style={{ position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%, -50%)', fontSize: 17, color: TEXT, fontWeight: 500 }}>消息</div>
+        <div style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', display: 'flex', alignItems: 'center', gap: 12 }}>
+          <button aria-label="通知" style={{ background: 'none', border: 'none', padding: 4, display: 'flex', alignItems: 'center' }}><NavBell /></button>
+          <button aria-label="设置" style={{ background: 'none', border: 'none', padding: 4, display: 'flex', alignItems: 'center' }}><NavSetting /></button>
         </div>
       </div>
 
