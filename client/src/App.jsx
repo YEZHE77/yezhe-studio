@@ -171,14 +171,24 @@ export default function App() {
       <Route path="/appointment-form" element={
         <Suspense fallback={<PageLoader />}><AppointmentForm /></Suspense>
       } />
+      {/* C 端微官网首页 / 作品 / 套系中心：公开可访问，与登录态无关（顾客手机端所见即此；
+          小程序预览 iframe 也加载这些路径，确保电脑端预览 = 顾客端 100% 一致） */}
+      <Route path="/home" element={
+        <Suspense fallback={<PageLoader />}><Home /></Suspense>
+      } />
+      <Route path="/my" element={
+        <Suspense fallback={<PageLoader />}><My /></Suspense>
+      } />
+      <Route path="/w/:id" element={
+        <Suspense fallback={<PageLoader />}><WorkPublic /></Suspense>
+      } />
+      <Route path="/package-center" element={
+        <Suspense fallback={<PageLoader />}><PackageCenter /></Suspense>
+      } />
       {!user && (
         <>
           <Route path="/login" element={<Login />} />
           <Route path="/" element={<Navigate to="/login" replace />} />
-          <Route path="/home" element={<Suspense fallback={<PageLoader />}><Home /></Suspense>} />
-          <Route path="/my" element={<Suspense fallback={<PageLoader />}><My /></Suspense>} />
-          <Route path="/w/:id" element={<Suspense fallback={<PageLoader />}><WorkPublic /></Suspense>} />
-          <Route path="/package-center" element={<Suspense fallback={<PageLoader />}><PackageCenter /></Suspense>} />
           <Route path="*" element={<Navigate to="/login" replace />} />
         </>
       )}
