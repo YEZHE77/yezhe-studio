@@ -500,7 +500,7 @@ router.delete('/orders/:orderId/photos/:photoId', authRequired, requireRole(...S
     // 写入订单变更记录（删除底片）
     await appendOrderLog(o.id, `删除底片（photo_id=${photoId}）`);
     // 移动端业务消息（删底片 + 备份导出）
-    if (backup && backup.ok) { try { await emitBizToStaff({ title: '底片删除：备份文件已生成', content: `订单 ${o.order_no || o.id} 已删除底片，自动备份 ${backup.filename} 已生成`, biz_type: BIZ_TYPE.SYSTEM, biz_id: null }); } catch {} }
+    if (backup && backup.ok) { try { await emitBizToStaff({ title: '底片删除：备份文件已生成', content: `订单 ${o.order_no || o.id} 已删除底片，自动备份 ${backup.filename} 已生成`, biz_type: BIZ_TYPE.SYSTEM, biz_id: backup.filename }); } catch {} }
     res.json({ ok: true, backup: backup && backup.ok ? { filename: backup.filename, localPath: backup.localPath } : null });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -554,7 +554,7 @@ router.post('/orders/:orderId/reset', authRequired, requireRole(...SELECTION_ADM
       await generateEventTodo(o.id, 'select_reset', '待客户重新选片', `商家已重置选片（第 ${version} 轮），客户需重新选片`, `reset_${resetAt}`);
       await emitMessage({ message_type: 'order_msg', business_event: 'select_reset', title: '选片已重置', content: `订单 ${o.order_no || o.id} 选片已重置，客户需重新选片`, rel_id: String(o.id), rel_model: 'order' });
       // 移动端业务消息（重置选片 + 备份导出）
-      if (backup && backup.ok) await emitBizToStaff({ title: '重置选片：备份文件已生成', content: `订单 ${o.order_no || o.id} 选片已重置，自动备份 ${backup.filename} 已生成`, biz_type: BIZ_TYPE.SYSTEM, biz_id: null });
+      if (backup && backup.ok) await emitBizToStaff({ title: '重置选片：备份文件已生成', content: `订单 ${o.order_no || o.id} 选片已重置，自动备份 ${backup.filename} 已生成`, biz_type: BIZ_TYPE.SYSTEM, biz_id: backup.filename });
     } catch (e) { console.error('[selection] 重置后通知失败', e.message); }
     res.json({ ok: true, version, status: TASK_STATUS.SELECTING, backup: backup && backup.ok ? { filename: backup.filename, localPath: backup.localPath } : null });
   } catch (e) { res.status(500).json({ error: e.message }); }

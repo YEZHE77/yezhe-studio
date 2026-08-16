@@ -142,7 +142,7 @@ export default function MobileMessage() {
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: '#F5F5F7' }}>
       {/* 顶部栏：标题 + 全部标为已读 */}
       <div style={{ position: 'relative', display: 'flex', alignItems: 'center', height: 44, padding: '0 12px', background: '#fff', borderBottom: `1px solid ${DIV}` }}>
-        <div style={{ position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%, -50%)', fontSize: 17, color: TEXT, fontWeight: 500 }}>消息</div>
+        <div style={{ position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%, -50%)', fontSize: 17, color: TEXT, fontWeight: 400 }}>消息</div>
         <button onClick={markAllRead} disabled={markingAll}
           style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', padding: 4, fontSize: 13, color: markingAll ? FAINT : GREEN, cursor: 'pointer' }}>
           全部标为已读

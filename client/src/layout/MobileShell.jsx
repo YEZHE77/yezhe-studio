@@ -220,8 +220,10 @@ export default function MobileShell() {
     pullUnread();
     const t = setInterval(pullUnread, 8000);
     const onFocus = () => pullUnread();
+    const onMsgRead = () => pullUnread(); // 详情页标记已读后立即刷新角标
     window.addEventListener('focus', onFocus);
-    return () => { clearInterval(t); window.removeEventListener('focus', onFocus); };
+    window.addEventListener('biz-message-read', onMsgRead);
+    return () => { clearInterval(t); window.removeEventListener('focus', onFocus); window.removeEventListener('biz-message-read', onMsgRead); };
   }, []);
 
   const tabRoots = ['/', '/m/site', '/photo-packages', '/m/msg'];

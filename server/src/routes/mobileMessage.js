@@ -3,7 +3,9 @@
 // 与 system_message（PC 端旧消息）、todo_items（待办）完全独立；仅业务事件通知，非 IM
 // 规则：列表不自动置已读（仅进详情页标记单条已读）；PC + H5 共用一套数据
 import { Router } from 'express';
-import { query, get, insert, run } from '../db.js';
+import fs from 'node:fs';
+import path from 'node:path';
+import { query, get, insert, run, dataDir } from '../db.js';
 import { authRequired } from '../auth.js';
 
 const router = Router();
@@ -77,6 +79,20 @@ router.put('/read-all', authRequired, async (req, res) => {
     const uid = req.user && req.user.uid;
     await run('UPDATE biz_message SET is_read = 1 WHERE user_id = ? AND is_read = 0', [uid]);
     res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// 下载备份文件（system 类型消息 biz_id 存文件名；安全校验防路径穿越）
+router.get('/backup/:filename', authRequired, async (req, res) => {
+  try {
+    const filename = req.params.filename;
+    if (!/^order_\d+_[0-9T\-]+\.json$/.test(filename)) return res.status(400).json({ error: '非法文件名' });
+    const dir = path.join(dataDir, 'selection_backup');
+    const filePath = path.join(dir, filename);
+    if (!fs.existsSync(filePath)) return res.status(404).json({ error: '备份文件不存在' });
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.send(fs.readFileSync(filePath));
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
