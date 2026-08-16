@@ -95,7 +95,7 @@ const SECTIONS = [
       { label: '相册印刷', icon: Printer, color: MINT, to: '/settings', tag: 'NEW' },
       { label: '存储空间', icon: HardDrive, color: MINT, to: '/capacity' },
       { label: '容量管理', icon: Gauge, color: MINT, to: '/capacity' },
-      { label: '访客', icon: User, color: MINT, to: '/datacharts' },
+      { label: '访客', icon: User, color: MINT, to: '/visitors' },
       { label: '统计', icon: BarChart3, color: MINT, to: '/datacharts' },
       { label: '关联公众号', icon: MessageCircle, color: MINT, to: '/settings' }
     ]
