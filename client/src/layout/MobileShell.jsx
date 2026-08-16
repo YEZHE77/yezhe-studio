@@ -31,6 +31,10 @@ const MobileMessage = React.lazy(() => import('../pages/MobileMessage.jsx'));
 const MobileMessageList = React.lazy(() => import('../pages/MobileMessageList.jsx'));
 const MobileMessageDetail = React.lazy(() => import('../pages/MobileMessageDetail.jsx'));
 const OrderMessages = React.lazy(() => import('../pages/OrderMessages.jsx'));
+const Visitors = React.lazy(() => import('../pages/Visitors.jsx'));
+const VisitorDetail = React.lazy(() => import('../pages/VisitorDetail.jsx'));
+const VisitorSettings = React.lazy(() => import('../pages/VisitorSettings.jsx'));
+const VisitorBlacklist = React.lazy(() => import('../pages/VisitorBlacklist.jsx'));
 const SelectionAdmin = React.lazy(() => import('../pages/SelectionAdmin.jsx'));
 const CapacityManagement = React.lazy(() => import('../pages/CapacityManagement.jsx'));
 const Channels = React.lazy(() => import('../pages/Channels.jsx'));
@@ -261,6 +265,10 @@ export default function MobileShell() {
                 <Route path="/m/messages" element={<MobileMessageList />} />
                 <Route path="/m/messages/:id" element={<MobileMessageDetail />} />
                 <Route path="/m/order-messages" element={<OrderMessages />} />
+                <Route path="/visitors" element={<Visitors />} />
+                <Route path="/visitor/:visitorId" element={<VisitorDetail />} />
+                <Route path="/visitor-settings" element={<VisitorSettings />} />
+                <Route path="/visitor-blacklist" element={<VisitorBlacklist />} />
                 <Route path="/photo-packages" element={<PhotoPackages />} />
                 {/* 复用现有 B 端页面，保持与桌面端同一套业务逻辑 */}
                 <Route path="/works" element={<Works />} />

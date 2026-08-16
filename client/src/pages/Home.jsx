@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import http, { img } from '../api.js';
+import { useVisitorGate } from '../hooks/useVisitorGate.js';
+import { VisitorBlockedView } from '../components/VisitorGateViews.jsx';
 
 const TEAL = 'var(--brand-green)';
 const PAGE_BG = '#f9f8f6'; // 与小程序首页底色一致
@@ -13,6 +15,7 @@ const PAGE_BG = '#f9f8f6'; // 与小程序首页底色一致
 //  ④「查看品牌故事」相对按钮下移 20rpx(10px)
 export default function Home() {
   const nav = useNavigate();
+  const gate = useVisitorGate({ page: '/home', source: 'h5', needPassword: false });
   const [studio, setStudio] = useState({ name: '', logo: '', intro: '', contact: {} });
   const [categories, setCategories] = useState([]);
   const [activeCat, setActiveCat] = useState(0);
@@ -136,6 +139,8 @@ export default function Home() {
     const el = document.getElementById(id);
     if (el) el.scrollIntoView({ behavior: 'smooth' });
   };
+
+  if (gate.status === 'blocked') return <VisitorBlockedView />;
 
   return (
     <div className="min-h-screen" style={{ background: PAGE_BG, color: '#2c2c2c' }}>

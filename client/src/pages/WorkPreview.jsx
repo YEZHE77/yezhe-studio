@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import http, { img } from '../api.js';
+import { useVisitorGate } from '../hooks/useVisitorGate.js';
+import { VisitorBlockedView, VisitorPasswordView } from '../components/VisitorGateViews.jsx';
 
 /* ==========================================================================
    作品预览页（1:1 复刻小程序风格）
@@ -40,6 +42,7 @@ function IconPlay() {
 export default function WorkPreview() {
   const { id } = useParams();
   const nav = useNavigate();
+  const gate = useVisitorGate({ page: '/works/' + (id || ''), source: 'h5', needPassword: true });
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   // 工作室资料（品牌栏 + 关于我们，接口驱动）
@@ -191,6 +194,9 @@ export default function WorkPreview() {
 
   const openVisits = () => { loadVisits(); setVisitsModalOpen(true); };
   const openComments = () => { loadComments(); setCommentsModalOpen(true); };
+
+  if (gate.status === 'blocked') return <VisitorBlockedView />;
+  if (gate.status === 'needPwd') return <VisitorPasswordView gate={gate} />;
 
   return (
     <div style={{ minHeight: '100vh', background: '#fff', paddingBottom: 'calc(70px + env(safe-area-inset-bottom))' }}>

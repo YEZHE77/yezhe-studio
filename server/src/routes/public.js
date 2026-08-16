@@ -2,6 +2,7 @@
 // 职责：公开预约表单提交 / customer_token 订单只读查看
 // 约束：C 端只能提交预约 + 浏览套系 + 只读查看自己订单 + 选片标记；绝不暴露任何编辑/删除/上传能力。
 import { Router } from 'express';
+import bcrypt from 'bcryptjs';
 import { query, get, insert, run } from '../db.js';
 import { emitMessage } from './message.js';
 import { emitBizToStaff, BIZ_TYPE } from './mobileMessage.js';
@@ -267,6 +268,45 @@ router.post('/order/:token/agreement/sign', async (req, res) => {
       await emitMessage({ message_type: 'order_msg', business_event: 'agreement_signed', title: '客户已签署服务协议', content: `订单 ${o.order_no || o.id} 客户已签署电子服务协议`, rel_id: String(o.id), rel_model: 'order' });
     } catch (e) { console.error('[agreement] 签署通知失败', e.message); }
     res.json({ ok: true, id });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ===== 访客埋点模块（V2；C 端公开，无需登录） =====
+// 访客访问校验：黑名单拦截 + 访客密码开关（供 C 端页面加载前判断）
+router.get('/visitor/access', async (req, res) => {
+  try {
+    const vid = String(req.query.visitor_id || '').trim();
+    if (!vid) return res.json({ blocked: false, need_password: false });
+    const bl = await get('SELECT visitor_id FROM visitor_blacklist WHERE visitor_id = ?', [vid]);
+    const setting = await get('SELECT visitor_password FROM visitor_setting WHERE business_uid = 0');
+    res.json({ blocked: !!bl, need_password: !!(setting && setting.visitor_password) });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// 访客密码校验（bcrypt compare；未开启密码恒通过）
+router.post('/visitor/verify-password', async (req, res) => {
+  try {
+    const password = String((req.body && req.body.password) || '');
+    const setting = await get('SELECT visitor_password FROM visitor_setting WHERE business_uid = 0');
+    if (!setting || !setting.visitor_password) return res.json({ ok: true });
+    const ok = await bcrypt.compare(password, setting.visitor_password);
+    res.json({ ok });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// 访客埋点上报：写访问日志（黑名单命中拦截不写；免打扰不影响日志写入，仅不产生消息通知）
+router.post('/visitor/track', async (req, res) => {
+  try {
+    const { visitor_id, visit_page, source } = req.body || {};
+    const vid = String(visitor_id || '').trim();
+    if (!vid) return res.status(400).json({ error: 'visitor_id 缺失' });
+    const bl = await get('SELECT visitor_id FROM visitor_blacklist WHERE visitor_id = ?', [vid]);
+    if (bl) return res.json({ ok: true, blocked: true });
+    await insert(
+      'INSERT INTO visitor_log (visitor_id, visit_time, visit_page, source, business_uid) VALUES (?,?,?,?,?)',
+      [vid, new Date().toISOString(), visit_page || '', source || 'h5', 0]
+    );
+    res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 

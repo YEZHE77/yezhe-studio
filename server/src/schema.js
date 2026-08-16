@@ -375,6 +375,48 @@ CREATE TABLE IF NOT EXISTS biz_message (
 CREATE INDEX IF NOT EXISTS idx_biz_message_user ON biz_message(user_id, is_read);
 CREATE INDEX IF NOT EXISTS idx_biz_message_biz ON biz_message(biz_type, biz_id);`;
 
+// 访客埋点（C 端 H5 访问日志）：visitor_id 由浏览器 localStorage uuid 生成，H5 无微信环境故 nickname/phone 恒空
+const PG_VISITOR_LOG = `
+CREATE TABLE IF NOT EXISTS visitor_log (
+  id SERIAL PRIMARY KEY,
+  visitor_id TEXT NOT NULL,
+  nickname TEXT, phone TEXT,
+  visit_time TEXT, visit_page TEXT, source TEXT,
+  business_uid INTEGER NOT NULL DEFAULT 0,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_visitor_log_vid ON visitor_log(visitor_id, created_at DESC);`;
+const SQLITE_VISITOR_LOG = `
+CREATE TABLE IF NOT EXISTS visitor_log (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  visitor_id TEXT NOT NULL,
+  nickname TEXT, phone TEXT,
+  visit_time TEXT, visit_page TEXT, source TEXT,
+  business_uid INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_visitor_log_vid ON visitor_log(visitor_id, created_at DESC);`;
+
+// 访客设置（business_uid 主键；visitor_password 存 bcrypt 哈希，非空=已开启；only_show_nickname 已废弃不展示）
+const PG_VISITOR_SETTING = `
+CREATE TABLE IF NOT EXISTS visitor_setting (
+  business_uid INTEGER PRIMARY KEY,
+  visitor_password TEXT,
+  only_show_nickname INTEGER NOT NULL DEFAULT 0
+);`;
+const SQLITE_VISITOR_SETTING = `
+CREATE TABLE IF NOT EXISTS visitor_setting (
+  business_uid INTEGER PRIMARY KEY,
+  visitor_password TEXT,
+  only_show_nickname INTEGER NOT NULL DEFAULT 0
+);`;
+
+// 访客黑名单 / 免打扰（visitor_id 维度，独立于日志）
+const PG_VISITOR_BLACKLIST = `CREATE TABLE IF NOT EXISTS visitor_blacklist (visitor_id TEXT PRIMARY KEY, created_at TIMESTAMPTZ DEFAULT now());`;
+const SQLITE_VISITOR_BLACKLIST = `CREATE TABLE IF NOT EXISTS visitor_blacklist (visitor_id TEXT PRIMARY KEY, created_at TEXT DEFAULT CURRENT_TIMESTAMP);`;
+const PG_VISITOR_NO_DISTURB = `CREATE TABLE IF NOT EXISTS visitor_no_disturb (visitor_id TEXT PRIMARY KEY, created_at TIMESTAMPTZ DEFAULT now());`;
+const SQLITE_VISITOR_NO_DISTURB = `CREATE TABLE IF NOT EXISTS visitor_no_disturb (visitor_id TEXT PRIMARY KEY, created_at TEXT DEFAULT CURRENT_TIMESTAMP);`;
+
 // 套系对外分享（C 端浏览报价）：photo_package 套系表（独立于 B 端内部 packages）
 // share_token 随机不可猜测字符串，对外鉴权；is_enable 控制外部访问
 const PG_PHOTO_PACKAGE = `
@@ -639,6 +681,12 @@ export async function initSchema() {
   await ensureColumn('biz_message', 'is_archived', 'INTEGER NOT NULL DEFAULT 0');
   // 订单消息子类型（order_status_change 状态变更 / file_expire 文件到期 / reserve 预约）
   await ensureColumn('biz_message', 'sub_type', 'TEXT');
+
+  // 访客埋点模块（V2：visitor_log 访问日志 / visitor_setting 设置 / 黑名单 / 免打扰）
+  for (const s of (dialect === 'pg' ? PG_VISITOR_LOG : SQLITE_VISITOR_LOG).split(';').map((x) => x.trim()).filter(Boolean)) await run(s);
+  for (const s of (dialect === 'pg' ? PG_VISITOR_SETTING : SQLITE_VISITOR_SETTING).split(';').map((x) => x.trim()).filter(Boolean)) await run(s);
+  for (const s of (dialect === 'pg' ? PG_VISITOR_BLACKLIST : SQLITE_VISITOR_BLACKLIST).split(';').map((x) => x.trim()).filter(Boolean)) await run(s);
+  for (const s of (dialect === 'pg' ? PG_VISITOR_NO_DISTURB : SQLITE_VISITOR_NO_DISTURB).split(';').map((x) => x.trim()).filter(Boolean)) await run(s);
 
   // 套系对外分享表（photo_package）
   for (const s of (dialect === 'pg' ? PG_PHOTO_PACKAGE : SQLITE_PHOTO_PACKAGE).split(';').map((x) => x.trim()).filter(Boolean)) await run(s);

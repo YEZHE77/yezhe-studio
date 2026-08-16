@@ -74,6 +74,12 @@ const IconHelp = ({ color }) => (
     <line x1="12" y1="17" x2="12.01" y2="17" />
   </svg>
 );
+const IconUser = ({ color }) => (
+  <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+    <circle cx="12" cy="7" r="4" />
+  </svg>
+);
 
 // 圆形彩色背景图标（Soft-UI：柔和色底 + 同色描边）
 function RoundIcon({ Icon, color, bg, size = 36 }) {
@@ -153,9 +159,20 @@ export default function MobileMessage() {
         ))}
       </div>
 
-      {/* 更多（3 项 Soft-UI 列表：活动公告 / 已用空间 / 帮助中心；访客 V1 隐藏） */}
+      {/* 更多（Soft-UI 列表：访客 / 活动公告 / 已用空间 / 帮助中心） */}
       <SectionTitle title="更多" />
       <div style={{ background: '#FFFFFF', margin: '0 12px', borderRadius: 16, overflow: 'hidden', boxShadow: '0 8px 24px rgba(31,35,41,0.06), 0 1px 3px rgba(31,35,41,0.04)' }}>
+        {/* 访客（V2 上线） */}
+        <button onClick={() => nav('/visitors')}
+          style={{ width: '100%', display: 'flex', alignItems: 'center', padding: '14px 14px', border: 'none', background: '#fff', borderBottom: `1px solid ${DIV}`, textAlign: 'left', cursor: 'pointer', gap: 12 }}>
+          <RoundIcon Icon={IconUser} color="#1baea2" bg="#E6F6F3" size={36} />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 14, color: TEXT }}>访客</div>
+            <div style={{ fontSize: 12, color: FAINT, marginTop: 2 }}>访客列表与访问记录</div>
+          </div>
+          <span style={{ fontSize: 12, color: FAINT }}>&gt;</span>
+        </button>
+
         {/* 活动公告 */}
         <button onClick={() => nav('/m/messages?type=announce')}
           style={{ width: '100%', display: 'flex', alignItems: 'center', padding: '14px 14px', border: 'none', background: '#fff', borderBottom: `1px solid ${DIV}`, textAlign: 'left', cursor: 'pointer', gap: 12 }}>
