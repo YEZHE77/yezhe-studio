@@ -11,6 +11,7 @@ const Works = React.lazy(() => import('../pages/Works.jsx'));
 const Categories = React.lazy(() => import('../pages/Categories.jsx'));
 const WorkPreview = React.lazy(() => import('../pages/WorkPreview.jsx'));
 const WorkDetail = React.lazy(() => import('../pages/WorkDetail.jsx'));
+const WorksAlbumEdit = React.lazy(() => import('../pages/WorksAlbumEdit.jsx'));
 const Packages = React.lazy(() => import('../pages/Packages.jsx'));
 const PackageEdit = React.lazy(() => import('../pages/PackageEdit.jsx'));
 const PackagePreview = React.lazy(() => import('../pages/PackagePreview.jsx'));
@@ -276,6 +277,7 @@ export default function MobileShell() {
                 <Route path="/works" element={<Works />} />
                 <Route path="/categories" element={<Categories />} />
                 <Route path="/works/:id/edit" element={<WorkDetail />} />
+                <Route path="/works/:id/album-edit" element={<WorksAlbumEdit />} />
                 <Route path="/works/new" element={<WorkDetail />} />
                 <Route path="/works/:id" element={<WorkPreview />} />
                 <Route path="/packages" element={<Packages />} />
