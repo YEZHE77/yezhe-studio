@@ -15,6 +15,7 @@
 import { Router } from 'express';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
 import { query, get, insert, run, withTransaction } from '../db.js';
 import { authRequired, requireRole } from '../auth.js';
 import { emitMessage } from './message.js';
@@ -371,10 +372,10 @@ router.get('/c/:token/state', async (req, res) => {
 
 // ===================== B 端管理接口（需登录） =====================
 
-function clientUrl(req, token) {
+function clientUrl(req, orderId, token) {
   const proto = req.get('x-forwarded-proto') || req.protocol || 'https';
   const host = req.get('host') || '';
-  return `${proto}://${host}/s/${token}`;
+  return `${proto}://${host}/customer/select-photo?orderId=${encodeURIComponent(orderId)}&token=${encodeURIComponent(token)}`;
 }
 
 // 订单的选片任务总览（状态 + 统计摘要 + 待支付金额 + 底片数 + C 端链接）
@@ -382,6 +383,12 @@ router.get('/orders/:orderId/task', authRequired, requireRole(...STAFF_ROLES), a
   try {
     const o = await get('SELECT * FROM orders WHERE id = ?', [req.params.orderId]);
     if (!o) return res.status(404).json({ error: '订单不存在' });
+    // 确保有客户选片令牌（customer_token 为空时自动生成，分享链接需要）
+    let token = o.customer_token;
+    if (!token) {
+      token = crypto.randomBytes(16).toString('hex');
+      await run('UPDATE orders SET customer_token = ? WHERE id = ?', [token, o.id]);
+    }
     const task = await get('SELECT * FROM order_select_task WHERE order_id = ?', [o.id]);
     const photos = task ? await loadPhotos(o.id) : [];
     const marks = task ? await loadMarks(task.id) : [];
@@ -402,10 +409,25 @@ router.get('/orders/:orderId/task', authRequired, requireRole(...STAFF_ROLES), a
       stats: summary.stats,
       extra: summary.extra,
       photo_total: total,
-      customer_token: o.customer_token || null,
-      share_url: o.customer_token ? clientUrl(req, o.customer_token) : null
+      customer_token: token,
+      share_url: clientUrl(req, o.id, token)
     });
   } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// C 端「/customer/select-photo」前置校验：验证 orderId 与 token 匹配（防遍历 orderId 访问他人订单）
+router.get('/customer-select/validate', async (req, res) => {
+  try {
+    const orderId = parseInt(req.query.orderId, 10);
+    const token = (req.query.token || '').toString();
+    if (!Number.isFinite(orderId) || !token) {
+      return res.status(400).json({ valid: false, reason: '参数缺失' });
+    }
+    const o = await get('SELECT id, customer_name, order_no, cancelled, is_deleted FROM orders WHERE id = ? AND customer_token = ?', [orderId, token]);
+    if (!o) return res.status(403).json({ valid: false, reason: '无权限访问该订单' });
+    if (o.cancelled || o.is_deleted) return res.status(403).json({ valid: false, reason: '订单不存在或已关闭' });
+    res.json({ valid: true, order_no: o.order_no || '', customer_name: o.customer_name || '' });
+  } catch (e) { res.status(500).json({ valid: false, reason: e.message }); }
 });
 
 // 开启 / 更新选片任务配置（密码/有效期/打乱/水印/免费张数/加片单价）；不存在则创建

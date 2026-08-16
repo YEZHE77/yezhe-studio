@@ -49,6 +49,7 @@ const BusinessCard = React.lazy(() => import('./pages/BusinessCard.jsx'));
 const SelectionAdmin = React.lazy(() => import('./pages/SelectionAdmin.jsx'));
 const ShareAlbum = React.lazy(() => import('./pages/ShareAlbum.jsx'));
 const SelectionClient = React.lazy(() => import('./pages/SelectionClient.jsx'));
+const CustomerSelectPhoto = React.lazy(() => import('./pages/CustomerSelectPhoto.jsx'));
 const CapacityManagement = React.lazy(() => import('./pages/CapacityManagement.jsx'));
 const Channels = React.lazy(() => import('./pages/Channels.jsx'));
 const Team = React.lazy(() => import('./pages/Team.jsx'));
@@ -158,6 +159,10 @@ export default function App() {
       {/* 客户在线选片：公开页面，无需登录（token + 可选密码），完全隐藏 B 端菜单 */}
       <Route path="/s/:token" element={
         <Suspense fallback={<PageLoader />}><SelectionClient /></Suspense>
+      } />
+      {/* 客户选片分享链接入口（/customer/select-photo?orderId=&token=）：微信内→中转引导页；普通浏览器→校验后进入选片 */}
+      <Route path="/customer/select-photo" element={
+        <Suspense fallback={<PageLoader />}><CustomerSelectPhoto /></Suspense>
       } />
       {/* C 端套系预览（/package?token=share_token）· 公开，无编辑 */}
       <Route path="/package" element={

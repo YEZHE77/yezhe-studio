@@ -181,7 +181,7 @@ export default function SelectionAdmin() {
     if (!shareUrl) return;
     if (navigator.clipboard) navigator.clipboard.writeText(shareUrl);
     else { const ta = document.createElement('textarea'); ta.value = shareUrl; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta); }
-    toast('选片链接已复制');
+    toast('已复制客户选片链接，请发送给客户');
   };
 
   const filtered = orders.filter((o) => !q || (o.customer_name || '').includes(q) || (o.order_no || '').includes(q));
@@ -281,7 +281,7 @@ export default function SelectionAdmin() {
                     </div>
                     <div style={{ display: 'flex', gap: 10, marginTop: 16, flexWrap: 'wrap' }}>
                       <Btn onClick={saveConfig} disabled={saving} primary>{saving ? '保存中…' : '保存配置'}</Btn>
-                      <Btn onClick={copyLink} disabled={!shareUrl}>复制选片链接</Btn>
+                      <Btn onClick={copyLink} disabled={!shareUrl}>分享给客户</Btn>
                       <Btn onClick={() => exportList('txt')} disabled={!completed}>导出 TXT</Btn>
                       <Btn onClick={() => exportList('excel')} disabled={!completed}>导出 Excel</Btn>
                       <Btn onClick={reset} danger disabled={!task || task.status === 'selecting'}>重置选片</Btn>
