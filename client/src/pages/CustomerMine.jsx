@@ -139,9 +139,9 @@ export default function CustomerMine() {
 
   return (
     <div style={{ minHeight: '100vh', background: '#F2F2F5', color: TEXT, paddingBottom: 40 }}>
-      {/* 玻璃顶栏 */}
-      <div style={{ ...glass, position: 'sticky', top: 0, zIndex: 20, display: 'flex', alignItems: 'center', padding: '14px 18px', borderBottom: '1px solid rgba(0,0,0,0.04)' }}>
-        <button onClick={() => nav('/home')} style={{ background: 'none', border: 'none', fontSize: 16, color: TEXT, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 2 }}>
+      {/* 顶部深色导航栏（返回键白色） */}
+      <div style={{ background: '#1f1f1f', position: 'sticky', top: 0, zIndex: 20, display: 'flex', alignItems: 'center', padding: '14px 18px' }}>
+        <button onClick={() => nav('/home')} style={{ background: 'none', border: 'none', fontSize: 16, color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 2 }}>
           <span style={{ fontSize: 20, lineHeight: 1 }}>‹</span>我的
         </button>
       </div>
