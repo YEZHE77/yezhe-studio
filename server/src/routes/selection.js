@@ -19,7 +19,6 @@ import { query, get, insert, run, withTransaction } from '../db.js';
 import { authRequired, requireRole } from '../auth.js';
 import { emitMessage } from './message.js';
 import { generateEventTodo } from '../todo.js';
-import { exportSelectionBackup } from '../backup.js';
 import { emitBizToStaff, BIZ_TYPE } from './mobileMessage.js';
 import {
   TASK_STATUS, MARK_STATUS,
@@ -47,12 +46,14 @@ function isExpired(expireAt) {
 }
 
 // 写订单变更记录（orders.logs，与订单详情底部「订单变更记录」同一数据源）；失败不阻塞主业务
-async function appendOrderLog(orderId, text) {
+async function appendOrderLog(orderId, text, who) {
   try {
     const cur = await get('SELECT logs FROM orders WHERE id = ?', [orderId]);
     let logs = [];
     if (cur && cur.logs) { try { logs = JSON.parse(cur.logs); } catch { logs = []; } }
-    logs.push({ t: nowISO(), text });
+    const entry = { t: nowISO(), text };
+    if (who) entry.who = who;
+    logs.push(entry);
     await run('UPDATE orders SET logs = ? WHERE id = ?', [JSON.stringify(logs), orderId]);
   } catch (e) { console.error('[selection] 写订单变更记录失败：', e.message); }
 }
@@ -113,6 +114,9 @@ function markMap(marks) {
 function clientPayload(order, task, photos, marks, total) {
   const summary = selectionSummary(marks, total, task.min_retouch, task.extra_price);
   const pkgName = (() => { try { const s = JSON.parse(order.package_snapshot || '{}'); return s.name || order.order_name || ''; } catch { return order.order_name || ''; } })();
+  // 安全：未交付仅预览缩略图（thumb_only=1 且订单未交付时，url 置空，C 端只能看缩略图、不可下载原图）
+  const delivered = order.status === 'delivered' || order.status === 'completed';
+  const thumbOnly = !!Number(order.thumb_only) && !delivered;
   return {
     task: {
       status: task.status,
@@ -120,12 +124,17 @@ function clientPayload(order, task, photos, marks, total) {
       extra_price: Number(task.extra_price) || 0,
       watermark_enabled: !!Number(task.watermark_enabled),
       shuffle_enabled: !!Number(task.shuffle_enabled),
+      screenshot_guard: !!Number(order.screenshot_guard),
+      thumb_only: !!Number(order.thumb_only),
+      delivered,
       expire_at: task.expire_at || null,
       pending_fee: Number(task.pending_fee) || 0,
       pending_count: Number(task.pending_count) || 0
     },
     order: { order_no: order.order_no || '', package_name: pkgName, customer_name: order.customer_name || '' },
-    photos: photos.map((p) => ({ id: p.id, key: p.photo_key, url: p.url, thumb_url: p.thumb_url || p.url })),
+    photos: photos.map((p) => (thumbOnly
+      ? { id: p.id, key: p.photo_key, url: null, thumb_url: p.thumb_url || p.url }
+      : { id: p.id, key: p.photo_key, url: p.url, thumb_url: p.thumb_url || p.url })),
     marks: marks.map((m) => ({ photo_id: m.photo_id, status: m.status, remark: m.remark || '' })),
     stats: summary.stats,
     extra: summary.extra
@@ -319,7 +328,7 @@ router.post('/c/:token/submit', async (req, res) => {
     } catch (e) { console.error('[selection] 提交后通知失败', e.message); }
 
     // 写入订单变更记录（客户提交）
-    await appendOrderLog(order.id, `客户提交选片：保留 ${summary.stats.keep} 张、加选 ${summary.extra.extraCount} 张，进入「${nextStatus === TASK_STATUS.PENDING_PAYMENT ? '待支付加片费' : '已完成'}」`);
+    await appendOrderLog(order.id, `客户提交选片：保留 ${summary.stats.keep} 张、加选 ${summary.extra.extraCount} 张，进入「${nextStatus === TASK_STATUS.PENDING_PAYMENT ? '待支付加片费' : '已完成'}」`, '客户');
     // 移动端业务消息（select_photo，biz_id=task_id，biz_extra 携带 orderId 供路由跳转）
     try {
       await emitBizToStaff({
@@ -431,7 +440,14 @@ router.post('/orders/:orderId/config', authRequired, requireRole(...STAFF_ROLES)
       );
       task = await get('SELECT * FROM order_select_task WHERE id = ?', [id]);
     }
-    res.json({ ok: true, task: { id: task.id, status: task.status, min_retouch: minRetouch, extra_price: extraPrice, watermark_enabled: !!watermark, shuffle_enabled: !!shuffle, has_password: !!passwordHash, expire_at: expireAt } });
+    // 订单维度安全配置：防截图提示层 / 未交付仅预览缩略图（存 orders 表）
+    const orderSets = [];
+    const orderVals = [];
+    if (b.screenshot_guard !== undefined) { orderSets.push('screenshot_guard = ?'); orderVals.push(b.screenshot_guard ? 1 : 0); }
+    if (b.thumb_only !== undefined) { orderSets.push('thumb_only = ?'); orderVals.push(b.thumb_only ? 1 : 0); }
+    if (orderSets.length) { orderVals.push(o.id); await run('UPDATE orders SET ' + orderSets.join(', ') + ' WHERE id = ?', orderVals); }
+    const freshOrder = await get('SELECT screenshot_guard, thumb_only FROM orders WHERE id = ?', [o.id]);
+    res.json({ ok: true, task: { id: task.id, status: task.status, min_retouch: minRetouch, extra_price: extraPrice, watermark_enabled: !!watermark, shuffle_enabled: !!shuffle, has_password: !!passwordHash, expire_at: expireAt, screenshot_guard: !!(freshOrder && freshOrder.screenshot_guard), thumb_only: !!(freshOrder && freshOrder.thumb_only) } });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -484,9 +500,6 @@ router.delete('/orders/:orderId/photos/:photoId', authRequired, requireRole(...S
     const photo = await get('SELECT id FROM order_photo WHERE id = ? AND order_id = ? AND deleted = 0', [photoId, o.id]);
     if (!photo) return res.status(404).json({ error: '底片不存在' });
     const task = await get('SELECT * FROM order_select_task WHERE order_id = ?', [o.id]);
-    // 兜底防护：删除底片前自动导出订单选片备份（失败不阻塞主业务）
-    let backup = null;
-    try { backup = await exportSelectionBackup(o.id); } catch (e) { console.error('[selection] 删除底片前备份失败：', e.message); }
     await withTransaction(async (tx) => {
       await tx.run('UPDATE order_photo SET deleted = 1 WHERE id = ?', [photoId]);
       await tx.run('DELETE FROM order_select_mark WHERE photo_id = ?', [photoId]);
@@ -499,10 +512,8 @@ router.delete('/orders/:orderId/photos/:photoId', authRequired, requireRole(...S
       }
     });
     // 写入订单变更记录（删除底片）
-    await appendOrderLog(o.id, `删除底片（photo_id=${photoId}）`);
-    // 移动端业务消息（删底片 + 备份导出，system 类型 biz_id=null，biz_extra 存 filename）
-    if (backup && backup.ok) { try { await emitBizToStaff({ title: '底片删除：备份文件已生成', content: `订单 ${o.order_no || o.id} 已删除底片，自动备份 ${backup.filename} 已生成`, biz_type: BIZ_TYPE.SYSTEM, biz_id: null, biz_extra: JSON.stringify({ filename: backup.filename }) }); } catch {} }
-    res.json({ ok: true, backup: backup && backup.ok ? { filename: backup.filename, localPath: backup.localPath } : null });
+    await appendOrderLog(o.id, `删除底片（photo_id=${photoId}）`, (req.user && req.user.username) || '');
+    res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -541,23 +552,18 @@ router.post('/orders/:orderId/reset', authRequired, requireRole(...SELECTION_ADM
     if (task.status === TASK_STATUS.SELECTING) return res.status(400).json({ error: '当前选片中，无需重置' });
     const version = Number(task.version) + 1;
     const resetAt = nowISO();
-    // 兜底防护：重置前自动导出订单选片备份（弥补原版无历史快照；失败不阻塞）
-    let backup = null;
-    try { backup = await exportSelectionBackup(o.id); } catch (e) { console.error('[selection] 重置前备份失败：', e.message); }
     await withTransaction(async (tx) => {
       await tx.run('DELETE FROM order_select_mark WHERE task_id = ?', [task.id]);
       await tx.run('UPDATE order_select_task SET status = ?, like_count = 0, exclude_count = 0, extra_count = 0, extra_fee = 0, pending_fee = 0, pending_count = 0, version = ?, reset_at = ?, updated_at = ? WHERE id = ?',
         [TASK_STATUS.SELECTING, version, resetAt, resetAt, task.id]);
     });
     // 写入订单变更记录（重置选片）
-    await appendOrderLog(o.id, `商家重置选片（第 ${version} 轮），清空全部草稿标记`);
+    await appendOrderLog(o.id, `商家重置选片（第 ${version} 轮），清空全部草稿标记`, (req.user && req.user.username) || '');
     try {
       await generateEventTodo(o.id, 'select_reset', '待客户重新选片', `商家已重置选片（第 ${version} 轮），客户需重新选片`, `reset_${resetAt}`);
       await emitMessage({ message_type: 'order_msg', business_event: 'select_reset', title: '选片已重置', content: `订单 ${o.order_no || o.id} 选片已重置，客户需重新选片`, rel_id: String(o.id), rel_model: 'order' });
-      // 移动端业务消息（重置选片 + 备份导出，system 类型 biz_id=null，biz_extra 存 filename）
-      if (backup && backup.ok) await emitBizToStaff({ title: '重置选片：备份文件已生成', content: `订单 ${o.order_no || o.id} 选片已重置，自动备份 ${backup.filename} 已生成`, biz_type: BIZ_TYPE.SYSTEM, biz_id: null, biz_extra: JSON.stringify({ filename: backup.filename }) });
     } catch (e) { console.error('[selection] 重置后通知失败', e.message); }
-    res.json({ ok: true, version, status: TASK_STATUS.SELECTING, backup: backup && backup.ok ? { filename: backup.filename, localPath: backup.localPath } : null });
+    res.json({ ok: true, version, status: TASK_STATUS.SELECTING });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -589,7 +595,7 @@ router.post('/orders/:orderId/pay', authRequired, requireRole(...PAY_ROLES), asy
     const b = req.body || {};
     const r = await markPaid(req.params.orderId, String(b.pay_flow_no || '').trim(), b.channel || 'cash', 'offline');
     // 审计：支付成功（操作人 + 状态变更前后值）
-    if (!r.already) await appendOrderLog(req.params.orderId, `选片加片费已支付 ¥${Number(r.fee || 0).toFixed(2)}（${b.channel || 'cash'}）`);
+    if (!r.already) await appendOrderLog(req.params.orderId, `选片加片费已支付 ¥${Number(r.fee || 0).toFixed(2)}（${b.channel || 'cash'}）`, (req.user && req.user.username) || '');
     // 移动端业务消息（select_photo，biz_id=task_id，biz_extra 携带 orderId）
     if (!r.already) {
       try {
@@ -611,7 +617,7 @@ router.post('/orders/:orderId/pay-callback', async (req, res) => {
     const success = String(b.status) === 'success' || String(b.result_code) === 'SUCCESS';
     if (!success) return res.json({ ok: true, status: TASK_STATUS.PENDING_PAYMENT, message: '支付未成功，维持待支付' });
     const r = await markPaid(req.params.orderId, String(b.transaction_id || b.pay_flow_no || '').trim(), 'online', 'online');
-    if (!r.already) await appendOrderLog(req.params.orderId, `选片加片费线上支付成功（流水号 ${b.transaction_id || b.pay_flow_no || ''}）`);
+    if (!r.already) await appendOrderLog(req.params.orderId, `选片加片费线上支付成功（流水号 ${b.transaction_id || b.pay_flow_no || ''}）`, '线上支付');
     res.json({ ok: true, status: TASK_STATUS.COMPLETED, already: r.already });
   } catch (e) { res.status(400).json({ error: e.message }); }
 });

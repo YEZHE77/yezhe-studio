@@ -5,7 +5,7 @@ import QRCode from 'qrcode';
 import { query, get, insert, run } from '../db.js';
 import { shareBaseUrl } from '../shareUtil.js';
 import { generateMiniProgramQr } from '../miniQr.js';
-import { authRequired, requireRole } from '../auth.js';
+import { authRequired, requireRole, requirePerm, PERMISSIONS, canViewPhone, maskPhone } from '../auth.js';
 import { parseRow } from '../schema.js';
 import { scheduleConflict, occupySchedule, releaseSchedule, conflictText, capacityConflict } from './schedules.js';
 import { emitMessage } from './message.js';
@@ -89,11 +89,13 @@ function normExecutors(v) {
     .filter((x) => x.name || x.id);
 }
 
-async function appendLog(orderId, text) {
+async function appendLog(orderId, text, who) {
   const cur = await get('SELECT logs FROM orders WHERE id = ?', [orderId]);
   let logs = [];
   if (cur && cur.logs) { try { logs = JSON.parse(cur.logs); } catch { logs = []; } }
-  logs.push({ t: nowISO(), text });
+  const entry = { t: nowISO(), text };
+  if (who) entry.who = who;
+  logs.push(entry);
   await run('UPDATE orders SET logs = ? WHERE id = ?', [JSON.stringify(logs), orderId]);
 }
 
@@ -327,7 +329,21 @@ router.get('/:id', authRequired, async (req, res) => {
     const payments = await query('SELECT * FROM payments WHERE order_id = ? ORDER BY created_at ASC', [o.id]);
     let pkgName = '';
     if (o.package_id) { const p = await get('SELECT name FROM packages WHERE id = ?', [o.package_id]); pkgName = p ? p.name : ''; }
-    res.json({ ...order, payments, packageName: pkgName });
+    // 电子服务协议签署记录（B 端查看/历史回看）
+    const agreementSigns = await query('SELECT id, customer_name, signer_phone, signed_at, created_at FROM agreement_sign WHERE order_id = ? ORDER BY created_at DESC', [o.id]);
+    // 手机号脱敏：无「导出客户资料」权限的子账号看到脱敏手机号（安全隔离）
+    let out = { ...order };
+    if (!canViewPhone(req.user)) {
+      out.customer_phone = maskPhone(order.customer_phone);
+      out.groom_phone = maskPhone(order.groom_phone);
+      out.bride_phone = maskPhone(order.bride_phone);
+      out.contact_phone = maskPhone(order.contact_phone);
+      try {
+        const phs = JSON.parse(order.phones || '[]');
+        if (Array.isArray(phs)) out.phones = JSON.stringify(phs.map((p) => maskPhone(p)));
+      } catch {}
+    }
+    res.json({ ...out, payments, packageName: pkgName, agreement_signs: agreementSigns });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -632,7 +648,8 @@ router.put('/:id', authRequired, requireRole(['admin', 'photographer', 'finance'
         groom_name=?, bride_name=?, address=?, period=?,
         order_name=?, phones=?, time_slots=?, extra_items=?, executors=?, channel=?, channel_id=?, date_tbd=?, payment_status=?,
         order_photos=?, birthday=?, appointment_remark=?, internal_remark=?, external_remark=?, questionnaire_answers=?,
-        groom_phone=?, bride_phone=?, shoot_position=?, total_negatives=?, retouch_count=?, album_electronic_num=?, album_price=?, shoot_cost=?, quick_repair_cost=?, pay_cash=?, pay_wechat=?, pay_alipay=?, pay_account_info=?
+        groom_phone=?, bride_phone=?, shoot_position=?, total_negatives=?, retouch_count=?, album_electronic_num=?, album_price=?, shoot_cost=?, quick_repair_cost=?, pay_cash=?, pay_wechat=?, pay_alipay=?, pay_account_info=?,
+        force_agreement=?
        WHERE id=?`,
       [customer_name, firstPhone,
        shoot_date, execText, b.remark ?? cur.remark, status,
@@ -644,6 +661,7 @@ router.put('/:id', authRequired, requireRole(['admin', 'photographer', 'finance'
        b.total_negatives ?? cur.total_negatives, b.retouch_count ?? cur.retouch_count, b.album_electronic_num ?? cur.album_electronic_num,
        b.album_price ?? cur.album_price, b.shoot_cost ?? cur.shoot_cost, b.quick_repair_cost ?? cur.quick_repair_cost,
        payBool(b.pay_cash, cur.pay_cash), payBool(b.pay_wechat, cur.pay_wechat), payBool(b.pay_alipay, cur.pay_alipay), b.pay_account_info ?? cur.pay_account_info,
+       (b.force_agreement !== undefined ? (b.force_agreement ? 1 : 0) : cur.force_agreement),
        cur.id]
     );
     if (b.status && b.status !== cur.status) {
@@ -686,7 +704,7 @@ router.put('/:id', authRequired, requireRole(['admin', 'photographer', 'finance'
 
 // 更换套系（仅更新当前订单的套系快照，不影响其它订单；验收⑥）
 // body: { package_id, package_price?, spec_id?, addons?, reason? }
-router.post('/:id/change-package', authRequired, requireRole(['admin', 'photographer', 'finance']), async (req, res) => {
+router.post('/:id/change-package', authRequired, requireRole(['admin', 'photographer', 'finance']), requirePerm(PERMISSIONS.EDIT_PRICE), async (req, res) => {
   try {
     const b = req.body || {};
     const o = await get('SELECT * FROM orders WHERE id = ?', [req.params.id]);
@@ -748,7 +766,7 @@ router.post('/:id/change-package', authRequired, requireRole(['admin', 'photogra
 });
 
 // 加收款（写入 payments 流水，更新 paid_amount）
-router.post('/:id/payments', authRequired, requireRole(['admin', 'photographer', 'finance']), async (req, res) => {
+router.post('/:id/payments', authRequired, requireRole(['admin', 'photographer', 'finance']), requirePerm(PERMISSIONS.EDIT_PRICE), async (req, res) => {
   try {
     const b = req.body;
     const o = await get('SELECT * FROM orders WHERE id = ?', [req.params.id]);
@@ -783,7 +801,7 @@ router.post('/:id/payments', authRequired, requireRole(['admin', 'photographer',
 });
 
 // 软删除订单（进入回收站，可恢复；保留收款流水与选片记录，不破坏数据）
-router.delete('/:id', authRequired, requireRole(['admin']), async (req, res) => {
+router.delete('/:id', authRequired, requireRole(['admin']), requirePerm(PERMISSIONS.DELETE_DATA), async (req, res) => {
   try {
     const o = await get('SELECT * FROM orders WHERE id = ?', [req.params.id]);
     if (!o) return res.status(404).json({ error: '订单不存在' });
@@ -824,7 +842,7 @@ router.post('/:id/restore', authRequired, requireRole(['admin']), async (req, re
 });
 
 // 彻底删除（管理员，物理删除并级联收款流水与选片记录）
-router.post('/:id/purge', authRequired, requireRole(['admin']), async (req, res) => {
+router.post('/:id/purge', authRequired, requireRole(['admin']), requirePerm(PERMISSIONS.DELETE_DATA), async (req, res) => {
   try {
     const o = await get('SELECT * FROM orders WHERE id = ?', [req.params.id]);
     if (!o) return res.status(404).json({ error: '订单不存在' });
@@ -853,7 +871,7 @@ router.post('/:id/cancel', authRequired, requireRole(['admin']), async (req, res
 });
 
 // 退款（登记退款流水 + 记录退款额）
-router.post('/:id/refund', authRequired, requireRole(['admin', 'finance']), async (req, res) => {
+router.post('/:id/refund', authRequired, requireRole(['admin', 'finance']), requirePerm(PERMISSIONS.EDIT_PRICE), async (req, res) => {
   try {
     const b = req.body;
     const o = await get('SELECT * FROM orders WHERE id = ?', [req.params.id]);
@@ -893,20 +911,35 @@ router.post('/:id/storage', authRequired, requireRole(['admin', 'photographer', 
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// 生成 / 刷新「客户订单查看」分享（customer_token 随机令牌，/customer-order?token= 只读查看）
+// 生成 / 刷新「客户订单查看」分享（customer_token 随机令牌，/customer-order?token= 只读查看；支持有效期 + 手动关闭）
 router.post('/:id/customer-share', authRequired, requireRole(['admin', 'photographer', 'finance']), async (req, res) => {
   try {
     const o = await get('SELECT * FROM orders WHERE id = ?', [req.params.id]);
     if (!o) return res.status(404).json({ error: '订单不存在' });
-    const reset = !!(req.body && req.body.reset);
+    const b = req.body || {};
+    const reset = !!b.reset;
     let token = o.customer_token;
     if (!token || reset) token = crypto.randomBytes(16).toString('hex');
+    // 安全：客户私有链接有效期（可选，ISO 日期；空=永久）
+    const expireAt = (b.expire_at !== undefined) ? (b.expire_at || null) : (o.customer_token_expire_at ?? null);
     const base = shareBaseUrl(req);
     const url = `${base}/customer-order?token=${token}`;
     const qrUrl = await QRCode.toDataURL(url, { width: 480, margin: 1 });
-    await run('UPDATE orders SET customer_token = ? WHERE id = ?', [token, o.id]);
-    if (reset) await appendLog(o.id, '重置客户订单查看链接');
-    res.json({ ok: true, customer_token: token, url, qr_url: qrUrl });
+    await run('UPDATE orders SET customer_token = ?, customer_token_expire_at = ? WHERE id = ?', [token, expireAt, o.id]);
+    if (reset) await appendLog(o.id, '重置客户订单查看链接', (req.user && req.user.username) || '');
+    else await appendLog(o.id, '生成客户订单查看链接' + (expireAt ? `（有效期至 ${expireAt}）` : ''), (req.user && req.user.username) || '');
+    res.json({ ok: true, customer_token: token, url, qr_url: qrUrl, expire_at: expireAt });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// 关闭「客户订单查看」链接（清空 customer_token + 有效期，公开链接立即失效）
+router.post('/:id/customer-share/close', authRequired, requireRole(['admin', 'photographer', 'finance']), async (req, res) => {
+  try {
+    const o = await get('SELECT id FROM orders WHERE id = ?', [req.params.id]);
+    if (!o) return res.status(404).json({ error: '订单不存在' });
+    await run('UPDATE orders SET customer_token = NULL, customer_token_expire_at = NULL WHERE id = ?', [o.id]);
+    await appendLog(o.id, '关闭客户订单查看链接（链接已失效）', (req.user && req.user.username) || '');
+    res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 

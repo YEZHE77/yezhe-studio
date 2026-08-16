@@ -2,7 +2,7 @@
 // 全部需要商户登录（authRequired）；与 /api/customer 的行级隔离互补：此处为管理视角，可看全部。
 import { Router } from 'express';
 import { query, get, insert, run } from '../db.js';
-import { authRequired } from '../auth.js';
+import { authRequired, requirePerm, PERMISSIONS } from '../auth.js';
 import { lunarOf } from './schedules.js';
 import { isR2Enabled, isCloudStorageEnabled, getActiveProviderName, deleteMediaByUrl } from '../storage.js';
 import { cfConfigured, getR2Egress } from '../cf.js';
@@ -270,7 +270,8 @@ router.delete('/evaluates/:id', async (req, res) => {
 });
 
 // ===== 4. 客户管理（按 openid 聚合，贯穿订单/预约）=====
-router.get('/customers', async (req, res) => {
+// 客户资料（含手机号）敏感：需「导出客户资料」权限
+router.get('/customers', requirePerm(PERMISSIONS.EXPORT_CUSTOMERS), async (req, res) => {
   try {
     const cs = await query('SELECT * FROM customers');
     const custMap = new Map(cs.map((c) => [c.openid, c]));

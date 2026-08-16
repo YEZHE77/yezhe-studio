@@ -1,7 +1,7 @@
 // routes/auth.js —— 登录 / 当前用户
 import { Router } from 'express';
 import { get, run } from '../db.js';
-import { signToken, verifyPassword, hashPassword, authRequired } from '../auth.js';
+import { signToken, verifyPassword, hashPassword, authRequired, validatePasswordStrength } from '../auth.js';
 
 const router = Router();
 
@@ -48,9 +48,8 @@ router.put('/password', authRequired, async (req, res) => {
     if (!oldPassword || !newPassword) {
       return res.status(400).json({ error: '请填写旧密码和新密码' });
     }
-    if (String(newPassword).length < 6) {
-      return res.status(400).json({ error: '新密码至少 6 位' });
-    }
+    const weak = validatePasswordStrength(newPassword);
+    if (weak) return res.status(400).json({ error: weak });
     const u = await get('SELECT * FROM users WHERE id = ?', [req.user.uid]);
     if (!u) return res.status(404).json({ error: '用户不存在' });
     const ok = await verifyPassword(oldPassword, u.password_hash);

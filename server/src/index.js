@@ -9,7 +9,6 @@ import fs from 'node:fs';
 import { dialect, dataDir } from './db.js';
 import { initSchema } from './schema.js';
 import { saveImage } from './storage.js';
-import { scheduleDailyBackup } from './backup.js';
 import { scheduleConsistencyCheck } from './consistencyCheck.js';
 import { scheduleReminders } from './reminder.js';
 import { authRequired } from './auth.js';
@@ -44,6 +43,7 @@ import photoPackageRoutes from './routes/photoPackage.js';
 import publicRoutes from './routes/public.js';
 import contractRoutes from './routes/contract.js';
 import todoRoutes from './routes/todo.js';
+import usersRoutes from './routes/users.js';
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -122,6 +122,7 @@ app.get('/api/qrcode', async (req, res) => {
 });
 
 app.use('/api/auth', authRoutes);
+app.use('/api/users', usersRoutes);
 app.use('/api/works', worksRoutes);
 app.use('/api/categories', categoriesRoutes);
 app.use('/api/channels', channelsRoutes);
@@ -163,8 +164,7 @@ app.use((req, res) => res.status(404).json({ error: '接口不存在' }));
 
 initSchema().then(async () => {
   await seedIfNeeded();
-  // 双重备份：启动后调度每日 R2 /backup 写入（Render 免费档重启会自动重新调度）
-  try { scheduleDailyBackup(); } catch (e) { console.error('[backup] 调度失败', e.message); }
+  // 备份由外部 Mac mini + rclone 独立完成，业务层不做自动备份（安全需求第7条）
   // 数据一致性巡检：每日凌晨 02:00 批量校验（档期冲突/精修超额/合同快照不匹配/套系未绑模板），异常入库 + 推送提醒
   try { scheduleConsistencyCheck(); } catch (e) { console.error('[check] 调度失败', e.message); }
   // 业务提醒扫描：每日 08:00（选片任务到期 / 摄影日程临近 → 生成移动端消息）

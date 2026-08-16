@@ -2,13 +2,26 @@
 // 职责：公开预约表单提交 / customer_token 订单只读查看
 // 约束：C 端只能提交预约 + 浏览套系 + 只读查看自己订单 + 选片标记；绝不暴露任何编辑/删除/上传能力。
 import { Router } from 'express';
-import { query, get, insert } from '../db.js';
+import { query, get, insert, run } from '../db.js';
 import { emitMessage } from './message.js';
 import { generateEventTodo } from '../todo.js';
 
 const router = Router();
 
 function nowISO() { return new Date().toISOString(); }
+
+// 写订单变更记录（orders.logs）；失败不阻塞主业务
+async function appendOrderLog(orderId, text, who) {
+  try {
+    const cur = await get('SELECT logs FROM orders WHERE id = ?', [orderId]);
+    let logs = [];
+    if (cur && cur.logs) { try { logs = JSON.parse(cur.logs); } catch { logs = []; } }
+    const entry = { t: nowISO(), text };
+    if (who) entry.who = who;
+    logs.push(entry);
+    await run('UPDATE orders SET logs = ? WHERE id = ?', [JSON.stringify(logs), orderId]);
+  } catch (e) { console.error('[public] 写订单变更记录失败：', e.message); }
+}
 
 // ===== 1. 公开预约表单提交（提交后客户无法修改） =====
 router.post('/appointment', async (req, res) => {
@@ -54,6 +67,11 @@ router.get('/order/:token', async (req, res) => {
     const o = await get('SELECT * FROM orders WHERE customer_token = ?', [token]);
     if (!o) return res.status(403).json({ error: '无权限访问该订单' });
     if (o.cancelled || o.is_deleted) return res.status(404).json({ error: '订单不存在或已关闭' });
+    // 安全：客户私有链接有效期校验（过期仅提示，不返回订单数据）
+    if (o.customer_token_expire_at) {
+      const exp = new Date(o.customer_token_expire_at).getTime();
+      if (!Number.isNaN(exp) && exp < Date.now()) return res.status(403).json({ error: '访问链接已过期，请联系商家' });
+    }
 
     const safeArr = (t) => { try { const a = JSON.parse(t || '[]'); return Array.isArray(a) ? a : []; } catch { return []; } };
 
@@ -83,12 +101,11 @@ router.get('/order/:token', async (req, res) => {
     // 消费明细：可选精修片 / 加片费 / 加片优惠 / 其他消费
     const extraItems = safeArr(o.extra_items);
 
-    // 选片入口
-    const selTask = await get('SELECT id FROM selection_tasks WHERE order_id = ? ORDER BY id DESC LIMIT 1', [o.id]);
+    // 选片入口（选片 V2：/s/:customer_token 直连，仅当已开启选片任务时展示；不再用旧表 selection_tasks）
+    const selTaskV2 = await get('SELECT id, status FROM order_select_task WHERE order_id = ? LIMIT 1', [o.id]);
     let selectionUrl = '';
-    if (selTask) {
-      const share = await get('SELECT token FROM shares WHERE type = ? AND ref_id = ?', ['selection', selTask.id]);
-      if (share) selectionUrl = '/s/' + share.token;
+    if (selTaskV2 && selTaskV2.status !== 'not_started' && o.customer_token) {
+      selectionUrl = '/s/' + o.customer_token;
     }
 
     const STATUS_LABEL = { deposit: '已付定金', shot: '已拍摄', selecting: '选片中', retouching: '精修中', delivered: '已交付', completed: '已完成' };
@@ -182,6 +199,55 @@ router.post('/order/:token/download-log', async (req, res) => {
     await insert('INSERT INTO download_logs (order_id, item_type, item_name, operator_name, created_at) VALUES (?,?,?,?,?)',
       [o.id, itemType, itemName, '客户', nowISO()]);
     res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ===== 3. 电子服务协议签署（C 端手写签名，绑定订单，签署记录不可篡改） =====
+// 查询协议签署状态 + 历史签署记录（只读）
+router.get('/order/:token/agreement', async (req, res) => {
+  try {
+    const o = await get('SELECT * FROM orders WHERE customer_token = ?', [req.params.token]);
+    if (!o) return res.status(403).json({ error: '无权限访问该订单' });
+    if (o.customer_token_expire_at) {
+      const exp = new Date(o.customer_token_expire_at).getTime();
+      if (!Number.isNaN(exp) && exp < Date.now()) return res.status(403).json({ error: '访问链接已过期，请联系商家' });
+    }
+    const history = await query('SELECT id, customer_name, signed_at, created_at FROM agreement_sign WHERE order_id = ? ORDER BY created_at DESC', [o.id]);
+    res.json({
+      force_agreement: !!Number(o.force_agreement),
+      agreement_signed: !!Number(o.agreement_signed),
+      history: history.map((h) => ({ id: h.id, customer_name: h.customer_name || '', signed_at: h.signed_at || h.created_at }))
+    });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// 客户签署协议（signature=手写签名图片 base64；content_snapshot=签署当时的协议全文，防篡改）
+router.post('/order/:token/agreement/sign', async (req, res) => {
+  try {
+    const o = await get('SELECT * FROM orders WHERE customer_token = ?', [req.params.token]);
+    if (!o) return res.status(403).json({ error: '无权限访问该订单' });
+    if (o.cancelled || o.is_deleted) return res.status(404).json({ error: '订单不存在或已关闭' });
+    if (o.customer_token_expire_at) {
+      const exp = new Date(o.customer_token_expire_at).getTime();
+      if (!Number.isNaN(exp) && exp < Date.now()) return res.status(403).json({ error: '访问链接已过期，请联系商家' });
+    }
+    const b = req.body || {};
+    const signature = String(b.signature || '').trim();
+    const content = String(b.content_snapshot || '').trim();
+    if (!signature) return res.status(400).json({ error: '请先完成签名' });
+    if (!content) return res.status(400).json({ error: '缺少协议内容' });
+    const signedAt = nowISO();
+    const id = await insert(
+      'INSERT INTO agreement_sign (order_id, customer_name, signer_phone, signature, content_snapshot, signed_at, device) VALUES (?,?,?,?,?,?,?)',
+      [o.id, String(b.customer_name || o.customer_name || ''), String(b.signer_phone || ''), signature, content, signedAt, String(b.device || 'H5')]
+    );
+    await run('UPDATE orders SET agreement_signed = 1 WHERE id = ?', [o.id]);
+    // 签署留痕（订单变更记录）+ 通知商家
+    try {
+      await appendOrderLog(o.id, `客户签署电子服务协议（第 ${id} 条签署记录）`, '客户');
+      await emitMessage({ message_type: 'order_msg', business_event: 'agreement_signed', title: '客户已签署服务协议', content: `订单 ${o.order_no || o.id} 客户已签署电子服务协议`, rel_id: String(o.id), rel_model: 'order' });
+    } catch (e) { console.error('[agreement] 签署通知失败', e.message); }
+    res.json({ ok: true, id });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 

@@ -411,6 +411,27 @@ CREATE TABLE IF NOT EXISTS contract_template (
   create_time TEXT DEFAULT CURRENT_TIMESTAMP, update_time TEXT DEFAULT CURRENT_TIMESTAMP
 );`;
 
+// 电子服务协议签署记录（C端客户手写签名，绑定订单；签署后不可篡改，仅允许追加历史版本）
+// content_snapshot = 签署当时的协议全文快照（防篡改）；signature = 手写签名图片(base64 或对象 key)
+const PG_AGREEMENT_SIGN = `
+CREATE TABLE IF NOT EXISTS agreement_sign (
+  id SERIAL PRIMARY KEY, order_id INTEGER NOT NULL,
+  customer_name TEXT, signer_phone TEXT,
+  signature TEXT, content_snapshot TEXT,
+  signed_at TEXT, device TEXT,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_agreement_sign_order ON agreement_sign(order_id, created_at);`;
+const SQLITE_AGREEMENT_SIGN = `
+CREATE TABLE IF NOT EXISTS agreement_sign (
+  id INTEGER PRIMARY KEY AUTOINCREMENT, order_id INTEGER NOT NULL,
+  customer_name TEXT, signer_phone TEXT,
+  signature TEXT, content_snapshot TEXT,
+  signed_at TEXT, device TEXT,
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_agreement_sign_order ON agreement_sign(order_id, created_at);`;
+
 // 合同历史版本归档（重新生成/作废时旧文件归档，保留期内可恢复）
 const PG_CONTRACT_ARCHIVE = `
 CREATE TABLE IF NOT EXISTS contract_archive (
@@ -620,6 +641,8 @@ export async function initSchema() {
 
   // 合同模板表（contract_template）
   for (const s of (dialect === 'pg' ? PG_CONTRACT_TEMPLATE : SQLITE_CONTRACT_TEMPLATE).split(';').map((x) => x.trim()).filter(Boolean)) await run(s);
+  // 电子服务协议签署记录表（agreement_sign）
+  for (const s of (dialect === 'pg' ? PG_AGREEMENT_SIGN : SQLITE_AGREEMENT_SIGN).split(';').map((x) => x.trim()).filter(Boolean)) await run(s);
   // 合同历史版本归档表 + 合同操作审计日志表
   for (const s of (dialect === 'pg' ? PG_CONTRACT_ARCHIVE : SQLITE_CONTRACT_ARCHIVE).split(';').map((x) => x.trim()).filter(Boolean)) await run(s);
   for (const s of (dialect === 'pg' ? PG_CONTRACT_AUDIT : SQLITE_CONTRACT_AUDIT).split(';').map((x) => x.trim()).filter(Boolean)) await run(s);
@@ -701,12 +724,17 @@ export async function initSchema() {
   for (const [col, def] of ORDERS_NEW_COLUMNS) await ensureColumn('orders', col, def);
   // 执行人头像（复用 users 表作为人员表，头像可空）
   await ensureColumn('users', 'avatar', 'TEXT');
+  // 安全模块：子账号权限集合（JSON 数组，如 ["view_orders","edit_price"]）+ 禁用标记
+  await ensureColumn('users', 'permissions', 'TEXT');
+  await ensureColumn('users', 'disabled', 'INTEGER NOT NULL DEFAULT 0');
   // 客户绑定列 + 成片下载开关
   await ensureColumn('orders', 'openid', 'TEXT');
   // 订单图片管理：原片 / 精修片 URL 列表（JSON：{raw:[...], retouched:[...]}），选片复用 photo_select
   await ensureColumn('orders', 'order_photos', 'TEXT');
   // 客户专属访问令牌（C 端 /customer-order?token= 鉴权，只读查看自己订单）
   await ensureColumn('orders', 'customer_token', 'TEXT');
+  // 安全模块：客户私有链接有效期（过期后 token 失效，仅可读提示）
+  await ensureColumn('orders', 'customer_token_expire_at', 'TEXT');
   // 合同：关联模板 / 生成后 PDF 链接 / 单订单专属补充条款
   await ensureColumn('orders', 'contract_template_id', 'INTEGER');
   await ensureColumn('orders', 'contract_pdf_url', 'TEXT');
@@ -738,6 +766,12 @@ export async function initSchema() {
   await ensureColumn('orders', 'appointment_remark', 'TEXT');
   await ensureColumn('orders', 'internal_remark', 'TEXT');
   await ensureColumn('orders', 'external_remark', 'TEXT');
+  // 安全模块：电子服务协议（订单维度强制签署开关 + 签署状态）
+  await ensureColumn('orders', 'force_agreement', 'INTEGER NOT NULL DEFAULT 0');
+  await ensureColumn('orders', 'agreement_signed', 'INTEGER NOT NULL DEFAULT 0');
+  // 安全模块：选片防截图提示层 / 未交付仅预览缩略图（订单维度开关）
+  await ensureColumn('orders', 'screenshot_guard', 'INTEGER NOT NULL DEFAULT 0');
+  await ensureColumn('orders', 'thumb_only', 'INTEGER NOT NULL DEFAULT 0');
   await ensureColumn('works', 'allow_download', 'INTEGER NOT NULL DEFAULT 0');
   // 相册级配置（客户相册密码 / 自定义文案 / 有效期）——挂在作品维度（作品相册即交付客户的客片相册）
   await ensureColumn('works', 'album_copy', 'TEXT');
