@@ -45,8 +45,8 @@ export default function MiniProgramPreview() {
         <button onClick={() => setUrl(window.location.origin + '/package-center')} style={{ padding: '8px 12px', background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 6, cursor: 'pointer', fontSize: 13, color: '#fff' }}>套系中心</button>
       </div>
 
-      {/* 设备预览区（黑色斜纹 + 居中 + iPhone 框架） */}
-      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 40, background: '#000', backgroundImage: 'repeating-linear-gradient(45deg, #141414 0 14px, #1c1c1c 14px 28px)' }}>
+      {/* 设备预览区（纯黑底 + 居中 + iPhone 框架） */}
+      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 40, background: '#000' }}>
         {/* iPhone 框架 */}
         <div style={{ position: 'relative', width: d.frameW, height: d.frameH, background: '#0e0e0e', borderRadius: d.radius, boxShadow: '0 25px 60px rgba(0,0,0,0.25)', padding: pad, boxSizing: 'border-box' }}>
           {/* notch / 灵动岛（iPhoneSE 无） */}
