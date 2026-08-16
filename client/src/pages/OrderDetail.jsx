@@ -4,6 +4,8 @@ import http, { img, uploadBatch, conflictOf } from '../api.js';
 import bgm from '../bgm.js';
 import Slideshow from '../components/Slideshow.jsx';
 import html2pdf from 'html2pdf.js';
+import html2canvas from 'html2canvas';
+import { jsPDF } from 'jspdf';
 import { renderContract, buildContractVars, contractChanged } from '../utils/contract.js';
 import { getRefundText, getRefundParagraphs, normalizePolicy } from '../utils/refundPolicy.js';
 import { getServiceAgreement, getPhotoAuthAgreement, toParagraphs } from '../utils/customerAgreement.js';
@@ -589,40 +591,95 @@ export default function OrderDetail() {
     catch (e2) { alert((e2.response && e2.response.data && e2.response.data.error) || '删除失败'); }
   }
   // 独立模式/微信环境：用 html2pdf 直接生成 PDF 文件（绕过 window.print）
+  // 生成带页眉页脚的多页 PDF（html2canvas 渲染 + jsPDF 逐页拼页眉/正文切片/页脚）
   async function downloadPrintPdf() {
     try {
       const sheet = document.querySelector('.print-order-sheet');
-      const inner = sheet && sheet.querySelector('div');
-      if (!inner) return alert('未找到打印内容');
-      // 克隆打印内容到离屏 A4 容器（跳过 style 标签）
-      const container = document.createElement('div');
-      const clone = inner.cloneNode(true);
-      clone.style.maxWidth = 'none';
-      clone.style.margin = '0';
-      container.appendChild(clone);
-      container.style.position = 'absolute';
-      container.style.left = '-9999px';
-      container.style.top = '0';
-      container.style.width = '210mm';
-      container.style.background = '#fff';
-      container.style.padding = '15mm';
-      container.style.boxSizing = 'border-box';
-      document.body.appendChild(container);
+      const contentEl = sheet && sheet.querySelector('div');
+      if (!contentEl) return alert('未找到打印内容');
 
-      const pdfBlob = await html2pdf().set({
-        margin: 0,
-        filename: '拍摄服务合同-' + (detail.order_no || detail.id) + '.pdf',
-        image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2, useCORS: true },
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-        pagebreak: { mode: ['css', 'legacy'] }
-      }).from(container).output('blob');
+      // 固定正文渲染宽度为 700px（A4 版心），克隆避免污染原节点
+      const contentClone = contentEl.cloneNode(true);
+      contentClone.style.maxWidth = '700px';
+      contentClone.style.width = '700px';
+      contentClone.style.margin = '0 auto';
+      const wrap = document.createElement('div');
+      wrap.style.position = 'absolute';
+      wrap.style.left = '-9999px';
+      wrap.style.top = '0';
+      wrap.style.width = '700px';
+      wrap.style.background = '#fff';
+      wrap.appendChild(contentClone);
+      document.body.appendChild(wrap);
 
-      document.body.removeChild(container);
+      const contentCanvas = await html2canvas(contentClone, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
 
+      // 页眉 / 页脚 HTML（宽 700px，与正文同宽）
+      const created = detail.created_at ? new Date(detail.created_at).toLocaleString('zh-CN') : '—';
+      const headerHTML = `<div style="width:700px; background:#fff; text-align:center; font-family:SimSun,STSong,serif; padding:8mm 0 4mm; border-bottom:1px solid #555;">
+        <div style="font-size:22px; letter-spacing:4px; color:#000;">拍摄服务合同</div>
+        <div style="font-size:13px; margin-top:8px; color:#555;">订单编号：${detail.order_no}</div>
+        <div style="font-size:12px; margin-top:4px; color:#555;">创建时间：${created}　·　订单状态：${statusText || '—'}</div>
+      </div>`;
+      const footerHTML = `<div style="width:700px; background:#fff; display:flex; justify-content:space-between; align-items:center; font-family:SimSun,STSong,serif; padding:4mm 0 6mm; border-top:1px solid #ccc; font-size:12px; color:#999;">
+        <span>叶哲 STUDIO · 摄影工作室管理系统</span>
+        <span>打印时间：${new Date().toLocaleString('zh-CN')}</span>
+      </div>`;
+
+      const renderHtml = async (html) => {
+        const el = document.createElement('div');
+        el.innerHTML = html;
+        el.style.position = 'absolute';
+        el.style.left = '-9999px';
+        el.style.top = '0';
+        el.style.background = '#fff';
+        document.body.appendChild(el);
+        const canvas = await html2canvas(el.firstElementChild, { scale: 2, backgroundColor: '#ffffff' });
+        document.body.removeChild(el);
+        return canvas;
+      };
+      const headerCanvas = await renderHtml(headerHTML);
+      const footerCanvas = await renderHtml(footerHTML);
+
+      // PDF 版式（A4，mm）
+      const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+      const pageW = 210, pageH = 297;
+      const margin = 20;                 // 左右边距 20mm
+      const contentW = pageW - margin * 2; // 170mm 版心宽
+      const headerH = headerCanvas.height / headerCanvas.width * contentW;
+      const footerH = footerCanvas.height / footerCanvas.width * contentW;
+      const contentAreaH = pageH - headerH - footerH;
+
+      const pxPerMm = contentCanvas.width / contentW;
+      const pageContentPx = contentAreaH * pxPerMm;
+      const totalPages = Math.max(1, Math.ceil(contentCanvas.height / pageContentPx));
+
+      for (let i = 0; i < totalPages; i++) {
+        if (i > 0) pdf.addPage();
+        // 页眉
+        pdf.addImage(headerCanvas.toDataURL('image/jpeg', 0.95), 'JPEG', margin, 0, contentW, headerH);
+        // 正文切片
+        const sy = i * pageContentPx;
+        const sH = Math.min(pageContentPx, contentCanvas.height - sy);
+        if (sH > 0) {
+          const slice = document.createElement('canvas');
+          slice.width = contentCanvas.width;
+          slice.height = sH;
+          const ctx = slice.getContext('2d');
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(0, 0, slice.width, slice.height);
+          ctx.drawImage(contentCanvas, 0, sy, contentCanvas.width, sH, 0, 0, contentCanvas.width, sH);
+          pdf.addImage(slice.toDataURL('image/jpeg', 0.98), 'JPEG', margin, headerH, contentW, sH / pxPerMm);
+        }
+        // 页脚
+        pdf.addImage(footerCanvas.toDataURL('image/jpeg', 0.95), 'JPEG', margin, pageH - footerH, contentW, footerH);
+      }
+
+      document.body.removeChild(wrap);
+
+      const pdfBlob = pdf.output('blob');
       const filename = '拍摄服务合同-' + (detail.order_no || detail.id) + '.pdf';
       const file = new File([pdfBlob], filename, { type: 'application/pdf' });
-      // 优先用系统分享（iOS/Android 可存到文件）；否则走 a.download
       if (navigator.canShare && navigator.canShare({ files: [file] })) {
         await navigator.share({ files: [file], title: filename });
       } else {
@@ -636,7 +693,7 @@ export default function OrderDetail() {
         URL.revokeObjectURL(url);
       }
     } catch (e) {
-      if (e && e.name === 'AbortError') return; // 用户取消分享
+      if (e && e.name === 'AbortError') return;
       console.error(e);
       alert('PDF 生成失败：' + (e && e.message ? e.message : e));
     }
@@ -644,17 +701,8 @@ export default function OrderDetail() {
   function printOrder() {
     if (!detail) return;
     setMoreMenu(false);
-    const ua = navigator.userAgent || '';
-    const isWeChat = /MicroMessenger/i.test(ua);
-    const isStandalone = (window.navigator.standalone === true)
-      || (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
-    // 微信 / 独立 PWA 均不支持 window.print：走 html2pdf 直接下载 PDF
-    if (isWeChat || isStandalone) {
-      downloadPrintPdf();
-      return;
-    }
-    // 普通浏览器：原生打印（质量更好，可另存 PDF）。必须同步调用 window.print 以保留 iOS 用户手势上下文
-    window.print();
+    // 统一走 html2pdf 生成多页 PDF（每页都带页眉页脚），浏览器/独立 PWA/微信都一致
+    downloadPrintPdf();
   }
   async function restoreOrder() {
     if (!confirm('确认恢复该订单？')) return;
@@ -2592,37 +2640,9 @@ export default function OrderDetail() {
         </>
       )}
 
-      {/* 打印单据：简单 div 结构（table-header-group 在用户 Chrome 上不能稳定重复每页页眉）；页眉页脚用 position:fixed 兜底，padding 加大避免字贴边 */}
-      <>
-      {/* 每页页眉（position:fixed 打印时 Chrome 应跨页重复；normal 模式 visibility:hidden + zIndex:-1 保留在文档流里，不能 left:-10000 离屏——Chrome 会跳过完全离屏元素不重复） */}
-      <div className="print-page-header" style={{ position: 'fixed', top: 0, left: 0, right: 0, padding: '8mm 20mm 4mm', background: '#fff', borderBottom: '1px solid #555', visibility: 'hidden', zIndex: -1 }}>
-        <div style={{ maxWidth: 700, margin: '0 auto', textAlign: 'center' }}>
-          <div style={{ fontSize: 22, fontWeight: 400, letterSpacing: 4 }}>拍摄服务合同</div>
-          <div style={{ fontSize: 13, marginTop: 8, color: '#555' }}>订单编号：{detail.order_no}</div>
-          <div style={{ fontSize: 12, marginTop: 4, color: '#555' }}>创建时间：{detail.created_at ? new Date(detail.created_at).toLocaleString('zh-CN') : '—'}　·　订单状态：{statusText || '—'}</div>
-        </div>
-      </div>
-      {/* 每页页脚 */}
-      <div className="print-page-footer" style={{ position: 'fixed', bottom: 0, left: 0, right: 0, padding: '4mm 20mm 6mm', background: '#fff', borderTop: '1px solid #ccc', visibility: 'hidden', zIndex: -1 }}>
-        <div style={{ maxWidth: 700, margin: '0 auto', display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#999' }}>
-          <span>叶哲 STUDIO · 摄影工作室管理系统</span>
-          <span>打印时间：{new Date().toLocaleString('zh-CN')}</span>
-        </div>
-      </div>
-      <div className="print-order-sheet" style={{ position: 'fixed', left: -10000, top: 0, width: '100%', padding: '28mm 20mm 24mm' }}>
-        <style>{`
-          @media print {
-            body * { visibility: hidden; }
-            .print-order-sheet, .print-order-sheet * { visibility: visible; }
-            .print-page-header, .print-page-header * { visibility: visible !important; }
-            .print-page-footer, .print-page-footer * { visibility: visible !important; }
-            .print-page-header { position: fixed !important; top: 0 !important; left: 0 !important; right: 0 !important; z-index: 9999 !important; }
-            .print-page-footer { position: fixed !important; bottom: 0 !important; left: 0 !important; right: 0 !important; z-index: 9999 !important; }
-            .print-order-sheet { position: absolute !important; left: 0 !important; top: 0 !important; width: 100% !important; padding: 28mm 20mm 24mm !important; }
-            @page { size: A4; margin: 0; }
-          }
-        `}</style>
-        <div style={{ maxWidth: 700, margin: '0 auto', fontFamily: 'SimSun, STSong, serif', fontSize: 14, lineHeight: 1.8, color: '#222' }}>
+      {/* 打印单据内容（离屏渲染；html2canvas 直接抓取，不再走 window.print） */}
+      <div className="print-order-sheet" style={{ position: 'fixed', left: -10000, top: 0, width: '700px' }}>
+        <div style={{ maxWidth: 700, margin: '0 auto', fontFamily: 'SimSun, STSong, serif', fontSize: 14, lineHeight: 1.8, color: '#222', background: '#fff', padding: '8mm 0' }}>
 
           {/* 客户信息 */}
           <div style={{ marginBottom: 12 }}>
@@ -2838,7 +2858,6 @@ export default function OrderDetail() {
 
           </div>
       </div>
-      </>
 
       {/* 订单记录全屏页（点击底部订单变更记录跳转，校 IMG_7533） */}
       {logModal && (
