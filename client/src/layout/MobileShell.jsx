@@ -238,7 +238,7 @@ export default function MobileShell() {
   const hideTopBackRoutes = ['/works', '/packages', '/schedule', '/orders', '/todo'];
   const isTab = tabRoots.includes(location.pathname);
   // /packages/* /orders/* /schedule/* 等子路由由页面内自带顶部导航，避免双层 TopBack
-  const hideTopBack = hideTopBackRoutes.includes(location.pathname) || location.pathname.startsWith('/works/') || location.pathname.startsWith('/packages/') || location.pathname.startsWith('/orders/') || location.pathname.startsWith('/schedule/') || location.pathname.startsWith('/m/messages');
+  const hideTopBack = hideTopBackRoutes.includes(location.pathname) || location.pathname.startsWith('/works/') || location.pathname.startsWith('/packages/') || location.pathname.startsWith('/orders/') || location.pathname.startsWith('/schedule/') || location.pathname.startsWith('/m/messages') || location.pathname.startsWith('/visitor');
   const pageTitle = getPageTitle(location.pathname);
   const activeKey = (() => {
     if (location.pathname === '/') return 'home';
