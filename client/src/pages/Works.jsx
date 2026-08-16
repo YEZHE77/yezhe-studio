@@ -2,18 +2,56 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import http, { img, debounce } from '../api.js';
 import { useViewState } from '../tabMemory.js';
+import {
+  ChevronLeft,
+  Search,
+  MoreHorizontal,
+  ChevronDown,
+  Eye,
+  MoreVertical,
+  Plus,
+  Image as ImageIcon
+} from 'lucide-react';
+
+const CORAL = '#FF7A8A';
+
+function formatDate(d) {
+  if (!d) return '';
+  const date = new Date(d);
+  if (Number.isNaN(date.getTime())) return '';
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${y}/${m}/${day}`;
+}
 
 export default function Works() {
   const navigate = useNavigate();
   const [state, setState] = useViewState('works', { tab: '', q: '', vis: '', page: 1 });
   const [cats, setCats] = useState([]);
   const [data, setData] = useState({ items: [], total: 0, pageSize: 12 });
+  const [loading, setLoading] = useState(true);
   const [workShare, setWorkShare] = useState(null); // 作品分享相册 {open, workId, title, result, busy}
   const [sortMode, setSortMode] = useState(false);
   const [allItems, setAllItems] = useState([]); // 排序模式下加载全部作品（忽略分页）
   const [draggedId, setDraggedId] = useState(null);
   const [dragOverId, setDragOverId] = useState(null);
   const [savingSort, setSavingSort] = useState(false);
+  const [busyText, setBusyText] = useState(null); // 全屏操作中遮罩文案（点击后立刻反馈，防止冷启动期“点了没反应”）
+
+  // 移动端筛选/排序/菜单状态
+  const [openFilter, setOpenFilter] = useState(null); // 'vis' | 'cat' | 'sort'
+  const [sortBy, setSortBy] = useState('newest'); // 'newest' | 'views'
+  const [activeMenuWork, setActiveMenuWork] = useState(null);
+  const [showTopMenu, setShowTopMenu] = useState(false);
+  // 封面图加载失败兜底：避免 R2 Worker 慢/超时导致卡片静默空白（用户看不到裂图 vs 加载中）
+  const [brokenCoverIds, setBrokenCoverIds] = useState(() => new Set());
+  function markCoverBroken(id) {
+    if (brokenCoverIds.has(id)) return;
+    const n = new Set(brokenCoverIds);
+    n.add(id);
+    setBrokenCoverIds(n);
+  }
 
   // 作品分享相册：生成公开分享令牌（type=work）→ 沉浸式相册二维码 + 链接
   function openWorkShare(w) {
@@ -56,7 +94,11 @@ export default function Works() {
     if (state.vis === '0') p.set('is_public', '0');
     p.set('page', state.page);
     p.set('pageSize', data.pageSize || 12);
-    http.get('/api/works?' + p.toString(), { signal: ctrl.signal }).then((r) => setData(r.data)).catch(() => {});
+    setLoading(true);
+    http.get('/api/works?' + p.toString(), { signal: ctrl.signal })
+      .then((r) => setData(r.data))
+      .catch(() => {})
+      .finally(() => setLoading(false));
     return () => ctrl.abort();
   }, [state]);
 
@@ -109,8 +151,11 @@ export default function Works() {
     }
   }
 
-  // 新流程：点击「+ 新建作品组」不再弹窗，直接进入作品详情编辑页（页面式新建）
-  const openNew = () => navigate('/works/new');
+  // 点击「添加作品」进入空白新建页，不预创建作品。
+  // 用户必须点击「保存基本信息」后才真正 POST /api/works 入库，避免未保存就产生「未命名作品」。
+  function openNew() {
+    navigate('/works/new');
+  }
 
   async function remove(w, e) {
     e.stopPropagation();
@@ -140,6 +185,7 @@ export default function Works() {
       reload();
       return;
     }
+    setBusyText('正在加载全部作品…');
     const ctrl = new AbortController();
     const p = new URLSearchParams();
     if (state.tab) p.set('category', state.tab);
@@ -152,7 +198,9 @@ export default function Works() {
       const r = await http.get('/api/works?' + p.toString(), { signal: ctrl.signal });
       setAllItems((r.data.items || []).filter(Boolean));
       setSortMode(true);
+      setBusyText(null);
     } catch (e) {
+      setBusyText(null);
       alert('加载作品失败，无法进入排序模式');
     }
   }
@@ -195,147 +243,255 @@ export default function Works() {
 
   const pages = Math.max(1, Math.ceil(data.total / data.pageSize));
 
+  // 排序下拉仅做前端排序（当前页）
+  const displayItems = useMemo(() => {
+    const list = sortMode ? allItems : data.items;
+    if (sortBy === 'views') {
+      return [...list].sort((a, b) => (b.views || 0) - (a.views || 0));
+    }
+    return list;
+  }, [sortMode, allItems, data.items, sortBy]);
+
+  // 关闭下拉/菜单的透明遮罩
+  const closeOverlays = () => { setOpenFilter(null); setShowTopMenu(false); };
+
   return (
-    <div style={{ maxWidth: 1050 }}>
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 gap-3">
-        <h1 className="text-xl font-semibold text-fg">作品管理</h1>
-        <div className="flex items-center gap-2">
-          {sortMode ? (
-            <>
-              <button onClick={() => setSortMode(false)} disabled={savingSort} className="px-4 py-2 rounded border border-line text-sm text-muted hover:text-fg disabled:opacity-50">取消</button>
-              <button onClick={saveSortOrder} disabled={savingSort || !allItems.length}
-                className="px-4 py-2 rounded bg-brand text-white text-sm hover:opacity-90 disabled:opacity-50">{savingSort ? '保存中…' : '保存排序'}</button>
-            </>
-          ) : (
-            <>
-              <button onClick={toggleSortMode} className="px-4 py-2 rounded border border-line text-sm text-muted hover:text-brand hover:border-brand">自定义排序</button>
-              <button onClick={openNew} className="px-4 py-2 rounded bg-brand text-white text-sm hover:opacity-90">+ 新建作品组</button>
-            </>
+    <div className="min-h-screen bg-[#f7f7f7] pb-24">
+      {/* 顶部栏：返回 + 搜索 + 更多（与套系列表页 Packages.jsx 同款：返回 + 搜索容器(灰底圆角) + ⋯） */}
+      <div style={{ background: '#fff', padding: '8px 12px', display: 'flex', alignItems: 'center', gap: 10, borderBottom: '1px solid #EFEFEF', position: 'relative', zIndex: 5 }}>
+        <button onClick={() => navigate('/')} style={{ background: 'none', border: 'none', padding: 4, display: 'flex', alignItems: 'center', color: '#1f2329', flexShrink: 0 }}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1f2329" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M15 6l-6 6 6 6" /></svg>
+        </button>
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', background: '#F5F5F5', borderRadius: 20, padding: '6px 12px', gap: 6 }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#999" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /></svg>
+          <input
+            value={state.q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="输入您所需要查找的客片名称"
+            style={{ border: 'none', background: 'transparent', outline: 'none', fontSize: 14, flex: 1, color: '#333' }}
+          />
+        </div>
+        <button onClick={(e) => { e.stopPropagation(); setShowTopMenu((v) => !v); }} style={{ background: 'none', border: 'none', padding: 4, color: '#666', fontSize: 16 }}>⋯</button>
+        {showTopMenu && (
+          <div className="absolute right-3 top-full mt-1 w-40 rounded-lg bg-white shadow-lg border border-gray-100 py-1 z-50">
+            {!sortMode ? (
+              <>
+                <button onClick={() => { setShowTopMenu(false); openNew(); }} className="w-full text-left px-3 py-2.5 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2.5">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="text-[#7ecdbb] shrink-0"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+                  新建作品
+                </button>
+                <button onClick={() => { setShowTopMenu(false); toggleSortMode(); }} className="w-full text-left px-3 py-2.5 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2.5">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="text-[#7ecdbb] shrink-0"><line x1="4" y1="6" x2="14" y2="6"/><line x1="4" y1="12" x2="11" y2="12"/><line x1="4" y1="18" x2="8" y2="18"/><polyline points="17 9 20 6 17 3"/><polyline points="17 15 20 18 17 21"/></svg>
+                  编辑排序
+                </button>
+              </>
+            ) : (
+              <>
+                <button onClick={() => { setShowTopMenu(false); saveSortOrder(); }} disabled={savingSort || !allItems.length} className="w-full text-left px-3 py-2.5 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50 flex items-center gap-2.5">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="text-[#7ecdbb] shrink-0"><polyline points="20 6 9 17 4 12"/></svg>
+                  {savingSort ? '保存中…' : '保存排序'}
+                </button>
+                <button onClick={() => { setShowTopMenu(false); setSortMode(false); reload(); }} disabled={savingSort} className="w-full text-left px-3 py-2.5 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50 flex items-center gap-2.5">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="text-gray-400 shrink-0"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                  取消排序
+                </button>
+              </>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* 筛选下拉：全部 / 分类 / 排序 */}
+      <div className="flex items-center justify-around px-2 py-3 bg-white border-b border-gray-100">
+        {/* 全部：可见性 */}
+        <div className="relative flex-1 text-center">
+          <button onClick={(e) => { e.stopPropagation(); setOpenFilter(openFilter === 'vis' ? null : 'vis'); }} className="flex items-center justify-center gap-1 w-full text-sm text-gray-700">
+            {state.vis === '1' ? '公开' : state.vis === '0' ? '私密' : '全部'} <ChevronDown className="w-3.5 h-3.5 text-gray-400" />
+          </button>
+          {openFilter === 'vis' && (
+            <div className="absolute left-1/2 -translate-x-1/2 top-full mt-2 w-24 rounded-lg bg-white shadow-lg border border-gray-100 py-1 z-40">
+              {['', '1', '0'].map((v) => (
+                <button key={v || 'all'} onClick={() => { setVis(v); setOpenFilter(null); }} className={'w-full text-left px-4 py-2 text-sm ' + (state.vis === v ? 'text-[#FF7A8A]' : 'text-gray-700')}>
+                  {v === '1' ? '公开' : v === '0' ? '私密' : '全部'}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+        {/* 分类 */}
+        <div className="relative flex-1 text-center">
+          <button onClick={(e) => { e.stopPropagation(); setOpenFilter(openFilter === 'cat' ? null : 'cat'); }} className="flex items-center justify-center gap-1 w-full text-sm text-gray-700">
+            {state.tab ? (cats.find((c) => String(c.id) === state.tab)?.name || '分类') : '分类'} <ChevronDown className="w-3.5 h-3.5 text-gray-400" />
+          </button>
+          {openFilter === 'cat' && (
+            <div className="absolute left-1/2 -translate-x-1/2 top-full mt-2 w-32 max-h-60 overflow-y-auto rounded-lg bg-white shadow-lg border border-gray-100 py-1 z-40">
+              <button onClick={() => { setTab(''); setOpenFilter(null); }} className={'w-full text-left px-4 py-2 text-sm ' + (state.tab === '' ? 'text-[#FF7A8A]' : 'text-gray-700')}>全部分类</button>
+              {cats.filter(Boolean).map((c) => (
+                <button key={c.id} onClick={() => { setTab(String(c.id)); setOpenFilter(null); }} className={'w-full text-left px-4 py-2 text-sm truncate ' + (state.tab === String(c.id) ? 'text-[#FF7A8A]' : 'text-gray-700')}>{c.name || '未命名'}</button>
+              ))}
+            </div>
+          )}
+        </div>
+        {/* 排序 */}
+        <div className="relative flex-1 text-center">
+          <button onClick={(e) => { e.stopPropagation(); setOpenFilter(openFilter === 'sort' ? null : 'sort'); }} className="flex items-center justify-center gap-1 w-full text-sm text-gray-700">
+            {sortBy === 'views' ? '最多浏览' : '最新发布'} <ChevronDown className="w-3.5 h-3.5 text-gray-400" />
+          </button>
+          {openFilter === 'sort' && (
+            <div className="absolute left-1/2 -translate-x-1/2 top-full mt-2 w-28 rounded-lg bg-white shadow-lg border border-gray-100 py-1 z-40">
+              {[
+                { key: 'newest', label: '最新发布' },
+                { key: 'views', label: '最多浏览' }
+              ].map((s) => (
+                <button key={s.key} onClick={() => { setSortBy(s.key); setOpenFilter(null); }} className={'w-full text-left px-4 py-2 text-sm ' + (sortBy === s.key ? 'text-[#FF7A8A]' : 'text-gray-700')}>{s.label}</button>
+              ))}
+            </div>
           )}
         </div>
       </div>
 
-      {/* 分类 Tab + 管理入口 */}
-      <div className="flex items-center gap-2 mb-3 overflow-x-auto pb-1">
-        <button onClick={() => setTab('')}
-          className={'px-4 py-2 rounded-full text-sm border whitespace-nowrap shrink-0 ' + (state.tab === '' ? 'bg-brand text-white border-brand' : 'bg-panel border-line text-muted')}>全部</button>
-        {cats.filter(Boolean).map((c) => (
-          <button key={c.id} onClick={() => setTab(String(c.id))}
-            className={'px-4 py-2 rounded-full text-sm border whitespace-nowrap truncate max-w-[140px] shrink-0 ' + (state.tab === String(c.id) ? 'bg-brand text-white border-brand' : 'bg-panel border-line text-muted')}>{c.name || '未命名'}</button>
-        ))}
-        <button onClick={() => navigate('/categories')}
-          className="ml-1 flex items-center gap-1 px-3 py-2 rounded-full text-sm border border-dashed border-line text-muted hover:text-brand hover:border-brand bg-panel shrink-0 whitespace-nowrap"
-          title="管理分类">
-          <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" />
-            <circle cx="7" cy="7" r="1.5" fill="currentColor" stroke="none" />
-          </svg>
-          管理
-        </button>
-      </div>
-
-      {/* 搜索 + 公开筛选 */}
-      <div className="flex gap-3 mb-4">
-        <input value={state.q} onChange={(e) => setQ(e.target.value)} placeholder="搜索作品 / 客户"
-          className="flex-1 px-3 py-2 rounded bg-panel border border-line text-fg text-sm outline-none" />
-        <select value={state.vis} onChange={(e) => setVis(e.target.value)}
-          className="px-3 py-2 rounded bg-panel border border-line text-fg text-sm outline-none">
-          <option value="">全部</option>
-          <option value="1">公开</option>
-          <option value="0">私密</option>
-        </select>
-      </div>
-
-      {/* 作品网格 */}
+      {/* 排序模式提示与快捷操作 */}
       {sortMode && (
-        <div className="mb-3 text-xs text-muted bg-panel border border-line rounded-lg p-3">
-          💡 排序模式：拖拽作品卡片可调整顺序，保存后会同步到公开列表（小程序/H5 首页）。未保存前可点击「取消」退出。
+        <div className="mx-4 mt-3">
+          <div className="text-xs text-gray-500 bg-white border border-gray-100 rounded-lg p-3">
+            💡 排序模式：拖拽作品卡片可调整顺序，保存后会同步到公开列表（小程序/H5 首页）。
+          </div>
+          <div className="flex gap-3 mt-3">
+            <button disabled={savingSort || !allItems.length} onClick={saveSortOrder} className="flex-1 py-2.5 rounded-lg text-sm font-medium text-white disabled:opacity-50" style={{ background: CORAL }}>
+              {savingSort ? '保存中…' : '保存排序'}
+            </button>
+            <button disabled={savingSort} onClick={() => { setSortMode(false); reload(); }} className="flex-1 py-2.5 rounded-lg text-sm font-medium text-gray-700 bg-white border border-gray-200 disabled:opacity-50">
+              取消排序
+            </button>
+          </div>
         </div>
       )}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-        {(sortMode ? allItems : data.items).filter(Boolean).map((w) => {
+
+      {/* 作品网格：1:1 像素级复刻截图风格——偏横版封面、无圆角、无阴影、英文大写标题 */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 p-4">
+        {displayItems.filter(Boolean).map((w) => {
           if (!w.id) return null;
           const isDragOver = sortMode && dragOverId === w.id;
           const isDragged = sortMode && draggedId === w.id;
           return (
-          <div key={w.id}
-            draggable={sortMode}
-            onDragStart={(e) => sortMode && handleDragStart(e, w.id)}
-            onDragOver={(e) => sortMode && handleDragOver(e, w.id)}
-            onDrop={(e) => sortMode && handleDrop(e, w.id)}
-            onDragEnd={resetDrag}
-            onClick={() => !sortMode && navigate('/works/' + w.id)}
-            className={`bg-panel border rounded-xl2 overflow-hidden transition select-none
-              ${sortMode ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer hover:shadow-md hover:-translate-y-0.5'}
-              ${isDragOver ? 'border-brand ring-2 ring-brand' : 'border-line'}
-              ${isDragged ? 'opacity-40' : ''}`}>
-            <div className="h-32 sm:h-40 bg-ink flex items-center justify-center text-muted relative">
-              {w.cover_url ? <img src={img(w.cover_url)} className="w-full h-full object-cover" alt="" /> : (
-                <svg viewBox="0 0 24 24" className="w-10 h-10 opacity-40" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
-                  <rect x="3" y="3" width="18" height="18" rx="2" />
-                  <circle cx="9" cy="9" r="2" />
-                  <path d="M21 15l-5-5L5 21" />
-                </svg>
-              )}
-              {!sortMode && (
-                <button onClick={(e) => togglePublic(w, e)} title={w.is_public ? '已公开 · 点击隐藏' : '已隐藏 · 点击公开'}
-                  className="absolute top-2 right-2 bg-black/55 !text-white p-1.5 rounded-full hover:bg-black/75 transition">
-                  {w.is_public ? (
-                    <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>
-                  ) : (
-                    <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 19c-6.5 0-10-7-10-7a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c6.5 0 10 7 10 7a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
-                  )}
-                </button>
-              )}
-              {sortMode && (
-                <div className="absolute top-2 left-2 bg-black/60 text-white text-[10px] px-2 py-1 rounded flex items-center gap-1">
-                  <svg viewBox="0 0 24 24" className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="12" r="1"/><circle cx="9" cy="5" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="15" cy="19" r="1"/></svg>
-                  拖拽排序
+            <div key={w.id}
+              draggable={sortMode}
+              onDragStart={(e) => sortMode && handleDragStart(e, w.id)}
+              onDragOver={(e) => sortMode && handleDragOver(e, w.id)}
+              onDrop={(e) => sortMode && handleDrop(e, w.id)}
+              onDragEnd={resetDrag}
+              onClick={() => !sortMode && navigate('/works/' + w.id)}
+              className={`bg-white overflow-hidden transition select-none
+                ${sortMode ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'}
+                ${isDragOver ? 'ring-2 ring-[#FF7A8A]' : ''}
+                ${isDragged ? 'opacity-40' : ''}`}>
+              <div className="relative aspect-[4/3] bg-gray-100">
+                {w.cover_url && !brokenCoverIds.has(w.id) ? (
+                  <img
+                    src={img(w.cover_url, 'thumb')}
+                    alt=""
+                    loading="lazy"
+                    decoding="async"
+                    onError={() => markCoverBroken(w.id)}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full flex flex-col items-center justify-center text-gray-300 gap-1">
+                    <ImageIcon className="w-10 h-10 opacity-40" />
+                    {brokenCoverIds.has(w.id) && (
+                      <span className="text-[10px] text-gray-400">封面加载失败</span>
+                    )}
+                  </div>
+                )}
+                {/* 置顶标签：后端暂无 pinned 字段，预留条件 */}
+                {w.pinned && (
+                  <span className="absolute left-2 top-2 rounded px-2 py-0.5 text-[10px] text-white" style={{ background: CORAL }}>置顶</span>
+                )}
+                {/* 浏览量角标（保留右上角眼睛） */}
+                <div className="absolute top-2 right-2 flex items-center gap-1 text-white text-[10px] bg-black/30 backdrop-blur-sm rounded-full px-1.5 py-0.5">
+                  <Eye className="w-3 h-3" />
+                  <span>{w.views ?? 0}</span>
                 </div>
-              )}
-            </div>
-            <div className="p-3">
-              <div className="text-sm text-fg truncate">{w.title}</div>
-              <div className="text-xs text-muted mt-1 flex justify-between">
-                <span>{w.is_public ? '公开' : '私密'}</span>
-                <span>{(w.tags || []).join(' · ')}</span>
+                {/* 排序模式拖拽手柄 */}
+                {sortMode && (
+                  <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-black/60 text-white text-[10px] px-2 py-1 rounded flex items-center gap-1">
+                    <MoreVertical className="w-3 h-3" /> 拖拽排序
+                  </div>
+                )}
               </div>
-              {!sortMode && (
-                <>
-                  <div className="text-xs text-muted mt-2 flex items-center gap-4">
-                    <span className="inline-flex items-center gap-1">
-                      <svg viewBox="0 0 24 24" className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="M21 15l-5-5L5 21"/></svg>
-                      {w.image_count ?? 0} 张
-                    </span>
-                    <span className="inline-flex items-center gap-1">
-                      <svg viewBox="0 0 24 24" className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>
-                      {w.views ?? 0} 浏览
-                    </span>
+              <div className="px-3 pt-3 pb-3">
+                <div className="text-base text-gray-900 truncate uppercase leading-snug" style={{ letterSpacing: '0.02em' }}>{w.title}</div>
+                <div className="flex items-center justify-between gap-2 mt-1">
+                  <div className="text-xs text-gray-400 truncate min-w-0 flex-1">
+                    #{cats.find((c) => String(c.id) === String(w.category_id))?.name || '作品'}
                   </div>
-                  <button onClick={(e) => toggleDownload(w, e)}
-                    className={'mt-2 w-full text-xs py-1.5 rounded border ' + (w.allow_download ? 'bg-emerald-50 text-emerald-600 border-emerald-200' : 'bg-panel2 text-muted border-line')}>
-                    {w.allow_download ? '✓ 允许下载' : '禁止下载'}
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setActiveMenuWork(w); }}
+                    aria-label="管理相册"
+                    className="shrink-0 p-1 rounded hover:bg-gray-100 active:bg-gray-200"
+                  >
+                    <MoreVertical className="w-4 h-4 text-gray-400" />
                   </button>
-                  <div className="flex flex-col sm:flex-row gap-2 mt-2">
-                    <button onClick={(e) => { e.stopPropagation(); navigate('/works/' + w.id); }} className="w-full sm:flex-1 text-xs py-1.5 rounded border border-line text-brand hover:bg-brand/5">管理相册</button>
-                    <button onClick={(e) => { e.stopPropagation(); openWorkShare(w); }} className="w-full sm:flex-1 text-xs py-1.5 rounded border border-line text-emerald-500 hover:bg-emerald-50">分享相册</button>
-                    <button onClick={(e) => remove(w, e)} className="w-full sm:flex-1 text-xs py-1.5 rounded border border-line text-red-500 hover:bg-red-50">删除</button>
-                  </div>
-                </>
-              )}
+                </div>
+              </div>
             </div>
+          );
+        })}
+        {displayItems.length === 0 && !loading && (
+          <div className="col-span-full text-center text-gray-400 py-12">
+            <div className="text-sm">暂无作品</div>
+            <div className="mt-1 text-xs">点击右上角「…」添加作品</div>
           </div>
-        );})}
-        {(sortMode ? allItems : data.items).length === 0 && <div className="col-span-full text-center text-muted py-10">暂无作品</div>}
+        )}
       </div>
 
-      {/* 分页：排序模式下隐藏（已加载全部作品） */}
+      {/* 分页 */}
       {!sortMode && pages > 1 && (
-        <div className="flex gap-2 mt-5 justify-center">
+        <div className="flex gap-2 mt-2 justify-center pb-4">
           {Array.from({ length: pages }).map((_, i) => (
             <button key={i} onClick={() => goPage(i + 1)}
-              className={'w-8 h-8 rounded text-sm border ' + (data.page === i + 1 ? 'bg-brand text-white border-brand' : 'bg-panel border-line text-muted')}>{i + 1}</button>
+              className={'w-8 h-8 rounded-full text-sm border ' + (data.page === i + 1 ? 'bg-[#FF7A8A] text-white border-[#FF7A8A]' : 'bg-white border-gray-200 text-gray-500')}>{i + 1}</button>
           ))}
+        </div>
+      )}
+
+      {/* 点击外部关闭下拉/菜单的透明层。
+          ⚠️ 必须 z-[4]（低于顶部栏 zIndex:5）：顶部栏 z-5 创建了 stacking context，
+          其内部菜单 z-50 实际参与顶层比较的层级是 5，若遮罩用 z-30 会盖住菜单，
+          导致点击菜单项命中遮罩、事件丢失（“点了没反应”）。 */}
+      {(openFilter || showTopMenu || activeMenuWork) && (
+        <div className="fixed inset-0 z-[4]" onClick={closeOverlays} />
+      )}
+
+      {/* 卡片操作菜单（底部浮层） */}
+      {activeMenuWork && (
+        <div className="fixed inset-x-0 bottom-0 z-50 bg-white rounded-t-2xl p-4 pb-8 shadow-[0_-4px_20px_rgba(0,0,0,0.1)]" onClick={(e) => e.stopPropagation()}>
+          <div className="w-10 h-1 bg-gray-200 rounded-full mx-auto mb-4" />
+          <div className="text-center text-sm font-medium text-gray-900 mb-1">{activeMenuWork.title}</div>
+          <div className="text-center text-xs text-gray-400 mb-4">{activeMenuWork.is_public ? '公开' : '私密'} · {activeMenuWork.image_count ?? 0} 张</div>
+          <div className="grid grid-cols-4 gap-3 mb-4">
+            <button onClick={() => { togglePublic(activeMenuWork, { stopPropagation: () => {} }); setActiveMenuWork(null); }} className="flex flex-col items-center gap-1 p-2 rounded-lg hover:bg-gray-50">
+              <Eye className="w-5 h-5 text-gray-600" />
+              <span className="text-xs text-gray-600">{activeMenuWork.is_public ? '隐藏' : '公开'}</span>
+            </button>
+            <button onClick={() => { navigate('/works/' + activeMenuWork.id); setActiveMenuWork(null); }} className="flex flex-col items-center gap-1 p-2 rounded-lg hover:bg-gray-50">
+              <svg viewBox="0 0 24 24" className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="M21 15l-5-5L5 21"/></svg>
+              <span className="text-xs text-gray-600">管理相册</span>
+            </button>
+            <button onClick={() => { openWorkShare(activeMenuWork); setActiveMenuWork(null); }} className="flex flex-col items-center gap-1 p-2 rounded-lg hover:bg-gray-50">
+              <svg viewBox="0 0 24 24" className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+              <span className="text-xs text-gray-600">分享相册</span>
+            </button>
+            <button onClick={() => { remove(activeMenuWork, { stopPropagation: () => {} }); setActiveMenuWork(null); }} className="flex flex-col items-center gap-1 p-2 rounded-lg hover:bg-gray-50">
+              <svg viewBox="0 0 24 24" className="w-5 h-5 text-red-500" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+              <span className="text-xs text-red-500">删除</span>
+            </button>
+          </div>
+          <button onClick={() => toggleDownload(activeMenuWork, { stopPropagation: () => {} })}
+            className={'w-full py-2.5 rounded-lg text-sm border ' + (activeMenuWork.allow_download ? 'bg-emerald-50 text-emerald-600 border-emerald-200' : 'bg-gray-50 text-gray-600 border-gray-200')}>
+            {activeMenuWork.allow_download ? '✓ 允许下载' : '禁止下载'}
+          </button>
+          <button onClick={() => setActiveMenuWork(null)} className="w-full mt-3 py-2.5 rounded-lg text-sm text-gray-500 bg-gray-100">取消</button>
         </div>
       )}
 
@@ -374,6 +530,14 @@ export default function Works() {
               </>
             )}
           </div>
+        </div>
+      )}
+
+      {/* 全屏操作中遮罩：点击「添加作品 / 编辑排序」后立刻反馈，防止冷启动期“点了没反应” */}
+      {busyText && (
+        <div className="fixed inset-0 z-[90] bg-white/70 flex flex-col items-center justify-center gap-3">
+          <span className="inline-block w-6 h-6 border-2 border-gray-300 border-t-[#FF7A8A] rounded-full animate-spin" />
+          <span className="text-sm text-gray-600">{busyText}</span>
         </div>
       )}
 
