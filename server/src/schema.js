@@ -264,14 +264,15 @@ CREATE TABLE IF NOT EXISTS selection_marks (
 // 支付流水复用 payments 表（不新增快照表，贴合原版数据结构）
 const PG_SELECTION_V2_TABLES = `
 CREATE TABLE IF NOT EXISTS order_photo (
-  id SERIAL PRIMARY KEY, order_id INTEGER NOT NULL, photo_key TEXT NOT NULL,
+  id SERIAL PRIMARY KEY, order_id INTEGER NOT NULL REFERENCES orders(id), photo_key TEXT NOT NULL,
   url TEXT NOT NULL, thumb_url TEXT, sort INTEGER NOT NULL DEFAULT 0,
   deleted INTEGER NOT NULL DEFAULT 0, created_at TIMESTAMPTZ DEFAULT now(),
-  UNIQUE(order_id, photo_key)
+  UNIQUE(order_id, photo_key),
+  CONSTRAINT chk_order_photo_ge0 CHECK (sort >= 0 AND deleted >= 0)
 );
 CREATE INDEX IF NOT EXISTS idx_order_photo_order ON order_photo(order_id, deleted, sort);
 CREATE TABLE IF NOT EXISTS order_select_task (
-  id SERIAL PRIMARY KEY, order_id INTEGER NOT NULL UNIQUE,
+  id SERIAL PRIMARY KEY, order_id INTEGER NOT NULL UNIQUE REFERENCES orders(id),
   status TEXT NOT NULL DEFAULT 'not_started',
   password_hash TEXT, expire_at TEXT,
   shuffle_enabled INTEGER NOT NULL DEFAULT 0, watermark_enabled INTEGER NOT NULL DEFAULT 0,
@@ -281,25 +282,29 @@ CREATE TABLE IF NOT EXISTS order_select_task (
   pending_fee REAL NOT NULL DEFAULT 0, pending_count INTEGER NOT NULL DEFAULT 0,
   paid_at TEXT, pay_flow_no TEXT,
   version INTEGER NOT NULL DEFAULT 0, submitted_at TEXT, reset_at TEXT,
-  created_at TIMESTAMPTZ DEFAULT now(), updated_at TIMESTAMPTZ DEFAULT now()
+  created_at TIMESTAMPTZ DEFAULT now(), updated_at TIMESTAMPTZ DEFAULT now(),
+  CONSTRAINT chk_order_select_task_status CHECK (status IN ('not_started','selecting','pending_payment','completed','reset')),
+  CONSTRAINT chk_order_select_task_ge0 CHECK (min_retouch >= 0 AND extra_price >= 0 AND like_count >= 0 AND exclude_count >= 0 AND extra_count >= 0 AND extra_fee >= 0 AND pending_fee >= 0 AND pending_count >= 0 AND version >= 0)
 );
 CREATE TABLE IF NOT EXISTS order_select_mark (
-  id SERIAL PRIMARY KEY, task_id INTEGER NOT NULL, photo_id INTEGER NOT NULL,
+  id SERIAL PRIMARY KEY, task_id INTEGER NOT NULL REFERENCES order_select_task(id), photo_id INTEGER NOT NULL REFERENCES order_photo(id),
   status TEXT NOT NULL DEFAULT 'keep', remark TEXT,
   created_at TIMESTAMPTZ DEFAULT now(), updated_at TIMESTAMPTZ DEFAULT now(),
-  UNIQUE(task_id, photo_id)
+  UNIQUE(task_id, photo_id),
+  CONSTRAINT chk_order_select_mark_status CHECK (status IN ('keep','reject'))
 );
 CREATE INDEX IF NOT EXISTS idx_order_select_mark_task ON order_select_mark(task_id);`;
 const SQLITE_SELECTION_V2_TABLES = `
 CREATE TABLE IF NOT EXISTS order_photo (
-  id INTEGER PRIMARY KEY AUTOINCREMENT, order_id INTEGER NOT NULL, photo_key TEXT NOT NULL,
+  id INTEGER PRIMARY KEY AUTOINCREMENT, order_id INTEGER NOT NULL REFERENCES orders(id), photo_key TEXT NOT NULL,
   url TEXT NOT NULL, thumb_url TEXT, sort INTEGER NOT NULL DEFAULT 0,
   deleted INTEGER NOT NULL DEFAULT 0, created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-  UNIQUE(order_id, photo_key)
+  UNIQUE(order_id, photo_key),
+  CHECK (sort >= 0 AND deleted >= 0)
 );
 CREATE INDEX IF NOT EXISTS idx_order_photo_order ON order_photo(order_id, deleted, sort);
 CREATE TABLE IF NOT EXISTS order_select_task (
-  id INTEGER PRIMARY KEY AUTOINCREMENT, order_id INTEGER NOT NULL UNIQUE,
+  id INTEGER PRIMARY KEY AUTOINCREMENT, order_id INTEGER NOT NULL UNIQUE REFERENCES orders(id),
   status TEXT NOT NULL DEFAULT 'not_started',
   password_hash TEXT, expire_at TEXT,
   shuffle_enabled INTEGER NOT NULL DEFAULT 0, watermark_enabled INTEGER NOT NULL DEFAULT 0,
@@ -309,15 +314,36 @@ CREATE TABLE IF NOT EXISTS order_select_task (
   pending_fee REAL NOT NULL DEFAULT 0, pending_count INTEGER NOT NULL DEFAULT 0,
   paid_at TEXT, pay_flow_no TEXT,
   version INTEGER NOT NULL DEFAULT 0, submitted_at TEXT, reset_at TEXT,
-  created_at TEXT DEFAULT CURRENT_TIMESTAMP, updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP, updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+  CHECK (status IN ('not_started','selecting','pending_payment','completed','reset')),
+  CHECK (min_retouch >= 0 AND extra_price >= 0 AND like_count >= 0 AND exclude_count >= 0 AND extra_count >= 0 AND extra_fee >= 0 AND pending_fee >= 0 AND pending_count >= 0 AND version >= 0)
 );
 CREATE TABLE IF NOT EXISTS order_select_mark (
-  id INTEGER PRIMARY KEY AUTOINCREMENT, task_id INTEGER NOT NULL, photo_id INTEGER NOT NULL,
+  id INTEGER PRIMARY KEY AUTOINCREMENT, task_id INTEGER NOT NULL REFERENCES order_select_task(id), photo_id INTEGER NOT NULL REFERENCES order_photo(id),
   status TEXT NOT NULL DEFAULT 'keep', remark TEXT,
   created_at TEXT DEFAULT CURRENT_TIMESTAMP, updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
-  UNIQUE(task_id, photo_id)
+  UNIQUE(task_id, photo_id),
+  CHECK (status IN ('keep','reject'))
 );
 CREATE INDEX IF NOT EXISTS idx_order_select_mark_task ON order_select_mark(task_id);`;
+
+// 选片关键操作审计日志（客户提交 / 支付回调 / 重置 / 删除底片，记录操作人 + 状态变更前后值）
+const PG_SELECTION_AUDIT = `
+CREATE TABLE IF NOT EXISTS selection_audit (
+  id SERIAL PRIMARY KEY, order_id INTEGER NOT NULL,
+  operator_uid INTEGER, operator_name TEXT,
+  action TEXT NOT NULL, before_status TEXT, after_status TEXT,
+  detail TEXT, created_at TIMESTAMPTZ DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_selection_audit_order ON selection_audit(order_id, created_at);`;
+const SQLITE_SELECTION_AUDIT = `
+CREATE TABLE IF NOT EXISTS selection_audit (
+  id INTEGER PRIMARY KEY AUTOINCREMENT, order_id INTEGER NOT NULL,
+  operator_uid INTEGER, operator_name TEXT,
+  action TEXT NOT NULL, before_status TEXT, after_status TEXT,
+  detail TEXT, created_at TEXT DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_selection_audit_order ON selection_audit(order_id, created_at);`;
 
 // 消息中心（B 端管理员）：system_message 系统消息表
 // message_type: customer_consult 顾客咨询 / order_msg 订单消息 / todo_alert 待办提醒 / system 系统通知
@@ -502,6 +528,55 @@ async function ensureColumn(table, col, def) {
   }
 }
 
+// 选片三表外键 + CHECK 约束补齐：
+// - PG：ALTER TABLE ADD CONSTRAINT（按约束名幂等判断，仅当缺失时添加）
+// - SQLite：旧结构空表直接重建（DROP + 按新 DDL 重造 + 重建索引）；非空则跳过并告警（绝不破坏数据）
+async function ensureSelectionConstraints() {
+  if (dialect === 'pg') {
+    const hasC = async (tbl, name) => {
+      const r = await query('SELECT 1 FROM information_schema.table_constraints WHERE table_name = $1 AND constraint_name = $2', [tbl, name]);
+      return r.length > 0;
+    };
+    const fk = async (tbl, col, ref, name) => {
+      if (await hasC(tbl, name)) return;
+      try { await run(`ALTER TABLE ${tbl} ADD CONSTRAINT ${name} FOREIGN KEY (${col}) REFERENCES ${ref}(id)`); } catch (e) { console.error(`[schema] ${name} 外键添加失败：`, e.message); }
+    };
+    const chk = async (tbl, name, expr) => {
+      if (await hasC(tbl, name)) return;
+      try { await run(`ALTER TABLE ${tbl} ADD CONSTRAINT ${name} CHECK (${expr})`); } catch (e) { console.error(`[schema] ${name} 约束添加失败：`, e.message); }
+    };
+    await fk('order_photo', 'order_id', 'orders', 'fk_order_photo_order');
+    await fk('order_select_task', 'order_id', 'orders', 'fk_order_select_task_order');
+    await fk('order_select_mark', 'task_id', 'order_select_task', 'fk_order_select_mark_task');
+    await fk('order_select_mark', 'photo_id', 'order_photo', 'fk_order_select_mark_photo');
+    await chk('order_select_task', 'chk_order_select_task_status', "status IN ('not_started','selecting','pending_payment','completed','reset')");
+    await chk('order_select_mark', 'chk_order_select_mark_status', "status IN ('keep','reject')");
+    await chk('order_select_task', 'chk_order_select_task_ge0', 'min_retouch >= 0 AND extra_price >= 0 AND like_count >= 0 AND exclude_count >= 0 AND extra_count >= 0 AND extra_fee >= 0 AND pending_fee >= 0 AND pending_count >= 0 AND version >= 0');
+    await chk('order_photo', 'chk_order_photo_ge0', 'sort >= 0 AND deleted >= 0');
+    return;
+  }
+  // SQLite：空表重建补齐约束（新 DDL 已含 REFERENCES + CHECK）
+  const stmts = SQLITE_SELECTION_V2_TABLES.split(';').map((x) => x.trim()).filter(Boolean);
+  for (const t of ['order_photo', 'order_select_task', 'order_select_mark']) {
+    const row = (await query("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = ?", [t]))[0];
+    if (row && !/REFERENCES/i.test(row.sql || '')) {
+      const cnt = (await query(`SELECT COUNT(*) AS c FROM ${t}`))[0].c;
+      if (Number(cnt) === 0) {
+        const create = stmts.find((s) => s.toUpperCase().includes(`CREATE TABLE IF NOT EXISTS ${t.toUpperCase()}`));
+        if (create) {
+          await run(`DROP TABLE ${t}`);
+          await run(create);
+          console.log(`[schema] 重建 ${t} 以补齐外键/CHECK 约束`);
+        }
+      } else {
+        console.warn(`[schema] ${t} 已有 ${cnt} 行数据且缺外键约束，跳过重建（需手动迁移）`);
+      }
+    }
+  }
+  // DROP 表会连带删除其索引，重建索引
+  for (const s of stmts) if (/CREATE INDEX/i.test(s)) await run(s);
+}
+
 export async function initSchema() {
   const ddl = dialect === 'pg' ? PG_DDL : SQLITE_DDL;
   const stmts = ddl.split(';').map((s) => s.trim()).filter(Boolean);
@@ -525,6 +600,10 @@ export async function initSchema() {
   await ensureColumn('order_select_task', 'pending_count', 'INTEGER NOT NULL DEFAULT 0');
   await ensureColumn('order_select_task', 'paid_at', 'TEXT');
   await ensureColumn('order_select_task', 'pay_flow_no', 'TEXT');
+  // 外键 + CHECK 约束补齐（旧结构无约束：空表重建 / PG ALTER 增约束）
+  await ensureSelectionConstraints();
+  // 选片关键操作审计日志表
+  for (const s of (dialect === 'pg' ? PG_SELECTION_AUDIT : SQLITE_SELECTION_AUDIT).split(';').map((x) => x.trim()).filter(Boolean)) await run(s);
 
   // 消息中心表（system_message）
   for (const s of (dialect === 'pg' ? PG_MESSAGE_TABLES : SQLITE_MESSAGE_TABLES).split(';').map((x) => x.trim()).filter(Boolean)) await run(s);

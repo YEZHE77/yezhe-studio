@@ -23,6 +23,7 @@ if (dialect === 'pg') {
   const { DatabaseSync } = await import('node:sqlite');
   sqlite = new DatabaseSync(path.join(dataDir, 'app.db'));
   sqlite.exec('PRAGMA journal_mode = WAL;');
+  sqlite.exec('PRAGMA foreign_keys = ON;');
   console.log('[db] 使用本地 SQLite:', path.join(dataDir, 'app.db'));
 }
 

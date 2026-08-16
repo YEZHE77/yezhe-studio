@@ -19,6 +19,7 @@ import { query, get, insert, run, withTransaction } from '../db.js';
 import { authRequired, requireRole } from '../auth.js';
 import { emitMessage } from './message.js';
 import { generateEventTodo } from '../todo.js';
+import { exportSelectionBackup } from '../backup.js';
 import {
   TASK_STATUS, MARK_STATUS,
   calcExtra, calcStats, summarizeMarks, selectionSummary, parsePrice
@@ -42,6 +43,16 @@ function isExpired(expireAt) {
   if (!expireAt) return false;
   const t = new Date(expireAt).getTime();
   return !Number.isNaN(t) && t < Date.now();
+}
+
+// 关键操作审计（提交/支付/重置/删除底片）：记录操作人 + 状态变更前后值；失败不阻塞主业务
+async function auditSelection(orderId, operator, action, beforeStatus, afterStatus, detail) {
+  try {
+    await insert(
+      'INSERT INTO selection_audit (order_id, operator_uid, operator_name, action, before_status, after_status, detail) VALUES (?,?,?,?,?,?,?)',
+      [Number(orderId), operator && operator.uid != null ? operator.uid : null, (operator && operator.name) || '', action, beforeStatus || null, afterStatus || null, detail || '']
+    );
+  } catch (e) { console.error('[selection] 审计日志写入失败：', e.message); }
 }
 
 // ===== 选片访问令牌（密码通过后签发，2 小时有效；免密任务可不带） =====
@@ -305,6 +316,10 @@ router.post('/c/:token/submit', async (req, res) => {
       });
     } catch (e) { console.error('[selection] 提交后通知失败', e.message); }
 
+    // 审计：客户提交（操作人=customer，状态变更前后值）
+    await auditSelection(order.id, { uid: null, name: 'customer' }, 'submit', task.status, nextStatus,
+      `保留${summary.stats.keep}张 淘汰${summary.stats.reject}张 加选${summary.extra.extraCount}张 加片费¥${summary.extra.extraFee.toFixed(2)}`);
+
     res.json({ ok: true, status: nextStatus, stats: summary.stats, extra: summary.extra, pending_fee: hasFee ? summary.extra.extraFee : 0 });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -459,6 +474,9 @@ router.delete('/orders/:orderId/photos/:photoId', authRequired, requireRole(...S
     const photo = await get('SELECT id FROM order_photo WHERE id = ? AND order_id = ? AND deleted = 0', [photoId, o.id]);
     if (!photo) return res.status(404).json({ error: '底片不存在' });
     const task = await get('SELECT * FROM order_select_task WHERE order_id = ?', [o.id]);
+    // 兜底防护：删除底片前自动导出订单选片备份（失败不阻塞主业务）
+    let backup = null;
+    try { backup = await exportSelectionBackup(o.id); } catch (e) { console.error('[selection] 删除底片前备份失败：', e.message); }
     await withTransaction(async (tx) => {
       await tx.run('UPDATE order_photo SET deleted = 1 WHERE id = ?', [photoId]);
       await tx.run('DELETE FROM order_select_mark WHERE photo_id = ?', [photoId]);
@@ -470,7 +488,9 @@ router.delete('/orders/:orderId/photos/:photoId', authRequired, requireRole(...S
           [summary.stats.keep, summary.stats.reject, summary.extra.extraCount, summary.extra.extraFee, nowISO(), task.id]);
       }
     });
-    res.json({ ok: true });
+    // 审计：删除底片（操作人 + 状态前后值）
+    await auditSelection(o.id, { uid: req.user.uid, name: req.user.username }, 'delete_photo', task ? task.status : null, task ? task.status : null, `删除底片 photo_id=${photoId}`);
+    res.json({ ok: true, backup: backup && backup.ok ? { filename: backup.filename, localPath: backup.localPath } : null });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -509,16 +529,21 @@ router.post('/orders/:orderId/reset', authRequired, requireRole(...SELECTION_ADM
     if (task.status === TASK_STATUS.SELECTING) return res.status(400).json({ error: '当前选片中，无需重置' });
     const version = Number(task.version) + 1;
     const resetAt = nowISO();
+    // 兜底防护：重置前自动导出订单选片备份（弥补原版无历史快照；失败不阻塞）
+    let backup = null;
+    try { backup = await exportSelectionBackup(o.id); } catch (e) { console.error('[selection] 重置前备份失败：', e.message); }
     await withTransaction(async (tx) => {
       await tx.run('DELETE FROM order_select_mark WHERE task_id = ?', [task.id]);
       await tx.run('UPDATE order_select_task SET status = ?, like_count = 0, exclude_count = 0, extra_count = 0, extra_fee = 0, pending_fee = 0, pending_count = 0, version = ?, reset_at = ?, updated_at = ? WHERE id = ?',
         [TASK_STATUS.SELECTING, version, resetAt, resetAt, task.id]);
     });
+    // 审计：重置选片（操作人 + 状态前后值）
+    await auditSelection(o.id, { uid: req.user.uid, name: req.user.username }, 'reset', task.status, TASK_STATUS.SELECTING, `第 ${version} 轮重置，清空全部草稿标记`);
     try {
       await generateEventTodo(o.id, 'select_reset', '待客户重新选片', `商家已重置选片（第 ${version} 轮），客户需重新选片`, `reset_${resetAt}`);
       await emitMessage({ message_type: 'order_msg', business_event: 'select_reset', title: '选片已重置', content: `订单 ${o.order_no || o.id} 选片已重置，客户需重新选片`, rel_id: String(o.id), rel_model: 'order' });
     } catch (e) { console.error('[selection] 重置后通知失败', e.message); }
-    res.json({ ok: true, version, status: TASK_STATUS.SELECTING });
+    res.json({ ok: true, version, status: TASK_STATUS.SELECTING, backup: backup && backup.ok ? { filename: backup.filename, localPath: backup.localPath } : null });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -549,6 +574,8 @@ router.post('/orders/:orderId/pay', authRequired, requireRole(...PAY_ROLES), asy
   try {
     const b = req.body || {};
     const r = await markPaid(req.params.orderId, String(b.pay_flow_no || '').trim(), b.channel || 'cash', 'offline');
+    // 审计：支付成功（操作人 + 状态变更前后值）
+    if (!r.already) await auditSelection(req.params.orderId, { uid: req.user.uid, name: req.user.username }, 'pay', TASK_STATUS.PENDING_PAYMENT, TASK_STATUS.COMPLETED, `流水号=${b.pay_flow_no || ''} 渠道=${b.channel || 'cash'} 金额=¥${Number(r.fee || 0).toFixed(2)}`);
     try {
       await emitMessage({ message_type: 'order_msg', business_event: 'select_paid', title: '选片加片费已支付', content: `订单 ${req.params.orderId} 选片加片费已支付`, rel_id: String(req.params.orderId), rel_model: 'order' });
     } catch {}
@@ -563,6 +590,7 @@ router.post('/orders/:orderId/pay-callback', async (req, res) => {
     const success = String(b.status) === 'success' || String(b.result_code) === 'SUCCESS';
     if (!success) return res.json({ ok: true, status: TASK_STATUS.PENDING_PAYMENT, message: '支付未成功，维持待支付' });
     const r = await markPaid(req.params.orderId, String(b.transaction_id || b.pay_flow_no || '').trim(), 'online', 'online');
+    if (!r.already) await auditSelection(req.params.orderId, { uid: null, name: 'system' }, 'pay_callback', TASK_STATUS.PENDING_PAYMENT, TASK_STATUS.COMPLETED, `线上回调 流水号=${b.transaction_id || b.pay_flow_no || ''}`);
     res.json({ ok: true, status: TASK_STATUS.COMPLETED, already: r.already });
   } catch (e) { res.status(400).json({ error: e.message }); }
 });

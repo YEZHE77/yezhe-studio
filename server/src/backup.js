@@ -4,7 +4,7 @@
 // 支持 COS（优先）/ R2（兜底），由 storage 的 activeProvider 决定落桶。
 import fs from 'node:fs';
 import path from 'node:path';
-import { query } from './db.js';
+import { query, dataDir } from './db.js';
 import { activeProvider, makeS3Client, bucketOf, objectUrl } from './storage.js';
 
 // 需要备份的业务表（与 schema.js 对齐；任意表缺失则跳过，不中断）
@@ -58,6 +58,58 @@ export async function writeBackupToCloud() {
 
 // 兼容旧名（曾仅写 R2）；现统一写当前生效 provider。
 export const writeBackupToR2 = writeBackupToCloud;
+
+// 单订单选片快照备份（重置选片 / 删除底片等破坏性操作前自动调用）。
+// 不新增数据库快照表（贴合原版「无快照」），仅导出 JSON 文件：
+//   1) 本地 server/data/selection_backup/order_{id}_{ts}.json（dev 无云端也生效）
+//   2) 云端 backup/selection/order_{id}_{ts}.json（COS/R2，可选）
+// 返回 { ok, localPath, filename, bytes, cloud }，失败也尽量落本地（兜底不阻塞主业务）。
+export async function exportSelectionBackup(orderId) {
+  const oid = Number(orderId);
+  const orderRows = await query('SELECT * FROM orders WHERE id = ?', [oid]);
+  if (!orderRows.length) return { ok: false, reason: '订单不存在' };
+  const task = (await query('SELECT * FROM order_select_task WHERE order_id = ?', [oid]))[0] || null;
+  const photos = await query('SELECT * FROM order_photo WHERE order_id = ?', [oid]);
+  let marks = [];
+  if (task) marks = await query('SELECT * FROM order_select_mark WHERE task_id = ?', [task.id]);
+  const payload = {
+    kind: 'selection_backup',
+    order_id: oid,
+    exportedAt: new Date().toISOString(),
+    order: orderRows[0],
+    task,
+    photos,
+    marks
+  };
+  const json = JSON.stringify(payload);
+  const ts = new Date().toISOString().replace(/[:.]/g, '-').replace('Z', ''); // 毫秒级，避免同秒操作文件名碰撞
+  const filename = `order_${oid}_${ts}.json`;
+  // 1) 本地文件兜底（无云端也可还原）
+  let localPath = null;
+  try {
+    const localDir = path.join(dataDir, 'selection_backup');
+    fs.mkdirSync(localDir, { recursive: true });
+    localPath = path.join(localDir, filename);
+    fs.writeFileSync(localPath, json);
+  } catch (e) {
+    console.error('[backup] 选片本地备份写入失败：', e.message);
+  }
+  // 2) 云端（可选，失败不阻塞）
+  let cloud = null;
+  const provider = activeProvider();
+  if (provider) {
+    try {
+      const { PutObjectCommand } = await import('@aws-sdk/client-s3');
+      const client = await makeS3Client(provider);
+      const key = `backup/selection/${filename}`;
+      await client.send(new PutObjectCommand({ Bucket: bucketOf(provider), Key: key, Body: json, ContentType: 'application/json' }));
+      cloud = { key, url: objectUrl(provider, key) };
+    } catch (e) {
+      cloud = { error: String((e && e.message) || e) };
+    }
+  }
+  return { ok: true, localPath, filename, bytes: json.length, cloud };
+}
 
 // 启动每日定时备份（Render 免费档重启后由启动逻辑重新调度）。每日 03:10（服务时区）执行一次。
 let _timer = null;

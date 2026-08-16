@@ -1,7 +1,7 @@
 // consistencyCheck.js —— 数据一致性自动巡检（每日凌晨定时 + 手动触发）
 // 四类校验：档期冲突 / 精修超额 / 合同快照不匹配 / 套系开协议未绑模板
 // 异常统一写入 consistency_issues 表（只存最近一次巡检清单），有异常时推送 system_message 提醒管理员。
-import { query, insert, run } from './db.js';
+import { query, get, insert, run } from './db.js';
 import { emitMessage } from './routes/message.js';
 
 // 合同快照比对字段（与前端 client/src/utils/contract.js 的 COMPARE_FIELDS 对齐）
