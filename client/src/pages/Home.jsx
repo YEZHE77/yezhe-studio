@@ -331,19 +331,19 @@ export default function Home() {
         <div style={{ textAlign: 'center', fontSize: 11, color: '#888', marginTop: 16 }}>{studio.slogan || '记录婚礼，也记录爱发生的样子'}</div>
 
         {/* 右侧悬浮浮层按钮组：绝对定位浮在卡片表面右缘（紧贴，视觉叠在卡片上） */}
-        <div className="absolute flex flex-col items-center" style={{ right: -4, top: 52, gap: 8 }}>
+        <div className="absolute flex flex-col items-center" style={{ right: -4, top: 52, gap: 10 }}>
           {/* 关注：白底 + 空心爱心灰 + 文字灰 */}
           <button onClick={copyWechat}
-            style={{ width: 44, height: 44, borderRadius: '50%', background: '#fff', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#666', fontSize: 9, boxShadow: '0 2px 8px rgba(0,0,0,0.12)' }} aria-label="关注">
-            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round">
+            style={{ width: 48, height: 48, borderRadius: '50%', background: '#fff', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#666', fontSize: 9, boxShadow: '0 2px 8px rgba(0,0,0,0.12)' }} aria-label="关注">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round">
               <path d="M12 20.3l-1.45-1.32C5.4 14.24 2 11.16 2 7.5 2 4.42 4.42 2 7.5 2c1.74 0 3.41.81 4.5 2.09C13.09 2.81 14.76 2 16.5 2 19.58 2 22 4.42 22 7.5c0 3.66-3.4 6.74-8.55 11.49L12 20.3z" />
             </svg>
             <span style={{ marginTop: 1, fontSize: 9 }}>关注</span>
           </button>
           {/* 预约：青绿底 + 白色对话气泡(三点) + 文字白 */}
           <button onClick={() => setContactOpen(true)}
-            style={{ width: 44, height: 44, borderRadius: '50%', background: '#7ecdbb', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 9, boxShadow: '0 2px 8px rgba(96,196,170,0.35)' }} aria-label="预约">
-            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round">
+            style={{ width: 48, height: 48, borderRadius: '50%', background: '#7ecdbb', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 9, boxShadow: '0 2px 8px rgba(96,196,170,0.35)' }} aria-label="预约">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round">
               <path d="M4 5h16a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H10l-4 3v-3H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z" />
               <circle cx="9" cy="11" r="1" fill="currentColor" stroke="none" />
               <circle cx="12" cy="11" r="1" fill="currentColor" stroke="none" />
@@ -353,8 +353,8 @@ export default function Home() {
           </button>
           {/* 我的：白底 + 灰色人形轮廓 + 文字灰 */}
           <button onClick={() => nav('/my')}
-            style={{ width: 44, height: 44, borderRadius: '50%', background: '#fff', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#666', fontSize: 9, boxShadow: '0 2px 8px rgba(0,0,0,0.12)' }} aria-label="我的">
-            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
+            style={{ width: 48, height: 48, borderRadius: '50%', background: '#fff', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#666', fontSize: 9, boxShadow: '0 2px 8px rgba(0,0,0,0.12)' }} aria-label="我的">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
               <circle cx="12" cy="8" r="3.2" />
               <path d="M5 20a7 7 0 0 1 14 0" />
             </svg>
