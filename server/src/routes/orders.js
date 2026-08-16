@@ -9,7 +9,6 @@ import { authRequired, requireRole } from '../auth.js';
 import { parseRow } from '../schema.js';
 import { scheduleConflict, occupySchedule, releaseSchedule, conflictText, capacityConflict } from './schedules.js';
 import { emitMessage } from './message.js';
-import { emitBizToStaff, BIZ_TYPE } from './mobileMessage.js';
 import { syncOrderTodos, generateEventTodo, archiveOrderTodos } from '../todo.js';
 
 const router = Router();
@@ -649,14 +648,12 @@ router.put('/:id', authRequired, requireRole(['admin', 'photographer', 'finance'
     if (b.status && b.status !== cur.status) {
       const MAP = { deposit: '已付定金', shot: '已拍摄', selecting: '选片中', retouching: '精修中', delivered: '已交付', completed: '已完成' };
       await appendLog(cur.id, '阶段推进 → ' + (MAP[status] || status));
-      // 消息中心：订单状态变更 → order_msg
+      // 消息中心：订单状态变更 → order_msg（emitMessage 内部双写 biz_message，移动端同步可见）
       await emitMessage({
         message_type: 'order_msg', business_event: 'order_status',
         title: '订单状态变更', content: `${customer_name || '客户'} 的订单已进入「${MAP[status] || status}」`,
         rel_id: String(cur.id), rel_model: 'order'
       });
-      // 移动端业务消息（订单状态变更）
-      try { await emitBizToStaff({ title: '订单状态发生变更', content: `${customer_name || '客户'} 的订单已进入「${MAP[status] || status}」`, biz_type: BIZ_TYPE.ORDER, biz_id: cur.id }); } catch (e) { console.error('[biz-message] 订单状态消息失败', e.message); }
       // 待办同步：订单阶段变化 → 归档旧阶段待办 + 生成新阶段待办（仅提醒，不改订单业务数据）
       try { await syncOrderTodos(cur.id); } catch (e) { console.error('[todo] 阶段待办同步失败', e.message); }
     }

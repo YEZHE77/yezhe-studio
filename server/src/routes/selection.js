@@ -20,7 +20,7 @@ import { authRequired, requireRole } from '../auth.js';
 import { emitMessage } from './message.js';
 import { generateEventTodo } from '../todo.js';
 import { exportSelectionBackup } from '../backup.js';
-import { emitBizMessage, emitBizToStaff, BIZ_TYPE } from './mobileMessage.js';
+import { emitBizToStaff, BIZ_TYPE } from './mobileMessage.js';
 import {
   TASK_STATUS, MARK_STATUS,
   calcExtra, calcStats, summarizeMarks, selectionSummary, parsePrice
@@ -320,14 +320,7 @@ router.post('/c/:token/submit', async (req, res) => {
 
     // 写入订单变更记录（客户提交）
     await appendOrderLog(order.id, `客户提交选片：保留 ${summary.stats.keep} 张、加选 ${summary.extra.extraCount} 张，进入「${nextStatus === TASK_STATUS.PENDING_PAYMENT ? '待支付加片费' : '已完成'}」`);
-    // 移动端业务消息（与待办独立：同一事件同时生成消息 + 待办）
-    try {
-      await emitBizToStaff({
-        title: '新选片提交',
-        content: `客户「${order.customer_name || ''}」提交选片（保留 ${summary.stats.keep} 张，加选 ${summary.extra.extraCount} 张）`,
-        biz_type: BIZ_TYPE.SELECT_PHOTO, biz_id: order.id
-      });
-    } catch (e) { console.error('[selection] 选片消息生成失败', e.message); }
+    // 移动端业务消息已由 emitMessage 双写 biz_message 覆盖（select_pending_pay/select_finish → select_photo）
 
     res.json({ ok: true, status: nextStatus, stats: summary.stats, extra: summary.extra, pending_fee: hasFee ? summary.extra.extraFee : 0 });
   } catch (e) { res.status(500).json({ error: e.message }); }
@@ -589,8 +582,7 @@ router.post('/orders/:orderId/pay', authRequired, requireRole(...PAY_ROLES), asy
     const r = await markPaid(req.params.orderId, String(b.pay_flow_no || '').trim(), b.channel || 'cash', 'offline');
     // 审计：支付成功（操作人 + 状态变更前后值）
     if (!r.already) await appendOrderLog(req.params.orderId, `选片加片费已支付 ¥${Number(r.fee || 0).toFixed(2)}（${b.channel || 'cash'}）`);
-    // 移动端业务消息（支付成功）
-    if (!r.already) { try { await emitBizToStaff({ title: '选片-客户已完成付款', content: `订单 ${req.params.orderId} 选片加片费已支付 ¥${Number(r.fee || 0).toFixed(2)}`, biz_type: BIZ_TYPE.SELECT_PHOTO, biz_id: req.params.orderId }); } catch {} }
+    // 移动端业务消息已由 emitMessage 双写覆盖（select_paid → select_photo）
     try {
       await emitMessage({ message_type: 'order_msg', business_event: 'select_paid', title: '选片加片费已支付', content: `订单 ${req.params.orderId} 选片加片费已支付`, rel_id: String(req.params.orderId), rel_model: 'order' });
     } catch {}

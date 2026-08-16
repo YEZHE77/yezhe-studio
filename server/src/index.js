@@ -11,6 +11,7 @@ import { initSchema } from './schema.js';
 import { saveImage } from './storage.js';
 import { scheduleDailyBackup } from './backup.js';
 import { scheduleConsistencyCheck } from './consistencyCheck.js';
+import { scheduleReminders } from './reminder.js';
 import { authRequired } from './auth.js';
 import { seedIfNeeded } from './seed.js';
 
@@ -166,6 +167,8 @@ initSchema().then(async () => {
   try { scheduleDailyBackup(); } catch (e) { console.error('[backup] 调度失败', e.message); }
   // 数据一致性巡检：每日凌晨 02:00 批量校验（档期冲突/精修超额/合同快照不匹配/套系未绑模板），异常入库 + 推送提醒
   try { scheduleConsistencyCheck(); } catch (e) { console.error('[check] 调度失败', e.message); }
+  // 业务提醒扫描：每日 08:00（选片任务到期 / 摄影日程临近 → 生成移动端消息）
+  try { scheduleReminders(); } catch (e) { console.error('[reminder] 调度失败', e.message); }
   const server = app.listen(PORT, () => {
     console.log(`[server] 已启动 → http://localhost:${PORT}`);
     console.log(`[server] CORS 放行: ${CORS_ORIGIN.join(', ')}`);

@@ -8,6 +8,15 @@ import { authRequired } from '../auth.js';
 const router = Router();
 const DEDUP_WINDOW_MS = 5 * 60 * 1000;
 
+// business_event → biz_message.biz_type 映射（emitMessage 双写移动端消息中心时用）
+// select_* 选片 / order_status 订单 / 其余默认 system
+const BIZ_TYPE_BY_EVENT = {
+  select_pending_pay: 'select_photo',
+  select_finish: 'select_photo',
+  select_paid: 'select_photo',
+  order_status: 'order'
+};
+
 // 取所有 B 端员工 uid（admin/photographer/finance），消息接收人
 export async function staffUids() {
   const rows = await query("SELECT id FROM users WHERE role IN ('admin','photographer','finance')");
@@ -31,6 +40,16 @@ export async function emitMessage({ receiver_uid = null, message_type, business_
         'INSERT INTO system_message (receiver_uid, message_type, business_event, title, content, rel_id, rel_model, can_wechat_push) VALUES (?,?,?,?,?,?,?,?)',
         [uid, message_type, business_event || null, title || '', content || '', rel_id != null ? String(rel_id) : null, rel_model || null, can_wechat_push ? 1 : 0]
       );
+      // 双写 biz_message（移动端消息中心）：仅业务事件（select_*/order_status）双写，其余（consult/todo/system）不写，避免误判下载按钮
+      const bizType = BIZ_TYPE_BY_EVENT[business_event || ''];
+      if (bizType && rel_id != null && rel_id !== '') {
+        try {
+          await insert(
+            'INSERT INTO biz_message (user_id, title, content, biz_type, biz_id) VALUES (?,?,?,?,?)',
+            [uid, title || '', content || '', bizType, String(rel_id)]
+          );
+        } catch (e) { console.error('[message] biz_message 双写失败：', e.message); }
+      }
     }
     return receivers.length;
   } catch (e) { console.error('[message] emit failed:', e.message); return null; }
