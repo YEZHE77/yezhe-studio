@@ -173,7 +173,8 @@ router.get('/', authRequired, async (req, res) => {
         (SELECT c.name FROM packages p LEFT JOIN categories c ON c.id = p.category_id WHERE p.id = orders.package_id) AS category_name,
         (SELECT stars FROM evaluates WHERE order_id = orders.id ORDER BY created_at DESC LIMIT 1) AS eval_stars,
         (SELECT created_at FROM evaluates WHERE order_id = orders.id ORDER BY created_at DESC LIMIT 1) AS eval_at,
-        (SELECT submitted FROM photo_select WHERE order_id = orders.id ORDER BY updated_at DESC LIMIT 1) AS selection_submitted
+        (SELECT status FROM order_select_task WHERE order_id = orders.id LIMIT 1) AS selection_status,
+        (SELECT CASE WHEN status = 'submitted' THEN 1 ELSE 0 END FROM order_select_task WHERE order_id = orders.id LIMIT 1) AS selection_submitted
        FROM orders WHERE ${whereSql} ORDER BY ${orderSql} LIMIT ? OFFSET ?`,
       [...params, pageSize, (page - 1) * pageSize]
     );
@@ -199,7 +200,7 @@ router.get('/stats', authRequired, async (req, res) => {
     const sel = await get(
       `SELECT COUNT(*) AS c FROM orders WHERE cancelled = 0 AND is_deleted = 0
         AND shoot_date IS NOT NULL AND shoot_date <> '' AND shoot_date < ?
-        AND NOT EXISTS (SELECT 1 FROM photo_select ps WHERE ps.order_id = orders.id AND ps.submitted = 1)`,
+        AND NOT EXISTS (SELECT 1 FROM order_select_task t WHERE t.order_id = orders.id AND t.status = 'submitted')`,
       [today]
     );
     // 订单总数（筛选栏「所有订单 (N)」用，后端动态返回，前端禁止硬编码）

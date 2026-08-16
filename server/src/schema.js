@@ -255,6 +255,83 @@ CREATE TABLE IF NOT EXISTS selection_marks (
   UNIQUE(task_id, photo_key)
 );`;
 
+// ===== 选片模块 V2（四表架构，旧 selection_tasks/selection_marks/photo_select 弃用保留） =====
+// ① order_photo 底片元数据（属于订单，跨选片轮次持久，重置选片不清底片）
+// ② order_select_task 本轮选片任务状态机 + 缓存统计（每订单一行）
+//    status 枚举：not_started 未开启 / selecting 选片中 / submitted 已提交 / reset 已重置
+// ③ order_select_mark 单张照片标记 + 备注（status: keep 保留 / reject 淘汰；无行=未标记）
+// ④ order_select_submit_history 提交快照归档（只增不改，仅允许更新 pay_status/流水）
+const PG_SELECTION_V2_TABLES = `
+CREATE TABLE IF NOT EXISTS order_photo (
+  id SERIAL PRIMARY KEY, order_id INTEGER NOT NULL, photo_key TEXT NOT NULL,
+  url TEXT NOT NULL, thumb_url TEXT, sort INTEGER NOT NULL DEFAULT 0,
+  deleted INTEGER NOT NULL DEFAULT 0, created_at TIMESTAMPTZ DEFAULT now(),
+  UNIQUE(order_id, photo_key)
+);
+CREATE INDEX IF NOT EXISTS idx_order_photo_order ON order_photo(order_id, deleted, sort);
+CREATE TABLE IF NOT EXISTS order_select_task (
+  id SERIAL PRIMARY KEY, order_id INTEGER NOT NULL UNIQUE,
+  status TEXT NOT NULL DEFAULT 'not_started',
+  password_hash TEXT, expire_at TEXT,
+  shuffle_enabled INTEGER NOT NULL DEFAULT 0, watermark_enabled INTEGER NOT NULL DEFAULT 0,
+  min_retouch INTEGER NOT NULL DEFAULT 0, extra_price REAL NOT NULL DEFAULT 0,
+  like_count INTEGER NOT NULL DEFAULT 0, exclude_count INTEGER NOT NULL DEFAULT 0,
+  extra_count INTEGER NOT NULL DEFAULT 0, extra_fee REAL NOT NULL DEFAULT 0,
+  version INTEGER NOT NULL DEFAULT 0, submitted_at TEXT, reset_at TEXT,
+  created_at TIMESTAMPTZ DEFAULT now(), updated_at TIMESTAMPTZ DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS order_select_mark (
+  id SERIAL PRIMARY KEY, task_id INTEGER NOT NULL, photo_id INTEGER NOT NULL,
+  status TEXT NOT NULL DEFAULT 'keep', remark TEXT,
+  created_at TIMESTAMPTZ DEFAULT now(), updated_at TIMESTAMPTZ DEFAULT now(),
+  UNIQUE(task_id, photo_id)
+);
+CREATE INDEX IF NOT EXISTS idx_order_select_mark_task ON order_select_mark(task_id);
+CREATE TABLE IF NOT EXISTS order_select_submit_history (
+  id SERIAL PRIMARY KEY, order_id INTEGER NOT NULL, task_id INTEGER NOT NULL,
+  version INTEGER NOT NULL, snapshot TEXT NOT NULL,
+  retouch_count INTEGER NOT NULL DEFAULT 0, extra_count INTEGER NOT NULL DEFAULT 0,
+  extra_fee REAL NOT NULL DEFAULT 0, pay_status TEXT NOT NULL DEFAULT 'unpaid',
+  pay_flow_no TEXT, paid_at TEXT, submitted_at TEXT,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_order_select_history_order ON order_select_submit_history(order_id, version);`;
+const SQLITE_SELECTION_V2_TABLES = `
+CREATE TABLE IF NOT EXISTS order_photo (
+  id INTEGER PRIMARY KEY AUTOINCREMENT, order_id INTEGER NOT NULL, photo_key TEXT NOT NULL,
+  url TEXT NOT NULL, thumb_url TEXT, sort INTEGER NOT NULL DEFAULT 0,
+  deleted INTEGER NOT NULL DEFAULT 0, created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE(order_id, photo_key)
+);
+CREATE INDEX IF NOT EXISTS idx_order_photo_order ON order_photo(order_id, deleted, sort);
+CREATE TABLE IF NOT EXISTS order_select_task (
+  id INTEGER PRIMARY KEY AUTOINCREMENT, order_id INTEGER NOT NULL UNIQUE,
+  status TEXT NOT NULL DEFAULT 'not_started',
+  password_hash TEXT, expire_at TEXT,
+  shuffle_enabled INTEGER NOT NULL DEFAULT 0, watermark_enabled INTEGER NOT NULL DEFAULT 0,
+  min_retouch INTEGER NOT NULL DEFAULT 0, extra_price REAL NOT NULL DEFAULT 0,
+  like_count INTEGER NOT NULL DEFAULT 0, exclude_count INTEGER NOT NULL DEFAULT 0,
+  extra_count INTEGER NOT NULL DEFAULT 0, extra_fee REAL NOT NULL DEFAULT 0,
+  version INTEGER NOT NULL DEFAULT 0, submitted_at TEXT, reset_at TEXT,
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP, updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS order_select_mark (
+  id INTEGER PRIMARY KEY AUTOINCREMENT, task_id INTEGER NOT NULL, photo_id INTEGER NOT NULL,
+  status TEXT NOT NULL DEFAULT 'keep', remark TEXT,
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP, updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE(task_id, photo_id)
+);
+CREATE INDEX IF NOT EXISTS idx_order_select_mark_task ON order_select_mark(task_id);
+CREATE TABLE IF NOT EXISTS order_select_submit_history (
+  id INTEGER PRIMARY KEY AUTOINCREMENT, order_id INTEGER NOT NULL, task_id INTEGER NOT NULL,
+  version INTEGER NOT NULL, snapshot TEXT NOT NULL,
+  retouch_count INTEGER NOT NULL DEFAULT 0, extra_count INTEGER NOT NULL DEFAULT 0,
+  extra_fee REAL NOT NULL DEFAULT 0, pay_status TEXT NOT NULL DEFAULT 'unpaid',
+  pay_flow_no TEXT, paid_at TEXT, submitted_at TEXT,
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_order_select_history_order ON order_select_submit_history(order_id, version);`;
+
 // 消息中心（B 端管理员）：system_message 系统消息表
 // message_type: customer_consult 顾客咨询 / order_msg 订单消息 / todo_alert 待办提醒 / system 系统通知
 // 去重：business_event + rel_id，5 分钟内相同事件不重复生成
@@ -453,6 +530,9 @@ export async function initSchema() {
 
   // 选片工具表（selection_tasks + selection_marks）
   for (const s of (dialect === 'pg' ? PG_SELECTION_TABLES : SQLITE_SELECTION_TABLES).split(';').map((x) => x.trim()).filter(Boolean)) await run(s);
+
+  // 选片模块 V2 四表（order_photo / order_select_task / order_select_mark / order_select_submit_history）
+  for (const s of (dialect === 'pg' ? PG_SELECTION_V2_TABLES : SQLITE_SELECTION_V2_TABLES).split(';').map((x) => x.trim()).filter(Boolean)) await run(s);
 
   // 消息中心表（system_message）
   for (const s of (dialect === 'pg' ? PG_MESSAGE_TABLES : SQLITE_MESSAGE_TABLES).split(';').map((x) => x.trim()).filter(Boolean)) await run(s);

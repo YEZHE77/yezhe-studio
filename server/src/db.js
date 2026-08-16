@@ -80,4 +80,51 @@ export async function insert(sql, params = []) {
   return sqlite.prepare('SELECT last_insert_rowid() AS id').get().id;
 }
 
+// 事务助手：多表写入原子性（提交选片/重置选片/支付回调）。
+// fn(tx) 内使用 tx.query / tx.get / tx.run / tx.insert，全部跑在同一个事务里，任一步抛错整体回滚。
+// pg 走独立 client（避免污染连接池里其它并发请求）；sqlite 单连接直接 BEGIN/COMMIT。
+export async function withTransaction(fn) {
+  if (dialect === 'pg') {
+    const client = await pgPool.connect();
+    try {
+      await client.query('BEGIN');
+      const tx = {
+        query: async (sql, params = []) => (await client.query(toPg(sql), params)).rows,
+        get: async (sql, params = []) => (await client.query(toPg(sql), params)).rows[0] || null,
+        run: async (sql, params = []) => { await client.query(toPg(sql), params); },
+        insert: async (sql, params = []) => {
+          try {
+            const r = await client.query(toPg(sql + ' RETURNING id'), params);
+            return r.rows[0]?.id ?? 0;
+          } catch (e) {
+            if (e.message && /column[^"]*"?id"?\s+does not exist/i.test(e.message)) {
+              await client.query(toPg(sql), params);
+              return 0;
+            }
+            throw e;
+          }
+        }
+      };
+      const result = await fn(tx);
+      await client.query('COMMIT');
+      return result;
+    } catch (e) {
+      try { await client.query('ROLLBACK'); } catch {}
+      throw e;
+    } finally {
+      client.release();
+    }
+  }
+  // sqlite：DatabaseSync 单连接，BEGIN 后 prepare/run 都在同一连接内
+  sqlite.exec('BEGIN');
+  try {
+    const result = await fn({ query, get, run, insert });
+    sqlite.exec('COMMIT');
+    return result;
+  } catch (e) {
+    try { sqlite.exec('ROLLBACK'); } catch {}
+    throw e;
+  }
+}
+
 export { pgPool, sqlite };

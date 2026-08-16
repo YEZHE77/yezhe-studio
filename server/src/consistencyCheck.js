@@ -107,6 +107,31 @@ async function checkPkgMissingTemplate() {
   return issues;
 }
 
+// ⑤ 选片统计漂移：task 缓存统计(like_count/exclude_count) vs mark 真实数据不一致 → 告警
+async function checkSelectionStatsDrift() {
+  const tasks = await query(
+    "SELECT id, order_id, like_count, exclude_count FROM order_select_task WHERE status = 'selecting' OR status = 'submitted'"
+  );
+  const issues = [];
+  for (const t of tasks) {
+    const real = await get(
+      "SELECT SUM(CASE WHEN status='keep' THEN 1 ELSE 0 END) AS keep, SUM(CASE WHEN status='reject' THEN 1 ELSE 0 END) AS reject FROM order_select_mark WHERE task_id = ?",
+      [t.id]
+    );
+    const keep = Number(real.keep) || 0;
+    const reject = Number(real.reject) || 0;
+    if (keep !== Number(t.like_count) || reject !== Number(t.exclude_count)) {
+      issues.push({
+        type: 'selection_stats_drift',
+        rel_id: String(t.order_id),
+        summary: `选片统计漂移：订单 ${t.order_id} 缓存(保留${t.like_count}/淘汰${t.exclude_count}) 与真实标记(保留${keep}/淘汰${reject}) 不一致`,
+        detail: JSON.stringify({ task_id: t.id, order_id: t.order_id, cached: { like: t.like_count, exclude: t.exclude_count }, real: { keep, reject } })
+      });
+    }
+  }
+  return issues;
+}
+
 // 主巡检：执行四类校验 → 异常入库（清空旧的，只存本次）→ 有异常推送提醒
 export async function runConsistencyCheck() {
   const checkRun = new Date().toISOString();
@@ -116,6 +141,7 @@ export async function runConsistencyCheck() {
   await safe('精修超额', checkRetouchExceed);
   await safe('合同快照', checkContractStale);
   await safe('套系绑定', checkPkgMissingTemplate);
+  await safe('选片统计', checkSelectionStatsDrift);
 
   // 只存最近一次巡检异常清单（巡检报告反映当前状态，历史脏数据已实时拦截，无需累积）
   await run('DELETE FROM consistency_issues');
