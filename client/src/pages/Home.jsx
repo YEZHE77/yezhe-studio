@@ -298,26 +298,26 @@ export default function Home() {
 
       {/* 底部联系卡片：左侧信息 + 居中添加客服 + 右侧悬浮浮层按钮组（关注/预约/我的）+ 底部 slogan */}
       <div id="footer-section" className="relative m-4 mt-[70px] rounded-2xl p-5 text-white sm:m-8 sm:rounded-3xl sm:p-8" style={{ background: '#2c2c2c' }}>
-        <div style={{ textAlign: 'center', fontSize: 19, fontWeight: 400, letterSpacing: 4, marginBottom: 20 }}>联系我们</div>
+        <div style={{ textAlign: 'center', fontSize: 19, fontWeight: 400, letterSpacing: 4, marginBottom: 20, color: '#fff' }}>联系我们</div>
         {/* 信息行：右侧预留 60px 给悬浮按钮，不被遮挡 */}
         <div style={{ paddingRight: 60 }}>
           {studio.contact && studio.contact.wechat && (
             <div style={{ display: 'flex', alignItems: 'center', fontSize: 13, marginBottom: 10, gap: 8 }}>
               <span style={{ width: 36, color: '#aaa', flexShrink: 0 }}>微信</span>
-              <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 14 }}>{studio.contact.wechat}</span>
+              <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 14, color: '#fff' }}>{studio.contact.wechat}</span>
               <span style={{ color: '#7ecdbb', fontSize: 12, cursor: 'pointer', flexShrink: 0 }} onClick={copyWechat}>复制</span>
             </div>
           )}
           {studio.contact && studio.contact.phone && (
             <div style={{ display: 'flex', alignItems: 'center', fontSize: 13, marginBottom: 10, gap: 8 }}>
               <span style={{ width: 36, color: '#aaa', flexShrink: 0 }}>电话</span>
-              <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 14 }}>{studio.contact.phone}</span>
+              <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 14, color: '#fff' }}>{studio.contact.phone}</span>
             </div>
           )}
           {studio.contact && studio.contact.address && (
             <div style={{ display: 'flex', alignItems: 'center', fontSize: 13, marginBottom: 0, gap: 8 }}>
               <span style={{ width: 36, color: '#aaa', flexShrink: 0 }}>地址</span>
-              <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 14 }}>{studio.contact.address}</span>
+              <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 14, color: '#fff' }}>{studio.contact.address}</span>
             </div>
           )}
         </div>
