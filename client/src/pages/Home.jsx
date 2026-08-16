@@ -139,11 +139,20 @@ export default function Home() {
 
   return (
     <div className="min-h-screen" style={{ background: PAGE_BG, color: '#2c2c2c' }}>
-      {/* 顶部白色自定义导航栏：居中品牌名 + 右侧小程序胶囊栏（··· ⊙），1:1 对齐小程序 */}
-      <div className="fixed top-0 left-0 right-0 z-50 flex items-center justify-center h-11 bg-white text-[#2c2c2c]">
-        <span className="text-[17px] tracking-[2px]">{studio.name || '叶哲 STUDIO'}</span>
+      {/* 顶部白色自定义导航栏：左侧头像 + 品牌名，右侧小程序胶囊栏（··· ⊙） */}
+      <div className="fixed top-0 left-0 right-0 z-50 flex items-center h-11 px-3 bg-white text-[#2c2c2c]">
+        <div className="flex items-center min-w-0">
+          <div className="mr-2 h-8 w-8 shrink-0 overflow-hidden rounded-full bg-[#333]">
+            {studio.logo ? (
+              <img src={img(studio.logo, 'thumb')} alt="" className="h-full w-full object-cover" />
+            ) : (
+              <span className="flex h-full w-full items-center justify-center text-xs text-white">{(studio.name || '叶哲 STUDIO')[0]}</span>
+            )}
+          </div>
+          <span className="truncate text-[17px] tracking-[1px]">{studio.name || '叶哲 STUDIO'}</span>
+        </div>
         {/* 右侧小程序胶囊栏：··· ⊙（··· 打开抽屉菜单，⊙ 返回顶部） */}
-        <div className="absolute right-2 top-1/2 -translate-y-1/2 flex h-[22px] items-center rounded-full border border-gray-200 bg-white px-[6px]">
+        <div className="ml-auto flex h-[22px] items-center rounded-full border border-gray-200 bg-white px-[6px]">
           <button onClick={() => setDrawerOpen(true)} className="flex items-center gap-[2px] pr-[6px]" aria-label="菜单">
             <span className="block h-[3px] w-[3px] rounded-full bg-[#2c2c2c]"></span>
             <span className="block h-[3px] w-[3px] rounded-full bg-[#2c2c2c]"></span>
