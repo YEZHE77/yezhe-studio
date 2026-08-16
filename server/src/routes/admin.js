@@ -1,6 +1,7 @@
 // routes/admin.js —— 商户后台：C 端客户数据管理（预约转订单 / 选片结果查看修改 / 评价审核）
 // 全部需要商户登录（authRequired）；与 /api/customer 的行级隔离互补：此处为管理视角，可看全部。
 import { Router } from 'express';
+import crypto from 'node:crypto';
 import { query, get, insert, run } from '../db.js';
 import { authRequired, requirePerm, PERMISSIONS } from '../auth.js';
 import { lunarOf } from './schedules.js';
@@ -684,6 +685,26 @@ router.post('/consistency-check', async (req, res) => {
   try {
     const r = await runConsistencyCheck();
     res.json(r);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// 一键把 packages 表的"订单套系"导入到 photo_package（对外报价套系，套系中心展示）
+// 幂等：按 package_name 匹配已存在则跳过；仅迁移 status='on'（启用）的套系；自动生成 share_token
+router.post('/photo-package/import-from-packages', async (req, res) => {
+  try {
+    const pkgs = await query("SELECT name, price, cover_url, description, status FROM packages WHERE status = 'on'");
+    const existed = new Set((await query("SELECT package_name FROM photo_package")).map((r) => r.package_name));
+    let added = 0, skipped = 0;
+    for (const p of pkgs) {
+      if (existed.has(p.name)) { skipped++; continue; }
+      const token = crypto.randomBytes(16).toString('hex');
+      await insert(
+        'INSERT INTO photo_package (package_name, package_desc, cover_image, price, additional_price, photo_total, retouch_count, is_enable, share_token) VALUES (?,?,?,?,?,?,?,?,?)',
+        [p.name, p.description || '', p.cover_url || '', Number(p.price) || 0, 0, 0, 0, 1, token]
+      );
+      added++;
+    }
+    res.json({ ok: true, added, skipped, total_in_packages: pkgs.length });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
