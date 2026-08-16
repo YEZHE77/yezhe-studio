@@ -28,6 +28,7 @@ const Customers = React.lazy(() => import('../pages/Customers.jsx'));
 const DataCharts = React.lazy(() => import('../pages/DataCharts.jsx'));
 const BusinessCard = React.lazy(() => import('../pages/BusinessCard.jsx'));
 const MobileMessage = React.lazy(() => import('../pages/MobileMessage.jsx'));
+const MobileMessageList = React.lazy(() => import('../pages/MobileMessageList.jsx'));
 const MobileMessageDetail = React.lazy(() => import('../pages/MobileMessageDetail.jsx'));
 const SelectionAdmin = React.lazy(() => import('../pages/SelectionAdmin.jsx'));
 const CapacityManagement = React.lazy(() => import('../pages/CapacityManagement.jsx'));
@@ -231,13 +232,13 @@ export default function MobileShell() {
   const hideTopBackRoutes = ['/works', '/packages', '/schedule', '/orders', '/todo'];
   const isTab = tabRoots.includes(location.pathname);
   // /packages/* /orders/* /schedule/* 等子路由由页面内自带顶部导航，避免双层 TopBack
-  const hideTopBack = hideTopBackRoutes.includes(location.pathname) || location.pathname.startsWith('/works/') || location.pathname.startsWith('/packages/') || location.pathname.startsWith('/orders/') || location.pathname.startsWith('/schedule/');
+  const hideTopBack = hideTopBackRoutes.includes(location.pathname) || location.pathname.startsWith('/works/') || location.pathname.startsWith('/packages/') || location.pathname.startsWith('/orders/') || location.pathname.startsWith('/schedule/') || location.pathname.startsWith('/m/messages');
   const pageTitle = getPageTitle(location.pathname);
   const activeKey = (() => {
     if (location.pathname === '/') return 'home';
     if (location.pathname.startsWith('/m/site')) return 'site';
     if (location.pathname.startsWith('/photo-packages')) return 'packages';
-    if (location.pathname.startsWith('/m/msg')) return 'msg';
+    if (location.pathname.startsWith('/m/msg') || location.pathname.startsWith('/m/messages')) return 'msg';
     return '';
   })();
 
@@ -256,7 +257,8 @@ export default function MobileShell() {
                 <Route path="/home" element={<Home />} />
                 <Route path="/m/site" element={<MobileSite />} />
                 <Route path="/m/msg" element={<MobileMessage />} />
-                <Route path="/m/msg/:id" element={<MobileMessageDetail />} />
+                <Route path="/m/messages" element={<MobileMessageList />} />
+                <Route path="/m/messages/:id" element={<MobileMessageDetail />} />
                 <Route path="/photo-packages" element={<PhotoPackages />} />
                 {/* 复用现有 B 端页面，保持与桌面端同一套业务逻辑 */}
                 <Route path="/works" element={<Works />} />
