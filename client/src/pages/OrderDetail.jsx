@@ -2122,10 +2122,10 @@ export default function OrderDetail() {
         </div>
       )}
 
-      {/* 编辑订单全屏页（非弹窗；套系/价格/定金/尾款/其他消费/拍摄时间 + 客户信息） */}
+      {/* 编辑订单弹窗：居中弹窗 + 半透明遮罩 + 圆角白卡（maxWidth 720 / maxHeight 85vh，超出内部滚动），点遮罩关闭，点表单内不关闭 */}
       {edit && (
-        <div className="fixed inset-0 z-[70]" style={{ background: '#F8F8F8' }}>
-          <form onSubmit={saveEdit} className="flex flex-col" style={{ width: '100%', height: '100%', background: '#fff' }}>
+        <div onClick={() => { setEdit(false); setPkgPicker(false); setEditErrors({}); }} className="fixed inset-0 z-[70] flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.45)' }}>
+          <form onSubmit={saveEdit} onClick={(e) => e.stopPropagation()} className="flex flex-col" style={{ width: '100%', maxWidth: 720, maxHeight: '85vh', background: '#fff', borderRadius: 12, boxShadow: '0 20px 60px rgba(0,0,0,0.2)', overflow: 'hidden' }}>
             <div className="flex items-center justify-between shrink-0" style={{ padding: '16px 20px', borderBottom: '1px solid ' + DIV }}>
               <button type="button" onClick={() => { setEdit(false); setPkgPicker(false); setEditErrors({}); }} style={{ background: 'none', border: 'none', fontSize: 22, lineHeight: 1, color: '#999999', cursor: 'pointer', padding: 2 }} aria-label="返回">‹</button>
               <span style={{ fontSize: 15, color: '#222222' }}>编辑订单 · {detail.order_no}</span>
