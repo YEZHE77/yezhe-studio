@@ -146,10 +146,10 @@ export default function Home() {
             {studio.logo ? (
               <img src={img(studio.logo, 'thumb')} alt="" className="h-full w-full object-cover" />
             ) : (
-              <span className="flex h-full w-full items-center justify-center text-xs text-white">{(studio.name || '叶哲 STUDIO')[0]}</span>
+              <span className="flex h-full w-full items-center justify-center text-xs text-white">{(studio.name || '')[0]}</span>
             )}
           </div>
-          <span className="truncate text-[17px] tracking-[1px]">{studio.name || '叶哲 STUDIO'}</span>
+          <span className="truncate text-[17px] tracking-[1px]">{studio.name || ''}</span>
         </div>
         {/* 右侧小程序胶囊栏：··· ⊙（··· 打开抽屉菜单，⊙ 返回顶部） */}
         <div className="ml-auto flex h-[22px] items-center rounded-full border border-gray-200 bg-white px-[6px]">
@@ -209,7 +209,7 @@ export default function Home() {
             <img src={img(studio.logo, 'thumb')} alt="" className="h-full w-full object-cover" />
           </div>
         )}
-        <div className="mt-4 text-2xl tracking-[4px]">{studio.name || '叶哲 STUDIO'}</div>
+        <div className="mt-4 text-2xl tracking-[4px]">{studio.name || ''}</div>
         {studio.address && (
           <div className="mt-2 flex items-center justify-center text-xs text-gray-400">
             <span className="mr-1">📍</span>{studio.address}
@@ -358,7 +358,7 @@ export default function Home() {
             </button>
           </div>
         </div>
-        <div style={{ textAlign: 'center', fontSize: 12, color: '#888', marginTop: 16 }}>{studio.slogan || '叶哲 STUDIO · 记录婚礼，也记录爱发生的样子'}</div>
+        <div style={{ textAlign: 'center', fontSize: 12, color: '#888', marginTop: 16 }}>{studio.slogan || '记录婚礼，也记录爱发生的样子'}</div>
       </div>
 
       {/* 提示 / 弹层 */}
@@ -389,7 +389,7 @@ export default function Home() {
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40" onClick={() => setStoryOpen(false)}>
           <div className="max-h-[70vh] max-w-md w-full overflow-auto rounded-t-2xl bg-white p-6 text-[#2c2c2c]" onClick={(e) => e.stopPropagation()}>
             <div className="mb-4 text-center text-lg">品牌故事</div>
-            <div className="whitespace-pre-line text-sm leading-relaxed text-gray-600">{studio.intro || '叶哲 STUDIO — 用影像记录时光。'}</div>
+            <div className="whitespace-pre-line text-sm leading-relaxed text-gray-600">{studio.intro || '用影像记录时光。'}</div>
             <button onClick={() => setStoryOpen(false)} className="mt-4 w-full rounded-lg py-3 text-sm text-white" style={{ background: TEAL }}>关闭</button>
           </div>
         </div>
@@ -422,7 +422,7 @@ export default function Home() {
         />
         <div className={'absolute top-0 right-0 bottom-0 w-[280px] bg-white text-[#2c2c2c] flex flex-col transition-transform duration-300 ' + (drawerOpen ? 'translate-x-0' : 'translate-x-full')}>
           <div className="px-6 py-6 border-b border-gray-100 flex items-center">
-            <span className="text-base truncate">{studio.name || '叶哲 STUDIO'}</span>
+            <span className="text-base truncate">{studio.name || ''}</span>
           </div>
           <nav className="flex-1">
             <button onClick={() => { setDrawerOpen(false); nav('/'); }} className="w-full text-left px-6 py-4 border-b border-gray-100">主页</button>
