@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import http from '../api.js';
 
 // ===== C 端公开预约表单 =====
@@ -11,6 +12,7 @@ const BRAND = '#7ECDBB';
 const inputStyle = { width: '100%', padding: '13px 16px', borderRadius: 14, border: '1px solid #E4E4E7', background: '#fff', fontSize: 15, color: TEXT, boxSizing: 'border-box', outline: 'none' };
 
 export default function AppointmentForm() {
+  const nav = useNavigate();
   const [form, setForm] = useState({ name: '', phone: '', hope_date: '', style_req: '', remark: '' });
   const [done, setDone] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -33,13 +35,19 @@ export default function AppointmentForm() {
       <div style={{ minHeight: '100vh', background: '#F5F5F7', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 24, textAlign: 'center' }}>
         <div style={{ fontSize: 48, marginBottom: 16 }}>✅</div>
         <div style={{ fontSize: 18, color: TEXT, marginBottom: 8 }}>提交完成，请等待摄影师确认</div>
-        <div style={{ fontSize: 13, color: FAINT }}>我们会在确认后尽快与您联系。</div>
+        <div style={{ fontSize: 13, color: FAINT, marginBottom: 24 }}>我们会在确认后尽快与您联系。</div>
+        <button onClick={() => nav('/home')} style={{ padding: '12px 32px', borderRadius: 14, background: BRAND, color: '#fff', fontSize: 14, border: 'none', cursor: 'pointer' }}>返回首页</button>
       </div>
     );
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: 'linear-gradient(160deg,#F7FAF9 0%,#EEF4F1 100%)', padding: 24, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+    <div style={{ minHeight: '100vh', background: 'linear-gradient(160deg,#F7FAF9 0%,#EEF4F1 100%)', padding: 24, display: 'flex', flexDirection: 'column' }}>
+      {/* 顶部返回键 */}
+      <button onClick={() => nav('/home')} style={{ background: 'none', border: 'none', fontSize: 16, color: TEXT, cursor: 'pointer', alignSelf: 'flex-start', display: 'flex', alignItems: 'center', gap: 2, padding: '0 0 16px' }}>
+        <span style={{ fontSize: 20, lineHeight: 1 }}>‹</span>返回
+      </button>
+      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <div style={{ width: '100%', maxWidth: 400, background: 'rgba(255,255,255,0.72)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', borderRadius: 24, padding: '28px 22px', boxShadow: '0 20px 50px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.7)' }}>
         <div style={{ fontSize: 20, color: TEXT, marginBottom: 4 }}>预约拍摄</div>
         <div style={{ fontSize: 13, color: SUB, marginBottom: 20 }}>填写信息，摄影师将尽快与您确认</div>
@@ -62,6 +70,7 @@ export default function AppointmentForm() {
             {busy ? '提交中…' : '提交预约'}
           </button>
         </form>
+      </div>
       </div>
     </div>
   );
