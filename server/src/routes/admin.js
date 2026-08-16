@@ -457,6 +457,20 @@ function cloudLimitBytes(provider) {
   return null;
 }
 
+// 存储告警阈值（字节）：后台可自定义（settings 表 key=storage_threshold），默认 10GB。
+// 与付费套餐无关，纯业务告警开关；超阈值 → 消息页「已用空间」展示红色告警圆点。
+const DEFAULT_STORAGE_THRESHOLD = 10 * 1024 * 1024 * 1024;
+async function getStorageThreshold() {
+  try {
+    const r = await get("SELECT value FROM settings WHERE key = 'storage_threshold'");
+    if (r && r.value) {
+      const v = parseInt(r.value, 10);
+      if (Number.isFinite(v) && v > 0) return v;
+    }
+  } catch (e) { /* 忽略，回退默认 */ }
+  return DEFAULT_STORAGE_THRESHOLD;
+}
+
 // 按业务分类汇总（来自 media 元数据表，零 R2 遍历）
 async function categoryBreakdown() {
   const rows = await query(
@@ -520,8 +534,22 @@ router.get('/storage/stats', async (req, res) => {
       categories,
       egress,
       delayNote,
-      updatedAt
+      updatedAt,
+      alertThreshold: await getStorageThreshold(), // 自定义告警阈值（字节，后台可配）
+      exceeded: totalUsedBytes > (await getStorageThreshold()) // 是否已超阈值（驱动告警红点）
     });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// 存储告警阈值配置（后台「容量管理」页读写；存 settings 表 key=storage_threshold，单位字节）
+router.put('/storage/threshold', async (req, res) => {
+  try {
+    const v = parseInt(req.body && req.body.threshold, 10);
+    if (!Number.isFinite(v) || v <= 0) return res.status(400).json({ error: '阈值需为正整数（字节）' });
+    const exists = await get("SELECT key FROM settings WHERE key = 'storage_threshold'");
+    if (exists) await run("UPDATE settings SET value = ? WHERE key = 'storage_threshold'", [String(v)]);
+    else await insert("INSERT INTO settings (key, value) VALUES (?, ?)", ['storage_threshold', String(v)]);
+    res.json({ ok: true, threshold: v });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 

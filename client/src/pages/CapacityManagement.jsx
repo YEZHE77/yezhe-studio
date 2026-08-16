@@ -54,6 +54,9 @@ function UsageBar({ pct, level }) {
 function StorageTab({ reloadKey }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [thresholdGb, setThresholdGb] = useState('');
+  const [thresholdSaving, setThresholdSaving] = useState(false);
+  const [thresholdTip, setThresholdTip] = useState('');
 
   const load = useCallback(() => {
     setLoading(true);
@@ -64,6 +67,20 @@ function StorageTab({ reloadKey }) {
   }, []);
 
   useEffect(() => { load(); }, [load, reloadKey]);
+
+  const saveThreshold = async () => {
+    const gb = parseFloat(thresholdGb);
+    if (!Number.isFinite(gb) || gb <= 0) { setThresholdTip('请输入有效的 GB 数值'); return; }
+    setThresholdSaving(true);
+    setThresholdTip('');
+    try {
+      await http.put('/api/admin/storage/threshold', { threshold: Math.round(gb * 1024 * 1024 * 1024) });
+      setThresholdTip('阈值已更新');
+      setThresholdGb('');
+      load();
+    } catch (e) { setThresholdTip('保存失败：' + (e.response?.data?.error || e.message)); }
+    setThresholdSaving(false);
+  };
 
   if (loading) return <div className="text-muted text-sm py-8 flex items-center gap-2"><Spinner /> 加载容量统计…</div>;
   if (!data) return <div className="text-muted text-sm py-8">无法获取存储统计，请确认服务已启动。</div>;
@@ -114,6 +131,30 @@ function StorageTab({ reloadKey }) {
             当前为本地临时存储（未接入 Cloudflare R2），无配额限制，但服务重启可能导致图片丢失。配置 R2 后将显示真实额度使用情况。
           </div>
         )}
+      </div>
+
+      {/* 存储告警阈值（后台自定义，与付费套餐无关） */}
+      <div className="bg-panel border border-line rounded-xl2 p-5">
+        <div className="text-[15px] text-fg mb-1">存储告警阈值</div>
+        <div className="text-xs text-muted mb-3">
+          用量超过阈值时，消息页「已用空间」显示红色告警圆点。当前阈值：
+          {data.alertThreshold ? formatBytes(data.alertThreshold) : '未设置'}
+          {data.exceeded ? <span className="text-red-600 ml-2">（已超阈值）</span> : null}
+        </div>
+        <div className="flex items-center gap-2 flex-wrap">
+          <input
+            type="number" min="1" step="1" value={thresholdGb}
+            onChange={(e) => setThresholdGb(e.target.value)}
+            placeholder={data.alertThreshold ? String(Math.round(data.alertThreshold / 1024 / 1024 / 1024)) : '10'}
+            className="border border-line rounded-lg px-3 py-2 text-sm w-32 bg-panel"
+          />
+          <span className="text-sm text-muted">GB</span>
+          <button onClick={saveThreshold} disabled={thresholdSaving}
+            className="px-4 py-2 rounded-lg text-sm text-white bg-brand disabled:opacity-50">
+            {thresholdSaving ? '保存中…' : '保存阈值'}
+          </button>
+          {thresholdTip && <span className="text-xs text-muted">{thresholdTip}</span>}
+        </div>
       </div>
 
       {/* 按业务分类统计 */}
