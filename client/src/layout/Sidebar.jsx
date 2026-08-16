@@ -19,7 +19,7 @@ const ITEMS = [
   { label: '网站', icon: 'website', expandable: true },
   { label: '资料设置', to: '/settings', icon: 'settings', expandable: true, sep: true },
   { label: '套系', to: '/packages', icon: 'package' },
-  { label: '客片', to: '/works', icon: 'photo' },
+  { label: '作品', to: '/works', icon: 'photo' },
   { label: '档期', to: '/schedule', icon: 'calendar' },
   { label: '订单中心', to: '/orders', icon: 'order', sep: true },
   { label: '在线选片', to: '/selections', icon: 'select' },
