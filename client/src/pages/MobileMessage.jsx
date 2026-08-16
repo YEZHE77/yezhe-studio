@@ -56,13 +56,16 @@ export default function MobileMessage() {
 
   return (
     <div style={{ minHeight: '100vh', background: '#F5F5F7', display: 'flex', flexDirection: 'column' }}>
-      {/* 导航栏 */}
-      <div style={{ position: 'relative', display: 'flex', alignItems: 'center', height: 44, padding: '0 12px', background: '#fff' }}>
-        <button aria-label="扫码" style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', padding: 4, display: 'flex', alignItems: 'center' }}><NavScan /></button>
-        <div style={{ position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%, -50%)', fontSize: 17, color: TEXT, fontWeight: 500 }}>消息</div>
-        <div style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', display: 'flex', alignItems: 'center', gap: 12 }}>
-          <button aria-label="通知" style={{ background: 'none', border: 'none', padding: 4, display: 'flex', alignItems: 'center' }}><NavBell /></button>
-          <button aria-label="设置" style={{ background: 'none', border: 'none', padding: 4, display: 'flex', alignItems: 'center' }}><NavSetting /></button>
+      {/* 顶部粉色渐变区（容纳导航栏；VIP 卡已按要求删除，背景仍保留） */}
+      <div style={{ background: 'linear-gradient(180deg, #FCE5E5 0%, #FAF0F0 60%, #F5F5F7 100%)' }}>
+        {/* 导航栏 */}
+        <div style={{ position: 'relative', display: 'flex', alignItems: 'center', height: 44, padding: '0 12px' }}>
+          <button aria-label="扫码" style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', padding: 4, display: 'flex', alignItems: 'center' }}><NavScan /></button>
+          <div style={{ position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%, -50%)', fontSize: 17, color: TEXT, fontWeight: 500 }}>消息</div>
+          <div style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', display: 'flex', alignItems: 'center', gap: 12 }}>
+            <button aria-label="通知" style={{ background: 'none', border: 'none', padding: 4, display: 'flex', alignItems: 'center' }}><NavBell /></button>
+            <button aria-label="设置" style={{ background: 'none', border: 'none', padding: 4, display: 'flex', alignItems: 'center' }}><NavSetting /></button>
+          </div>
         </div>
       </div>
 
