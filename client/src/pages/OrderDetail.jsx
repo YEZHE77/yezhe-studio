@@ -2592,40 +2592,25 @@ export default function OrderDetail() {
         </>
       )}
 
-      {/* 打印单据：table 结构 + thead + table-header-group，让 Chrome 打印引擎在每页分页时自动重复表头（最可靠的跨页页眉方案） */}
-      <>
-      <style>{`
-        @media print {
-          body * { visibility: hidden; }
-          .print-order-sheet, .print-order-sheet * { visibility: visible; }
-          .print-page-header { display: table-header-group !important; visibility: visible !important; }
-          .print-order-sheet { position: absolute !important; left: 0 !important; top: 0 !important; width: 100% !important; margin: 0 !important; padding: 12mm 15mm 18mm !important; border-collapse: collapse !important; }
-        }
-      `}</style>
-      {/* 打印表（thead = 页眉每页重复；tbody = 全部内容） */}
-      <table className="print-order-sheet" style={{ position: 'fixed', left: -10000, top: 0, width: '100%', padding: '20mm 15mm', borderCollapse: 'collapse', fontFamily: 'SimSun, STSong, serif' }}>
-        <thead className="print-page-header" style={{ visibility: 'hidden', display: 'table-header-group' }}>
-          <tr>
-            <td style={{ width: '100%', padding: '4mm 15mm 3mm', borderBottom: '1px solid #555', background: '#fff' }}>
-              {/* 三段式 flex 布局：左 1fr / 中 auto / 右 1fr。中间段「auto」+ 父 flex 的 justify-content:stretch
-                  让「拍摄服务合同」正好落在容器正中央，与左右两段互不重叠 */}
-              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', fontSize: 12, color: '#555' }}>
-                <div style={{ flex: 1 }} />
-                <div style={{ flex: '0 0 auto', textAlign: 'center', fontWeight: 500, fontSize: 14, color: '#333', letterSpacing: 1 }}>拍摄服务合同</div>
-                <div style={{ flex: 1, textAlign: 'right', lineHeight: 1.5, fontSize: 11, color: '#666' }}>
-                  <div>订单编号：{detail.order_no}</div>
-                  <div>创建时间：{detail.created_at ? new Date(detail.created_at).toLocaleString('zh-CN') : '—'}</div>
-                  <div>订单状态：{statusText || '—'}</div>
-                </div>
-              </div>
-            </td>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td>
-              <div style={{ maxWidth: 700, margin: '0 auto', fontFamily: 'SimSun, STSong, serif', fontSize: 14, lineHeight: 1.8, color: '#222' }}>
-          {/* 客户信息（订单号/创建时间/状态已挪到表头右侧） */}
+      {/* 打印单据内容（屏幕外定位；打印时 @media print 覆盖到 (0,0)） */}
+      <div className="print-order-sheet" style={{ position: 'fixed', left: -10000, top: 0, width: '100%', padding: '20mm 15mm' }}>
+        <style>{`
+          @media print {
+            body * { visibility: hidden; }
+            .print-order-sheet, .print-order-sheet * { visibility: visible; }
+            .print-order-sheet { position: absolute !important; left: 0 !important; top: 0 !important; width: 100% !important; padding: 20mm 15mm !important; }
+            @page { size: A4; margin: 0; }
+          }
+        `}</style>
+        <div style={{ maxWidth: 700, margin: '0 auto', fontFamily: 'SimSun, STSong, serif', fontSize: 14, lineHeight: 1.8, color: '#222' }}>
+          {/* 标题 */}
+          <div style={{ textAlign: 'center', borderBottom: '2px solid #000', paddingBottom: 16, marginBottom: 20 }}>
+            <div style={{ fontSize: 22, fontWeight: 400, letterSpacing: 4 }}>拍摄服务合同</div>
+            <div style={{ fontSize: 14, marginTop: 8, color: '#555' }}>订单编号：{detail.order_no}</div>
+            <div style={{ fontSize: 13, marginTop: 4, color: '#555' }}>创建时间：{detail.created_at ? new Date(detail.created_at).toLocaleString('zh-CN') : '—'}　·　订单状态：{statusText || '—'}</div>
+          </div>
+
+          {/* 客户信息 */}
           <div style={{ marginBottom: 12 }}>
             <div style={{ fontSize: 16, fontWeight: 400, borderBottom: '1px solid #ccc', paddingBottom: 6, marginBottom: 10 }}>客户信息</div>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14, lineHeight: 1.8 }}>
@@ -2841,12 +2826,8 @@ export default function OrderDetail() {
           <div style={{ textAlign: 'center', marginTop: 40, fontSize: 12, color: '#999', borderTop: '1px solid #ccc', paddingTop: 12 }}>
             <div>打印时间：{new Date().toLocaleString('zh-CN')}</div>
           </div>
-              </div>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-      </>
+        </div>
+      </div>
 
       {/* 订单记录全屏页（点击底部订单变更记录跳转，校 IMG_7533） */}
       {logModal && (
