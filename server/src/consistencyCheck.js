@@ -110,7 +110,7 @@ async function checkPkgMissingTemplate() {
 // ⑤ 选片统计漂移：task 缓存统计(like_count/exclude_count) vs mark 真实数据不一致 → 告警
 async function checkSelectionStatsDrift() {
   const tasks = await query(
-    "SELECT id, order_id, like_count, exclude_count FROM order_select_task WHERE status = 'selecting' OR status = 'submitted'"
+    "SELECT id, order_id, like_count, exclude_count FROM order_select_task WHERE status IN ('selecting','pending_payment','completed')"
   );
   const issues = [];
   for (const t of tasks) {

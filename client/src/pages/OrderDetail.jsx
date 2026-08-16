@@ -257,6 +257,14 @@ export default function OrderDetail() {
   const [svcRefundExpanded, setSvcRefundExpanded] = useState(false);
   const [svcAgreementExpanded, setSvcAgreementExpanded] = useState(false);
   const [svcPhotoAuthExpanded, setSvcPhotoAuthExpanded] = useState(false);
+  // 选片任务摘要（四表架构 V2）
+  const [selectionInfo, setSelectionInfo] = useState(null);
+  const loadSelection = useCallback(() => {
+    http.get('/api/selection/orders/' + id + '/task')
+      .then((r) => setSelectionInfo(r.data || {}))
+      .catch(() => setSelectionInfo(null));
+  }, [id]);
+  useEffect(loadSelection, [loadSelection]);
 
   const loadSel = useCallback((oid) => {
     http.get('/api/admin/photo-select/' + oid).then((r) => setSel(r.data)).catch(() => setSel(null));
@@ -1562,6 +1570,38 @@ export default function OrderDetail() {
           </div>
         </div>
       </section>
+
+      {/* ============ 选片任务摘要（固定靠前） ============ */}
+      {selectionInfo && (
+        <section style={{ margin: isMobile ? '8px 12px 0' : '8px 24px 0', background: '#FFFFFF', border: '1px solid ' + CARD_BORDER, borderRadius: 4, boxShadow: '0 1px 5px rgba(0,0,0,0.04)' }}>
+          <div style={{ padding: isMobile ? '14px 16px' : '14px 24px' }}>
+            <div className="flex items-center justify-between" style={{ flexWrap: 'wrap', gap: 10 }}>
+              <div style={{ fontSize: 14, color: '#222222', fontWeight: 400 }}>
+                选片
+                {selectionInfo.task && (
+                  <span style={{ marginLeft: 10, fontSize: 12, padding: '2px 10px', borderRadius: 10, background: selectionInfo.task.status === 'completed' ? 'rgba(126,205,187,0.18)' : 'rgba(245,166,35,0.15)', color: selectionInfo.task.status === 'completed' ? '#3E9C8B' : '#C77B00' }}>
+                    {({ not_started: '未开启', selecting: '选片中', pending_payment: '待支付', completed: '已完成', reset: '已重置' })[selectionInfo.task.status] || selectionInfo.task.status}
+                  </span>
+                )}
+              </div>
+              {!isMobile && <button type="button" onClick={() => nav('/selections')} style={{ background: 'none', border: 'none', color: BLUE, fontSize: 13, cursor: 'pointer', padding: 0 }}>管理选片 ›</button>}
+            </div>
+            {(!selectionInfo.task || !selectionInfo.photo_total) ? (
+              <div style={{ fontSize: 13, color: '#999999', marginTop: 10 }}>尚未上传底片，请到「在线选片」上传底片并开启选片。</div>
+            ) : (
+              <div className="flex" style={{ gap: isMobile ? 14 : 28, marginTop: 12, flexWrap: 'wrap' }}>
+                <span style={{ fontSize: 13, color: '#666666' }}>底片 <span style={{ color: '#222222' }}>{selectionInfo.photo_total}</span> 张</span>
+                <span style={{ fontSize: 13, color: '#666666' }}>保留 <span style={{ color: '#FF5A5F' }}>{selectionInfo.stats ? selectionInfo.stats.keep : 0}</span> 张</span>
+                <span style={{ fontSize: 13, color: '#666666' }}>淘汰 <span style={{ color: '#8E8E93' }}>{selectionInfo.stats ? selectionInfo.stats.reject : 0}</span> 张</span>
+                <span style={{ fontSize: 13, color: '#666666' }}>加选 <span style={{ color: '#222222' }}>{selectionInfo.extra ? selectionInfo.extra.extraCount : 0}</span> 张 · ¥{selectionInfo.extra ? selectionInfo.extra.extraFee.toFixed(2) : '0.00'}</span>
+                {selectionInfo.task && selectionInfo.task.status === 'pending_payment' && (
+                  <span style={{ fontSize: 13, color: '#C77B00' }}>待支付 ¥{(selectionInfo.task.pending_fee || 0).toFixed(2)}</span>
+                )}
+              </div>
+            )}
+          </div>
+        </section>
+      )}
 
       {/* ============ 客户&订单基础信息卡片（全卡 1:1 复刻，750 设计稿，rpx） ============ */}
       <section style={{ margin: isMobile ? '8px 12px 0' : '8px 24px 0', background: '#FFFFFF', borderRadius: CARD_RADIUS, boxShadow: CARD_SHADOW }}>

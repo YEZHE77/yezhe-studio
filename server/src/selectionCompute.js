@@ -4,20 +4,16 @@
 // 加片计费模型（简单线性）：加选数量 = max(0, 保留数 - 免费精修张数)；加选金额 = 加选数量 × 加片单价。
 
 export const TASK_STATUS = {
-  NOT_STARTED: 'not_started', // 未开启
-  SELECTING: 'selecting',     // 选片中
-  SUBMITTED: 'submitted',     // 已提交
-  RESET: 'reset'              // 已重置
+  NOT_STARTED: 'not_started',       // 未开启
+  SELECTING: 'selecting',           // 选片中
+  PENDING_PAYMENT: 'pending_payment', // 待支付加片费（原版：有加片费提交后进入，选片不锁定）
+  COMPLETED: 'completed',           // 已完成（无加片费直接锁定，或有加片费已支付）
+  RESET: 'reset'                    // 已重置（瞬态，重置后回到选片中）
 };
 
 export const MARK_STATUS = {
   KEEP: 'keep',     // 保留
   REJECT: 'reject'  // 淘汰
-};
-
-export const PAY_STATUS = {
-  UNPAID: 'unpaid', // 待支付
-  PAID: 'paid'      // 已支付
 };
 
 // 加片计费：保留数超出免费额度部分按单价计费（线性，不设阶梯）
