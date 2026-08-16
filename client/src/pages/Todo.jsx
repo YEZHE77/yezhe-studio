@@ -47,7 +47,6 @@ export default function Todo() {
   const [loading, setLoading] = useState(true);
   const [activeKey, setActiveKey] = useState('deposit');
   const [lunar, setLunar] = useState('');
-  const [busyId, setBusyId] = useState(null);
   const tabsScrollRef = useRef(null);
   const tabRefs = useRef({});
 
@@ -71,16 +70,6 @@ export default function Todo() {
       .then((r) => { const map = r.data || {}; setLunar(map[today.ymd] || ''); })
       .catch(() => {});
   }, [today.monthKey, today.ymd]);
-
-  const markDone = async (t) => {
-    if (busyId) return;
-    setBusyId(t.id);
-    try {
-      await http.post('/api/todo/' + t.id + '/done');
-      load();
-    } catch (e) { alert((e.response && e.response.data && e.response.data.error) || '操作失败'); }
-    finally { setBusyId(null); }
-  };
 
   const pending = items.filter((t) => t.status === 'pending');
   const activeList = pending.filter((t) => t.todo_type === activeKey);
@@ -112,12 +101,6 @@ export default function Todo() {
         <div style={{ fontSize: 12, color: MUTED, whiteSpace: 'nowrap', flexShrink: 0, textAlign: 'right', display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-end' }}>
           {(t.shoot_date || '').replace(/-/g, '.')}
           {t.shoot_time && <span style={{ color: '#1f2329' }}>{t.shoot_time}</span>}
-          {t.status === 'pending' && (
-            <button type="button" onClick={() => markDone(t)} disabled={busyId === t.id}
-              style={{ fontSize: 12, padding: '3px 10px', borderRadius: 12, border: '1px solid ' + GREEN, color: GREEN, background: '#fff', cursor: busyId === t.id ? 'not-allowed' : 'pointer', opacity: busyId === t.id ? 0.5 : 1 }}>
-              {busyId === t.id ? '…' : '标记完成'}
-            </button>
-          )}
         </div>
       </div>
     );
@@ -125,20 +108,27 @@ export default function Todo() {
 
   return (
     <div style={{ minHeight: '100vh', background: '#F7F7F7', display: 'flex', flexDirection: 'column', width: '100%', maxWidth: 720, margin: '0 auto', boxShadow: '0 0 30px rgba(0,0,0,0.04)' }}>
-      {/* 顶部标题栏 */}
+      {/* 顶部标题栏：白底 + 深色图标文字 + 底部细灰分隔线（1:1 复刻 IMG_7599） */}
       <div style={{
-        position: 'sticky', top: 0, zIndex: 20, background: '#1f1f1f', color: '#fff',
-        paddingTop: 'env(safe-area-inset-top, 0px)', display: 'flex', alignItems: 'center', height: 44, padding: '0 12px'
+        position: 'sticky', top: 0, zIndex: 20, background: '#fff', color: '#1f2329',
+        paddingTop: 'env(safe-area-inset-top, 0px)', display: 'flex', alignItems: 'center', height: 44, padding: '0 12px',
+        borderBottom: '1px solid #EFEFF0'
       }}>
         <button onClick={() => nav(-1)} aria-label="返回"
-          style={{ background: 'transparent', border: 0, padding: 6, marginRight: 4, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          style={{ background: 'transparent', border: 0, padding: 6, marginRight: 4, color: '#1f2329', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
         </button>
-        <div style={{ flex: 1, textAlign: 'center', fontSize: 16, fontWeight: 500, marginRight: 28 }}>待办事项</div>
+        <div style={{ flex: 1, textAlign: 'center', fontSize: 16, fontWeight: 500, marginRight: 28, color: '#1f2329' }}>待办事项</div>
       </div>
 
-      {/* 日期卡片 */}
+      {/* 日期卡片：左侧日历图标 + 数字 + 月份；右侧农历（1:1 复刻参考图） */}
       <div style={{ background: 'linear-gradient(135deg, #2a2a2a 0%, #3a3a3a 100%)', color: '#fff', padding: '14px 16px 18px', display: 'flex', alignItems: 'center', gap: 14 }}>
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.7)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+          <rect x="3" y="5" width="18" height="16" rx="2" />
+          <line x1="3" y1="10" x2="21" y2="10" />
+          <line x1="8" y1="3" x2="8" y2="7" />
+          <line x1="16" y1="3" x2="16" y2="7" />
+        </svg>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
           <span style={{ fontSize: 36, fontWeight: 600, lineHeight: 1, letterSpacing: -1 }}>{today.big}</span>
           <span style={{ fontSize: 13, color: '#cfcfcf' }}>{today.monthName}</span>
