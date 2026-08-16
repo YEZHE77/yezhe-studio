@@ -258,16 +258,20 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* 品牌管理 + 日常管理（合并成一个大卡片，纯白底 + #E6E9EF 边框更清晰；内部卡片设计保持不变） */}
-      <div className="bg-white border mt-4" style={{ borderRadius: 8, borderColor: '#E6E9EF', padding: '22px 16px 28px' }}>
-        <div className="text-[16px] mb-6" style={{ color: '#333333', fontWeight: 400 }}>品牌管理</div>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-[10px]">
-          {BRAND_CARDS.map((c) => <BigCard key={c.title} {...c} />)}
-        </div>
-        <div style={{ height: 1, background: '#E6E9EF', margin: '24px 0 16px' }} />
-        <div className="text-[16px] mb-6" style={{ color: '#333333', fontWeight: 400 }}>日常管理</div>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-[10px]">
-          {OPS_CARDS.map((c) => <BigCard key={c.title} {...c} />)}
+      {/* 品牌管理 + 日常管理（合并成一个大卡片；左外侧 1px 浅灰辅助线跟随卡片高度延伸，恢复原始位置） */}
+      <div className="mt-4 flex">
+        {/* 左外侧辅助线：仅 lg 显示；self-stretch 自动撑满父容器 = 大卡片高度 */}
+        <div className="hidden lg:block self-stretch w-px" style={{ background: '#E6E9EF', marginRight: 12 }} />
+        <div className="flex-1 bg-white border" style={{ borderRadius: 8, borderColor: '#E6E9EF', padding: '22px 16px 28px' }}>
+          <div className="text-[16px] mb-6" style={{ color: '#333333', fontWeight: 400 }}>品牌管理</div>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-[10px]">
+            {BRAND_CARDS.map((c) => <BigCard key={c.title} {...c} />)}
+          </div>
+          <div style={{ height: 1, background: '#E6E9EF', margin: '24px 0 16px' }} />
+          <div className="text-[16px] mb-6" style={{ color: '#333333', fontWeight: 400 }}>日常管理</div>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-[10px]">
+            {OPS_CARDS.map((c) => <BigCard key={c.title} {...c} />)}
+          </div>
         </div>
       </div>
     </div>
