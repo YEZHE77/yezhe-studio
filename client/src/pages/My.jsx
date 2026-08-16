@@ -177,11 +177,6 @@ export default function My() {
             <span className="mr-2 text-sm" style={{ color: '#666' }}>{wechatValue}</span>
             <span className="text-gray-300">›</span>
           </div>
-          {/* 商家管理后台 */}
-          <div onClick={() => nav('/login')} className="flex cursor-pointer items-center border-b border-gray-100 px-5 py-4 last:border-b-0">
-            <span className="flex-1 text-sm">商家管理后台</span>
-            <span className="text-gray-300">›</span>
-          </div>
         </div>
       </div>
 
