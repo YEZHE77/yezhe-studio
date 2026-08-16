@@ -13,12 +13,7 @@ const MUTED = '#8E8E93';
 const DIV = '#EFEFF1';
 const BRAND = '#007AFF';
 
-// ===== 返回 / 帮助图标 =====
-const BackIcon = () => (
-  <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#1f2329" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M15 18l-6-6 6-6" />
-  </svg>
-);
+// ===== 帮助图标 =====
 const HelpIcon = () => (
   <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#AEAEB2" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
     <circle cx="12" cy="12" r="10" />
@@ -107,16 +102,13 @@ export default function VisitorSettings() {
 
   return (
     <div style={{ minHeight: '100vh', background: '#F2F2F4', display: 'flex', flexDirection: 'column' }}>
-      {/* 顶部：白底 + sticky + 底分隔线（iOS 简洁顶栏） */}
-      <div style={{ position: 'sticky', top: 0, zIndex: 10, background: '#fff', borderBottom: `1px solid ${DIV}` }}>
-        <div style={{ position: 'relative', display: 'flex', alignItems: 'center', height: 44, padding: '0 12px' }}>
-          <button onClick={() => nav(-1)} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', padding: 4, display: 'flex', alignItems: 'center' }} aria-label="返回"><BackIcon /></button>
-          <div style={{ position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%, -50%)', fontSize: 17, color: TEXT }}>访客设置</div>
-          <button onClick={() => setHelpOpen(true)} style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', padding: '4px 6px', display: 'flex', alignItems: 'center', gap: 3, cursor: 'pointer' }}>
-            <HelpIcon />
-            <span style={{ fontSize: 14, color: BRAND }}>帮助</span>
-          </button>
-        </div>
+      {/* 页面首行标题（全局 MobileShell 已有「< 返回 马亚」，页面只显示标题 + 帮助，不再做返回按钮） */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px 6px' }}>
+        <div style={{ fontSize: 22, color: TEXT }}>访客设置</div>
+        <button onClick={() => setHelpOpen(true)} style={{ background: 'none', border: 'none', padding: '4px 6px', display: 'flex', alignItems: 'center', gap: 3, cursor: 'pointer' }}>
+          <HelpIcon />
+          <span style={{ fontSize: 14, color: BRAND }}>帮助</span>
+        </button>
       </div>
 
       {/* 分组标题 */}
