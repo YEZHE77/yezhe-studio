@@ -298,25 +298,25 @@ export default function Home() {
 
       {/* 底部联系卡片：左侧信息 + 居中添加客服 + 右侧悬浮浮层按钮组（关注/预约/我的）+ 底部 slogan */}
       <div id="footer-section" className="relative m-4 mt-[70px] rounded-2xl p-5 text-white sm:m-8 sm:rounded-3xl sm:p-8" style={{ background: '#2c2c2c' }}>
-        <div style={{ textAlign: 'center', fontSize: 18, fontWeight: 400, letterSpacing: 4, marginBottom: 18 }}>联系我们</div>
+        <div style={{ textAlign: 'center', fontSize: 19, fontWeight: 400, letterSpacing: 4, marginBottom: 20 }}>联系我们</div>
         {/* 信息行：右侧预留 60px 给悬浮按钮，不被遮挡 */}
         <div style={{ paddingRight: 60 }}>
           {studio.contact && studio.contact.wechat && (
             <div style={{ display: 'flex', alignItems: 'center', fontSize: 13, marginBottom: 10, gap: 8 }}>
-              <span style={{ width: 36, color: '#999', flexShrink: 0 }}>微信</span>
+              <span style={{ width: 36, color: '#aaa', flexShrink: 0 }}>微信</span>
               <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 14 }}>{studio.contact.wechat}</span>
               <span style={{ color: '#7ecdbb', fontSize: 12, cursor: 'pointer', flexShrink: 0 }} onClick={copyWechat}>复制</span>
             </div>
           )}
           {studio.contact && studio.contact.phone && (
             <div style={{ display: 'flex', alignItems: 'center', fontSize: 13, marginBottom: 10, gap: 8 }}>
-              <span style={{ width: 36, color: '#999', flexShrink: 0 }}>电话</span>
+              <span style={{ width: 36, color: '#aaa', flexShrink: 0 }}>电话</span>
               <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 14 }}>{studio.contact.phone}</span>
             </div>
           )}
           {studio.contact && studio.contact.address && (
             <div style={{ display: 'flex', alignItems: 'center', fontSize: 13, marginBottom: 0, gap: 8 }}>
-              <span style={{ width: 36, color: '#999', flexShrink: 0 }}>地址</span>
+              <span style={{ width: 36, color: '#aaa', flexShrink: 0 }}>地址</span>
               <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 14 }}>{studio.contact.address}</span>
             </div>
           )}
@@ -324,14 +324,14 @@ export default function Home() {
         {/* 添加客服按钮：居中 */}
         <div style={{ display: 'flex', justifyContent: 'center', marginTop: 16 }}>
           <button onClick={() => setShowServiceQr(true)}
-            style={{ padding: '6px 20px', borderRadius: 22, border: '1px solid #7ecdbb', color: '#7ecdbb', fontSize: 13, background: 'transparent', display: 'flex', alignItems: 'center', gap: 4 }}>
+            style={{ padding: '7px 22px', borderRadius: 22, border: '1px solid #7ecdbb', color: '#7ecdbb', fontSize: 14, background: 'transparent', display: 'flex', alignItems: 'center', gap: 4 }}>
             添加客服 <span style={{ fontSize: 10 }}>&gt;</span>
           </button>
         </div>
-        <div style={{ textAlign: 'center', fontSize: 12, color: '#888', marginTop: 14 }}>{studio.slogan || '记录婚礼，也记录爱发生的样子'}</div>
+        <div style={{ textAlign: 'center', fontSize: 11, color: '#888', marginTop: 16 }}>{studio.slogan || '记录婚礼，也记录爱发生的样子'}</div>
 
-        {/* 右侧悬浮浮层按钮组：绝对定位浮在卡片表面右缘外（关注/预约/我的） */}
-        <div className="absolute flex flex-col items-center" style={{ right: -16, top: 56, gap: 8 }}>
+        {/* 右侧悬浮浮层按钮组：绝对定位浮在卡片表面右缘（紧贴，视觉叠在卡片上） */}
+        <div className="absolute flex flex-col items-center" style={{ right: -4, top: 52, gap: 8 }}>
           {/* 关注：白底 + 空心爱心灰 + 文字灰 */}
           <button onClick={copyWechat}
             style={{ width: 44, height: 44, borderRadius: '50%', background: '#fff', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#666', fontSize: 9, boxShadow: '0 2px 8px rgba(0,0,0,0.12)' }} aria-label="关注">
