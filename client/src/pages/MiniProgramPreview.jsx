@@ -23,30 +23,30 @@ export default function MiniProgramPreview() {
   const pad = Math.round(d.frameW * 10 / 410);
 
   return (
-    <div style={{ minHeight: '100vh', background: '#F8F8F8', display: 'flex', flexDirection: 'column', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif' }}>
+    <div style={{ minHeight: '100vh', background: '#000', display: 'flex', flexDirection: 'column', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif', color: '#fff' }}>
       {/* 顶部 */}
-      <header style={{ display: 'flex', alignItems: 'center', padding: '12px 24px', background: '#fff', borderBottom: '1px solid #E5E5E5' }}>
-        <button onClick={() => nav(-1)} style={{ background: 'none', border: 'none', padding: '4px 8px', cursor: 'pointer', fontSize: 20, color: '#666', lineHeight: 1 }} aria-label="返回">‹</button>
-        <div style={{ flex: 1, textAlign: 'center', fontSize: 16, color: '#1f2329' }}>小程序预览</div>
+      <header style={{ display: 'flex', alignItems: 'center', padding: '12px 24px', background: '#000', borderBottom: '1px solid #1f1f1f' }}>
+        <button onClick={() => nav(-1)} style={{ background: 'none', border: 'none', padding: '4px 8px', cursor: 'pointer', fontSize: 20, color: '#fff', lineHeight: 1 }} aria-label="返回">‹</button>
+        <div style={{ flex: 1, textAlign: 'center', fontSize: 16, color: '#fff' }}>小程序预览</div>
         <div style={{ width: 30 }} />
       </header>
 
       {/* 工具栏：URL + 刷新 + 设备切换 + 快捷链接 */}
-      <div style={{ display: 'flex', gap: 8, padding: '14px 24px', background: '#fff', borderBottom: '1px solid #E5E5E5', alignItems: 'center', flexWrap: 'wrap' }}>
-        <span style={{ fontSize: 13, color: '#666' }}>链接</span>
-        <input value={url} onChange={(e) => setUrl(e.target.value)} style={{ flex: 1, minWidth: 280, padding: '8px 12px', border: '1px solid #E5E5E5', borderRadius: 6, fontSize: 13, outline: 'none' }} />
+      <div style={{ display: 'flex', gap: 8, padding: '14px 24px', background: '#0a0a0a', borderBottom: '1px solid #1f1f1f', alignItems: 'center', flexWrap: 'wrap' }}>
+        <span style={{ fontSize: 13, color: '#999' }}>链接</span>
+        <input value={url} onChange={(e) => setUrl(e.target.value)} style={{ flex: 1, minWidth: 280, padding: '8px 12px', background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 6, fontSize: 13, outline: 'none', color: '#fff' }} />
         <button onClick={() => { setError(false); setRefreshKey((k) => k + 1); }} style={{ padding: '8px 16px', background: '#2DB7F5', color: '#fff', border: 'none', borderRadius: 6, cursor: 'pointer', fontSize: 13 }}>刷新</button>
-        <select value={device} onChange={(e) => setDevice(e.target.value)} style={{ padding: '8px 12px', border: '1px solid #E5E5E5', borderRadius: 6, fontSize: 13, background: '#fff' }}>
+        <select value={device} onChange={(e) => setDevice(e.target.value)} style={{ padding: '8px 12px', background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 6, fontSize: 13, color: '#fff' }}>
           <option value="iPhone13">iPhone 13 / 14</option>
           <option value="iPhoneSE">iPhone SE（小屏）</option>
         </select>
-        <span style={{ width: 1, height: 20, background: '#E5E5E5', margin: '0 4px' }} />
-        <button onClick={() => setUrl(window.location.origin + '/home')} style={{ padding: '8px 12px', background: '#fff', border: '1px solid #E5E5E5', borderRadius: 6, cursor: 'pointer', fontSize: 13, color: '#1f2329' }}>微官网</button>
-        <button onClick={() => setUrl(window.location.origin + '/package-center')} style={{ padding: '8px 12px', background: '#fff', border: '1px solid #E5E5E5', borderRadius: 6, cursor: 'pointer', fontSize: 13, color: '#1f2329' }}>套系中心</button>
+        <span style={{ width: 1, height: 20, background: '#2a2a2a', margin: '0 4px' }} />
+        <button onClick={() => setUrl(window.location.origin + '/home')} style={{ padding: '8px 12px', background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 6, cursor: 'pointer', fontSize: 13, color: '#fff' }}>微官网</button>
+        <button onClick={() => setUrl(window.location.origin + '/package-center')} style={{ padding: '8px 12px', background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 6, cursor: 'pointer', fontSize: 13, color: '#fff' }}>套系中心</button>
       </div>
 
-      {/* 设备预览区（背景棋盘格 + 居中 + iPhone 框架） */}
-      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 40, backgroundImage: 'repeating-linear-gradient(45deg, #e8e8e8 0 12px, #f5f5f5 12px 24px)' }}>
+      {/* 设备预览区（黑色斜纹 + 居中 + iPhone 框架） */}
+      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 40, background: '#000', backgroundImage: 'repeating-linear-gradient(45deg, #141414 0 14px, #1c1c1c 14px 28px)' }}>
         {/* iPhone 框架 */}
         <div style={{ position: 'relative', width: d.frameW, height: d.frameH, background: '#0e0e0e', borderRadius: d.radius, boxShadow: '0 25px 60px rgba(0,0,0,0.25)', padding: pad, boxSizing: 'border-box' }}>
           {/* notch / 灵动岛（iPhoneSE 无） */}
