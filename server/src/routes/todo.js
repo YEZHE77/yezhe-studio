@@ -33,12 +33,18 @@ router.get('/', async (req, res) => {
     // 数据补齐：保证 todo_items 表与订单 stage 一致（用户看到的「订单不同步」根因修复）
     await syncAllOrderTodos();
     const { items, counts } = await listTodos();
-    // JOIN 订单，附客户名 / 拍摄日期，前端展示无需再查
+    // JOIN 订单，附客户名 / 拍摄日期 / 拍摄时间，前端展示无需再查
     const rows = await query(
-      `SELECT t.*, o.customer_name, o.groom_name, o.bride_name, o.shoot_date, o.status AS order_status, o.order_no
+      `SELECT t.*, o.customer_name, o.groom_name, o.bride_name, o.shoot_date, o.time_slots, o.status AS order_status, o.order_no
        FROM todo_items t LEFT JOIN orders o ON o.id = t.order_id
        ORDER BY (t.status = 'pending') DESC, t.id DESC`
     );
+    // 解析 time_slots（JSON 数组）为可展示的字符串，无值返回 null
+    for (const r of rows) {
+      let slots = [];
+      try { slots = Array.isArray(r.time_slots) ? r.time_slots : (typeof r.time_slots === 'string' ? JSON.parse(r.time_slots || '[]') : []); } catch { slots = []; }
+      r.shoot_time = Array.isArray(slots) && slots.length ? slots.join(' / ') : null;
+    }
     res.json({ list: rows, counts });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });

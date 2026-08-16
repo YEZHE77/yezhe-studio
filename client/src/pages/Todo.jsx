@@ -46,7 +46,6 @@ export default function Todo() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeKey, setActiveKey] = useState('deposit');
-  const [showDone, setShowDone] = useState(false);
   const [lunar, setLunar] = useState('');
   const [busyId, setBusyId] = useState(null);
   const tabsScrollRef = useRef(null);
@@ -84,7 +83,6 @@ export default function Todo() {
   };
 
   const pending = items.filter((t) => t.status === 'pending');
-  const done = items.filter((t) => t.status === 'done');
   const activeList = pending.filter((t) => t.todo_type === activeKey);
 
   // 切换 Tab 时滚动到视口中央
@@ -113,6 +111,7 @@ export default function Todo() {
         </div>
         <div style={{ fontSize: 12, color: MUTED, whiteSpace: 'nowrap', flexShrink: 0, textAlign: 'right', display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-end' }}>
           {(t.shoot_date || '').replace(/-/g, '.')}
+          {t.shoot_time && <span style={{ color: '#1f2329' }}>{t.shoot_time}</span>}
           {t.status === 'pending' && (
             <button type="button" onClick={() => markDone(t)} disabled={busyId === t.id}
               style={{ fontSize: 12, padding: '3px 10px', borderRadius: 12, border: '1px solid ' + GREEN, color: GREEN, background: '#fff', cursor: busyId === t.id ? 'not-allowed' : 'pointer', opacity: busyId === t.id ? 0.5 : 1 }}>
@@ -198,22 +197,6 @@ export default function Todo() {
         ) : (
           <div style={{ background: '#fff', borderRadius: 12, overflow: 'hidden' }}>
             {activeList.map(renderRow)}
-          </div>
-        )}
-
-        {/* 已归档（折叠） */}
-        {done.length > 0 && (
-          <div style={{ marginTop: 12 }}>
-            <button type="button" onClick={() => setShowDone((v) => !v)}
-              style={{ width: '100%', padding: '10px 0', background: 'none', border: 'none', color: MUTED, fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
-              <span>{showDone ? '收起' : '展开'}已归档（{done.length}）</span>
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ transform: showDone ? 'rotate(180deg)' : 'none', transition: 'transform .2s' }}><polyline points="6 9 12 15 18 9"></polyline></svg>
-            </button>
-            {showDone && (
-              <div style={{ background: '#fff', borderRadius: 12, overflow: 'hidden', opacity: 0.7 }}>
-                {done.map(renderRow)}
-              </div>
-            )}
           </div>
         )}
       </div>
