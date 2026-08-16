@@ -45,14 +45,15 @@ function isExpired(expireAt) {
   return !Number.isNaN(t) && t < Date.now();
 }
 
-// 关键操作审计（提交/支付/重置/删除底片）：记录操作人 + 状态变更前后值；失败不阻塞主业务
-async function auditSelection(orderId, operator, action, beforeStatus, afterStatus, detail) {
+// 写订单变更记录（orders.logs，与订单详情底部「订单变更记录」同一数据源）；失败不阻塞主业务
+async function appendOrderLog(orderId, text) {
   try {
-    await insert(
-      'INSERT INTO selection_audit (order_id, operator_uid, operator_name, action, before_status, after_status, detail) VALUES (?,?,?,?,?,?,?)',
-      [Number(orderId), operator && operator.uid != null ? operator.uid : null, (operator && operator.name) || '', action, beforeStatus || null, afterStatus || null, detail || '']
-    );
-  } catch (e) { console.error('[selection] 审计日志写入失败：', e.message); }
+    const cur = await get('SELECT logs FROM orders WHERE id = ?', [orderId]);
+    let logs = [];
+    if (cur && cur.logs) { try { logs = JSON.parse(cur.logs); } catch { logs = []; } }
+    logs.push({ t: nowISO(), text });
+    await run('UPDATE orders SET logs = ? WHERE id = ?', [JSON.stringify(logs), orderId]);
+  } catch (e) { console.error('[selection] 写订单变更记录失败：', e.message); }
 }
 
 // ===== 选片访问令牌（密码通过后签发，2 小时有效；免密任务可不带） =====
@@ -316,9 +317,8 @@ router.post('/c/:token/submit', async (req, res) => {
       });
     } catch (e) { console.error('[selection] 提交后通知失败', e.message); }
 
-    // 审计：客户提交（操作人=customer，状态变更前后值）
-    await auditSelection(order.id, { uid: null, name: 'customer' }, 'submit', task.status, nextStatus,
-      `保留${summary.stats.keep}张 淘汰${summary.stats.reject}张 加选${summary.extra.extraCount}张 加片费¥${summary.extra.extraFee.toFixed(2)}`);
+    // 写入订单变更记录（客户提交）
+    await appendOrderLog(order.id, `客户提交选片：保留 ${summary.stats.keep} 张、加选 ${summary.extra.extraCount} 张，进入「${nextStatus === TASK_STATUS.PENDING_PAYMENT ? '待支付加片费' : '已完成'}」`);
 
     res.json({ ok: true, status: nextStatus, stats: summary.stats, extra: summary.extra, pending_fee: hasFee ? summary.extra.extraFee : 0 });
   } catch (e) { res.status(500).json({ error: e.message }); }
@@ -488,8 +488,8 @@ router.delete('/orders/:orderId/photos/:photoId', authRequired, requireRole(...S
           [summary.stats.keep, summary.stats.reject, summary.extra.extraCount, summary.extra.extraFee, nowISO(), task.id]);
       }
     });
-    // 审计：删除底片（操作人 + 状态前后值）
-    await auditSelection(o.id, { uid: req.user.uid, name: req.user.username }, 'delete_photo', task ? task.status : null, task ? task.status : null, `删除底片 photo_id=${photoId}`);
+    // 写入订单变更记录（删除底片）
+    await appendOrderLog(o.id, `删除底片（photo_id=${photoId}）`);
     res.json({ ok: true, backup: backup && backup.ok ? { filename: backup.filename, localPath: backup.localPath } : null });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -537,8 +537,8 @@ router.post('/orders/:orderId/reset', authRequired, requireRole(...SELECTION_ADM
       await tx.run('UPDATE order_select_task SET status = ?, like_count = 0, exclude_count = 0, extra_count = 0, extra_fee = 0, pending_fee = 0, pending_count = 0, version = ?, reset_at = ?, updated_at = ? WHERE id = ?',
         [TASK_STATUS.SELECTING, version, resetAt, resetAt, task.id]);
     });
-    // 审计：重置选片（操作人 + 状态前后值）
-    await auditSelection(o.id, { uid: req.user.uid, name: req.user.username }, 'reset', task.status, TASK_STATUS.SELECTING, `第 ${version} 轮重置，清空全部草稿标记`);
+    // 写入订单变更记录（重置选片）
+    await appendOrderLog(o.id, `商家重置选片（第 ${version} 轮），清空全部草稿标记`);
     try {
       await generateEventTodo(o.id, 'select_reset', '待客户重新选片', `商家已重置选片（第 ${version} 轮），客户需重新选片`, `reset_${resetAt}`);
       await emitMessage({ message_type: 'order_msg', business_event: 'select_reset', title: '选片已重置', content: `订单 ${o.order_no || o.id} 选片已重置，客户需重新选片`, rel_id: String(o.id), rel_model: 'order' });
@@ -575,7 +575,7 @@ router.post('/orders/:orderId/pay', authRequired, requireRole(...PAY_ROLES), asy
     const b = req.body || {};
     const r = await markPaid(req.params.orderId, String(b.pay_flow_no || '').trim(), b.channel || 'cash', 'offline');
     // 审计：支付成功（操作人 + 状态变更前后值）
-    if (!r.already) await auditSelection(req.params.orderId, { uid: req.user.uid, name: req.user.username }, 'pay', TASK_STATUS.PENDING_PAYMENT, TASK_STATUS.COMPLETED, `流水号=${b.pay_flow_no || ''} 渠道=${b.channel || 'cash'} 金额=¥${Number(r.fee || 0).toFixed(2)}`);
+    if (!r.already) await appendOrderLog(req.params.orderId, `选片加片费已支付 ¥${Number(r.fee || 0).toFixed(2)}（${b.channel || 'cash'}）`);
     try {
       await emitMessage({ message_type: 'order_msg', business_event: 'select_paid', title: '选片加片费已支付', content: `订单 ${req.params.orderId} 选片加片费已支付`, rel_id: String(req.params.orderId), rel_model: 'order' });
     } catch {}
@@ -590,7 +590,7 @@ router.post('/orders/:orderId/pay-callback', async (req, res) => {
     const success = String(b.status) === 'success' || String(b.result_code) === 'SUCCESS';
     if (!success) return res.json({ ok: true, status: TASK_STATUS.PENDING_PAYMENT, message: '支付未成功，维持待支付' });
     const r = await markPaid(req.params.orderId, String(b.transaction_id || b.pay_flow_no || '').trim(), 'online', 'online');
-    if (!r.already) await auditSelection(req.params.orderId, { uid: null, name: 'system' }, 'pay_callback', TASK_STATUS.PENDING_PAYMENT, TASK_STATUS.COMPLETED, `线上回调 流水号=${b.transaction_id || b.pay_flow_no || ''}`);
+    if (!r.already) await appendOrderLog(req.params.orderId, `选片加片费线上支付成功（流水号 ${b.transaction_id || b.pay_flow_no || ''}）`);
     res.json({ ok: true, status: TASK_STATUS.COMPLETED, already: r.already });
   } catch (e) { res.status(400).json({ error: e.message }); }
 });

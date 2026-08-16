@@ -327,24 +327,6 @@ CREATE TABLE IF NOT EXISTS order_select_mark (
 );
 CREATE INDEX IF NOT EXISTS idx_order_select_mark_task ON order_select_mark(task_id);`;
 
-// 选片关键操作审计日志（客户提交 / 支付回调 / 重置 / 删除底片，记录操作人 + 状态变更前后值）
-const PG_SELECTION_AUDIT = `
-CREATE TABLE IF NOT EXISTS selection_audit (
-  id SERIAL PRIMARY KEY, order_id INTEGER NOT NULL,
-  operator_uid INTEGER, operator_name TEXT,
-  action TEXT NOT NULL, before_status TEXT, after_status TEXT,
-  detail TEXT, created_at TIMESTAMPTZ DEFAULT now()
-);
-CREATE INDEX IF NOT EXISTS idx_selection_audit_order ON selection_audit(order_id, created_at);`;
-const SQLITE_SELECTION_AUDIT = `
-CREATE TABLE IF NOT EXISTS selection_audit (
-  id INTEGER PRIMARY KEY AUTOINCREMENT, order_id INTEGER NOT NULL,
-  operator_uid INTEGER, operator_name TEXT,
-  action TEXT NOT NULL, before_status TEXT, after_status TEXT,
-  detail TEXT, created_at TEXT DEFAULT CURRENT_TIMESTAMP
-);
-CREATE INDEX IF NOT EXISTS idx_selection_audit_order ON selection_audit(order_id, created_at);`;
-
 // 消息中心（B 端管理员）：system_message 系统消息表
 // message_type: customer_consult 顾客咨询 / order_msg 订单消息 / todo_alert 待办提醒 / system 系统通知
 // 去重：business_event + rel_id，5 分钟内相同事件不重复生成
@@ -602,8 +584,6 @@ export async function initSchema() {
   await ensureColumn('order_select_task', 'pay_flow_no', 'TEXT');
   // 外键 + CHECK 约束补齐（旧结构无约束：空表重建 / PG ALTER 增约束）
   await ensureSelectionConstraints();
-  // 选片关键操作审计日志表
-  for (const s of (dialect === 'pg' ? PG_SELECTION_AUDIT : SQLITE_SELECTION_AUDIT).split(';').map((x) => x.trim()).filter(Boolean)) await run(s);
 
   // 消息中心表（system_message）
   for (const s of (dialect === 'pg' ? PG_MESSAGE_TABLES : SQLITE_MESSAGE_TABLES).split(';').map((x) => x.trim()).filter(Boolean)) await run(s);
