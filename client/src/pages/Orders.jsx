@@ -819,18 +819,19 @@ function MobileOrderCenterView({ stats, list, listTotal, state, setState, refres
 
   return (
     <div style={{ minHeight: '100vh', background: '#F8F8F8', paddingBottom: 'calc(24px + env(safe-area-inset-bottom))' }}>
-      {/* 顶部导航：白色背景 + 深色图标文字 + 底部细灰边框（1:1 复刻 IMG_7599） */}
+      {/* 顶部导航：白底 + 深色图标 + 标题绝对定位居中（与下方「最近操作」筛选项视觉对齐） */}
       <div style={{
         position: 'sticky', top: 0, zIndex: 50,
         height: 48, background: '#fff', color: '#1f2329',
         borderBottom: '1px solid #EFEFF0',
-        display: 'flex', alignItems: 'center', padding: '0 12px'
+        padding: '0 12px'
       }}>
-        <button onClick={() => nav('/')} style={{ background: 'none', border: 'none', padding: 4, color: '#1f2329', display: 'flex', alignItems: 'center' }}><IconBack /></button>
-        <div style={{ flex: 1, textAlign: 'center', fontSize: 16, color: '#1f2329' }}>订单中心</div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <button onClick={() => setSearchOpen(true)} style={{ background: 'none', border: 'none', padding: 4, color: '#1f2329', display: 'flex', alignItems: 'center' }}><IconSearch /></button>
-          <button onClick={openFilter} style={{ background: 'none', border: 'none', padding: 4, color: '#1f2329', display: 'flex', alignItems: 'center' }}><IconSetting /></button>
+        <button onClick={() => nav('/')} aria-label="返回"
+          style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', padding: 4, color: '#1f2329', display: 'flex', alignItems: 'center' }}><IconBack /></button>
+        <div style={{ position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%, -50%)', fontSize: 16, color: '#1f2329', whiteSpace: 'nowrap' }}>订单中心</div>
+        <div style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', display: 'flex', alignItems: 'center', gap: 8 }}>
+          <button onClick={() => setSearchOpen(true)} aria-label="搜索" style={{ background: 'none', border: 'none', padding: 4, color: '#1f2329', display: 'flex', alignItems: 'center' }}><IconSearch /></button>
+          <button onClick={openFilter} aria-label="设置" style={{ background: 'none', border: 'none', padding: 4, color: '#1f2329', display: 'flex', alignItems: 'center' }}><IconSetting /></button>
         </div>
       </div>
 
