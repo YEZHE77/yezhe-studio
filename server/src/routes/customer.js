@@ -50,18 +50,7 @@ router.post('/phone-login', async (req, res) => {
   }
 });
 
-// ===== 0.1 当前客户信息（H5「我的」登录状态校验）=====
-router.get('/me', customerRequired, async (req, res) => {
-  try {
-    const c = await get('SELECT id, openid, nickname, avatar, phone FROM customers WHERE id = ?', [req.customer.customerId]);
-    if (!c) return res.status(404).json({ error: '客户不存在' });
-    let phone = c.phone || '';
-    if (!phone && c.openid && c.openid.startsWith('h5_')) phone = c.openid.slice(3);
-    res.json({ ...c, phone });
-  } catch (e) {
-    res.status(500).json({ error: e.message });
-  }
-});
+// ===== 0.1 当前客户信息已迁至 customerMine（/api/customer/me，免验证码 cookie 会话），openid 版移除 =====
 
 // ===== 1. 预约提交 =====
 router.post('/appointment/submit', customerRequired, async (req, res) => {

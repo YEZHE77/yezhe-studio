@@ -1,0 +1,217 @@
+// routes/customerMine.js —— C 端免验证码手机号登录（不是开放注册）+ 我的页面数据
+// 核心约束：①非开放注册——手机号必须在订单表(cancelled=0 & is_deleted=0)有记录才允许登录 ②IP 限流 3/分
+//  ③cookie 会话 24h（与原 customerAuth 共用 c_session + customer_user 表，互斥覆盖）
+//  ④只读+行级隔离：登录后只能读自己手机号的订单/预约/档期，无任何写接口
+//  ⑤与原有 customer_token 单订单链接方式并行（不取代）
+import { Router } from 'express';
+import { randomBytes } from 'node:crypto';
+import { query, get, insert, run } from '../db.js';
+
+const router = Router();
+
+const COOKIE_NAME = 'c_session';
+const SESSION_HOURS = 24;
+const COOKIE_TTL = SESSION_HOURS * 3600 * 1000;
+
+// 内存态限流（单实例够用；Render 重启失效可接受）
+const loginRate = new Map(); // ip -> [timestamps]
+const RATE_MAX = 3;
+const RATE_WINDOW = 60 * 1000;
+
+const STATUS_LABEL = {
+  deposit: '已付定金', waiting: '等待拍摄', shot: '拍摄中', selecting: '待选片',
+  retouching: '精修中', deliver: '待交付', delivered: '已交付', completed: '已完成', cancelled: '已关闭'
+};
+const SCHEDULE_STATUS = { free: '空闲', booked: '已预约', locked: '已锁定', done: '已完成' };
+
+function nowISO() { return new Date().toISOString(); }
+
+function getIp(req) {
+  const fwd = String(req.headers['x-forwarded-for'] || '');
+  if (fwd) return fwd.split(',')[0].trim();
+  return req.socket && req.socket.remoteAddress ? req.socket.remoteAddress : (req.ip || 'unknown');
+}
+
+function rateHit(store, ip, max, window) {
+  const now = Date.now();
+  const arr = (store.get(ip) || []).filter((t) => now - t < window);
+  if (arr.length >= max) return true;
+  arr.push(now);
+  store.set(ip, arr);
+  return false;
+}
+
+function setSessionCookie(res, sid) {
+  const secure = process.env.NODE_ENV === 'production';
+  const sameSite = secure ? 'None' : 'Lax';
+  const attrs = [`${COOKIE_NAME}=${sid}`, 'Path=/', `Max-Age=${SESSION_HOURS * 3600}`, 'HttpOnly', `SameSite=${sameSite}`];
+  if (secure) attrs.push('Secure');
+  res.setHeader('Set-Cookie', attrs.join('; '));
+}
+function clearSessionCookie(res) {
+  const secure = process.env.NODE_ENV === 'production';
+  const sameSite = secure ? 'None' : 'Lax';
+  const attrs = [`${COOKIE_NAME}=`, 'Path=/', 'Max-Age=0', 'HttpOnly', `SameSite=${sameSite}`];
+  if (secure) attrs.push('Secure');
+  res.setHeader('Set-Cookie', attrs.join('; '));
+}
+
+// 从 cookie 解析 session_id 并校验有效性，返回绑定的手机号；无效/过期返回 null
+async function resolveSession(req) {
+  const cookie = String(req.headers.cookie || '');
+  const m = cookie.match(new RegExp('(?:^|;\\s*)' + COOKIE_NAME + '=([^;]+)'));
+  if (!m) return null;
+  let sid;
+  try { sid = decodeURIComponent(m[1]); } catch { sid = m[1]; }
+  if (!sid) return null;
+  const row = await get('SELECT * FROM customer_user WHERE session_id = ?', [sid]);
+  if (!row) return null;
+  if (row.session_expire_at && new Date(row.session_expire_at).getTime() < Date.now()) return null;
+  return row.phone;
+}
+
+function maskPhone(p) {
+  const s = String(p || '').trim();
+  if (/^1\d{10}$/.test(s)) return s.slice(0, 3) + '****' + s.slice(7);
+  return s;
+}
+
+function pickText(...vals) { for (const v of vals) { if (v) return String(v); } return ''; }
+
+function buildOrder(o) {
+  const pkg = (() => { try { return JSON.parse(o.package_snapshot || '{}') || {}; } catch { return {}; } })();
+  return {
+    id: o.id,
+    order_no: o.order_no || '',
+    shoot_date: o.date_tbd ? '日期待定' : (o.shoot_date || '未排期'),
+    package_name: pickText(pkg.name, o.package_name),
+    status: o.status || '',
+    status_label: STATUS_LABEL[o.status] || o.status || '进行中',
+    remark: pickText(o.appointment_remark, o.external_remark, o.remark)
+  };
+}
+
+// ===== 1. 免验证码手机号登录（不是开放注册）=====
+router.post('/login', async (req, res) => {
+  try {
+    const ip = getIp(req);
+    if (rateHit(loginRate, ip, RATE_MAX, RATE_WINDOW)) {
+      return res.status(429).json({ error: '访问过于频繁，请稍后再试' });
+    }
+    const phone = String((req.body && req.body.phone) || '').trim();
+    if (!/^1\d{10}$/.test(phone)) return res.status(400).json({ error: '请输入正确的 11 位手机号' });
+
+    // 非开放注册：必须有有效订单（cancelled=0 & is_deleted=0）才允许登录
+    const exists = await get(
+      'SELECT id FROM orders WHERE customer_phone = ? AND cancelled = 0 AND is_deleted = 0 LIMIT 1',
+      [phone]
+    );
+    if (!exists) {
+      return res.status(403).json({ error: '未找到该手机号对应的订单，请确认手机号或联系摄影师' });
+    }
+
+    const now = nowISO();
+    const sid = randomBytes(32).toString('hex');
+    const expireAt = new Date(Date.now() + COOKIE_TTL).toISOString();
+    const existUser = await get('SELECT id FROM customer_user WHERE phone = ?', [phone]);
+    if (existUser) {
+      await run('UPDATE customer_user SET last_login_at = ?, session_id = ?, session_expire_at = ? WHERE id = ?', [now, sid, expireAt, existUser.id]);
+    } else {
+      await insert('INSERT INTO customer_user (phone, last_login_at, session_id, session_expire_at) VALUES (?,?,?,?)', [phone, now, sid, expireAt]);
+    }
+    setSessionCookie(res, sid);
+    res.json({ ok: true, phone: maskPhone(phone) });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ===== 2. 退出登录 =====
+router.post('/logout', async (req, res) => {
+  try {
+    const cookie = String(req.headers.cookie || '');
+    const m = cookie.match(new RegExp('(?:^|;\\s*)' + COOKIE_NAME + '=([^;]+)'));
+    if (m) {
+      let sid; try { sid = decodeURIComponent(m[1]); } catch { sid = m[1]; }
+      await run('UPDATE customer_user SET session_id = NULL, session_expire_at = NULL WHERE session_id = ?', [sid]);
+    }
+    clearSessionCookie(res);
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ===== 3. 当前登录信息（脱敏手机号；未登录返回未登录标识）=====
+router.get('/me', async (req, res) => {
+  try {
+    const phone = await resolveSession(req);
+    if (!phone) return res.json({ logged_in: false });
+    res.json({ logged_in: true, phone: maskPhone(phone) });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ===== 4. 我的业务数据（预约 + 订单 + 档期，全部按会话手机号行级隔离只读）=====
+router.get('/my-business', async (req, res) => {
+  try {
+    const phone = await resolveSession(req);
+    if (!phone) return res.status(401).json({ error: '未登录' });
+
+    // 订单
+    const orderRows = await query(
+      `SELECT o.id, o.order_no, o.shoot_date, o.date_tbd, o.status, o.remark,
+              o.appointment_remark, o.external_remark, o.package_snapshot,
+              (SELECT p.name FROM packages p WHERE p.id = o.package_id LIMIT 1) AS package_name
+       FROM orders o
+       WHERE o.customer_phone = ? AND o.cancelled = 0 AND o.is_deleted = 0
+       ORDER BY o.id DESC`,
+      [phone]
+    );
+
+    // 预约
+    const apptRows = await query(
+      `SELECT id, package_id, hope_date, status, remark, style_req, source, created_at
+       FROM appointments WHERE phone = ? ORDER BY id DESC`,
+      [phone]
+    );
+
+    // 档期（拍摄日程）
+    const scheduleRows = await query(
+      `SELECT id, date, period, status, photographer, groom_name, bride_name, address, note
+       FROM schedules WHERE contact_phone = ? ORDER BY date DESC`,
+      [phone]
+    );
+
+    res.json({
+      orders: orderRows.map(buildOrder),
+      appointments: apptRows,
+      schedules: scheduleRows
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ===== 5. 单订单详情（行级隔离：仅限归属手机号访问）=====
+router.get('/order-detail', async (req, res) => {
+  try {
+    const phone = await resolveSession(req);
+    if (!phone) return res.status(401).json({ error: '未登录' });
+    const orderId = parseInt(req.query.id, 10);
+    if (!orderId) return res.status(400).json({ error: '缺少订单 id' });
+    const o = await get(
+      `SELECT o.*, (SELECT p.name FROM packages p WHERE p.id = o.package_id LIMIT 1) AS package_name
+       FROM orders o WHERE o.id = ? AND o.cancelled = 0 AND o.is_deleted = 0`,
+      [orderId]
+    );
+    if (!o) return res.status(404).json({ error: '订单不存在' });
+    if (String(o.customer_phone || '') !== phone) return res.status(403).json({ error: '无权查看该订单' });
+    res.json(buildOrder(o));
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+export default router;

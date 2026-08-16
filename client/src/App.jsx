@@ -61,7 +61,7 @@ const PackageCenter = React.lazy(() => import('./pages/PackageCenter.jsx'));
 const CustomerOrder = React.lazy(() => import('./pages/CustomerOrder.jsx'));
 const QueryOrder = React.lazy(() => import('./pages/QueryOrder.jsx'));
 const CustomerLogin = React.lazy(() => import('./pages/CustomerLogin.jsx'));
-const CustomerProfile = React.lazy(() => import('./pages/CustomerProfile.jsx'));
+const CustomerMine = React.lazy(() => import('./pages/CustomerMine.jsx'));
 const AppointmentForm = React.lazy(() => import('./pages/AppointmentForm.jsx'));
 const ContractTemplates = React.lazy(() => import('./pages/ContractTemplates.jsx'));
 const ContractAudit = React.lazy(() => import('./pages/ContractAudit.jsx'));
@@ -178,13 +178,13 @@ export default function App() {
       <Route path="/customer/query-order" element={
         <Suspense fallback={<PageLoader />}><QueryOrder /></Suspense>
       } />
-      {/* C 端客户手机号验证码登录（/customer/login）· 写入 HttpOnly 会话 cookie */}
+      {/* C 端客户免验证码手机号登录（/customer/login）· 仅校验有订单才允许，会话 24h cookie */}
       <Route path="/customer/login" element={
         <Suspense fallback={<PageLoader />}><CustomerLogin /></Suspense>
       } />
-      {/* C 端客户个人中心（/customer/profile）· 仅登录可访问 */}
-      <Route path="/customer/profile" element={
-        <Suspense fallback={<PageLoader />}><CustomerProfile /></Suspense>
+      {/* C 端【我的】页面（/customer/mine）· 未登录态显示灰色头像+去登录；登录后展示脱敏手机号+菜单（不含商家管理后台） */}
+      <Route path="/customer/mine" element={
+        <Suspense fallback={<PageLoader />}><CustomerMine /></Suspense>
       } />
       {/* C 端公开预约表单 */}
       <Route path="/appointment-form" element={
