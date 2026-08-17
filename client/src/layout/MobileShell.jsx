@@ -116,12 +116,11 @@ function TopBack({ title }) {
   );
 }
 
-// 底部 Tab（工作台 / 微官网 / + / 套系 / 消息）
+// 底部 Tab（工作台 / 微官网 / + / 消息）——「套系」已与首页共用抽屉菜单入口，不再占底部 Tab 位
 const TABS = [
   { key: 'home', label: '工作台', icon: 'monitor', to: '/' },
   { key: 'site', label: '微官网', icon: 'home', to: '/m/site' },
   { key: 'plus', label: '', icon: 'plus', to: '' },
-  { key: 'packages', label: '套系', icon: 'package', to: '/package-center' },
   { key: 'msg', label: '消息', icon: 'bell', to: '/m/msg' }
 ];
 
@@ -237,7 +236,7 @@ export default function MobileShell() {
     return () => { clearInterval(t); window.removeEventListener('focus', onFocus); window.removeEventListener('biz-message-read', onMsgRead); };
   }, []);
 
-  const tabRoots = ['/', '/m/site', '/package-center', '/m/msg'];
+  const tabRoots = ['/', '/m/site', '/m/msg'];
   const hideTopBackRoutes = ['/works', '/packages', '/schedule', '/orders', '/todo', '/m/order-messages'];
   const isTab = tabRoots.includes(location.pathname);
   // /packages/* /orders/* /schedule/* 等子路由由页面内自带顶部导航，避免双层 TopBack
@@ -246,7 +245,6 @@ export default function MobileShell() {
   const activeKey = (() => {
     if (location.pathname === '/') return 'home';
     if (location.pathname.startsWith('/m/site')) return 'site';
-    if (location.pathname.startsWith('/package-center')) return 'packages';
     if (location.pathname.startsWith('/m/msg') || location.pathname.startsWith('/m/messages')) return 'msg';
     return '';
   })();
