@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import http from '../api.js';
 
-// 移动端「消息」详情页 —— 二级页面（/mobile/message/:messageId）
+// 移动端「消息」详情页 —— 二级页面（路由 /m/messages/:id，参数名 id）
 // 返回栏 / 完整标题+正文 / 业务跳转按钮（按 biz_exist + biz_extra 动态渲染）/ 创建时间
 // 进入即标记已读（后端处理）；业务已删除则按钮置灰
 const TEXT = '#1f2329';
@@ -43,7 +43,7 @@ function fmtFullTime(t) {
 
 export default function MobileMessageDetail() {
   const nav = useNavigate();
-  const { messageId } = useParams();
+  const { id: messageId } = useParams();
   const [m, setM] = useState(null);
   const [loading, setLoading] = useState(true);
   const [downloading, setDownloading] = useState(false);
