@@ -110,16 +110,12 @@ async function main() {
   }
 
   // C 端预约提交：缺手机号应 400（参数校验）。
-  // 注意：该接口有「每 IP 1 次/分钟」限流，且限流计数在参数校验之前，
-  // 故校验探针与真实写链路互斥（避免同一次运行内互相抢占限流额度）——按运行模式二选一。
-  if (!E2E_WRITE) {
-    try {
-      const r = await req('POST', '/api/customer/reservation-submit', { body: { groom_name: '测试' }, expectStatus: 400 });
-      rec('C端·预约提交参数校验', 'cend', r.status === 400 ? 'PASS' : 'FAIL', `HTTP ${r.status} (期望 400)`);
-    } catch (e) { rec('C端·预约提交参数校验', 'cend', 'FAIL', e.message); }
-  } else {
-    rec('C端·预约提交参数校验', 'cend', 'SKIP', '写模式下已由真实提交覆盖（限流避让）');
-  }
+  // 2026-08-17 修复：限流已移到参数校验之后，400 不消耗「每 IP 1 次/分钟」额度，
+  // 因此校验探针与真实写链路可在同一次运行内共存（写模式下「先 400 后 200」顺带验证该修复）。
+  try {
+    const r = await req('POST', '/api/customer/reservation-submit', { body: { groom_name: '测试' }, expectStatus: 400 });
+    rec('C端·预约提交参数校验', 'cend', r.status === 400 ? 'PASS' : 'FAIL', `HTTP ${r.status} (期望 400)`);
+  } catch (e) { rec('C端·预约提交参数校验', 'cend', 'FAIL', e.message); }
 
   // ---------- C 端完整交易链路（可选，E2E_WRITE=1）----------
   if (E2E_WRITE) {

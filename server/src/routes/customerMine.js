@@ -95,10 +95,6 @@ function pickText(...vals) { for (const v of vals) { if (v) return String(v); } 
 // ===== 2. 提交预约（游客可提交；主手机号必填；IP 限流 1 分钟最多 1 次）=====
 router.post('/reservation-submit', async (req, res) => {
   try {
-    const ip = getIp(req);
-    if (rateHit(reserveRate, ip, RESERVE_MAX, RESERVE_WINDOW)) {
-      return res.status(429).json({ error: '提交过于频繁，请稍后再试' });
-    }
     const b = req.body || {};
     const groomName = String(b.groom_name || '').trim();
     const brideName = String(b.bride_name || '').trim();
@@ -110,11 +106,18 @@ router.post('/reservation-submit', async (req, res) => {
     const remark = String(b.remark || '').trim();
     const packageId = (b.package_id === null || b.package_id === undefined || b.package_id === '') ? null : parseInt(b.package_id, 10);
 
+    // 参数校验优先：参数错误的 400 不消耗限流额度，避免「误填一次就被限流 1 分钟」
     if (!phone) return res.status(400).json({ error: '请填写主联系手机号' });
     if (!/^1\d{10}$/.test(phone)) return res.status(400).json({ error: '请输入正确的 11 位手机号' });
     if (phoneTwo && !/^1\d{10}$/.test(phoneTwo)) return res.status(400).json({ error: '第二联系手机号格式不正确' });
     if (!expectDate) return res.status(400).json({ error: '请选择意向拍摄日期' });
     if (expectTime && !/^\d{2}:\d{2}$/.test(expectTime)) return res.status(400).json({ error: '拍摄时间格式不正确' });
+
+    // 限流：校验通过后才计数（真正要写入的请求才占额度，防刷仍是有效的）
+    const ip = getIp(req);
+    if (rateHit(reserveRate, ip, RESERVE_MAX, RESERVE_WINDOW)) {
+      return res.status(429).json({ error: '提交过于频繁，请稍后再试' });
+    }
 
     const id = await insert(
       `INSERT INTO reservations (groom_name, bride_name, phone, phone_two, package_id, expect_date, expect_time, shoot_location, remark, status, order_id)
