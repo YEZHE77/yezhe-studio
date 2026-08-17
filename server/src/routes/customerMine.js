@@ -125,6 +125,8 @@ router.post('/reservation-submit', async (req, res) => {
     const packageId = (b.package_id === null || b.package_id === undefined || b.package_id === '') ? null : parseInt(b.package_id, 10);
 
     // 参数校验优先：参数错误的 400 不消耗限流额度，避免「误填一次就被限流」
+    if (!groomName) return res.status(400).json({ error: '请填写新郎姓名' });
+    if (!brideName) return res.status(400).json({ error: '请填写新娘姓名' });
     if (!phone) return res.status(400).json({ error: '请填写主联系手机号' });
     if (!/^1\d{10}$/.test(phone)) return res.status(400).json({ error: '请输入正确的 11 位手机号' });
     if (phoneTwo && !/^1\d{10}$/.test(phoneTwo)) return res.status(400).json({ error: '第二联系手机号格式不正确' });

@@ -133,7 +133,7 @@ router.post('/:id/convert', authRequired, requireRole(['admin', 'photographer', 
       name: pkg.name, price: pkg.price, description: pkg.description, cover_url: pkg.cover_url || ''
     }) : '{}';
 
-    const customer_name = groom || bride || '客户';
+    const customer_name = [groom, bride].filter(Boolean).join(' & ') || '客户';
     const phones = [phone, phoneTwo].filter(Boolean);
     const balance = Math.max(0, finalPrice - deposit);
     const payment_status = deposit >= finalPrice && finalPrice > 0 ? 'paid' : (deposit > 0 ? 'deposit' : 'unpaid');

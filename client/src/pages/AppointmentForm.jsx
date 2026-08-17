@@ -55,6 +55,8 @@ export default function AppointmentForm() {
   const submit = async (e) => {
     e.preventDefault();
     if (submittingRef.current) return; // 防连点/双击重复提交（ref 同步生效，state 未及时更新前也挡住）
+    if (!form.groom_name.trim()) { setErr('请填写新郎姓名'); return; }
+    if (!form.bride_name.trim()) { setErr('请填写新娘姓名'); return; }
     if (!form.phone.trim()) { setErr('请填写主联系手机号'); return; }
     if (!/^1\d{10}$/.test(form.phone.trim())) { setErr('请输入正确的 11 位手机号'); return; }
     if (form.phone_two.trim() && !/^1\d{10}$/.test(form.phone_two.trim())) { setErr('第二联系手机号格式不正确'); return; }
@@ -103,10 +105,10 @@ export default function AppointmentForm() {
           <form onSubmit={submit}>
             <div style={{ display: 'flex', gap: 12, marginBottom: 14 }}>
               <div style={{ flex: 1 }}>
-                <input style={inputStyle} value={form.groom_name} onChange={(e) => set('groom_name')(e.target.value)} placeholder="新郎姓名" />
+                <input required style={inputStyle} value={form.groom_name} onChange={(e) => set('groom_name')(e.target.value)} placeholder="新郎姓名（必填）" />
               </div>
               <div style={{ flex: 1 }}>
-                <input style={inputStyle} value={form.bride_name} onChange={(e) => set('bride_name')(e.target.value)} placeholder="新娘姓名" />
+                <input required style={inputStyle} value={form.bride_name} onChange={(e) => set('bride_name')(e.target.value)} placeholder="新娘姓名（必填）" />
               </div>
             </div>
 
