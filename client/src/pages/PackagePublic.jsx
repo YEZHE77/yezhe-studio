@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import http, { img } from '../api.js';
 
@@ -38,6 +38,7 @@ export default function PackagePublic() {
   const [data, setData] = useState(null);
   const [studio, setStudio] = useState({ name: '叶哲 STUDIO', slogan: '' });
   const [extrasOpen, setExtrasOpen] = useState(false); // 更多服务展开
+  const extrasRef = useRef(null); // 更多服务卡片锚点（点击网格入口时滚动到展开区）
   const [err, setErr] = useState('');
   const [loading, setLoading] = useState(true);
 
@@ -75,6 +76,17 @@ export default function PackagePublic() {
   const back = () => { if (window.history.length > 1) nav(-1); else nav('/package-center'); };
   const goBook = () => { nav('/customer/book?packageId=' + (data && (data.id || id) || '')); };
 
+  // 点击网格「更多服务」：展开 + 平滑滚动到展开区（手机上展开区在屏下方，必须滚动可见，否则像没反应）
+  const openExtras = () => {
+    const next = !extrasOpen;
+    setExtrasOpen(next);
+    if (next) {
+      setTimeout(() => {
+        if (extrasRef.current) extrasRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 80);
+    }
+  };
+
   // ===== 加载中 =====
   if (loading) {
     return (
@@ -111,7 +123,10 @@ export default function PackagePublic() {
   const marketing = data.marketing && typeof data.marketing === 'object' ? data.marketing : {};
   const marketingEntries = Object.entries(marketing).filter(([, v]) => v);
 
-  // ===== 规格网格 6 项（数据驱动，数据为空则隐藏该格，「更多服务」始终保留）=====
+  // 更多服务展开区是否有内容（加购/优惠/标签/温馨提示/详情图/视频 任一有则视为有）
+  const hasExtras = addons.length > 0 || marketingEntries.length > 0 || tags.length > 0 || detailImages.length > 0 || !!data.video_url || !!data.warm_tips;
+
+  // ===== 规格网格（数据驱动，数据为空则隐藏该格；「更多服务」仅在有附加内容时显示，避免点击无反应）=====
   const durationTxt = data.duration || '';
   const shootTxt = data.negative_count ? `拍摄${data.negative_count}张` : '';
   const retouchTxt = data.retouch_count ? `${data.retouch_count}张精修` : '';
@@ -131,10 +146,7 @@ export default function PackagePublic() {
     { key: 'raw', Ico: IcoLayers, text: rawTxt, color: TEXT },
     { key: 'clothing', Ico: IcoShirt, text: clothingTxt, color: TEXT },
     { key: 'more', Ico: IcoPlus, text: '更多服务', color: MORE_RED, isMore: true }
-  ].filter((it) => it.isMore || it.text);
-
-  // 更多服务展开区是否有内容
-  const hasExtras = addons.length > 0 || marketingEntries.length > 0 || tags.length > 0 || detailImages.length > 0 || !!data.video_url || !!data.warm_tips;
+  ].filter((it) => (it.isMore ? hasExtras : !!it.text));
 
   return (
     <div style={{ minHeight: '100vh', background: PAGE_BG, paddingBottom: 96 }}>
@@ -191,7 +203,7 @@ export default function PackagePublic() {
               return (
                 <div
                   key={it.key}
-                  onClick={it.isMore ? () => setExtrasOpen((v) => !v) : undefined}
+                  onClick={it.isMore ? openExtras : undefined}
                   style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '6px 4px', cursor: it.isMore ? 'pointer' : 'default', color: it.color }}
                 >
                   <Ico />
@@ -213,9 +225,9 @@ export default function PackagePublic() {
           </div>
         )}
 
-        {/* 更多服务展开区（点击网格「更多服务」触发） */}
+        {/* 更多服务展开区（点击网格「更多服务」/卡片展开按钮触发） */}
         {hasExtras && (
-          <div style={{ background: '#fff', borderRadius: 16, padding: 18, marginTop: 10, boxShadow: '0 1px 6px rgba(0,0,0,0.05)' }}>
+          <div ref={extrasRef} style={{ background: '#fff', borderRadius: 16, padding: 18, marginTop: 10, boxShadow: '0 1px 6px rgba(0,0,0,0.05)' }}>
             <button
               onClick={() => setExtrasOpen((v) => !v)}
               style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: TEXT }}
