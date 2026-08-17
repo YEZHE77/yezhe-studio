@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import http from '../api.js';
 import { customerHttp } from '../utils/customerAuth.js';
+import { HOURS } from '../constants/timeSlots.js';
 
 // ===== C 端预约提交页（/customer/book）=====
 // 表单：新郎/新娘姓名 + 主/第二联系手机号 + 意向套系下拉 + 意向拍摄日期 + 拍摄地点 + 备注
@@ -116,7 +117,12 @@ export default function AppointmentForm() {
 
             <div style={{ marginBottom: 14 }}>
               <span style={labelStyle}>拍摄时间（选填）</span>
-              <input style={inputStyle} type="time" value={form.expect_time} onChange={(e) => set('expect_time')(e.target.value)} />
+              <select style={{ ...inputStyle, appearance: 'none' }} value={form.expect_time} onChange={(e) => set('expect_time')(e.target.value)}>
+                <option value="">暂未确定时间</option>
+                {HOURS.map((h) => (
+                  <option key={h} value={h}>{h}</option>
+                ))}
+              </select>
             </div>
 
             <div style={{ marginBottom: 14 }}>

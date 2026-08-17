@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import http, { img, uploadBatch, conflictOf } from '../api.js';
+import { HOURS } from '../constants/timeSlots.js';
 import bgm from '../bgm.js';
 import Slideshow from '../components/Slideshow.jsx';
 import html2pdf from 'html2pdf.js';
@@ -30,7 +31,6 @@ function payMethodLabel(p) {
   return '线下·' + (CHANNEL_LABEL[p.channel] || '其他');
 }
 const PAY_STATUS_LABEL = { unpaid: '未付定金', deposit: '已付定金', paid: '已付全款' };
-const HOURS = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0') + ':00');
 // 移动端订单状态标签底色（与订单中心同风格低饱和色板）
 const M_STATUS_COLOR = { deposit: '#F5A623', shot: '#2DB7F5', selecting: '#7B61FF', retouching: '#9B59B6', delivered: '#10B981', completed: '#52C41A', cancelled: '#999999' };
 

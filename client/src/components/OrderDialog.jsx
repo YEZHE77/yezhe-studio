@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import http, { conflictOf } from '../api.js';
+import { HOURS } from '../constants/timeSlots.js';
 
-const HOURS = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0') + ':00');
 const HALF = 'half';
 const FULL = 'full';
 const PHONE_RE = /^1[3-9]\d{9}$/;

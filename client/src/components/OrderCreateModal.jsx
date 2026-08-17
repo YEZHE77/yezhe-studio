@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import http, { img, conflictOf } from '../api.js';
+import { HOURS } from '../constants/timeSlots.js';
 
 // ===== 新增订单弹窗（按【新增订单弹窗】spec 1:1 复刻）=====
 // 交互硬规则：点击蒙层 / 右上角 × 均可关闭；必填项标 *，校验失败弹提示并停留在弹窗。
@@ -16,7 +17,6 @@ const INPUT_BORDER = '#DDDDDD'; // 输入框边框
 const TEXT_BODY = '#333333';    // 正文
 const TEXT_MUTED = '#999999';   // 次要占位
 
-const HOURS = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0') + ':00');
 
 const PAY_OPTIONS = [
   { value: 'unpaid', label: '未付款' },
