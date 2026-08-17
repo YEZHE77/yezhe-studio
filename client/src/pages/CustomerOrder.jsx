@@ -3,6 +3,7 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import http, { img, BASE } from '../api.js';
 import { getRefundText, getRefundParagraphs, normalizePolicy } from '../utils/refundPolicy.js';
 import { getServiceAgreement, toParagraphs } from '../utils/customerAgreement.js';
+import { DEFAULT_SERVICE_DETAIL } from '../utils/serviceDetail.js';
 
 // ===== C 端客户订单查看页（/customer-order?token=customer_token）=====
 // customer_token 鉴权，与 B 端订单详情同口径：套系详细内容 + 拍摄档期/时间/地点 + 执行人 + 消费明细 + 选片入口
@@ -41,6 +42,19 @@ function fmtTime(t) {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
 }
 
+function defaultDetails() {
+  return {
+    detail_images: [], video_url: '', service_params: '单规格服务', hide_price: false, hide_deposit: false,
+    deposit_is_full: false, show_currency: true, refund_policy: '严格', hide_refund: false,
+    raw_storage: '', prepay_enabled: false, questionnaire_visibility: 'none', questionnaire_verify_phone: false,
+    questionnaire: [], shoot_template: 'photo', duration: '全天', raw_count: '', raw_all_included: false,
+    retouch_count: '', extra_photo_fee: '', extra_photo_discount: '', cloth_provide: 'not',
+    makeup_provide: 'not', album_provide: 'not', service_location: '', show_service_content: true,
+    service_detail_text: '', public_all_visible: false, public_visible: '全部可见', consult_reminder: false,
+    warm_tips: '', tags: [], customer_agreement: ''
+  };
+}
+
 export default function CustomerOrder() {
   const [params] = useSearchParams();
   const nav = useNavigate();
@@ -60,6 +74,9 @@ export default function CustomerOrder() {
   const [signBusy, setSignBusy] = useState(false);
   const signCanvasRef = useRef(null);
   const signDrawingRef = useRef(false);
+  // 套系服务详情展开（交付时间/交付备注/顾客协议等）
+  const [serviceDetailOpen, setServiceDetailOpen] = useState(false);
+  const [agreementOpen, setAgreementOpen] = useState(false);
 
   useEffect(() => {
     if (!token) { setErr('无权限访问'); setLoading(false); return; }
@@ -139,6 +156,7 @@ export default function CustomerOrder() {
   }
 
   const pkg = data.package || {};
+  const d = { ...defaultDetails(), ...(pkg.details && typeof pkg.details === 'object' ? pkg.details : {}) };
   const exes = data.executors || [];
   const extra = data.extra_items || [];
   const timeSlots = data.time_slots || [];
@@ -186,6 +204,52 @@ export default function CustomerOrder() {
           </div>
         </Card>
       )}
+
+      {/* 套系服务详情（与后台套系预览一致：完整字段清单 + 服务详情 + 顾客协议） */}
+      <Card style={{ marginTop: 12 }}>
+        <div style={{ fontSize: 15, fontWeight: 600, color: TEXT, marginBottom: 4 }}>套系服务详情</div>
+        <div>
+          {[
+            { label: '拍摄时长', value: d.duration || '' },
+            { label: '原片', value: d.raw_count ? `${d.raw_count}张` : '' },
+            { label: '精修片', value: d.retouch_count ? `${d.retouch_count}张` : '' },
+            { label: '加片费', value: d.extra_photo_fee || '' },
+            { label: '快修费', value: d.quick_repair_cost || '' },
+            { label: '交付时间', value: d.delivery_time || '' },
+            { label: '交付备注', value: d.delivery_remark || '' },
+            { label: '底片', value: d.raw_all_included ? '全部原片' : '仅送精修' },
+            { label: '化妆服装', value: `${d.cloth_provide === 'provide' ? '提供服装' : '不提供服装'} · ${d.makeup_provide === 'provide' ? '提供化妆' : '不提供化妆'}` },
+            { label: '提供相册', value: d.album_provide === 'provide' ? '是' : d.album_provide === 'extra' ? '相册另购' : '否' },
+            { label: '服务地点', value: d.service_location || '' }
+          ].filter((r) => r.value).map((r, i) => (
+            <InfoRow key={i} label={r.label} value={r.value} />
+          ))}
+        </div>
+        {d.warm_tips && (
+          <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid ' + LINE }}>
+            <div style={{ fontSize: 13, color: SUB, marginBottom: 6 }}>温馨提示</div>
+            <div style={{ fontSize: 14, color: TEXT, lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>{d.warm_tips}</div>
+          </div>
+        )}
+        <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid ' + LINE }}>
+          <div onClick={() => setServiceDetailOpen((v) => !v)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}>
+            <span style={{ fontSize: 14, color: TEXT }}>服务详情</span>
+            <span style={{ fontSize: 14, color: BRAND }}>{serviceDetailOpen ? '收起' : '展开'}</span>
+          </div>
+          {serviceDetailOpen && (
+            <div style={{ marginTop: 10, fontSize: 14, color: TEXT, lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>{d.service_detail_text || DEFAULT_SERVICE_DETAIL}</div>
+          )}
+        </div>
+        <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid ' + LINE }}>
+          <div onClick={() => setAgreementOpen((v) => !v)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}>
+            <span style={{ fontSize: 14, color: TEXT }}>顾客协议</span>
+            <span style={{ fontSize: 14, color: BRAND }}>{agreementOpen ? '收起' : '展开'}</span>
+          </div>
+          {agreementOpen && (
+            <div style={{ marginTop: 10, fontSize: 13, color: SUB, lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>{getServiceAgreement(d)}</div>
+          )}
+        </div>
+      </Card>
 
       {/* 服务详情 / 温馨提示 */}
       {(pkg.other_service || pkg.notice) && (

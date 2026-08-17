@@ -74,7 +74,9 @@ export async function buildCustomerOrderDetail(o) {
       notice: pkgNotice,
       refund_policy: refundPolicy,
       refund_policy_lax_text: pkgDetails.refund_policy_lax_text || '',
-      refund_policy_strict_text: pkgDetails.refund_policy_strict_text || ''
+      refund_policy_strict_text: pkgDetails.refund_policy_strict_text || '',
+      // 完整套系 details JSON（含交付时间/交付备注/顾客协议/快修费/服务地点/化妆服装/提供相册等），供 C 端订单详情展示完整套系内容
+      details: pkgDetails
     },
     executors,
     extra_items: extraItems,
