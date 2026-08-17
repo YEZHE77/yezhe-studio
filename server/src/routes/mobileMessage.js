@@ -75,12 +75,23 @@ router.get('/list', authRequired, async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// 未读数量（底部 Tab 角标）
+// 未读数量（底部 Tab 角标：count = 全部未读；移动端消息分类角标：byCategory = reserve/order/system）
 router.get('/unread-count', authRequired, async (req, res) => {
   try {
     const uid = req.user && req.user.uid;
-    const r = await get('SELECT COUNT(*) AS c FROM biz_message WHERE user_id = ? AND is_read = 0', [uid]);
-    res.json({ count: Number(r.c) || 0 });
+    const total = (await get('SELECT COUNT(*) AS c FROM biz_message WHERE user_id = ? AND is_read = 0', [uid])).c;
+    // 预约消息：sub_type='reserve'（与 OrderMessages 排除规则一致：订单消息 = biz_type='order' 且 sub_type != 'reserve'）
+    const reserve = (await get("SELECT COUNT(*) AS c FROM biz_message WHERE user_id = ? AND is_read = 0 AND sub_type = 'reserve'", [uid])).c;
+    const order = (await get("SELECT COUNT(*) AS c FROM biz_message WHERE user_id = ? AND is_read = 0 AND biz_type = 'order' AND (sub_type IS NULL OR sub_type != 'reserve')", [uid])).c;
+    const system = (await get("SELECT COUNT(*) AS c FROM biz_message WHERE user_id = ? AND is_read = 0 AND biz_type = 'system'", [uid])).c;
+    res.json({
+      count: Number(total) || 0,
+      byCategory: {
+        reserve: Number(reserve) || 0,
+        order: Number(order) || 0,
+        system: Number(system) || 0
+      }
+    });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 

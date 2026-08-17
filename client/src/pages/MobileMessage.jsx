@@ -101,6 +101,7 @@ export default function MobileMessage() {
   const [storage, setStorage] = useState(null); // { totalUsedBytes, alertThreshold, exceeded }
   const [studio, setStudio] = useState(null);   // { serviceQr }
   const [serviceOpen, setServiceOpen] = useState(false);
+  const [byCategory, setByCategory] = useState({ reserve: 0, order: 0, system: 0 });  // 消息分类未读（reserve/order/system），叠加显示到 3 宫格右上角小红点，让用户知道底部 Tab 的未读具体是哪类
   const isWechat = typeof navigator !== 'undefined' && /MicroMessenger/i.test(navigator.userAgent);
 
   useEffect(() => {
@@ -108,6 +109,10 @@ export default function MobileMessage() {
     http.get('/api/admin/storage/stats').then((r) => setStorage(r.data)).catch(() => {});
     // 工作室资料（客服二维码）
     http.get('/api/settings/studio').then((r) => setStudio(r.data)).catch(() => {});
+    // 消息分类未读（reserve/order/system）—— 与 MobileShell 底部 Tab 共用同一个接口，读取 byCategory 字段叠加到 3 宫格
+    http.get('/api/mobile/message/unread-count').then((r) => {
+      if (r.data && r.data.byCategory) setByCategory(r.data.byCategory);
+    }).catch(() => {});
   }, []);
 
   const openConsult = (key) => {
@@ -146,12 +151,22 @@ export default function MobileMessage() {
       {/* 消息分类（3 宫格 Soft-UI 卡片） */}
       <SectionTitle title="消息分类" />
       <div style={{ background: '#FFFFFF', margin: '0 12px', borderRadius: 16, padding: '20px 8px', display: 'flex', justifyContent: 'space-around', boxShadow: '0 8px 24px rgba(31,35,41,0.06), 0 1px 3px rgba(31,35,41,0.04)' }}>
-        {CONSULT.map((c) => (
-          <button key={c.key} onClick={() => openConsult(c.key)} style={{ background: 'none', border: 'none', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, padding: '4px 12px', cursor: 'pointer' }}>
-            <RoundIcon Icon={c.Icon} color={c.color} bg={c.bg} size={46} />
-            <span style={{ fontSize: 12, color: TEXT }}>{c.label}</span>
-          </button>
-        ))}
+        {CONSULT.map((c) => {
+          const cnt = (byCategory && byCategory[c.key]) || 0;
+          return (
+            <button key={c.key} onClick={() => openConsult(c.key)} style={{ background: 'none', border: 'none', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, padding: '4px 12px', cursor: 'pointer' }}>
+              <div style={{ position: 'relative' }}>
+                <RoundIcon Icon={c.Icon} color={c.color} bg={c.bg} size={46} />
+                {cnt > 0 && (
+                  <span style={{ position: 'absolute', top: -4, right: -6, minWidth: 18, height: 18, padding: '0 5px', borderRadius: 9, background: '#E5484D', color: '#fff', fontSize: 11, lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 0 0 2px #fff' }}>
+                    {cnt > 99 ? '99+' : cnt}
+                  </span>
+                )}
+              </div>
+              <span style={{ fontSize: 12, color: TEXT }}>{c.label}</span>
+            </button>
+          );
+        })}
       </div>
 
       {/* 更多（Soft-UI 列表：访客 / 已用空间 / 帮助中心） */}
