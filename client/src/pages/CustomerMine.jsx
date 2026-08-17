@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { customerHttp } from '../utils/customerAuth.js';
+import { customerHttp, setCustomerToken, clearCustomerToken } from '../utils/customerAuth.js';
 import http, { img } from '../api.js';
 
 // ===== C 端【我的】页面（/customer/mine）=====
@@ -99,6 +99,7 @@ export default function CustomerMine() {
     try {
       const r = await customerHttp.post('/api/customer/login', { phone: p }, { timeout: 15000 });
       if (r.data && r.data.ok) {
+        if (r.data.sid) setCustomerToken(r.data.sid); // 持久化登录态：刷新不丢（localStorage Bearer）
         setLoginOpen(false);
         setPhone('');
         flashToast('登录成功');
@@ -124,6 +125,7 @@ export default function CustomerMine() {
 
   const logout = async () => {
     try { await customerHttp.post('/api/customer/logout'); } catch (e) {}
+    clearCustomerToken(); // 清除本地持久登录态（退出登录/切换账号）
     setAuth({ isLogin: false });
     setBiz({ reservations: [], orders: [] });
     flashToast('已退出登录');

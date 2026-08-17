@@ -2,7 +2,7 @@
 // 核心约束：
 //  ①非开放注册——手机号必须在 reservations(phone/phone_two) 或 orders(customer_phone/phone_two) 有记录才允许登录
 //  ②IP 限流：登录 3/分，预约提交 1/分
-//  ③cookie 会话（c_session + customer_user 表），有效期 24h
+//  ③会话（c_session + customer_user 表）：登录返回 sid，前端存 localStorage 并以 Bearer 发送（跨站持久），cookie 兜底；有效期 30 天
 //  ④只读 + 行级隔离：登录后只能读自己手机号（phone 或 phone_two）的预约/订单，无任何写业务数据接口
 //  ⑤预约提交游客可提交（主手机号必填）；accessToken 仅访问单条订单
 import { Router } from 'express';
@@ -14,7 +14,8 @@ import { emitBizToStaff, BIZ_TYPE } from './mobileMessage.js';
 const router = Router();
 
 const COOKIE_NAME = 'c_session';
-const SESSION_HOURS = 24;
+// 会话有效期：30 天（H5 端登录态需跨站持久，刷新不丢；仅退出登录/切换账号才失效）
+const SESSION_HOURS = 30 * 24;
 const COOKIE_TTL = SESSION_HOURS * 3600 * 1000;
 
 // 内存态限流（单实例够用；Render 重启失效可接受）
@@ -60,13 +61,22 @@ function clearSessionCookie(res) {
   res.setHeader('Set-Cookie', attrs.join('; '));
 }
 
-// 从 cookie 解析 session_id 并校验有效性，返回绑定的手机号；无效/过期返回 null
-async function resolveSession(req) {
+// 从请求提取 session_id：优先 Authorization: Bearer <sid>（localStorage 持久，可跨站，解决第三方 cookie 被拦导致刷新掉登录），cookie 兜底
+function extractSid(req) {
+  const auth = String(req.headers['authorization'] || '');
+  if (auth.startsWith('Bearer ')) {
+    const t = auth.slice(7).trim();
+    if (t) return t;
+  }
   const cookie = String(req.headers.cookie || '');
   const m = cookie.match(new RegExp('(?:^|;\\s*)' + COOKIE_NAME + '=([^;]+)'));
   if (!m) return null;
-  let sid;
-  try { sid = decodeURIComponent(m[1]); } catch { sid = m[1]; }
+  try { return decodeURIComponent(m[1]); } catch { return m[1]; }
+}
+
+// 解析 session_id 并校验有效性，返回绑定的手机号；无效/过期返回 null
+async function resolveSession(req) {
+  const sid = extractSid(req);
   if (!sid) return null;
   const row = await get('SELECT * FROM customer_user WHERE session_id = ?', [sid]);
   if (!row) return null;
@@ -160,7 +170,8 @@ router.post('/login', async (req, res) => {
       await insert('INSERT INTO customer_user (phone, last_login_at, session_id, session_expire_at) VALUES (?,?,?,?)', [phone, now, sid, expireAt]);
     }
     setSessionCookie(res, sid);
-    res.json({ ok: true, phone: maskPhone(phone) });
+    // 返回 sid：前端存入 localStorage 并以 Authorization: Bearer 随请求发送，刷新后登录态持久（第三方 cookie 被拦也不丢）
+    res.json({ ok: true, phone: maskPhone(phone), sid });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
@@ -169,10 +180,9 @@ router.post('/login', async (req, res) => {
 // ===== 4. 退出登录 =====
 router.post('/logout', async (req, res) => {
   try {
-    const cookie = String(req.headers.cookie || '');
-    const m = cookie.match(new RegExp('(?:^|;\\s*)' + COOKIE_NAME + '=([^;]+)'));
-    if (m) {
-      let sid; try { sid = decodeURIComponent(m[1]); } catch { sid = m[1]; }
+    // 优先用 Bearer token（跨站场景 cookie 可能被拦，无法随请求到达）；cookie 兜底
+    const sid = extractSid(req);
+    if (sid) {
       await run('UPDATE customer_user SET session_id = NULL, session_expire_at = NULL WHERE session_id = ?', [sid]);
     }
     clearSessionCookie(res);

@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { customerHttp } from '../utils/customerAuth.js';
+import { customerHttp, setCustomerToken } from '../utils/customerAuth.js';
 
 // ===== C 端免验证码手机号登录（/customer/login）=====
 // 完整登录流程（修复「点击无反应」）：
 //  1) <form onSubmit> + button type="submit"：点击与回车都走同一提交；preventDefault 防页面刷新
 //  2) 校验：空手机号 / 非 11 位 → 内联红字提示
-//  3) 调用 POST /api/customer/login（24h cookie 会话）
+//  3) 调用 POST /api/customer/login（返回 sid，前端存 localStorage 以 Bearer 发送，刷新不掉登录）
 //  4) 加载中：按钮禁用 + 文案「登录中…」，输入框同时禁用，杜绝重复提交
 //  5) 成功：跳转 /customer/mine；失败：按后端 message / 429 限流 / 无网络 / 超时分类提示
 //  6) catch-all 兜底：任何同步/异步异常都落到界面提示，绝不静默
@@ -49,6 +49,7 @@ export default function CustomerLogin() {
     try {
       const r = await customerHttp.post('/api/customer/login', { phone: p }, { timeout: 15000 });
       if (r.data && r.data.ok) {
+        if (r.data.sid) setCustomerToken(r.data.sid); // 持久化登录态：刷新不丢（localStorage Bearer）
         nav('/customer/mine', { replace: true });
         return;
       }
