@@ -77,6 +77,16 @@ export default function CustomerMine() {
       .then((b) => { if (b && b.data) setBiz(b.data || {}); })
       .catch(() => setAuth({ isLogin: false }));
   };
+  // 静默刷新：已知登录态时使用（不闪 loading，失败也不再翻转为「未登录」）
+  const softLoadAuth = () => {
+    customerHttp.get('/api/customer/me')
+      .then((r) => {
+        if (r.data && r.data.isLogin) setAuth(r.data);
+        return customerHttp.get('/api/customer/my-business');
+      })
+      .then((b) => { if (b && b.data) setBiz(b.data || {}); })
+      .catch(() => { /* 静默失败，保留本地登录态 */ });
+  };
   useEffect(() => { loadAuth(); }, []);
 
   const submitLogin = async (e) => {
@@ -92,7 +102,10 @@ export default function CustomerMine() {
         setLoginOpen(false);
         setPhone('');
         flashToast('登录成功');
-        loadAuth();
+        // 立即用登录响应里的手机号更新登录态（不等 /me），避免「登录成功却仍显示未登录」——常见于 cookie/race 导致 /me 短时拿不到会话
+        setAuth({ isLogin: true, phone: r.data.phone || '' });
+        // 后台静默刷新业务数据；失败不影响已登录态
+        softLoadAuth();
         return;
       }
       setLoginErr('登录失败，请稍后重试');
