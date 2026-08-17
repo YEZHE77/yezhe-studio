@@ -79,19 +79,31 @@ export default function CustomerMine() {
   };
   useEffect(() => { loadAuth(); }, []);
 
-  const submitLogin = async () => {
+  const submitLogin = async (e) => {
+    if (e && e.preventDefault) e.preventDefault(); // 防表单默认提交刷新页面
+    const p = phone.trim();
     setLoginErr('');
-    if (!/^1\d{10}$/.test(phone.trim())) { setLoginErr('请输入正确的 11 位手机号'); return; }
+    if (!p) { setLoginErr('请输入手机号'); return; }
+    if (!/^1\d{10}$/.test(p)) { setLoginErr('请输入正确的 11 位手机号'); return; }
     setBusy(true);
     try {
-      const r = await customerHttp.post('/api/customer/login', { phone: phone.trim() });
+      const r = await customerHttp.post('/api/customer/login', { phone: p }, { timeout: 15000 });
       if (r.data && r.data.ok) {
         setLoginOpen(false);
         setPhone('');
+        flashToast('登录成功');
         loadAuth();
+        return;
       }
-    } catch (e) {
-      setLoginErr((e.response && e.response.data && e.response.data.error) || '登录失败');
+      setLoginErr('登录失败，请稍后重试');
+    } catch (ex) {
+      // 分类提示：后端业务错误（403 无记录 / 400 格式 / 429 限流）/ 网络 / 超时 / 兜底
+      const status = ex && ex.response && ex.response.status;
+      const data = ex && ex.response && ex.response.data;
+      if (data && data.error) setLoginErr(String(data.error));
+      else if (!ex || !ex.response) setLoginErr(ex && ex.code === 'ECONNABORTED' ? '请求超时，请检查网络后重试' : '网络连接失败，请检查网络后重试');
+      else if (status === 429) setLoginErr('访问过于频繁，请稍后再试');
+      else setLoginErr('登录失败，请稍后重试');
     } finally {
       setBusy(false);
     }
@@ -187,22 +199,25 @@ export default function CustomerMine() {
         <div style={{ textAlign: 'center', fontSize: 12, color: FAINT, marginTop: 14 }}>仅展示本人预约与订单 · 全部只读</div>
       </div>
 
-      {/* 登录弹窗：仅手机号输入 + 确认提交，无验证码无密码 */}
+      {/* 登录弹窗：仅手机号输入 + 确认提交，无验证码无密码（form 提交：点击/回车一致，preventDefault 防刷新） */}
       {loginOpen && (
         <div onClick={() => setLoginOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
           <div onClick={(e) => e.stopPropagation()} style={{ ...softCard, padding: 24, width: '100%', maxWidth: 340 }}>
             <div style={{ fontSize: 18, color: TEXT, marginBottom: 4 }}>手机号登录</div>
             <div style={{ fontSize: 12, color: FAINT, marginBottom: 18 }}>仅限已有预约或订单的客户登录</div>
-            <input type="tel" inputMode="numeric" maxLength={11} autoFocus value={phone}
-              onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))}
-              onKeyDown={(e) => { if (e.key === 'Enter') submitLogin(); }}
-              placeholder="请输入 11 位手机号"
-              style={{ width: '100%', boxSizing: 'border-box', padding: '13px 14px', borderRadius: 12, border: '1px solid #E8E8EA', background: '#fff', fontSize: 15, color: TEXT, outline: 'none' }} />
-            {loginErr && <div style={{ fontSize: 13, color: '#E5484D', marginTop: 12 }}>{loginErr}</div>}
-            <button onClick={submitLogin} disabled={busy}
-              style={{ width: '100%', marginTop: 16, padding: '13px 0', borderRadius: 12, border: 'none', background: BRAND, color: '#fff', fontSize: 15, cursor: 'pointer', opacity: busy ? 0.6 : 1, boxShadow: '0 8px 20px rgba(126,205,187,0.32)' }}>
-              {busy ? '校验中…' : '确认提交'}
-            </button>
+            <form onSubmit={submitLogin} noValidate>
+              <input type="tel" inputMode="numeric" maxLength={11} autoFocus value={phone} disabled={busy}
+                onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))}
+                placeholder="请输入 11 位手机号"
+                style={{ width: '100%', boxSizing: 'border-box', padding: '13px 14px', borderRadius: 12, border: '1px solid #E8E8EA', background: '#fff', fontSize: 15, color: TEXT, outline: 'none', opacity: busy ? 0.6 : 1 }} />
+              {loginErr && (
+                <div role="alert" style={{ fontSize: 13, color: '#E5484D', marginTop: 12, background: 'rgba(229,72,77,0.06)', border: '1px solid rgba(229,72,77,0.18)', borderRadius: 10, padding: '10px 12px', lineHeight: 1.5 }}>{loginErr}</div>
+              )}
+              <button type="submit" disabled={busy} aria-busy={busy}
+                style={{ width: '100%', marginTop: 16, padding: '13px 0', borderRadius: 12, border: 'none', background: BRAND, color: '#fff', fontSize: 15, cursor: busy ? 'default' : 'pointer', opacity: busy ? 0.6 : 1, boxShadow: '0 8px 20px rgba(126,205,187,0.32)' }}>
+                {busy ? '登录中…' : '确认提交'}
+              </button>
+            </form>
             <button onClick={() => setLoginOpen(false)} style={{ width: '100%', marginTop: 10, padding: '11px 0', borderRadius: 12, border: 'none', background: 'none', color: SUB, fontSize: 14, cursor: 'pointer' }}>取消</button>
           </div>
         </div>
