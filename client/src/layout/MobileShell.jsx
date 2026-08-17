@@ -33,6 +33,7 @@ const MobileMessage = React.lazy(() => import('../pages/MobileMessage.jsx'));
 const MobileMessageList = React.lazy(() => import('../pages/MobileMessageList.jsx'));
 const MobileMessageDetail = React.lazy(() => import('../pages/MobileMessageDetail.jsx'));
 const OrderMessages = React.lazy(() => import('../pages/OrderMessages.jsx'));
+const ReserveMessages = React.lazy(() => import('../pages/ReserveMessages.jsx'));
 const Visitors = React.lazy(() => import('../pages/Visitors.jsx'));
 const VisitorDetail = React.lazy(() => import('../pages/VisitorDetail.jsx'));
 const VisitorSettings = React.lazy(() => import('../pages/VisitorSettings.jsx'));
@@ -243,7 +244,7 @@ export default function MobileShell() {
   }, []);
 
   const tabRoots = ['/', '/m/site', '/m/msg'];
-  const hideTopBackRoutes = ['/works', '/packages', '/schedule', '/orders', '/todo', '/m/order-messages'];
+  const hideTopBackRoutes = ['/works', '/packages', '/schedule', '/orders', '/todo', '/m/order-messages', '/m/reserve-messages'];
   const isTab = tabRoots.includes(location.pathname);
   // /packages/* /orders/* /schedule/* 等子路由由页面内自带顶部导航，避免双层 TopBack
   const hideTopBack = hideTopBackRoutes.includes(location.pathname) || location.pathname.startsWith('/works/') || location.pathname.startsWith('/packages/') || location.pathname.startsWith('/orders/') || location.pathname.startsWith('/schedule/') || location.pathname.startsWith('/m/messages') || location.pathname.startsWith('/visitor');
@@ -273,6 +274,7 @@ export default function MobileShell() {
                 <Route path="/m/messages" element={<MobileMessageList />} />
                 <Route path="/m/messages/:id" element={<MobileMessageDetail />} />
                 <Route path="/m/order-messages" element={<OrderMessages />} />
+                <Route path="/m/reserve-messages" element={<ReserveMessages />} />
                 <Route path="/visitors" element={<Visitors />} />
                 <Route path="/visitor/:visitorId" element={<VisitorDetail />} />
                 <Route path="/visitor-settings" element={<VisitorSettings />} />
