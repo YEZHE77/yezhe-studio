@@ -914,7 +914,10 @@ export async function initSchema() {
     ['order_id', 'INTEGER'],
     ['handled_at', 'TEXT'],
     ['spec_id', 'INTEGER'], // 客户预约时选中的套系规格（多规格场景下定位具体版本）
-    ['style_req', 'TEXT'] // 风格需求（C 端预约表单填写，如 户外/室内/纪实/胶片）
+    ['style_req', 'TEXT'], // 风格需求（C 端预约表单填写，如 户外/室内/纪实/胶片）
+    ['shoot_type', 'TEXT'], // 拍摄类型（婚纱/写真/亲子/跟拍/活动/其他）
+    ['location', 'TEXT'], // 意向拍摄地点
+    ['budget', 'TEXT'] // 预算
   ];
   for (const [col, def] of APPOINTMENT_NEW_COLUMNS) await ensureColumn('appointments', col, def);
 

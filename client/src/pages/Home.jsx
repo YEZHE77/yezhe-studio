@@ -219,7 +219,7 @@ export default function Home() {
           <div className="mt-2 text-xs leading-relaxed text-gray-400">{studio.slogan}</div>
         )}
         <div className="mt-4 flex justify-center gap-3">
-          <button onClick={() => nav('/appointment-form')} className="h-[44px] min-w-[120px] rounded-lg text-sm" style={{ background: TEAL, color: '#fff' }}>
+          <button onClick={() => nav('/customer/book')} className="h-[44px] min-w-[120px] rounded-lg text-sm" style={{ background: TEAL, color: '#fff' }}>
             预约咨询
           </button>
           <button onClick={copyWechat} className="h-[44px] min-w-[120px] rounded-lg border-2 text-sm" style={{ background: '#fff', color: TEAL, borderColor: TEAL }}>
@@ -341,7 +341,7 @@ export default function Home() {
             <span style={{ marginTop: 1, fontSize: 9 }}>关注</span>
           </button>
           {/* 预约：青绿底 + 白色对话气泡(三点) + 文字白 */}
-          <button onClick={() => nav('/appointment-form')}
+          <button onClick={() => nav('/customer/book')}
             style={{ width: 48, height: 48, borderRadius: '50%', background: '#7ecdbb', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 9, boxShadow: '0 2px 8px rgba(96,196,170,0.35)' }} aria-label="预约">
             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round">
               <path d="M4 5h16a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H10l-4 3v-3H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z" />
@@ -352,7 +352,7 @@ export default function Home() {
             <span style={{ marginTop: 1, fontSize: 9 }}>预约</span>
           </button>
           {/* 我的：白底 + 灰色人形轮廓 + 文字灰 */}
-          <button onClick={() => nav('/my')}
+          <button onClick={() => nav('/customer/mine')}
             style={{ width: 48, height: 48, borderRadius: '50%', background: '#fff', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#666', fontSize: 9, boxShadow: '0 2px 8px rgba(0,0,0,0.12)' }} aria-label="我的">
             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
               <circle cx="12" cy="8" r="3.2" />

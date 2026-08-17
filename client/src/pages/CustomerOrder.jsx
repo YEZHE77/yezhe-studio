@@ -44,7 +44,7 @@ function fmtTime(t) {
 export default function CustomerOrder() {
   const [params] = useSearchParams();
   const nav = useNavigate();
-  const token = params.get('token') || '';
+  const token = params.get('accessToken') || params.get('token') || '';
   const [data, setData] = useState(null);
   const [err, setErr] = useState('');
   const [loading, setLoading] = useState(true);
@@ -63,7 +63,7 @@ export default function CustomerOrder() {
 
   useEffect(() => {
     if (!token) { setErr('无权限访问'); setLoading(false); return; }
-    http.get('/api/public/order/' + token)
+    http.get('/api/customer/order-detail', { params: { accessToken: token } })
       .then((r) => setData(r.data))
       .catch((e) => setErr((e.response && e.response.data && e.response.data.error) || '加载失败'))
       .finally(() => setLoading(false));

@@ -62,7 +62,6 @@ const CustomerOrder = React.lazy(() => import('./pages/CustomerOrder.jsx'));
 const QueryOrder = React.lazy(() => import('./pages/QueryOrder.jsx'));
 const CustomerLogin = React.lazy(() => import('./pages/CustomerLogin.jsx'));
 const CustomerMine = React.lazy(() => import('./pages/CustomerMine.jsx'));
-const CustomerOrderDetail = React.lazy(() => import('./pages/CustomerOrderDetail.jsx'));
 const AppointmentForm = React.lazy(() => import('./pages/AppointmentForm.jsx'));
 const ContractTemplates = React.lazy(() => import('./pages/ContractTemplates.jsx'));
 const ContractAudit = React.lazy(() => import('./pages/ContractAudit.jsx'));
@@ -171,8 +170,12 @@ export default function App() {
       <Route path="/package" element={
         <Suspense fallback={<PageLoader />}><PackagePublic /></Suspense>
       } />
-      {/* C 端客户订单查看（/customer-order?token=customer_token）· 公开，只读 */}
+      {/* C 端客户订单查看（/customer-order?token=customer_token）· 公开，只读（历史分享链接兼容） */}
       <Route path="/customer-order" element={
+        <Suspense fallback={<PageLoader />}><CustomerOrder /></Suspense>
+      } />
+      {/* C 端订单 token 详情页（/customer/order?accessToken=）· 公开，只读，与 /customer-order 同一组件 */}
+      <Route path="/customer/order" element={
         <Suspense fallback={<PageLoader />}><CustomerOrder /></Suspense>
       } />
       {/* C 端客户自助查订单（/customer/query-order）· 手机号+图形验证码，只读，与 token 专属访问并行 */}
@@ -187,11 +190,11 @@ export default function App() {
       <Route path="/customer/mine" element={
         <Suspense fallback={<PageLoader />}><CustomerMine /></Suspense>
       } />
-      {/* C 端订单详情页（/customer/order/:id）· 只读，左上返回键 */}
-      <Route path="/customer/order/:id" element={
-        <Suspense fallback={<PageLoader />}><CustomerOrderDetail /></Suspense>
+      {/* C 端预约提交页（/customer/book）· 公开，写入预约表待确认 */}
+      <Route path="/customer/book" element={
+        <Suspense fallback={<PageLoader />}><AppointmentForm /></Suspense>
       } />
-      {/* C 端公开预约表单 */}
+      {/* C 端公开预约表单（历史路径兼容，与 /customer/book 同一组件） */}
       <Route path="/appointment-form" element={
         <Suspense fallback={<PageLoader />}><AppointmentForm /></Suspense>
       } />
