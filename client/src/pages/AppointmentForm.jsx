@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import http from '../api.js';
 import { customerHttp } from '../utils/customerAuth.js';
@@ -26,6 +26,8 @@ export default function AppointmentForm() {
   const [done, setDone] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
+  // 防连点：用 ref（同步可读）而非 state（异步闭包），真正挡住重渲染前的第二次点击/回车
+  const submittingRef = useRef(false);
 
   const set = (k) => (v) => setForm((f) => ({ ...f, [k]: v }));
 
@@ -52,11 +54,12 @@ export default function AppointmentForm() {
 
   const submit = async (e) => {
     e.preventDefault();
-    if (busy) return; // 防连点/双击重复提交（state 未及时生效前也挡住）
+    if (submittingRef.current) return; // 防连点/双击重复提交（ref 同步生效，state 未及时更新前也挡住）
     if (!form.phone.trim()) { setErr('请填写主联系手机号'); return; }
     if (!/^1\d{10}$/.test(form.phone.trim())) { setErr('请输入正确的 11 位手机号'); return; }
     if (form.phone_two.trim() && !/^1\d{10}$/.test(form.phone_two.trim())) { setErr('第二联系手机号格式不正确'); return; }
     if (!form.expect_date) { setErr('请选择意向拍摄日期'); return; }
+    submittingRef.current = true;
     setBusy(true); setErr('');
     try {
       await customerHttp.post('/api/customer/reservation-submit', {
@@ -72,7 +75,7 @@ export default function AppointmentForm() {
       });
       setDone(true);
     } catch (e2) { setErr((e2.response && e2.response.data && e2.response.data.error) || '提交失败'); }
-    finally { setBusy(false); }
+    finally { submittingRef.current = false; setBusy(false); }
   };
 
   if (done) {

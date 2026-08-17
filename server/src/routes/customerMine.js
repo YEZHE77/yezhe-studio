@@ -22,13 +22,18 @@ const COOKIE_TTL = SESSION_HOURS * 3600 * 1000;
 const loginRate = new Map(); // ip -> [timestamps]
 const LOGIN_MAX = 3;
 const LOGIN_WINDOW = 60 * 1000;
-const reserveRate = new Map();
-// IP 级限流放宽：1 次/分钟 过严——运营商 NAT 下多个顾客共用同一出口 IP，第 2 位顾客 1 分钟内提交即被误拦截。
-// 改为 10 分钟窗口内最多 5 次（粗粒度兜底），真正的防滥用交给下方「同手机号 60s 防重复提交」。
-const RESERVE_MAX = 5;
+// 预约限流以「手机号」为强维度（精确到人，不受运营商 NAT 共享出口 IP / 生产代理缺 x-forwarded-for 影响）：
+//   ① 同手机号 60s 防重复提交（防手滑双击连点产生重复预约）
+//   ② 同手机号 10 分钟最多 3 次（真正防滥用）
+//   ③ IP 级仅作极宽兜底（30 次/10 分钟，专防分布式刷，正常共享 IP 远达不到）
+const reserveRate = new Map();            // ip -> [timestamps]（兜底）
+const RESERVE_MAX = 30;
 const RESERVE_WINDOW = 10 * 60 * 1000;
-const reservePhone = new Map();   // 防重复提交：phone -> 最近成功提交时间戳
-const RESERVE_PHONE_MS = 60 * 1000; // 同一手机号 60 秒内只允许提交 1 次
+const reservePhone = new Map();           // phone -> 最近一次提交时间戳（60s 防重复）
+const RESERVE_PHONE_MS = 60 * 1000;
+const reservePhoneFreq = new Map();       // phone -> [timestamps]（10 分钟最多 3 次）
+const RESERVE_PHONE_FREQ_MAX = 3;
+const RESERVE_PHONE_FREQ_WINDOW = 10 * 60 * 1000;
 
 const RESERVATION_STATUS = { pending: '待确认', contacted: '已沟通', rejected: '已拒绝', converted: '已转订单' };
 const ORDER_STATUS = { pending_deposit: '待付定金', deposit_paid: '已付定金', shot_done: '拍摄完成', completed: '已完结', cancelled: '已取消' };
@@ -105,7 +110,7 @@ function maskPhone(p) {
 
 function pickText(...vals) { for (const v of vals) { if (v) return String(v); } return ''; }
 
-// ===== 2. 提交预约（游客可提交；主手机号必填；限流：同手机号 60s 防重复 + IP 10 分钟最多 5 次）=====
+// ===== 2. 提交预约（游客可提交；主手机号必填；限流以手机号为主：60s 防重复 + 10 分钟最多 3 次，IP 仅作兜底）=====
 router.post('/reservation-submit', async (req, res) => {
   try {
     const b = req.body || {};
@@ -119,20 +124,17 @@ router.post('/reservation-submit', async (req, res) => {
     const remark = String(b.remark || '').trim();
     const packageId = (b.package_id === null || b.package_id === undefined || b.package_id === '') ? null : parseInt(b.package_id, 10);
 
-    // 参数校验优先：参数错误的 400 不消耗限流额度，避免「误填一次就被限流 1 分钟」
+    // 参数校验优先：参数错误的 400 不消耗限流额度，避免「误填一次就被限流」
     if (!phone) return res.status(400).json({ error: '请填写主联系手机号' });
     if (!/^1\d{10}$/.test(phone)) return res.status(400).json({ error: '请输入正确的 11 位手机号' });
     if (phoneTwo && !/^1\d{10}$/.test(phoneTwo)) return res.status(400).json({ error: '第二联系手机号格式不正确' });
     if (!expectDate) return res.status(400).json({ error: '请选择意向拍摄日期' });
-    // expect_time 合法取值：空（暂未确定）/ HH:MM（整点或任意时分）/ 场次 code 'half'/'full'
-    // （前端时间下拉：暂未确定=空，场次=PERIOD_OPTIONS 的 v『half/full』，整点=HOURS 的 'HH:00'）
-    // 兼容历史数据直接存的 '半天'/'全天'（新提交一律存 code）
-    if (expectTime && !/^\d{2}:\d{2}$/.test(expectTime) && expectTime !== 'half' && expectTime !== 'full' && expectTime !== '半天' && expectTime !== '全天') {
-      return res.status(400).json({ error: '拍摄时间格式不正确' });
-    }
+    // expect_time 为纯展示字段（B 端不消费），取值由前端下拉约束（空 / HH:00 / half / full），
+    // 后端不做格式墙（避免新旧前端/历史数据组合误报「格式不正确」），仅限制长度防异常长值。
+    if (expectTime.length > 20) return res.status(400).json({ error: '拍摄时间格式不正确' });
 
-    // 防重复提交：同一手机号 60 秒内只允许提交 1 次（防手滑双击/连点产生重复预约）。
-    // 乐观占位：并发双击时后到的请求被拦截；写入失败自动释放占位，允许重试。
+    // ① 防重复提交：同一手机号 60 秒内只允许提交 1 次（防手滑双击/连点产生重复预约）。
+    // 乐观占位：并发双击时后到的请求被拦截；写入失败/被限自动释放占位，允许重试。
     const phoneKey = 'phone:' + phone;
     const lastPhone = reservePhone.get(phoneKey) || 0;
     if (Date.now() - lastPhone < RESERVE_PHONE_MS) {
@@ -140,10 +142,16 @@ router.post('/reservation-submit', async (req, res) => {
     }
     reservePhone.set(phoneKey, Date.now());
 
-    // IP 级限流（粗粒度兜底，阈值已放宽避免运营商 NAT 误拦截）
+    // ② 同手机号 10 分钟最多 3 次（精确到人的频率限制，不受 NAT 共享 IP 影响）
+    if (rateHit(reservePhoneFreq, phoneKey, RESERVE_PHONE_FREQ_MAX, RESERVE_PHONE_FREQ_WINDOW)) {
+      reservePhone.delete(phoneKey);
+      return res.status(429).json({ error: '提交过于频繁，请稍后再试' });
+    }
+
+    // ③ IP 级兜底（阈值极宽，专防分布式刷，正常共享 IP 远达不到）
     const ip = getIp(req);
     if (rateHit(reserveRate, ip, RESERVE_MAX, RESERVE_WINDOW)) {
-      reservePhone.delete(phoneKey); // IP 被限则释放手机号占位，待解除后仍可正常提交
+      reservePhone.delete(phoneKey);
       return res.status(429).json({ error: '提交过于频繁，请稍后再试' });
     }
 
