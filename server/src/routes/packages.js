@@ -5,7 +5,7 @@ import { authRequired, requireRole } from '../auth.js';
 import { parseRow } from '../schema.js';
 
 const router = Router();
-const JSON_COLS = ['addons', 'marketing', 'questionnaire', 'specs', 'details'];
+const JSON_COLS = ['addons', 'marketing', 'questionnaire', 'specs', 'details', 'quick_tags', 'detail_images'];
 
 // 列表（状态筛选 + 分类筛选 + 搜索）
 router.get('/', authRequired, async (req, res) => {

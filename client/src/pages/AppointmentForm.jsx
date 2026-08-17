@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import http from '../api.js';
 import { customerHttp } from '../utils/customerAuth.js';
 
 // ===== C 端预约提交页（/customer/book）=====
 // 表单：新郎/新娘姓名 + 主/第二联系手机号 + 意向套系下拉 + 意向拍摄日期 + 拍摄地点 + 备注
-// 加载：GET /api/customer/package-list（仅启用套系）+ GET /api/customer/me（登录态回填主手机号）
+// 加载：GET /api/packages/public（B 端公开套系接口，仅启用套系）+ GET /api/customer/me（登录态回填主手机号）
 // 提交：POST /api/customer/reservation-submit（游客可提交，主手机号+意向日期必填）
 // 禁加粗，灰度/字号/间距分层，卡片圆角 + 柔和阴影，移动端优先。
 const TEXT = '#1D1D1F';
@@ -27,7 +28,7 @@ export default function AppointmentForm() {
 
   // 套系列表 + 登录态回填
   useEffect(() => {
-    customerHttp.get('/api/customer/package-list')
+    http.get('/api/packages/public')
       .then((r) => setPackages(r.data || []))
       .catch(() => {});
     customerHttp.get('/api/customer/me')

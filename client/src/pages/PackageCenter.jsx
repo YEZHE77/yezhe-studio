@@ -27,7 +27,7 @@ export default function PackageCenter() {
   const [tip, setTip] = useState('');
 
   useEffect(() => {
-    http.get('/api/customer/package-list')
+    http.get('/api/packages/public')
       .then((r) => setList(Array.isArray(r.data) ? r.data : []))
       .catch(() => setList([]))
       .finally(() => setLoading(false));

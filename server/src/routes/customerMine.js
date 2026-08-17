@@ -82,68 +82,6 @@ function maskPhone(p) {
 
 function pickText(...vals) { for (const v of vals) { if (v) return String(v); } return ''; }
 
-// ===== 1. 获取 C 端可用套系列表（仅启用套系，按 sort 排序；同步 B 端 packages 全部套餐）=====
-router.get('/package-list', async (req, res) => {
-  try {
-    // packages.status: 'on' 启用 / 'off' 禁用（禁用后 C 端不展示）
-    const rows = await query(
-      `SELECT id, name, price, description, cover_url, subtitle, retouch_count, duration, addon_price
-       FROM packages WHERE status != 'off' ORDER BY sort ASC, id ASC`
-    );
-    res.json(rows.map((p) => ({
-      id: p.id, name: p.name, price: Number(p.price) || 0, description: p.description || '',
-      cover_url: p.cover_url || '', subtitle: p.subtitle || '',
-      retouch_count: parseInt(p.retouch_count, 10) || 0,
-      duration: p.duration || '', addon_price: Number(p.addon_price) || 0
-    })));
-  } catch (e) {
-    res.status(500).json({ error: e.message });
-  }
-});
-
-// ===== 1.1 C 端套系详情（公开，按 id；已下架/不存在返回 404；返回套餐完整信息）=====
-router.get('/package-detail', async (req, res) => {
-  try {
-    const id = parseInt(req.query.id, 10);
-    if (!id) return res.status(400).json({ error: '缺少套系 id' });
-    const p = await get('SELECT * FROM packages WHERE id = ?', [id]);
-    if (!p || p.status === 'off') return res.status(404).json({ error: '该套系不存在' });
-
-    const safeJson = (t, fallback) => { try { const v = JSON.parse(t || ''); return (v === null || v === undefined) ? fallback : v; } catch { return fallback; } };
-
-    res.json({
-      id: p.id, name: p.name, price: Number(p.price) || 0, description: p.description || '',
-      cover_url: p.cover_url || '', subtitle: p.subtitle || '',
-      // 套餐核心信息
-      deposit: Number(p.deposit) || 0,
-      duration: p.duration || '',                 // 拍摄时长
-      service_spec: p.service_spec || '',         // 服务规格
-      retouch_count: parseInt(p.retouch_count, 10) || 0,   // 精修张数
-      negative_count: parseInt(p.negative_count, 10) || 0, // 底片数量
-      addon_price: Number(p.addon_price) || 0,    // 加片单价
-      addon_discount: p.addon_discount || '',     // 加片优惠
-      raw_policy: p.raw_policy || '',             // 底片政策
-      raw_save: p.raw_save || '',                 // 底片保存
-      refund_policy: p.refund_policy || '',       // 退订政策
-      // 服装 / 妆造 / 相册（provide 才展示对应说明）
-      clothing: p.clothing || '', clothing_note: p.clothing_note || '',
-      makeup: p.makeup || '', makeup_note: p.makeup_note || '',
-      album_service: p.album_service || '', album_note: p.album_note || '',
-      // 拍摄地点（location_mode=show 才展示）
-      location_mode: p.location_mode || '', location_text: p.location_text || '',
-      // 详情 / 提示 / 标签 / 加购 / 营销 / 图集 / 视频
-      service_detail: p.service_detail || '', warm_tips: p.warm_tips || '',
-      quick_tags: Array.isArray(safeJson(p.quick_tags, [])) ? safeJson(p.quick_tags, []) : [],
-      addons: Array.isArray(safeJson(p.addons, [])) ? safeJson(p.addons, []) : [],
-      marketing: safeJson(p.marketing, {}),
-      detail_images: Array.isArray(safeJson(p.detail_images, [])) ? safeJson(p.detail_images, []) : [],
-      video_url: p.video_url || ''
-    });
-  } catch (e) {
-    res.status(500).json({ error: e.message });
-  }
-});
-
 // ===== 2. 提交预约（游客可提交；主手机号必填；IP 限流 1 分钟最多 1 次）=====
 router.post('/reservation-submit', async (req, res) => {
   try {

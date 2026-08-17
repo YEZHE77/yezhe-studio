@@ -47,8 +47,8 @@ export default function PackagePublic() {
 
   useEffect(() => {
     if (id) {
-      // 新链路：读 B 端 packages（套系中心跳转）
-      http.get('/api/customer/package-detail', { params: { id } })
+      // 统一走 B 端公开接口：GET /api/packages/public/:id（parseRow 全列序列化，与 B 端套系中心同源同结构）
+      http.get('/api/packages/public/' + id)
         .then((r) => setData(r.data))
         .catch((e) => setErr((e.response && e.response.data && e.response.data.error) || '加载失败'))
         .finally(() => setLoading(false));
