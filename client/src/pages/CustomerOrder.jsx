@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import http, { img, BASE } from '../api.js';
-import { getRefundText, getRefundParagraphs, normalizePolicy } from '../utils/refundPolicy.js';
+import { getRefundParagraphs, normalizePolicy } from '../utils/refundPolicy.js';
 import { getServiceAgreement, toParagraphs } from '../utils/customerAgreement.js';
 import { DEFAULT_SERVICE_DETAIL } from '../utils/serviceDetail.js';
 
@@ -13,6 +13,11 @@ const SUB = '#6E6E73';
 const FAINT = '#AEAEB2';
 const LINE = '#F0F0F2';
 const BRAND = '#7ECDBB';
+// 套系预览对齐色板（与后台 PackagePreview / C端 PackagePublic 一致）
+const MRED = '#FA5151';
+const MGRAY = '#999999';
+const MBORDER = '#F0F0F0';
+const MGREEN = '#07C160';
 
 function Card({ children, style }) {
   return <div style={{ background: '#fff', borderRadius: 16, padding: 16, boxShadow: '0 1px 6px rgba(0,0,0,0.04)', ...style }}>{children}</div>;
@@ -22,14 +27,6 @@ function Row({ label, value }) {
     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', borderBottom: '1px solid ' + LINE }}>
       <span style={{ fontSize: 13, color: SUB }}>{label}</span>
       <span style={{ fontSize: 14, color: TEXT, textAlign: 'right', maxWidth: '60%' }}>{value || '—'}</span>
-    </div>
-  );
-}
-function InfoRow({ label, value, color }) {
-  return (
-    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0' }}>
-      <span style={{ fontSize: 13, color: SUB }}>{label}</span>
-      <span style={{ fontSize: 14, color: color || TEXT, textAlign: 'right', maxWidth: '60%', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{value || '—'}</span>
     </div>
   );
 }
@@ -55,6 +52,29 @@ function defaultDetails() {
   };
 }
 
+// 内联 SVG 图标（与后台 PackagePreview / C端 PackagePublic 一致，用于三列规格网格 + 更多服务弹窗）
+function IconClock() {
+  return <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#999" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>;
+}
+function IconImage() {
+  return <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#999" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>;
+}
+function IconWand() {
+  return <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#999" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 2l-9 9-4-4-6 6"/><path d="M21 2l-2 2"/><path d="M3 21l4-4"/><path d="M15 6l4 4"/></svg>;
+}
+function IconShirt() {
+  return <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#999" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20.38 3.46 16 2a4 4 0 0 1-8 0L3.62 3.46a2 2 0 0 0-1.34 2.23l.58 3.47a1 1 0 0 0 .99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 0 0 2-2V10h2.15a1 1 0 0 0 .99-.84l.58-3.47a2 2 0 0 0-1.34-2.23z"/></svg>;
+}
+function IconFace() {
+  return <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#999" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>;
+}
+function IconMoreService() {
+  return <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#FA5151" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>;
+}
+function IconCloseX() {
+  return <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#999" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>;
+}
+
 export default function CustomerOrder() {
   const [params] = useSearchParams();
   const nav = useNavigate();
@@ -74,9 +94,12 @@ export default function CustomerOrder() {
   const [signBusy, setSignBusy] = useState(false);
   const signCanvasRef = useRef(null);
   const signDrawingRef = useRef(false);
-  // 套系服务详情展开（交付时间/交付备注/顾客协议等）
+  // 套系预览交互态（对齐后台套系预览：更多服务全屏弹窗 + 弹窗内展开 + 须知查看详情）
+  const [serviceModalOpen, setServiceModalOpen] = useState(false);
   const [serviceDetailOpen, setServiceDetailOpen] = useState(false);
+  const [refundOpen, setRefundOpen] = useState(false);
   const [agreementOpen, setAgreementOpen] = useState(false);
+  const [refundDetailOpen, setRefundDetailOpen] = useState(false);
 
   useEffect(() => {
     if (!token) { setErr('无权限访问'); setLoading(false); return; }
@@ -157,9 +180,20 @@ export default function CustomerOrder() {
 
   const pkg = data.package || {};
   const d = { ...defaultDetails(), ...(pkg.details && typeof pkg.details === 'object' ? pkg.details : {}) };
+  // legacy 旧订单兜底：details 缺失时回退到套系快照顶层 other_service / notice
+  if (!d.service_detail_text) d.service_detail_text = pkg.other_service || '';
+  if (!d.warm_tips) d.warm_tips = pkg.notice || '';
   const exes = data.executors || [];
   const extra = data.extra_items || [];
   const timeSlots = data.time_slots || [];
+  // 三列规格网格项（与后台套系预览一致）
+  const gridItems = [];
+  if (d.duration) gridItems.push({ icon: <IconClock />, label: d.duration });
+  if (d.raw_count) gridItems.push({ icon: <IconImage />, label: `拍摄${d.raw_count}张` });
+  if (d.retouch_count) gridItems.push({ icon: <IconWand />, label: `${d.retouch_count}张精修` });
+  gridItems.push({ icon: <IconShirt />, label: d.raw_all_included ? '全部原片' : '仅送精修' });
+  const clothMap = { not: '服装自备', yes: '提供服装', extra: '服装另购' };
+  gridItems.push({ icon: <IconFace />, label: clothMap[d.cloth_provide] || '服装自备' });
 
   return (
     <div style={{ minHeight: '100vh', background: '#F5F5F7', paddingBottom: 40 }}>
@@ -186,104 +220,169 @@ export default function CustomerOrder() {
         <div style={{ fontSize: 12, color: FAINT, marginTop: 10 }}>下单时间 {fmtTime(data.create_time)}</div>
       </Card>
 
-      {/* 套系详情 */}
-      {pkg.name && (
-        <Card style={{ marginTop: 12 }}>
-          {pkg.cover && <img src={img(pkg.cover)} alt="" style={{ width: '100%', aspectRatio: '4/3', objectFit: 'cover', borderRadius: 12, marginBottom: 12 }} />}
-          <div style={{ fontSize: 17, color: TEXT }}>{pkg.name}</div>
-          <div style={{ fontSize: 22, color: '#FF5A5F', marginTop: 6 }}>¥{Number(pkg.price || 0).toFixed(0)}</div>
-          {pkg.desc && <div style={{ fontSize: 13, color: SUB, marginTop: 8, lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>{pkg.desc}</div>}
-          <div style={{ marginTop: 12, borderTop: '1px solid ' + LINE, paddingTop: 12 }}>
-            <InfoRow label="定金" value={'¥' + Number(pkg.deposit || 0).toFixed(0)} />
-            {Number(pkg.additional_price) > 0 && <InfoRow label="加片单价" value={'¥' + Number(pkg.additional_price).toFixed(0) + '/张'} />}
-            {pkg.shoot_duration && <InfoRow label="拍摄时长" value={pkg.shoot_duration} />}
-            {pkg.shoot_scope && <InfoRow label="拍摄范围" value={pkg.shoot_scope} />}
-            <InfoRow label="照片总数" value={pkg.photo_total ? pkg.photo_total + ' 张' : ''} />
-            <InfoRow label="精修张数" value={pkg.retouch_count ? pkg.retouch_count + ' 张' : ''} />
-            {pkg.original_file && <InfoRow label="原片文件" value={pkg.original_file} />}
-          </div>
-        </Card>
-      )}
-
-      {/* 套系服务详情（与后台套系预览一致：完整字段清单 + 服务详情 + 顾客协议） */}
-      <Card style={{ marginTop: 12 }}>
-        <div style={{ fontSize: 15, fontWeight: 600, color: TEXT, marginBottom: 4 }}>套系服务详情</div>
-        <div>
-          {[
-            { label: '拍摄时长', value: d.duration || '' },
-            { label: '原片', value: d.raw_count ? `${d.raw_count}张` : '' },
-            { label: '精修片', value: d.retouch_count ? `${d.retouch_count}张` : '' },
-            { label: '加片费', value: d.extra_photo_fee || '' },
-            { label: '快修费', value: d.quick_repair_cost || '' },
-            { label: '交付时间', value: d.delivery_time || '' },
-            { label: '交付备注', value: d.delivery_remark || '' },
-            { label: '底片', value: d.raw_all_included ? '全部原片' : '仅送精修' },
-            { label: '化妆服装', value: `${d.cloth_provide === 'provide' ? '提供服装' : '不提供服装'} · ${d.makeup_provide === 'provide' ? '提供化妆' : '不提供化妆'}` },
-            { label: '提供相册', value: d.album_provide === 'provide' ? '是' : d.album_provide === 'extra' ? '相册另购' : '否' },
-            { label: '服务地点', value: d.service_location || '' }
-          ].filter((r) => r.value).map((r, i) => (
-            <InfoRow key={i} label={r.label} value={r.value} />
-          ))}
-        </div>
-        {d.warm_tips && (
-          <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid ' + LINE }}>
-            <div style={{ fontSize: 13, color: SUB, marginBottom: 6 }}>温馨提示</div>
-            <div style={{ fontSize: 14, color: TEXT, lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>{d.warm_tips}</div>
-          </div>
-        )}
-        <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid ' + LINE }}>
-          <div onClick={() => setServiceDetailOpen((v) => !v)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}>
-            <span style={{ fontSize: 14, color: TEXT }}>服务详情</span>
-            <span style={{ fontSize: 14, color: BRAND }}>{serviceDetailOpen ? '收起' : '展开'}</span>
-          </div>
-          {serviceDetailOpen && (
-            <div style={{ marginTop: 10, fontSize: 14, color: TEXT, lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>{d.service_detail_text || DEFAULT_SERVICE_DETAIL}</div>
+      {/* 套系预览（对齐后台套系预览 / C端套系预览：封面 + 价格 + 三列网格 + 更多服务全屏弹窗 + 服务详情 + 温馨提示 + 须知） */}
+      <Card style={{ marginTop: 12, padding: 0, overflow: 'hidden' }}>
+        {/* 封面 16/10 */}
+        <div style={{ width: '100%', aspectRatio: '16/10', background: '#f5f5f5', overflow: 'hidden' }}>
+          {pkg.cover ? (
+            <img src={img(pkg.cover)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          ) : (
+            <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ccc', fontSize: 14 }}>暂无封面</div>
           )}
         </div>
-        <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid ' + LINE }}>
-          <div onClick={() => setAgreementOpen((v) => !v)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}>
-            <span style={{ fontSize: 14, color: TEXT }}>顾客协议</span>
-            <span style={{ fontSize: 14, color: BRAND }}>{agreementOpen ? '收起' : '展开'}</span>
+        {/* 标题 + 价格 */}
+        <div style={{ padding: '16px 16px 14px', borderBottom: '1px solid ' + MBORDER }}>
+          <div style={{ fontSize: 18, fontWeight: 600, color: '#1f2329', lineHeight: 1.4 }}>{pkg.name || '套系'}</div>
+          <div style={{ marginTop: 10, display: 'flex', alignItems: 'baseline', gap: 10 }}>
+            <span style={{ color: MRED, display: 'flex', alignItems: 'baseline', gap: 1 }}>
+              <span style={{ fontSize: 16 }}>¥</span>
+              <span style={{ fontSize: 28, fontWeight: 700 }}>{Number(pkg.price || 0).toLocaleString()}</span>
+            </span>
+            {pkg.deposit ? <span style={{ fontSize: 13, color: '#999' }}>定金: ¥ {Number(pkg.deposit).toLocaleString()}</span> : null}
           </div>
-          {agreementOpen && (
-            <div style={{ marginTop: 10, fontSize: 13, color: SUB, lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>{getServiceAgreement(d)}</div>
-          )}
         </div>
-      </Card>
-
-      {/* 服务详情 / 温馨提示 */}
-      {(pkg.other_service || pkg.notice) && (
-        <Card style={{ marginTop: 12 }}>
-          {pkg.other_service && (
-            <div style={{ marginBottom: pkg.notice ? 14 : 0 }}>
-              <div style={{ fontSize: 13, color: SUB, marginBottom: 6 }}>其他服务</div>
-              <div style={{ fontSize: 14, color: TEXT, lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>{pkg.other_service}</div>
+        {/* 三列规格网格 + 更多服务 */}
+        <div style={{ padding: '12px 16px 16px' }}>
+          <div style={{ background: '#fafafa', borderRadius: 12, padding: '20px 16px', display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px 8px', textAlign: 'center' }}>
+            {gridItems.map((item, i) => (
+              <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{item.icon}</div>
+                <div style={{ fontSize: 12, color: '#666' }}>{item.label}</div>
+              </div>
+            ))}
+            <div onClick={() => setServiceModalOpen(true)} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}><IconMoreService /></div>
+              <div style={{ fontSize: 12, color: MRED }}>更多服务</div>
             </div>
-          )}
-          {pkg.notice && (
-            <div>
-              <div style={{ fontSize: 13, color: SUB, marginBottom: 6 }}>温馨提示</div>
-              <div style={{ fontSize: 14, color: TEXT, lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>{pkg.notice}</div>
+          </div>
+        </div>
+        {/* 服务详情 */}
+        <div style={{ padding: '16px 16px 16px', borderTop: '1px solid ' + MBORDER }}>
+          <div style={{ fontSize: 15, fontWeight: 600, color: '#333', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ width: 3, height: 14, background: MRED, borderRadius: 2, display: 'inline-block' }} />
+            服务详情：
+          </div>
+          <div style={{ fontSize: 14, color: '#555', lineHeight: 1.8, whiteSpace: 'pre-wrap' }}>{d.service_detail_text || DEFAULT_SERVICE_DETAIL}</div>
+        </div>
+        {/* 温馨提示 */}
+        {d.warm_tips ? (
+          <div style={{ padding: '16px 16px 24px', borderTop: '1px solid ' + MBORDER }}>
+            <div style={{ fontSize: 15, fontWeight: 600, color: '#333', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ width: 3, height: 14, background: MRED, borderRadius: 2, display: 'inline-block' }} />
+              温馨提示：
             </div>
-          )}
-        </Card>
-      )}
-
-      {/* 退订政策（本订单所属套系的退改规则，客户只读） */}
-      <Card style={{ marginTop: 12 }}>
-        <div style={{ fontSize: 13, color: SUB, marginBottom: 8 }}>退订政策</div>
-        {(() => {
-          const rp = normalizePolicy(pkg.refund_policy);
-          const paras = getRefundParagraphs(pkg, rp);
+            <div style={{ fontSize: 14, color: '#555', lineHeight: 1.8, whiteSpace: 'pre-wrap' }}>{d.warm_tips}</div>
+          </div>
+        ) : null}
+        {/* 须知：退订政策 */}
+        {!d.hide_refund && (() => {
+          const policy = normalizePolicy(d.refund_policy);
           return (
-            <div style={{ fontSize: 14, color: TEXT, lineHeight: 1.7 }}>
-              {paras.length ? paras.map((line, i) => (
-                <div key={i} style={{ marginBottom: i < paras.length - 1 ? 6 : 0 }}>{line}</div>
-              )) : <div style={{ color: SUB }}>暂无退订政策</div>}
+            <div style={{ padding: '16px 16px 16px', borderTop: '1px solid ' + MBORDER }}>
+              <div style={{ fontSize: 15, fontWeight: 600, color: '#333', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ width: 3, height: 14, background: MRED, borderRadius: 2, display: 'inline-block' }} />
+                须知：
+              </div>
+              <div style={{ fontSize: 14, color: '#555', lineHeight: 1.8 }}>
+                <span>退订政策 {policy}</span>
+                {!refundDetailOpen && (
+                  <button type="button" onClick={() => setRefundDetailOpen(true)} style={{ display: 'block', marginTop: 8, background: 'none', border: 'none', color: MGREEN, fontSize: 13, cursor: 'pointer', textDecoration: 'underline', padding: 0 }}>
+                    查看详情
+                  </button>
+                )}
+                {refundDetailOpen && (
+                  <div style={{ marginTop: 10 }}>
+                    {(() => {
+                      const paras = getRefundParagraphs(d, policy);
+                      return paras.length ? paras.map((line, i) => (
+                        <div key={i} style={{ marginBottom: i < paras.length - 1 ? 6 : 0 }}>{line}</div>
+                      )) : <div style={{ color: MGRAY, fontSize: 13 }}>未填写</div>;
+                    })()}
+                    <button type="button" onClick={() => setRefundDetailOpen(false)} style={{ display: 'block', marginTop: 10, background: 'none', border: 'none', color: MGREEN, fontSize: 13, cursor: 'pointer', textDecoration: 'underline', padding: 0 }}>
+                      收起
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           );
         })()}
       </Card>
+
+      {/* 套系服务详情全屏弹窗（对齐后台套系预览） */}
+      {serviceModalOpen && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 101, background: '#fff', display: 'flex', flexDirection: 'column' }}>
+          <div style={{ paddingTop: 'env(safe-area-inset-top, 0px)', height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', borderBottom: `1px solid ${MBORDER}`, flexShrink: 0 }}>
+            <span style={{ fontSize: 16, fontWeight: 500, color: '#333' }}>套系服务详情</span>
+          </div>
+          <div style={{ overflowY: 'auto', flex: 1, padding: '8px 20px' }}>
+            {[
+              { label: '拍摄时长', value: d.duration || '未设置', chevron: true },
+              { label: '原片', value: d.raw_count ? `${d.raw_count}张` : '未设置', chevron: true },
+              { label: '精修片', value: d.retouch_count ? `${d.retouch_count}张` : '未设置', chevron: true },
+              { label: '加片费', value: d.extra_photo_fee || '未设置', chevron: true },
+              { label: '快修费', value: d.quick_repair_cost || '未设置', chevron: true },
+              { label: '交付时间', value: d.delivery_time || '未设置', chevron: true },
+              { label: '交付备注', value: d.delivery_remark || '未设置', chevron: true, fullWidth: true },
+              { label: '化妆服装', value: `${d.cloth_provide === 'provide' ? '提供服装' : '不提供服装'} · ${d.makeup_provide === 'provide' ? '提供化妆' : '不提供化妆'}`, chevron: true },
+              { label: '提供相册', value: d.album_provide === 'provide' ? '是' : d.album_provide === 'extra' ? '相册另购' : '否', chevron: true },
+              { label: '服务地点', value: d.service_location || '未设置', chevron: true }
+            ].map((row, i, arr) => (
+              <div key={i} style={{ display: 'flex', alignItems: 'center', padding: '14px 0', borderBottom: i < arr.length - 1 ? `1px solid ${MBORDER}` : 'none' }}>
+                <span style={{ fontSize: 14, color: '#333', flex: 1 }}>{row.label}</span>
+                <span style={{ fontSize: 14, color: '#666', maxWidth: '60%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{row.value}</span>
+                {row.chevron && <span style={{ color: '#82C8AE', marginLeft: 6 }}>›</span>}
+              </div>
+            ))}
+
+            <div style={{ height: 1, background: MBORDER, margin: '12px -20px' }} />
+
+            <div style={{ padding: '14px 0' }}>
+              <div onClick={() => setServiceDetailOpen((v) => !v)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}>
+                <span style={{ fontSize: 14, color: '#333' }}>服务详情</span>
+                <span style={{ fontSize: 14, color: MGREEN }}>{serviceDetailOpen ? '收起' : '展开'}</span>
+              </div>
+              {serviceDetailOpen && (
+                <div style={{ marginTop: 10, fontSize: 13, color: '#666', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{d.service_detail_text || DEFAULT_SERVICE_DETAIL}</div>
+              )}
+            </div>
+
+            <div style={{ padding: '14px 0', borderTop: `1px solid ${MBORDER}` }}>
+              <div onClick={() => setRefundOpen((v) => !v)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}>
+                <span style={{ fontSize: 14, color: '#333' }}>退订政策</span>
+                <span style={{ fontSize: 14, color: d.hide_refund ? '#999' : MGREEN }}>{d.hide_refund ? '该套系已设置为隐藏退订政策' : (refundOpen ? '收起' : '展开')}</span>
+              </div>
+              {!d.hide_refund && refundOpen && (() => {
+                const paras = getRefundParagraphs(d, normalizePolicy(d.refund_policy));
+                if (!paras.length) return <div style={{ marginTop: 10, fontSize: 13, color: '#666', lineHeight: 1.6 }}>未设置</div>;
+                return (
+                  <div style={{ marginTop: 10, fontSize: 13, color: '#666', lineHeight: 1.6 }}>
+                    {paras.map((p, i) => {
+                      const isHeading = /^[一二三四五六七八九十]+、|退订/.test(p);
+                      return <div key={i} style={{ marginTop: isHeading && i > 0 ? 8 : 0, marginBottom: 4, fontSize: isHeading ? 14 : 13 }}>{p}</div>;
+                    })}
+                  </div>
+                );
+              })()}
+            </div>
+
+            <div style={{ padding: '14px 0', borderTop: `1px solid ${MBORDER}` }}>
+              <div onClick={() => setAgreementOpen((v) => !v)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}>
+                <span style={{ fontSize: 14, color: '#333' }}>顾客协议</span>
+                <span style={{ fontSize: 14, color: MGREEN }}>{agreementOpen ? '收起' : '展开'}</span>
+              </div>
+              {agreementOpen && (
+                <div style={{ marginTop: 10, fontSize: 13, color: '#666', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{getServiceAgreement(d)}</div>
+              )}
+            </div>
+          </div>
+          <div style={{ padding: '20px 20px calc(20px + env(safe-area-inset-bottom))', display: 'flex', justifyContent: 'center', borderTop: `1px solid ${MBORDER}`, flexShrink: 0 }}>
+            <button onClick={() => { setServiceModalOpen(false); setServiceDetailOpen(false); setRefundOpen(false); setAgreementOpen(false); }} style={{ width: 44, height: 44, borderRadius: '50%', border: '1px solid #ddd', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <IconCloseX />
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* 拍摄信息 */}
       <Card style={{ marginTop: 12 }}>
