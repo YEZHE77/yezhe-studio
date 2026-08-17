@@ -18,7 +18,7 @@ const labelStyle = { fontSize: 13, color: SUB, marginBottom: 8, display: 'block'
 export default function AppointmentForm() {
   const nav = useNavigate();
   const [packages, setPackages] = useState([]);
-  const [form, setForm] = useState({ groom_name: '', bride_name: '', phone: '', phone_two: '', package_id: '', expect_date: '', shoot_location: '', remark: '' });
+  const [form, setForm] = useState({ groom_name: '', bride_name: '', phone: '', phone_two: '', package_id: '', expect_date: '', expect_time: '', shoot_location: '', remark: '' });
   const [done, setDone] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
@@ -54,6 +54,7 @@ export default function AppointmentForm() {
         phone_two: form.phone_two.trim(),
         package_id: form.package_id === '' ? null : parseInt(form.package_id, 10),
         expect_date: form.expect_date,
+        expect_time: form.expect_time.trim(),
         shoot_location: form.shoot_location.trim(),
         remark: form.remark.trim()
       });
@@ -110,6 +111,11 @@ export default function AppointmentForm() {
             <div style={{ marginBottom: 14 }}>
               <span style={labelStyle}>意向拍摄日期</span>
               <input style={inputStyle} type="date" value={form.expect_date} onChange={(e) => set('expect_date')(e.target.value)} />
+            </div>
+
+            <div style={{ marginBottom: 14 }}>
+              <span style={labelStyle}>拍摄时间（选填）</span>
+              <input style={inputStyle} type="time" value={form.expect_time} onChange={(e) => set('expect_time')(e.target.value)} />
             </div>
 
             <div style={{ marginBottom: 14 }}>

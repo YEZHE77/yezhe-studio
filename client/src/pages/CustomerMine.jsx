@@ -225,7 +225,7 @@ export default function CustomerMine() {
                 <div style={{ fontSize: 12, color: FAINT, marginTop: 6 }}>提交时间 {fmtTime(r.create_time)}</div>
                 <div style={{ fontSize: 12, color: SUB, marginTop: 4 }}>主手机号 {r.phone}{r.phone_two ? ' · 副 ' + r.phone_two : ''}</div>
                 <div style={{ fontSize: 12, color: SUB, marginTop: 4 }}>套系 {r.package_name || '暂未确定套系'}</div>
-                <div style={{ fontSize: 12, color: SUB, marginTop: 4 }}>意向日期 {r.expect_date || '待定'}{r.shoot_location ? ' · ' + r.shoot_location : ''}</div>
+                <div style={{ fontSize: 12, color: SUB, marginTop: 4 }}>意向日期 {r.expect_date || '待定'}{r.expect_time ? ' ' + r.expect_time : ''}{r.shoot_location ? ' · ' + r.shoot_location : ''}</div>
                 {converted && r.order_token && (
                   <button onClick={() => nav('/customer/order?accessToken=' + encodeURIComponent(r.order_token))}
                     style={{ marginTop: 10, padding: '7px 16px', borderRadius: 14, border: '1px solid ' + BRAND, background: '#fff', color: BRAND, fontSize: 12, cursor: 'pointer' }}>

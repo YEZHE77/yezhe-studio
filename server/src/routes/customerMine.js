@@ -134,6 +134,7 @@ router.post('/reservation-submit', async (req, res) => {
     const phone = String(b.phone || '').trim();
     const phoneTwo = String(b.phone_two || '').trim();
     const expectDate = String(b.expect_date || '').trim();
+    const expectTime = String(b.expect_time || '').trim();
     const shootLocation = String(b.shoot_location || '').trim();
     const remark = String(b.remark || '').trim();
     const packageId = (b.package_id === null || b.package_id === undefined || b.package_id === '') ? null : parseInt(b.package_id, 10);
@@ -142,11 +143,12 @@ router.post('/reservation-submit', async (req, res) => {
     if (!/^1\d{10}$/.test(phone)) return res.status(400).json({ error: '请输入正确的 11 位手机号' });
     if (phoneTwo && !/^1\d{10}$/.test(phoneTwo)) return res.status(400).json({ error: '第二联系手机号格式不正确' });
     if (!expectDate) return res.status(400).json({ error: '请选择意向拍摄日期' });
+    if (expectTime && !/^\d{2}:\d{2}$/.test(expectTime)) return res.status(400).json({ error: '拍摄时间格式不正确' });
 
     const id = await insert(
-      `INSERT INTO reservations (groom_name, bride_name, phone, phone_two, package_id, expect_date, shoot_location, remark, status, order_id)
-       VALUES (?,?,?,?,?,?,?,?,?,?)`,
-      [groomName, brideName, phone, phoneTwo, packageId, expectDate, shootLocation, remark, 'pending', null]
+      `INSERT INTO reservations (groom_name, bride_name, phone, phone_two, package_id, expect_date, expect_time, shoot_location, remark, status, order_id)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
+      [groomName, brideName, phone, phoneTwo, packageId, expectDate, expectTime, shootLocation, remark, 'pending', null]
     );
 
     // 通知商家（预约消息，sub_type=reserve，已整合到「消息」Tab 的预约消息分类）
@@ -154,7 +156,7 @@ router.post('/reservation-submit', async (req, res) => {
     try {
       await emitBizToStaff({
         title: '新预约',
-        content: `${groomName || brideName || '客户'}（${phone}）提交了预约${pkgName ? '，套系 ' + pkgName : ''}${expectDate ? '，意向日期 ' + expectDate : ''}${shootLocation ? '，地点 ' + shootLocation : ''}`,
+        content: `${groomName || brideName || '客户'}（${phone}）提交了预约${pkgName ? '，套系 ' + pkgName : ''}${expectDate ? '，意向日期 ' + expectDate : ''}${expectTime ? '，时间 ' + expectTime : ''}${shootLocation ? '，地点 ' + shootLocation : ''}`,
         biz_type: BIZ_TYPE.ORDER, biz_id: id, sub_type: 'reserve',
         biz_extra: JSON.stringify({ reservationId: id })
       });
@@ -265,6 +267,7 @@ router.get('/my-business', async (req, res) => {
         package_id: r.package_id,
         package_name: r.package_name || '',
         expect_date: r.expect_date || '',
+        expect_time: r.expect_time || '',
         shoot_location: r.shoot_location || '',
         remark: r.remark || '',
         status: r.status,
