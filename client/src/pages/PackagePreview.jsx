@@ -302,29 +302,20 @@ export default function PackagePreview() {
               <span style={{ width: 3, height: 14, background: MRED, borderRadius: 2, display: 'inline-block' }} />
               须知：
             </div>
-            <div style={{ fontSize: 14, color: '#555', lineHeight: 1.8 }}>
-              <span>退订政策 {policy}</span>
-              {!refundDetailOpen && (
-                <button type="button" onClick={() => setRefundDetailOpen(true)}
-                  style={{ display: 'block', marginTop: 8, background: 'none', border: 'none', color: MGREEN, fontSize: 13, cursor: 'pointer', textDecoration: 'underline', padding: 0 }}>
-                  查看详情
-                </button>
-              )}
-              {refundDetailOpen && (
-                <div style={{ marginTop: 10 }}>
-                  {(() => {
-                    const paras = getRefundParagraphs(d, policy);
-                    return paras.length ? paras.map((line, i) => (
-                      <div key={i} style={{ marginBottom: i < paras.length - 1 ? 6 : 0 }}>{line}</div>
-                    )) : <div style={{ color: MGRAY, fontSize: 13 }}>未填写</div>;
-                  })()}
-                  <button type="button" onClick={() => setRefundDetailOpen(false)}
-                    style={{ display: 'block', marginTop: 10, background: 'none', border: 'none', color: MGREEN, fontSize: 13, cursor: 'pointer', textDecoration: 'underline', padding: 0 }}>
-                    收起
-                  </button>
-                </div>
-              )}
+            <div onClick={() => setRefundDetailOpen((v) => !v)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}>
+              <span style={{ fontSize: 14, color: '#333' }}>退订政策</span>
+              <span style={{ fontSize: 14, color: MGREEN }}>{refundDetailOpen ? '收起' : '展开'}</span>
             </div>
+            {refundDetailOpen && (
+              <div style={{ marginTop: 10, fontSize: 14, color: '#555', lineHeight: 1.8 }}>
+                {(() => {
+                  const paras = getRefundParagraphs(d, policy);
+                  return paras.length ? paras.map((line, i) => (
+                    <div key={i} style={{ marginBottom: i < paras.length - 1 ? 6 : 0 }}>{line}</div>
+                  )) : <div style={{ color: MGRAY, fontSize: 13 }}>未填写</div>;
+                })()}
+              </div>
+            )}
           </div>
         );
       })()}
