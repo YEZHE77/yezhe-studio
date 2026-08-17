@@ -90,9 +90,9 @@ function RoundIcon({ Icon, color, bg, size = 36 }) {
   );
 }
 
-// 咨询消息分类（柔和莫兰迪配色）
+// 消息分类（柔和莫兰迪配色；顾客咨询已移除，预约消息整合到消息 Tab）
 const CONSULT = [
-  { key: 'customer_consult', label: '顾客咨询', Icon: ConsultBell, color: '#E86A5E', bg: '#FBEAE7' },
+  { key: 'reserve', label: '预约消息', Icon: ConsultBell, color: '#E86A5E', bg: '#FBEAE7' },
   { key: 'order', label: '订单消息', Icon: ConsultOrder, color: '#4A9FD8', bg: '#EAF3FB' },
   { key: 'system', label: '系统通知', Icon: ConsultMail, color: '#8A7BC8', bg: '#F0ECF9' }
 ];
@@ -117,8 +117,9 @@ export default function MobileMessage() {
   }, []);
 
   const openConsult = (key) => {
-    // 订单消息走专属二级页（含预约消息入口 + 批量已读/清空）；其余走通用消息列表
-    if (key === 'order') nav('/m/order-messages');
+    // 预约消息 / 订单消息走专属二级页（含分类 tab + 批量已读/清空）；其余走通用消息列表
+    if (key === 'reserve') nav('/m/order-messages?tab=reserve');
+    else if (key === 'order') nav('/m/order-messages');
     else nav('/m/messages?type=' + key);
   };
 
@@ -148,8 +149,8 @@ export default function MobileMessage() {
         )}
       </div>
 
-      {/* 咨询消息（3 宫格 Soft-UI 卡片） */}
-      <SectionTitle title="咨询消息" />
+      {/* 消息分类（3 宫格 Soft-UI 卡片） */}
+      <SectionTitle title="消息分类" />
       <div style={{ background: '#FFFFFF', margin: '0 12px', borderRadius: 16, padding: '20px 8px', display: 'flex', justifyContent: 'space-around', boxShadow: '0 8px 24px rgba(31,35,41,0.06), 0 1px 3px rgba(31,35,41,0.04)' }}>
         {CONSULT.map((c) => (
           <button key={c.key} onClick={() => openConsult(c.key)} style={{ background: 'none', border: 'none', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, padding: '4px 12px', cursor: 'pointer' }}>

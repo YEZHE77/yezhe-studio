@@ -9,7 +9,6 @@ import { Router } from 'express';
 import { randomBytes } from 'node:crypto';
 import { query, get, insert, run } from '../db.js';
 import { buildCustomerOrderDetail } from './orderDetailHelper.js';
-import { emitMessage } from './message.js';
 import { emitBizToStaff, BIZ_TYPE } from './mobileMessage.js';
 
 const router = Router();
@@ -124,16 +123,8 @@ router.post('/reservation-submit', async (req, res) => {
       [groomName, brideName, phone, phoneTwo, packageId, expectDate, shootLocation, remark, 'pending', null]
     );
 
-    // 通知商家
+    // 通知商家（预约消息，sub_type=reserve，已整合到「消息」Tab 的预约消息分类）
     const pkgName = packageId ? (await get('SELECT name FROM packages WHERE id = ?', [packageId]) || {}).name || '' : '';
-    try {
-      await emitMessage({
-        message_type: 'customer_consult', business_event: 'customer_consult',
-        title: '新预约',
-        content: `${groomName || brideName || '客户'}（${phone}）提交了预约${pkgName ? '，套系 ' + pkgName : ''}${expectDate ? '，意向日期 ' + expectDate : ''}${shootLocation ? '，地点 ' + shootLocation : ''}`,
-        rel_id: String(id), rel_model: 'reservation'
-      });
-    } catch (e) { console.error('[customerMine] 预约消息失败：', e.message); }
     try {
       await emitBizToStaff({
         title: '新预约',

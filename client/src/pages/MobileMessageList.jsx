@@ -12,9 +12,8 @@ const FAINT = '#AEAEB2';
 const DIV = '#F0F0F2';
 const DANGER = '#FF4D4F';
 
-// 业务来源 → 标签 + 颜色
+// 业务来源 → 标签 + 颜色（顾客咨询已移除）
 const BIZ_META = {
-  customer_consult: { label: '顾客咨询', color: '#FF8A5A', bg: 'rgba(255,138,90,0.12)' },
   select_photo: { label: '选片', color: '#2DB7F5', bg: 'rgba(45,183,245,0.12)' },
   schedule: { label: '日程', color: '#F5A623', bg: 'rgba(245,166,35,0.12)' },
   order: { label: '订单', color: '#7ECDBB', bg: 'rgba(126,205,187,0.16)' },

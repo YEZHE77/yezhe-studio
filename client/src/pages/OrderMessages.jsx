@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import http from '../api.js';
 
 // 移动端「订单消息」二级页 —— 从消息页点击【订单消息】进入
@@ -38,7 +38,9 @@ const BackIcon = () => (
 
 export default function OrderMessages() {
   const nav = useNavigate();
-  const [tab, setTab] = useState('order'); // 'order' 订单消息 | 'reserve' 预约消息
+  const [params] = useSearchParams();
+  // 支持从消息页 /m/order-messages?tab=reserve 直达预约消息
+  const [tab, setTab] = useState(params.get('tab') === 'reserve' ? 'reserve' : 'order');
   const [list, setList] = useState([]);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
@@ -80,9 +82,9 @@ export default function OrderMessages() {
   const onItemClick = (m) => {
     http.put('/api/mobile/message/' + m.id + '/read').catch(() => {});
     setList((prev) => prev.map((x) => (x.id === m.id ? { ...x, is_read: 1 } : x)));
-    if (m.sub_type === 'reserve') nav('/appointments');
+    if (m.sub_type === 'reserve') nav('/reservations');
     else if (m.biz_id) nav('/orders/' + m.biz_id);
-    else nav('/appointments');
+    else nav('/reservations');
   };
 
   const markAllRead = async () => {
