@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import http from '../api.js';
 import { customerHttp } from '../utils/customerAuth.js';
 import { HOURS, PERIOD_OPTIONS } from '../constants/timeSlots.js';
@@ -19,6 +19,8 @@ const labelStyle = { fontSize: 13, color: SUB, marginBottom: 8, display: 'block'
 
 export default function AppointmentForm() {
   const nav = useNavigate();
+  const [params] = useSearchParams();
+  const preselectPackageId = params.get('packageId') || '';
   const [packages, setPackages] = useState([]);
   const [form, setForm] = useState({ groom_name: '', bride_name: '', phone: '', phone_two: '', package_id: '', expect_date: '', expect_time: '', shoot_location: '', remark: '' });
   const [done, setDone] = useState(false);
@@ -27,10 +29,17 @@ export default function AppointmentForm() {
 
   const set = (k) => (v) => setForm((f) => ({ ...f, [k]: v }));
 
-  // 套系列表 + 登录态回填
+  // 套系列表 + 登录态回填 + ?packageId 预选
   useEffect(() => {
     http.get('/api/packages/public')
-      .then((r) => setPackages(r.data || []))
+      .then((r) => {
+        const list = r.data || [];
+        setPackages(list);
+        if (preselectPackageId) {
+          const hit = list.find((p) => String(p.id) === String(preselectPackageId));
+          if (hit) setForm((f) => ({ ...f, package_id: String(hit.id) }));
+        }
+      })
       .catch(() => {});
     customerHttp.get('/api/customer/me')
       .then((r) => {

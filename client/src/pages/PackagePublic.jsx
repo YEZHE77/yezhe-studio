@@ -3,37 +3,32 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import http, { img } from '../api.js';
 
 // ===== C 端套系详情页（/package?id= 主链路读 B 端 packages；/package?token= 兼容旧 photo_package 分享链接）=====
-// 顶部：白底导航 + 返回键 + 标题「套系详情」
-// 主体：封面 + 名称/副标题/价格 + 简介 + 套餐核心信息（13 项）+ 展开/收起区（服务详情/温馨提示/特色标签/加购项目/优惠活动/详情图/视频）
-// 底部：「如需预定，请联系摄影师」
+// 版式（参照设计稿）：固定毛玻璃顶栏 + 全宽封面 + 名称/价格/定金 + 2×3 规格图标网格
+//                   + 服务详情 + 更多服务（可展开：加购/优惠/标签/详情图/视频）
+//                   + 固定底部水印 + 立即预约
+// 数据：GET /api/packages/public/:id（B端 parseRow 全列）；GET /api/settings/studio（品牌水印）
 const TEXT = '#1D1D1F';
 const SUB = '#6E6E73';
 const FAINT = '#AEAEB2';
 const BRAND = '#7ECDBB';
-const DIV = '#EEF0F3';
 const PRICE_RED = '#FF5A5F';
+const MORE_RED = '#FF5A5F';
+const DIV = '#EEF0F3';
+const PAGE_BG = '#F5F5F7';
 
-// 单行展示（label + value；value 为空则不渲染整行，避免视觉杂乱）
-function Row({ label, value }) {
-  if (!value) return null;
-  return (
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '12px 0', borderBottom: '1px solid ' + DIV, gap: 12 }}>
-      <span style={{ fontSize: 13, color: SUB, flexShrink: 0 }}>{label}</span>
-      <span style={{ fontSize: 14, color: TEXT, textAlign: 'right', maxWidth: '65%', lineHeight: 1.6, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{value}</span>
-    </div>
-  );
-}
-
-// 大段文字区（service_detail / warm_tips / description）
-function TextBlock({ label, content }) {
-  if (!content) return null;
-  return (
-    <div style={{ background: '#fff', borderRadius: 16, padding: 18, marginTop: 12, boxShadow: '0 1px 6px rgba(0,0,0,0.05)' }}>
-      <div style={{ fontSize: 13, color: SUB, marginBottom: 8 }}>{label}</div>
-      <div style={{ fontSize: 14, color: TEXT, lineHeight: 1.8, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{content}</div>
-    </div>
-  );
-}
+// 线性 SVG 图标（与 components/Icon.jsx 风格一致；规格网格用到 6 个）
+const IcoClock = (p) => (<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" {...p}><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>);
+const IcoCamera = (p) => (<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M4 8h3l2-2h6l2 2h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>);
+const IcoSparkle = (p) => (<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M12 3l1.6 4.4L18 9l-4.4 1.6L12 15l-1.6-4.4L6 9l4.4-1.6z"/></svg>);
+const IcoLayers = (p) => (<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M12 3l9 5-9 5-9-5 9-5z"/><path d="M3 13l9 5 9-5"/><path d="M3 17l9 5 9-5"/></svg>);
+const IcoShirt = (p) => (<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M4 7l4-3 2 2h4l2-2 4 3-2 4-2-1v9H8v-9l-2 1z"/></svg>);
+const IcoPlus = (p) => (<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" {...p}><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg>);
+// 顶栏图标
+const IcoBack = (p) => (<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M15 18l-6-6 6-6"/></svg>);
+const IcoShare = (p) => (<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" {...p}><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M8.2 11l7.6-4M8.2 13l7.6 4"/></svg>);
+const IcoMore = (p) => (<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" {...p}><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>);
+// 展开/收起箭头
+const IcoChevron = ({ open, ...p }) => (<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform .2s' }} {...p}><path d="M6 9l6 6 6-6"/></svg>);
 
 export default function PackagePublic() {
   const nav = useNavigate();
@@ -41,13 +36,15 @@ export default function PackagePublic() {
   const id = params.get('id') || '';
   const token = params.get('token') || '';
   const [data, setData] = useState(null);
-  const [expanded, setExpanded] = useState(false); // 展开/收起完整信息
+  const [studio, setStudio] = useState({ name: '叶哲 STUDIO', slogan: '' });
+  const [extrasOpen, setExtrasOpen] = useState(false); // 更多服务展开
   const [err, setErr] = useState('');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // 品牌水印（公开接口）
+    http.get('/api/settings/studio').then((r) => setStudio(r.data || {})).catch(() => {});
     if (id) {
-      // 统一走 B 端公开接口：GET /api/packages/public/:id（parseRow 全列序列化，与 B 端套系中心同源同结构）
       http.get('/api/packages/public/' + id)
         .then((r) => setData(r.data))
         .catch((e) => setErr((e.response && e.response.data && e.response.data.error) || '加载失败'))
@@ -76,18 +73,26 @@ export default function PackagePublic() {
   }, [id, token]);
 
   const back = () => { if (window.history.length > 1) nav(-1); else nav('/package-center'); };
+  const goBook = () => { nav('/customer/book?packageId=' + (data && (data.id || id) || '')); };
 
-  if (loading) return <div style={{ minHeight: '100vh', background: '#F5F5F7', display: 'flex', alignItems: 'center', justifyContent: 'center', color: FAINT, fontSize: 14 }}>加载中…</div>;
+  // ===== 加载中 =====
+  if (loading) {
+    return (
+      <div style={{ minHeight: '100vh', background: PAGE_BG, display: 'flex', alignItems: 'center', justifyContent: 'center', color: FAINT, fontSize: 14, paddingTop: 44 }}>
+        加载中…
+      </div>
+    );
+  }
 
+  // ===== 出错 =====
   if (err || !data) {
     return (
-      <div style={{ minHeight: '100vh', background: '#F5F5F7', display: 'flex', flexDirection: 'column' }}>
-        <div style={{ position: 'sticky', top: 0, zIndex: 10, background: '#fff', borderBottom: '1px solid ' + DIV }}>
+      <div style={{ minHeight: '100vh', background: PAGE_BG, display: 'flex', flexDirection: 'column' }}>
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 20, background: 'rgba(255,255,255,0.88)', backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)', borderBottom: '1px solid rgba(0,0,0,0.04)' }}>
           <div style={{ position: 'relative', display: 'flex', alignItems: 'center', height: 44, padding: '0 12px' }}>
-            <button onClick={back} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', padding: 4, display: 'flex', alignItems: 'center', color: TEXT }} aria-label="返回">
-              <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
+            <button onClick={back} style={{ background: 'none', border: 'none', padding: 4, display: 'flex', alignItems: 'center', color: TEXT, cursor: 'pointer' }} aria-label="返回">
+              <IcoBack /><span style={{ fontSize: 15, marginLeft: 2 }}>返回</span>
             </button>
-            <div style={{ position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%, -50%)', fontSize: 17, color: TEXT }}>套系详情</div>
           </div>
         </div>
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 24, textAlign: 'center' }}>
@@ -99,79 +104,138 @@ export default function PackagePublic() {
     );
   }
 
-  // 解析复合字段
+  // ===== 解析复合字段 =====
   const addons = Array.isArray(data.addons) ? data.addons : [];
   const tags = Array.isArray(data.quick_tags) ? data.quick_tags : [];
   const detailImages = Array.isArray(data.detail_images) ? data.detail_images : [];
   const marketing = data.marketing && typeof data.marketing === 'object' ? data.marketing : {};
   const marketingEntries = Object.entries(marketing).filter(([, v]) => v);
 
-  // 「展开/收起」按钮显示条件：只要有 1 个扩展字段有数据就显示按钮
-  const hasExpandContent =
-    data.service_detail || data.warm_tips || addons.length > 0 || marketingEntries.length > 0 ||
-    detailImages.length > 0 || data.video_url || tags.length > 0;
+  // ===== 规格网格 6 项（数据驱动，数据为空则隐藏该格，「更多服务」始终保留）=====
+  const durationTxt = data.duration || '';
+  const shootTxt = data.negative_count ? `拍摄${data.negative_count}张` : '';
+  const retouchTxt = data.retouch_count ? `${data.retouch_count}张精修` : '';
+  // 底片：raw_policy 含「全部」则规整为「全部原片」，否则原样展示
+  let rawTxt = '';
+  if (data.raw_policy) rawTxt = /全部/.test(data.raw_policy) ? '全部原片' : data.raw_policy;
+  // 服装：clothing / clothing_note 字段映射
+  let clothingTxt = '';
+  if (data.clothing === 'provide') clothingTxt = data.clothing_note || '含服装';
+  else if (data.clothing === 'self') clothingTxt = data.clothing_note || '服装自备';
+  else if (data.clothing_note) clothingTxt = data.clothing_note;
+
+  const gridItems = [
+    { key: 'duration', Ico: IcoClock, text: durationTxt, color: TEXT },
+    { key: 'shoot', Ico: IcoCamera, text: shootTxt, color: TEXT },
+    { key: 'retouch', Ico: IcoSparkle, text: retouchTxt, color: TEXT },
+    { key: 'raw', Ico: IcoLayers, text: rawTxt, color: TEXT },
+    { key: 'clothing', Ico: IcoShirt, text: clothingTxt, color: TEXT },
+    { key: 'more', Ico: IcoPlus, text: '更多服务', color: MORE_RED, isMore: true }
+  ].filter((it) => it.isMore || it.text);
+
+  // 更多服务展开区是否有内容
+  const hasExtras = addons.length > 0 || marketingEntries.length > 0 || tags.length > 0 || detailImages.length > 0 || !!data.video_url || !!data.warm_tips;
 
   return (
-    <div style={{ minHeight: '100vh', background: '#F5F5F7', paddingBottom: 40 }}>
-      {/* 顶部导航：返回键 + 标题 */}
-      <div style={{ position: 'sticky', top: 0, zIndex: 10, background: '#fff', borderBottom: '1px solid ' + DIV }}>
+    <div style={{ minHeight: '100vh', background: PAGE_BG, paddingBottom: 96 }}>
+      {/* 顶部毛玻璃导航（fixed，叠加在封面上方） */}
+      <div style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 20, background: 'rgba(255,255,255,0.78)', backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)', borderBottom: '1px solid rgba(0,0,0,0.04)' }}>
         <div style={{ position: 'relative', display: 'flex', alignItems: 'center', height: 44, padding: '0 12px' }}>
-          <button onClick={back} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', padding: 4, display: 'flex', alignItems: 'center', color: TEXT }} aria-label="返回">
-            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
+          <button onClick={back} style={{ background: 'none', border: 'none', padding: 4, display: 'flex', alignItems: 'center', color: TEXT, cursor: 'pointer' }} aria-label="返回">
+            <IcoBack /><span style={{ fontSize: 15, marginLeft: 2 }}>返回</span>
           </button>
-          <div style={{ position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%, -50%)', fontSize: 17, color: TEXT }}>套系详情</div>
+          <div style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', display: 'flex', alignItems: 'center', gap: 4 }}>
+            <button
+              onClick={() => {
+                try {
+                  if (navigator.share) navigator.share({ title: data.name, url: window.location.href }).catch(() => {});
+                  else { navigator.clipboard.writeText(window.location.href); }
+                } catch (e) {}
+              }}
+              style={{ background: 'none', border: 'none', padding: 6, color: TEXT, cursor: 'pointer', display: 'flex' }} aria-label="分享">
+              <IcoShare />
+            </button>
+            <button style={{ background: 'none', border: 'none', padding: 6, color: TEXT, cursor: 'pointer', display: 'flex' }} aria-label="更多">
+              <IcoMore />
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* 封面图 */}
+      {/* 封面（全宽，高度 240，顶栏 fixed 叠加其顶部 44px） */}
       {data.cover_url && (
-        <div style={{ height: 220, overflow: 'hidden' }}>
-          <img src={img(data.cover_url)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+        <div style={{ width: '100%', height: 240, overflow: 'hidden', background: '#EEE' }}>
+          <img src={img(data.cover_url)} alt={data.name || ''} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
         </div>
       )}
+      {!data.cover_url && <div style={{ width: '100%', height: 120, background: 'linear-gradient(160deg,#E8F3EF 0%,#D6E7E0 100%)' }} />}
 
-      <div style={{ padding: 16 }}>
-        {/* 名称 / 副标题 / 价格 / 简介 */}
-        <div style={{ background: '#fff', borderRadius: 16, padding: 18, boxShadow: '0 1px 6px rgba(0,0,0,0.05)' }}>
-          <div style={{ fontSize: 19, color: TEXT }}>{data.name}</div>
+      <div style={{ padding: '14px 14px 0' }}>
+        {/* 名称 + 价格 + 定金 */}
+        <div style={{ background: '#fff', borderRadius: 16, padding: '18px 18px 16px', boxShadow: '0 1px 6px rgba(0,0,0,0.05)' }}>
+          <div style={{ fontSize: 20, color: TEXT, lineHeight: 1.3 }}>{data.name}</div>
           {data.subtitle && <div style={{ fontSize: 12, color: FAINT, marginTop: 4 }}>{data.subtitle}</div>}
-          <div style={{ fontSize: 24, color: PRICE_RED, marginTop: 8 }}>¥{Number(data.price || 0).toFixed(0)}</div>
-          {data.description && <div style={{ fontSize: 13, color: SUB, marginTop: 8, lineHeight: 1.7, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{data.description}</div>}
+          <div style={{ display: 'flex', alignItems: 'baseline', flexWrap: 'wrap', gap: 12, marginTop: 10 }}>
+            <span style={{ fontSize: 26, color: PRICE_RED, lineHeight: 1 }}>¥{Number(data.price || 0).toFixed(0)}</span>
+            {data.deposit ? (
+              <span style={{ fontSize: 13, color: SUB }}>定金：¥{Number(data.deposit).toFixed(0)}</span>
+            ) : null}
+          </div>
         </div>
 
-        {/* 套餐核心信息（13 项，按顺序） */}
-        <div style={{ background: '#fff', borderRadius: 16, padding: '4px 18px', marginTop: 12, boxShadow: '0 1px 6px rgba(0,0,0,0.05)' }}>
-          <Row label="拍摄时长" value={data.duration} />
-          <Row label="服务规格" value={data.service_spec} />
-          <Row label="精修张数" value={data.retouch_count ? data.retouch_count + ' 张' : ''} />
-          <Row label="底片数量" value={data.negative_count ? data.negative_count + ' 张' : ''} />
-          <Row label="加片单价" value={data.addon_price ? '¥' + Number(data.addon_price).toFixed(0) + '/张' : ''} />
-          <Row label="加片优惠" value={data.addon_discount} />
-          <Row label="定金" value={data.deposit ? '¥' + Number(data.deposit).toFixed(0) : ''} />
-          <Row label="退订政策" value={data.refund_policy} />
-          <Row label="底片政策" value={data.raw_policy} />
-          <Row label="底片保存" value={data.raw_save} />
-          {data.clothing === 'provide' && <Row label="服装" value={data.clothing_note || '含'} />}
-          {data.makeup === 'provide' && <Row label="妆造" value={data.makeup_note || '含'} />}
-          {data.album_service && data.album_service !== 'none' && <Row label="相册" value={data.album_note || '含'} />}
-          {data.location_mode === 'show' && data.location_text && <Row label="拍摄地点" value={data.location_text} />}
+        {/* 2×3 规格图标网格 */}
+        <div style={{ background: '#fff', borderRadius: 16, padding: '14px 6px', marginTop: 10, boxShadow: '0 1px 6px rgba(0,0,0,0.05)' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', rowGap: 14 }}>
+            {gridItems.map((it) => {
+              const Ico = it.Ico;
+              return (
+                <div
+                  key={it.key}
+                  onClick={it.isMore ? () => setExtrasOpen((v) => !v) : undefined}
+                  style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '6px 4px', cursor: it.isMore ? 'pointer' : 'default', color: it.color }}
+                >
+                  <Ico />
+                  <span style={{ fontSize: 13, lineHeight: 1.3, textAlign: 'center' }}>{it.text}</span>
+                </div>
+              );
+            })}
+          </div>
         </div>
 
-        {/* 展开 / 收起完整信息（条件：扩展字段有任一数据时显示） */}
-        {hasExpandContent && (
-          <>
-            <button onClick={() => setExpanded((v) => !v)}
-              style={{ width: '100%', marginTop: 12, padding: '12px 0', borderRadius: 14, background: '#fff', border: '1px solid ' + DIV, fontSize: 14, color: SUB, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
-              {expanded ? '收起完整信息' : '展开完整信息'}
-              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ transform: expanded ? 'rotate(180deg)' : 'none', transition: 'transform .2s' }}><path d="M6 9l6 6 6-6" /></svg>
+        {/* 服务详情（始终展示，无数据时不渲染） */}
+        {data.service_detail && (
+          <div style={{ background: '#fff', borderRadius: 16, padding: 18, marginTop: 10, boxShadow: '0 1px 6px rgba(0,0,0,0.05)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+              <span style={{ display: 'inline-block', width: 4, height: 14, borderRadius: 2, background: PRICE_RED }} />
+              <span style={{ fontSize: 15, color: TEXT }}>服务详情</span>
+            </div>
+            <div style={{ fontSize: 14, color: TEXT, lineHeight: 1.85, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{data.service_detail}</div>
+          </div>
+        )}
+
+        {/* 更多服务展开区（点击网格「更多服务」触发） */}
+        {hasExtras && (
+          <div style={{ background: '#fff', borderRadius: 16, padding: 18, marginTop: 10, boxShadow: '0 1px 6px rgba(0,0,0,0.05)' }}>
+            <button
+              onClick={() => setExtrasOpen((v) => !v)}
+              style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: TEXT }}
+            >
+              <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ display: 'inline-block', width: 4, height: 14, borderRadius: 2, background: PRICE_RED }} />
+                <span style={{ fontSize: 15 }}>更多服务</span>
+              </span>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 4, color: SUB, fontSize: 13 }}>
+                {extrasOpen ? '收起' : '展开'}
+                <IcoChevron open={extrasOpen} />
+              </span>
             </button>
 
-            {expanded && (
-              <div style={{ marginTop: 12 }}>
+            {extrasOpen && (
+              <div style={{ marginTop: 14 }}>
                 {/* 特色标签 */}
                 {tags.length > 0 && (
-                  <div style={{ background: '#fff', borderRadius: 16, padding: 18, marginBottom: 12, boxShadow: '0 1px 6px rgba(0,0,0,0.05)' }}>
-                    <div style={{ fontSize: 13, color: SUB, marginBottom: 10 }}>特色标签</div>
+                  <div style={{ marginBottom: 14 }}>
+                    <div style={{ fontSize: 13, color: SUB, marginBottom: 8 }}>特色标签</div>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                       {tags.map((t, i) => (
                         <span key={i} style={{ padding: '5px 12px', borderRadius: 14, background: 'rgba(126,205,187,0.12)', color: BRAND, fontSize: 13 }}>{t}</span>
@@ -180,46 +244,48 @@ export default function PackagePublic() {
                   </div>
                 )}
 
-                {/* 服务详情 */}
-                {data.service_detail && (
-                  <TextBlock label="服务详情" content={data.service_detail} />
-                )}
-
                 {/* 加购项目 */}
                 {addons.length > 0 && (
-                  <div style={{ background: '#fff', borderRadius: 16, padding: '4px 18px', marginTop: 12, boxShadow: '0 1px 6px rgba(0,0,0,0.05)' }}>
-                    <div style={{ padding: '14px 0 6px', fontSize: 13, color: SUB }}>加购项目</div>
-                    {addons.map((a, i) => (
-                      <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '12px 0', borderBottom: i < addons.length - 1 ? '1px solid ' + DIV : 'none', gap: 12 }}>
-                        <span style={{ fontSize: 14, color: TEXT }}>{a.name || ''}</span>
-                        <span style={{ fontSize: 14, color: BRAND, flexShrink: 0 }}>¥{Number(a.price || 0).toFixed(0)}</span>
-                      </div>
-                    ))}
+                  <div style={{ marginBottom: 14 }}>
+                    <div style={{ fontSize: 13, color: SUB, marginBottom: 8 }}>加购项目</div>
+                    <div>
+                      {addons.map((a, i) => (
+                        <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '10px 0', borderBottom: i < addons.length - 1 ? '1px solid ' + DIV : 'none', gap: 12 }}>
+                          <span style={{ fontSize: 14, color: TEXT }}>{a.name || ''}</span>
+                          <span style={{ fontSize: 14, color: BRAND, flexShrink: 0 }}>¥{Number(a.price || 0).toFixed(0)}</span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
 
                 {/* 优惠活动 */}
                 {marketingEntries.length > 0 && (
-                  <div style={{ background: '#fff', borderRadius: 16, padding: '4px 18px', marginTop: 12, boxShadow: '0 1px 6px rgba(0,0,0,0.05)' }}>
-                    <div style={{ padding: '14px 0 6px', fontSize: 13, color: SUB }}>优惠活动</div>
-                    {marketingEntries.map(([k, v], i) => (
-                      <div key={k} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '12px 0', borderBottom: i < marketingEntries.length - 1 ? '1px solid ' + DIV : 'none', gap: 12 }}>
-                        <span style={{ fontSize: 14, color: TEXT }}>{k === 'coupon' ? '优惠券' : k === 'activity' ? '活动' : k}</span>
-                        <span style={{ fontSize: 14, color: PRICE_RED, maxWidth: '60%', textAlign: 'right', whiteSpace: 'pre-wrap' }}>{String(v)}</span>
-                      </div>
-                    ))}
+                  <div style={{ marginBottom: 14 }}>
+                    <div style={{ fontSize: 13, color: SUB, marginBottom: 8 }}>优惠活动</div>
+                    <div>
+                      {marketingEntries.map(([k, v], i) => (
+                        <div key={k} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '10px 0', borderBottom: i < marketingEntries.length - 1 ? '1px solid ' + DIV : 'none', gap: 12 }}>
+                          <span style={{ fontSize: 14, color: TEXT }}>{k === 'coupon' ? '优惠券' : k === 'activity' ? '活动' : k}</span>
+                          <span style={{ fontSize: 14, color: PRICE_RED, maxWidth: '60%', textAlign: 'right', whiteSpace: 'pre-wrap' }}>{String(v)}</span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
 
                 {/* 温馨提示 */}
                 {data.warm_tips && (
-                  <TextBlock label="温馨提示" content={data.warm_tips} />
+                  <div style={{ marginBottom: 14 }}>
+                    <div style={{ fontSize: 13, color: SUB, marginBottom: 8 }}>温馨提示</div>
+                    <div style={{ fontSize: 14, color: TEXT, lineHeight: 1.8, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{data.warm_tips}</div>
+                  </div>
                 )}
 
                 {/* 详情图片 */}
                 {detailImages.length > 0 && (
-                  <div style={{ background: '#fff', borderRadius: 16, padding: 18, marginTop: 12, boxShadow: '0 1px 6px rgba(0,0,0,0.05)' }}>
-                    <div style={{ fontSize: 13, color: SUB, marginBottom: 10 }}>详情图片</div>
+                  <div style={{ marginBottom: 14 }}>
+                    <div style={{ fontSize: 13, color: SUB, marginBottom: 8 }}>详情图片</div>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                       {detailImages.map((u, i) => (
                         <img key={i} src={img(u)} alt="" style={{ width: 'calc(33.333% - 6px)', height: 100, objectFit: 'cover', borderRadius: 8 }} />
@@ -230,18 +296,42 @@ export default function PackagePublic() {
 
                 {/* 视频 */}
                 {data.video_url && (
-                  <div style={{ background: '#fff', borderRadius: 16, padding: 18, marginTop: 12, boxShadow: '0 1px 6px rgba(0,0,0,0.05)' }}>
+                  <div>
                     <div style={{ fontSize: 13, color: SUB, marginBottom: 8 }}>视频</div>
                     <a href={data.video_url} target="_blank" rel="noreferrer" style={{ fontSize: 14, color: BRAND, textDecoration: 'none' }}>查看视频 ›</a>
                   </div>
                 )}
               </div>
             )}
-          </>
+          </div>
         )}
 
-        {/* 底部提示 */}
-        <div style={{ textAlign: 'center', fontSize: 13, color: FAINT, marginTop: 28, paddingBottom: 20 }}>如需预定，请联系摄影师</div>
+        {/* 描述（如果有，作为补充说明放在底部） */}
+        {data.description && (
+          <div style={{ background: '#fff', borderRadius: 16, padding: 18, marginTop: 10, boxShadow: '0 1px 6px rgba(0,0,0,0.05)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+              <span style={{ display: 'inline-block', width: 4, height: 14, borderRadius: 2, background: PRICE_RED }} />
+              <span style={{ fontSize: 15, color: TEXT }}>套餐简介</span>
+            </div>
+            <div style={{ fontSize: 14, color: TEXT, lineHeight: 1.85, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{data.description}</div>
+          </div>
+        )}
+      </div>
+
+      {/* 底部固定水印 + 立即预约 */}
+      <div style={{ position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 20, background: 'rgba(255,255,255,0.92)', backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)', borderTop: '1px solid rgba(0,0,0,0.05)', padding: '10px 14px calc(10px + env(safe-area-inset-bottom))' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <div style={{ fontSize: 14, color: TEXT, letterSpacing: 1 }}>{(studio.name || '叶哲 STUDIO').toUpperCase ? (studio.name || '叶哲 STUDIO') : '叶哲 STUDIO'}</div>
+            {studio.slogan ? <div style={{ fontSize: 11, color: FAINT, marginTop: 2, lineHeight: 1.4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{studio.slogan}</div> : null}
+          </div>
+          <button
+            onClick={goBook}
+            style={{ flexShrink: 0, padding: '12px 28px', borderRadius: 24, background: MORE_RED, color: '#fff', fontSize: 15, border: 'none', cursor: 'pointer', boxShadow: '0 6px 18px rgba(255,90,95,0.32)' }}
+          >
+            立即预约
+          </button>
+        </div>
       </div>
     </div>
   );
