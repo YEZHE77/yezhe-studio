@@ -172,6 +172,15 @@ async function main() {
       `HTTP ${r.status} 默认值长度=${(note || '').length}`);
   } catch (e) { rec('系统配置·订单分享默认备注', 'monitor', 'FAIL', e.message); }
 
+  // ---------- PWA 主屏图标（动态代理 studio.logo）----------
+  try {
+    const r = await fetch(BASE + '/api/icon');
+    const ct = r.headers.get('content-type') || '';
+    const isImage = /image\//.test(ct);
+    rec('PWA·主屏图标接口', 'monitor', (r.status === 200 && isImage) ? 'PASS' : 'FAIL',
+      `HTTP ${r.status} content-type=${ct.split(';')[0]}`);
+  } catch (e) { rec('PWA·主屏图标接口', 'monitor', 'FAIL', e.message); }
+
   finish();
 }
 
