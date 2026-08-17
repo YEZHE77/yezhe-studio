@@ -196,7 +196,7 @@ export default function WorksAlbumEdit() {
 
   // ============ 渲染：主体 ============
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', background: PAGE_BG, fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif' }}>
+    <div style={{ display: 'flex', minHeight: '100vh', background: PAGE_BG, alignItems: 'flex-start', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif' }}>
       {/* ========== 左侧：深色侧栏（picbling 1:1 复刻） ========== */}
       <aside style={{ width: 150, background: SIDEBAR_BG, flexShrink: 0, display: 'flex', flexDirection: 'column' }}>
         {/* 顶部 LOGO 占位（与 picbling 顶部黑圆风格一致） */}
