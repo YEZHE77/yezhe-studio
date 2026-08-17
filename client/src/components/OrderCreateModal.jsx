@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import http, { img, conflictOf } from '../api.js';
-import { HOURS } from '../constants/timeSlots.js';
+import { HOURS, PERIOD_OPTIONS } from '../constants/timeSlots.js';
 
 // ===== 新增订单弹窗（按【新增订单弹窗】spec 1:1 复刻）=====
 // 交互硬规则：点击蒙层 / 右上角 × 均可关闭；必填项标 *，校验失败弹提示并停留在弹窗。
@@ -344,11 +344,7 @@ export default function OrderCreateModal({ visible, packages, initialPackageId, 
       </button>
     );
   }
-  // 时段类型按钮：半天 / 全天（与 hours 互斥，点击清空 slots）
-  const PERIOD_OPTIONS = [
-    { v: 'half', label: '半天' },
-    { v: 'full', label: '全天' }
-  ];
+  // 时段类型按钮：半天 / 全天（PERIOD_OPTIONS 统一来自 timeSlots.js；与 hours 互斥，点击清空 slots）
   function periodBtn(opt) {
     const on = form.time_slots.length === 1 && form.time_slots[0] === opt.v;
     return (

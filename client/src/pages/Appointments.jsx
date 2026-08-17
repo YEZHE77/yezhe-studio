@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import http from '../api.js';
 import { useViewState } from '../tabMemory.js';
+import { PERIOD_LABEL } from '../constants/timeSlots.js';
 
 // 档期预约模块状态语义：pending(待确认) / confirmed(已确认生成订单) / rejected(已拒绝) / cancelled(已取消)
 const STATUS_LABEL = {
@@ -10,7 +11,6 @@ const STATUS_LABEL = {
   rejected: '已拒绝',
   cancelled: '已取消'
 };
-const PERIOD_LABEL = { full: '全天', half: '半天' };
 
 export default function Appointments() {
   const [state, setState] = useViewState('appointments', { status: '', q: '' });

@@ -35,6 +35,15 @@ const ORDER_STATUS = { pending_deposit: '待付定金', deposit_paid: '已付定
 
 function nowISO() { return new Date().toISOString(); }
 
+// expect_time / period 场次显示映射：存 code（half/full），显示中文（半天/全天）。
+// 历史数据（直接存了中文）与 HH:MM 具体时间原样透传。
+function displayExpectTime(v) {
+  if (!v) return v || '';
+  if (v === 'half') return '半天';
+  if (v === 'full') return '全天';
+  return v;
+}
+
 function getIp(req) {
   const fwd = String(req.headers['x-forwarded-for'] || '');
   if (fwd) return fwd.split(',')[0].trim();
@@ -115,9 +124,10 @@ router.post('/reservation-submit', async (req, res) => {
     if (!/^1\d{10}$/.test(phone)) return res.status(400).json({ error: '请输入正确的 11 位手机号' });
     if (phoneTwo && !/^1\d{10}$/.test(phoneTwo)) return res.status(400).json({ error: '第二联系手机号格式不正确' });
     if (!expectDate) return res.status(400).json({ error: '请选择意向拍摄日期' });
-    // expect_time 合法取值：空（暂未确定）/ HH:MM（整点或任意时分）/ '半天' / '全天'
-    // （前端时间下拉：暂未确定=空，场次=PERIOD_OPTIONS 的 label『半天/全天』，整点=HOURS 的 'HH:00'）
-    if (expectTime && !/^\d{2}:\d{2}$/.test(expectTime) && expectTime !== '半天' && expectTime !== '全天') {
+    // expect_time 合法取值：空（暂未确定）/ HH:MM（整点或任意时分）/ 场次 code 'half'/'full'
+    // （前端时间下拉：暂未确定=空，场次=PERIOD_OPTIONS 的 v『half/full』，整点=HOURS 的 'HH:00'）
+    // 兼容历史数据直接存的 '半天'/'全天'（新提交一律存 code）
+    if (expectTime && !/^\d{2}:\d{2}$/.test(expectTime) && expectTime !== 'half' && expectTime !== 'full' && expectTime !== '半天' && expectTime !== '全天') {
       return res.status(400).json({ error: '拍摄时间格式不正确' });
     }
 
@@ -265,7 +275,7 @@ router.get('/my-business', async (req, res) => {
         package_id: r.package_id,
         package_name: r.package_name || '',
         expect_date: r.expect_date || '',
-        expect_time: r.expect_time || '',
+        expect_time: displayExpectTime(r.expect_time),
         shoot_location: r.shoot_location || '',
         remark: r.remark || '',
         status: r.status,

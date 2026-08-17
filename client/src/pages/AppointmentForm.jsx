@@ -130,7 +130,7 @@ export default function AppointmentForm() {
               <select style={{ ...inputStyle, appearance: 'none' }} value={form.expect_time} onChange={(e) => set('expect_time')(e.target.value)}>
                 <option value="">暂未确定时间</option>
                 {PERIOD_OPTIONS.map((p) => (
-                  <option key={p.label} value={p.label}>{p.label}</option>
+                  <option key={p.v} value={p.v}>{p.label}</option>
                 ))}
                 {HOURS.map((h) => (
                   <option key={h} value={h}>{h}</option>
