@@ -353,7 +353,7 @@ export default function WorksAlbumEdit() {
       </div>
 
       {/* ========== 右侧：照片管理面板（picbling 1:1 复刻） ========== */}
-      <div style={{ flex: 1, minWidth: 0, padding: 24, display: 'flex', flexDirection: 'column', gap: 16, maxWidth: 720 }}>
+      <div style={{ flex: 1, minWidth: 0, padding: 24, display: 'flex', flexDirection: 'column', gap: 16, maxWidth: 720, height: 'calc(100vh - 0px)' }}>
         {/* 工具栏：添加照片 / 排序 / 水印设置 */}
         <div style={{ background: '#fff', borderRadius: 12, padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', boxShadow: '0 1px 2px rgba(0,0,0,0.03)' }}>
           {/* 添加照片：点击触发原生 file input；显示当前 zone 计数 */}
