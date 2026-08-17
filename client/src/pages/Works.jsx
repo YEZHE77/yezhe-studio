@@ -46,6 +46,14 @@ export default function Works() {
   const [showTopMenu, setShowTopMenu] = useState(false);
   // 封面图加载失败兜底：避免 R2 Worker 慢/超时导致卡片静默空白（用户看不到裂图 vs 加载中）
   const [brokenCoverIds, setBrokenCoverIds] = useState(() => new Set());
+  // 端侧判断：移动端走优化版（顶栏+筛选下拉+画廊卡片），PC 端还原 153ead9 干净版式（标题+按钮/分类 Tab/搜索+公开筛选/四列卡片）
+  // —— PC 端曾在某次移动端优化中误被覆盖，此处强制按窗口宽度分支，禁止后续随意改回统一版式
+  const [isMobile, setIsMobile] = useState(() => (typeof window !== 'undefined' ? window.innerWidth < 768 : false));
+  useEffect(() => {
+    const onResize = () => setIsMobile(typeof window !== 'undefined' ? window.innerWidth < 768 : false);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
   function markCoverBroken(id) {
     if (brokenCoverIds.has(id)) return;
     const n = new Set(brokenCoverIds);
@@ -255,6 +263,7 @@ export default function Works() {
   // 关闭下拉/菜单的透明遮罩
   const closeOverlays = () => { setOpenFilter(null); setShowTopMenu(false); };
 
+  if (isMobile) {
   return (
     <div className="min-h-screen bg-[#f7f7f7] pb-24">
       {/* 顶部栏：返回 + 搜索 + 更多（与套系列表页 Packages.jsx 同款：返回 + 搜索容器(灰底圆角) + ⋯） */}
@@ -545,6 +554,197 @@ export default function Works() {
         </div>
       )}
 
+    </div>
+  );
+  }
+
+  // ============ PC 端版式：还原 153ead9 恢复版「标题+按钮 / 分类 Tab / 搜索+公开筛选 / 四列卡片」 ============
+  // 严禁随意改为移动端共用版式（已发生一次误改），如确需修改请同步更新顶部说明注释
+  return (
+    <div style={{ maxWidth: 1050 }}>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 gap-3">
+        <h1 className="text-xl font-semibold text-fg">作品管理</h1>
+        <div className="flex items-center gap-2">
+          {sortMode ? (
+            <>
+              <button onClick={() => setSortMode(false)} disabled={savingSort} className="px-4 py-2 rounded border border-line text-sm text-muted hover:text-fg disabled:opacity-50">取消</button>
+              <button onClick={saveSortOrder} disabled={savingSort || !allItems.length}
+                className="px-4 py-2 rounded bg-brand text-white text-sm hover:opacity-90 disabled:opacity-50">{savingSort ? '保存中…' : '保存排序'}</button>
+            </>
+          ) : (
+            <>
+              <button onClick={toggleSortMode} className="px-4 py-2 rounded border border-line text-sm text-muted hover:text-brand hover:border-brand">自定义排序</button>
+              <button onClick={openNew} className="px-4 py-2 rounded bg-brand text-white text-sm hover:opacity-90">+ 新建作品组</button>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* 分类 Tab + 管理入口 */}
+      <div className="flex items-center gap-2 mb-3 overflow-x-auto pb-1">
+        <button onClick={() => setTab('')}
+          className={'px-4 py-2 rounded-full text-sm border whitespace-nowrap shrink-0 ' + (state.tab === '' ? 'bg-brand text-white border-brand' : 'bg-panel border-line text-muted')}>全部</button>
+        {cats.filter(Boolean).map((c) => (
+          <button key={c.id} onClick={() => setTab(String(c.id))}
+            className={'px-4 py-2 rounded-full text-sm border whitespace-nowrap truncate max-w-[140px] shrink-0 ' + (state.tab === String(c.id) ? 'bg-brand text-white border-brand' : 'bg-panel border-line text-muted')}>{c.name || '未命名'}</button>
+        ))}
+        <button onClick={() => navigate('/categories')}
+          className="ml-1 flex items-center gap-1 px-3 py-2 rounded-full text-sm border border-dashed border-line text-muted hover:text-brand hover:border-brand bg-panel shrink-0 whitespace-nowrap"
+          title="管理分类">
+          <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" />
+            <circle cx="7" cy="7" r="1.5" fill="currentColor" stroke="none" />
+          </svg>
+          管理
+        </button>
+      </div>
+
+      {/* 搜索 + 公开筛选 */}
+      <div className="flex gap-3 mb-4">
+        <input value={state.q} onChange={(e) => setQ(e.target.value)} placeholder="搜索作品 / 客户"
+          className="flex-1 px-3 py-2 rounded bg-panel border border-line text-fg text-sm outline-none" />
+        <select value={state.vis} onChange={(e) => setVis(e.target.value)}
+          className="px-3 py-2 rounded bg-panel border border-line text-fg text-sm outline-none">
+          <option value="">全部</option>
+          <option value="1">公开</option>
+          <option value="0">私密</option>
+        </select>
+      </div>
+
+      {/* 排序模式提示 */}
+      {sortMode && (
+        <div className="mb-3 text-xs text-muted bg-panel border border-line rounded-lg p-3">
+          💡 排序模式：拖拽作品卡片可调整顺序，保存后会同步到公开列表（小程序/H5 首页）。未保存前可点击「取消」退出。
+        </div>
+      )}
+
+      {/* 作品网格：四列卡片（恢复 153ead9 版式：封面含眼睛公开切换 + 标题/标签 + 张数/浏览/下载/三按钮） */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        {(sortMode ? allItems : data.items).filter(Boolean).map((w) => {
+          if (!w.id) return null;
+          const isDragOver = sortMode && dragOverId === w.id;
+          const isDragged = sortMode && draggedId === w.id;
+          return (
+            <div key={w.id}
+              draggable={sortMode}
+              onDragStart={(e) => sortMode && handleDragStart(e, w.id)}
+              onDragOver={(e) => sortMode && handleDragOver(e, w.id)}
+              onDrop={(e) => sortMode && handleDrop(e, w.id)}
+              onDragEnd={resetDrag}
+              onClick={() => !sortMode && navigate('/works/' + w.id)}
+              className={`bg-panel border rounded-xl2 overflow-hidden transition select-none
+                ${sortMode ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer hover:shadow-md hover:-translate-y-0.5'}
+                ${isDragOver ? 'border-brand ring-2 ring-brand' : 'border-line'}
+                ${isDragged ? 'opacity-40' : ''}`}>
+              <div className="h-32 sm:h-40 bg-ink flex items-center justify-center text-muted relative">
+                {w.cover_url ? <img src={img(w.cover_url)} className="w-full h-full object-cover" alt="" /> : (
+                  <svg viewBox="0 0 24 24" className="w-10 h-10 opacity-40" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="3" y="3" width="18" height="18" rx="2" />
+                    <circle cx="9" cy="9" r="2" />
+                    <path d="M21 15l-5-5L5 21" />
+                  </svg>
+                )}
+                {!sortMode && (
+                  <button onClick={(e) => togglePublic(w, e)} title={w.is_public ? '已公开 · 点击隐藏' : '已隐藏 · 点击公开'}
+                    className="absolute top-2 right-2 bg-black/55 !text-white p-1.5 rounded-full hover:bg-black/75 transition">
+                    {w.is_public ? (
+                      <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>
+                    ) : (
+                      <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 19c-6.5 0-10-7-10-7a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c6.5 0 10 7 10 7a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                    )}
+                  </button>
+                )}
+                {sortMode && (
+                  <div className="absolute top-2 left-2 bg-black/60 text-white text-[10px] px-2 py-1 rounded flex items-center gap-1">
+                    <svg viewBox="0 0 24 24" className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="12" r="1"/><circle cx="9" cy="5" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="15" cy="19" r="1"/></svg>
+                    拖拽排序
+                  </div>
+                )}
+              </div>
+              <div className="p-3">
+                <div className="text-sm text-fg truncate">{w.title}</div>
+                <div className="text-xs text-muted mt-1 flex justify-between">
+                  <span>{w.is_public ? '公开' : '私密'}</span>
+                  <span>{(w.tags || []).join(' · ')}</span>
+                </div>
+                {!sortMode && (
+                  <>
+                    <div className="text-xs text-muted mt-2 flex items-center gap-4">
+                      <span className="inline-flex items-center gap-1">
+                        <svg viewBox="0 0 24 24" className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="M21 15l-5-5L5 21"/></svg>
+                        {w.image_count ?? 0} 张
+                      </span>
+                      <span className="inline-flex items-center gap-1">
+                        <svg viewBox="0 0 24 24" className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>
+                        {w.views ?? 0} 浏览
+                      </span>
+                    </div>
+                    <button onClick={(e) => toggleDownload(w, e)}
+                      className={'mt-2 w-full text-xs py-1.5 rounded border ' + (w.allow_download ? 'bg-emerald-50 text-emerald-600 border-emerald-200' : 'bg-panel2 text-muted border-line')}>
+                      {w.allow_download ? '✓ 允许下载' : '禁止下载'}
+                    </button>
+                    <div className="flex flex-col sm:flex-row gap-2 mt-2">
+                      <button onClick={(e) => { e.stopPropagation(); navigate('/works/' + w.id); }} className="w-full sm:flex-1 text-xs py-1.5 rounded border border-line text-brand hover:bg-brand/5">管理相册</button>
+                      <button onClick={(e) => { e.stopPropagation(); navigate('/works/' + w.id + '/album-edit'); }} className="w-full sm:flex-1 text-xs py-1.5 rounded border border-line text-purple-500 hover:bg-purple-50">编辑相册</button>
+                      <button onClick={(e) => { e.stopPropagation(); openWorkShare(w); }} className="w-full sm:flex-1 text-xs py-1.5 rounded border border-line text-emerald-500 hover:bg-emerald-50">分享相册</button>
+                      <button onClick={(e) => remove(w, e)} className="w-full sm:flex-1 text-xs py-1.5 rounded border border-line text-red-500 hover:bg-red-50">删除</button>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          );
+        })}
+        {(sortMode ? allItems : data.items).length === 0 && <div className="col-span-full text-center text-muted py-10">暂无作品</div>}
+      </div>
+
+      {/* 分页：排序模式下隐藏（已加载全部作品） */}
+      {!sortMode && pages > 1 && (
+        <div className="flex gap-2 mt-5 justify-center">
+          {Array.from({ length: pages }).map((_, i) => (
+            <button key={i} onClick={() => goPage(i + 1)}
+              className={'w-8 h-8 rounded text-sm border ' + (data.page === i + 1 ? 'bg-brand text-white border-brand' : 'bg-panel border-line text-muted')}>{i + 1}</button>
+          ))}
+        </div>
+      )}
+
+      {/* 作品分享相册弹窗（PC + 移动共用，逻辑一致） */}
+      {workShare && workShare.open && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[80] p-4" onClick={() => setWorkShare(null)}>
+          <div onClick={(e) => e.stopPropagation()} className="w-full max-w-md bg-panel border border-line rounded-xl2 p-6">
+            {!workShare.result && (
+              <>
+                <div className="text-white font-medium mb-1">分享作品相册</div>
+                <div className="text-xs text-muted mb-4">将生成该作品的公开沉浸式相册（全屏轮播 / 播放 / 投屏 / 分享），客户扫码或点链接即可在手机浏览并转发。</div>
+                <div className="space-y-3">
+                  <label className="block text-xs text-muted">{workShare.title || '未命名作品'}</label>
+                  <div className="text-xs text-muted">相册照片自动取该作品「样片」分区（对外展示）；公开链接不含原片。</div>
+                </div>
+                <div className="flex gap-2 justify-end mt-5">
+                  <button type="button" onClick={() => setWorkShare(null)} className="px-4 py-2 rounded text-sm text-muted">取消</button>
+                  <button type="button" onClick={submitWorkShare} disabled={workShare.busy}
+                    className="px-4 py-2 rounded bg-brand text-white text-sm disabled:opacity-40">{workShare.busy ? '生成中…' : '生成相册链接'}</button>
+                </div>
+              </>
+            )}
+            {workShare.result && (
+              <>
+                <div className="text-white font-medium mb-1">作品相册已生成</div>
+                <div className="text-xs text-muted mb-4">客户扫码或点链接即可在手机浏览作品（沉浸轮播 / 播放 / 投屏 / 分享）</div>
+                {workShare.result.qr_url && (
+                  <img src={workShare.result.qr_url} alt="相册二维码" className="w-56 h-56 mx-auto rounded-lg bg-white p-2" />
+                )}
+                <div className="text-xs text-muted mt-3 break-all">{workShare.result.share_url}</div>
+                <div className="flex gap-2 justify-center mt-4">
+                  <button onClick={copyWorkShare} className="px-3 py-1.5 rounded bg-brand text-white text-xs">复制链接</button>
+                  <button onClick={() => window.open(workShare.result.share_url, '_blank')} className="px-3 py-1.5 rounded bg-panel2 border border-line text-white text-xs">预览</button>
+                  <button onClick={() => setWorkShare(null)} className="px-3 py-1.5 rounded bg-panel2 border border-line text-muted text-xs">完成</button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
