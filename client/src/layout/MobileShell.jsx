@@ -223,8 +223,14 @@ export default function MobileShell() {
   const [unread, setUnread] = useState(0);
 
   // 消息未读红点：轮询 biz_message 表（多设备同步），onFocus 切回激活强制拉取一次
+  // 移动端底部 Tab 角标 = 消息中心能消费的未读（reserve + order + system），
+  // 与 MobileMessage 三个宫格的 byCategory 口径一致；其他类型（customer_consult / select_photo / schedule）
+  // 在 PC 端 Topbar / 专门页面消费，不计入移动端消息 Tab。
   const pullUnread = () => {
-    http.get('/api/mobile/message/unread-count').then((r) => setUnread(r.data.count || 0)).catch(() => {});
+    http.get('/api/mobile/message/unread-count').then((r) => {
+      const cat = (r.data && r.data.byCategory) || {};
+      setUnread((cat.reserve || 0) + (cat.order || 0) + (cat.system || 0));
+    }).catch(() => {});
   };
   useEffect(() => {
     pullUnread();
