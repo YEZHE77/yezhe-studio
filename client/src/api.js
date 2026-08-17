@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { reportApiError } from './utils/errorReporter.js';
 
 // 生产：Netlify 构建时注入 VITE_API_BASE=https://你的render地址.onrender.com
 // 开发：留空，由 vite.config.js 的 proxy 转发到本地 4000
@@ -53,6 +54,7 @@ http.interceptors.response.use(
 
     if (err.code === 'ECONNABORTED') {
       if (!silentMode) toast('请求超时，请检查网络连接');
+      if (!(cfg && cfg.__skipReport)) reportApiError(err, cfg);
       return Promise.reject({ type: 'timeout', message: '请求超时' });
     }
     if (!err.response) {
@@ -61,6 +63,7 @@ http.interceptors.response.use(
         toast('网络连接失败，服务器可能正在启动中（约10秒）');
         setTimeout(() => { offlineWarned = false; }, 10000);
       }
+      if (!(cfg && cfg.__skipReport)) reportApiError(err, cfg);
       return Promise.reject({ type: 'network', message: '网络连接失败' });
     }
     if (err.response.status === 401) {
@@ -73,6 +76,7 @@ http.interceptors.response.use(
     // 业务冲突（档期占用 / 套系被订单引用）由调用方自行弹窗处理，不走全局 toast
     const quiet = (cfg && cfg.skipToast) || err.response.status === 409 || data.code === 'PACKAGE_IN_USE';
     if (!silentMode && !quiet) toast(msg);
+    if (!(cfg && cfg.__skipReport)) reportApiError(err, cfg);
     return Promise.reject({ ...err, message: msg, type: 'server', status: err.response.status, code: data.code || '', data });
   }
 );

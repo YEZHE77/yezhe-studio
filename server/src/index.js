@@ -48,6 +48,7 @@ import queryOrderRoutes from './routes/queryOrder.js';
 import todoRoutes from './routes/todo.js';
 import usersRoutes from './routes/users.js';
 import visitorRoutes from './routes/visitor.js';
+import clientErrorRoutes from './routes/clientError.js';
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -159,6 +160,7 @@ app.use('/api/query-order', queryOrderRoutes);
 app.use('/api/galleries', galleriesRoutes);
 app.use('/api/upload', uploadChunkRoutes);
 app.use('/api/files', uploadFileRoutes);
+app.use('/api/client-error', clientErrorRoutes);
 
 // multer / 通用错误
 app.use((err, req, res, next) => {

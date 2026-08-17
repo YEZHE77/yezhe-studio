@@ -153,8 +153,10 @@ function AppShell() {
 export default function App() {
   const { user, ready } = useAuth();
   const isMobile = useIsMobile();
+  const location = useLocation();
   if (!ready) return <div className="p-10 text-muted">加载中…</div>;
   return (
+    <ErrorBoundary resetKeys={[location.pathname]}>
     <Routes>
       {/* 客户影集分享：公开页面，无需登录即可访问 */}
       <Route path="/share/:token" element={
@@ -225,5 +227,6 @@ export default function App() {
         ? <Route path="/*" element={<MobileShell />} />
         : <Route path="/*" element={<AppShell />} />)}
     </Routes>
+    </ErrorBoundary>
   );
 }

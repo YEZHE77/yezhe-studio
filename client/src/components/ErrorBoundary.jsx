@@ -1,7 +1,8 @@
 import React from 'react';
+import { reportBoundary } from '../utils/errorReporter.js';
 
 // 全局错误边界：防止单个页面/组件抛错导致整个 SPA 白屏
-// 出错后显示友好提示 + 刷新/返回按钮，并自动上报到 console.error
+// 出错后显示友好提示 + 刷新/返回按钮，并自动上报到监控（含发生端 / 路由上下文）
 // 支持 resetKeys：当 key 变化时自动重置错误状态（配合路由 location.pathname 使用）
 export default class ErrorBoundary extends React.Component {
   constructor(props) {
@@ -15,6 +16,12 @@ export default class ErrorBoundary extends React.Component {
 
   componentDidCatch(error, errorInfo) {
     console.error('[ErrorBoundary] 页面渲染错误:', error, errorInfo);
+    // 自动上报到三端统一异常监控（含 end / 路由 / 组件栈）
+    try { reportBoundary(error, errorInfo); } catch {}
+    // 兼容调用方自定义上报
+    if (this.props.onError) {
+      try { this.props.onError(error, errorInfo); } catch {}
+    }
   }
 
   componentDidUpdate(prevProps) {

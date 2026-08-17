@@ -1031,6 +1031,22 @@ export async function initSchema() {
     }
   } catch (e) { console.error('[schema] 同步退订政策(orders.package_snapshot)失败', e); }
 
+  // 三端统一前端异常日志表（异常监控 / 告警审计；最近 5000 条自动轮转）
+  const CLIENT_ERROR_LOG_DDL = dialect === 'pg'
+    ? `CREATE TABLE IF NOT EXISTS client_error_log (
+        id SERIAL PRIMARY KEY, type TEXT NOT NULL DEFAULT 'js',
+        end TEXT NOT NULL DEFAULT 'unknown', severity TEXT NOT NULL DEFAULT 'normal',
+        message TEXT NOT NULL, stack TEXT, url TEXT, ua TEXT, app_version TEXT,
+        context TEXT, client_ts TEXT, created_at TIMESTAMPTZ DEFAULT now()
+      )`
+    : `CREATE TABLE IF NOT EXISTS client_error_log (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, type TEXT NOT NULL DEFAULT 'js',
+        end TEXT NOT NULL DEFAULT 'unknown', severity TEXT NOT NULL DEFAULT 'normal',
+        message TEXT NOT NULL, stack TEXT, url TEXT, ua TEXT, app_version TEXT,
+        context TEXT, client_ts TEXT, created_at TEXT DEFAULT CURRENT_TIMESTAMP
+      )`;
+  for (const s of CLIENT_ERROR_LOG_DDL.split(';').map((x) => x.trim()).filter(Boolean)) await run(s);
+
   console.log('[schema] 表结构已就绪');
 }
 
