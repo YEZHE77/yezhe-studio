@@ -23,8 +23,12 @@ const loginRate = new Map(); // ip -> [timestamps]
 const LOGIN_MAX = 3;
 const LOGIN_WINDOW = 60 * 1000;
 const reserveRate = new Map();
-const RESERVE_MAX = 1;
-const RESERVE_WINDOW = 60 * 1000;
+// IP 级限流放宽：1 次/分钟 过严——运营商 NAT 下多个顾客共用同一出口 IP，第 2 位顾客 1 分钟内提交即被误拦截。
+// 改为 10 分钟窗口内最多 5 次（粗粒度兜底），真正的防滥用交给下方「同手机号 60s 防重复提交」。
+const RESERVE_MAX = 5;
+const RESERVE_WINDOW = 10 * 60 * 1000;
+const reservePhone = new Map();   // 防重复提交：phone -> 最近成功提交时间戳
+const RESERVE_PHONE_MS = 60 * 1000; // 同一手机号 60 秒内只允许提交 1 次
 
 const RESERVATION_STATUS = { pending: '待确认', contacted: '已沟通', rejected: '已拒绝', converted: '已转订单' };
 const ORDER_STATUS = { pending_deposit: '待付定金', deposit_paid: '已付定金', shot_done: '拍摄完成', completed: '已完结', cancelled: '已取消' };
@@ -92,7 +96,7 @@ function maskPhone(p) {
 
 function pickText(...vals) { for (const v of vals) { if (v) return String(v); } return ''; }
 
-// ===== 2. 提交预约（游客可提交；主手机号必填；IP 限流 1 分钟最多 1 次）=====
+// ===== 2. 提交预约（游客可提交；主手机号必填；限流：同手机号 60s 防重复 + IP 10 分钟最多 5 次）=====
 router.post('/reservation-submit', async (req, res) => {
   try {
     const b = req.body || {};
@@ -111,19 +115,39 @@ router.post('/reservation-submit', async (req, res) => {
     if (!/^1\d{10}$/.test(phone)) return res.status(400).json({ error: '请输入正确的 11 位手机号' });
     if (phoneTwo && !/^1\d{10}$/.test(phoneTwo)) return res.status(400).json({ error: '第二联系手机号格式不正确' });
     if (!expectDate) return res.status(400).json({ error: '请选择意向拍摄日期' });
-    if (expectTime && !/^\d{2}:\d{2}$/.test(expectTime)) return res.status(400).json({ error: '拍摄时间格式不正确' });
+    // expect_time 合法取值：空（暂未确定）/ HH:MM（整点或任意时分）/ '半天' / '全天'
+    // （前端时间下拉：暂未确定=空，场次=PERIOD_OPTIONS 的 label『半天/全天』，整点=HOURS 的 'HH:00'）
+    if (expectTime && !/^\d{2}:\d{2}$/.test(expectTime) && expectTime !== '半天' && expectTime !== '全天') {
+      return res.status(400).json({ error: '拍摄时间格式不正确' });
+    }
 
-    // 限流：校验通过后才计数（真正要写入的请求才占额度，防刷仍是有效的）
+    // 防重复提交：同一手机号 60 秒内只允许提交 1 次（防手滑双击/连点产生重复预约）。
+    // 乐观占位：并发双击时后到的请求被拦截；写入失败自动释放占位，允许重试。
+    const phoneKey = 'phone:' + phone;
+    const lastPhone = reservePhone.get(phoneKey) || 0;
+    if (Date.now() - lastPhone < RESERVE_PHONE_MS) {
+      return res.status(429).json({ error: '您已提交过预约，请勿重复提交' });
+    }
+    reservePhone.set(phoneKey, Date.now());
+
+    // IP 级限流（粗粒度兜底，阈值已放宽避免运营商 NAT 误拦截）
     const ip = getIp(req);
     if (rateHit(reserveRate, ip, RESERVE_MAX, RESERVE_WINDOW)) {
+      reservePhone.delete(phoneKey); // IP 被限则释放手机号占位，待解除后仍可正常提交
       return res.status(429).json({ error: '提交过于频繁，请稍后再试' });
     }
 
-    const id = await insert(
-      `INSERT INTO reservations (groom_name, bride_name, phone, phone_two, package_id, expect_date, expect_time, shoot_location, remark, status, order_id)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
-      [groomName, brideName, phone, phoneTwo, packageId, expectDate, expectTime, shootLocation, remark, 'pending', null]
-    );
+    let id;
+    try {
+      id = await insert(
+        `INSERT INTO reservations (groom_name, bride_name, phone, phone_two, package_id, expect_date, expect_time, shoot_location, remark, status, order_id)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
+        [groomName, brideName, phone, phoneTwo, packageId, expectDate, expectTime, shootLocation, remark, 'pending', null]
+      );
+    } catch (e) {
+      reservePhone.delete(phoneKey); // 写入失败释放占位，允许重试
+      throw e;
+    }
 
     // 通知商家（预约消息，sub_type=reserve，已整合到「消息」Tab 的预约消息分类）
     const pkgName = packageId ? (await get('SELECT name FROM packages WHERE id = ?', [packageId]) || {}).name || '' : '';

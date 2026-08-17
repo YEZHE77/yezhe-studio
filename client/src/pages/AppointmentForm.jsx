@@ -52,6 +52,7 @@ export default function AppointmentForm() {
 
   const submit = async (e) => {
     e.preventDefault();
+    if (busy) return; // 防连点/双击重复提交（state 未及时生效前也挡住）
     if (!form.phone.trim()) { setErr('请填写主联系手机号'); return; }
     if (!/^1\d{10}$/.test(form.phone.trim())) { setErr('请输入正确的 11 位手机号'); return; }
     if (form.phone_two.trim() && !/^1\d{10}$/.test(form.phone_two.trim())) { setErr('第二联系手机号格式不正确'); return; }
