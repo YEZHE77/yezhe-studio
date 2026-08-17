@@ -684,10 +684,10 @@ export default function Works() {
                       {w.allow_download ? '✓ 允许下载' : '禁止下载'}
                     </button>
                     <div className="flex flex-col sm:flex-row gap-2 mt-2">
-                      <button onClick={(e) => { e.stopPropagation(); navigate('/works/' + w.id); }} className="w-full sm:flex-1 text-xs py-1.5 rounded border border-line text-brand hover:bg-brand/5">管理相册</button>
-                      <button onClick={(e) => { e.stopPropagation(); navigate('/works/' + w.id + '/album-edit'); }} className="w-full sm:flex-1 text-xs py-1.5 rounded border border-line text-purple-500 hover:bg-purple-50">编辑相册</button>
-                      <button onClick={(e) => { e.stopPropagation(); openWorkShare(w); }} className="w-full sm:flex-1 text-xs py-1.5 rounded border border-line text-emerald-500 hover:bg-emerald-50">分享相册</button>
-                      <button onClick={(e) => remove(w, e)} className="w-full sm:flex-1 text-xs py-1.5 rounded border border-line text-red-500 hover:bg-red-50">删除</button>
+                      <button onClick={(e) => { e.stopPropagation(); navigate('/works/' + w.id); }} className="w-full sm:flex-1 text-xs py-1.5 text-muted hover:text-fg">管理相册</button>
+                      <button onClick={(e) => { e.stopPropagation(); navigate('/works/' + w.id + '/album-edit'); }} className="w-full sm:flex-1 text-xs py-1.5 text-muted hover:text-fg">编辑相册</button>
+                      <button onClick={(e) => { e.stopPropagation(); openWorkShare(w); }} className="w-full sm:flex-1 text-xs py-1.5 text-muted hover:text-fg">分享相册</button>
+                      <button onClick={(e) => remove(w, e)} className="w-full sm:flex-1 text-xs py-1.5 text-muted hover:text-fg">删除</button>
                     </div>
                   </>
                 )}
