@@ -117,25 +117,39 @@ export default function PackagePublic() {
   }
 
   // ===== 解析复合字段 =====
+  // 数据模型双兼容：B 端 PackageEdit 新版把展示字段存 details JSON（新模型，键名如 raw_count/cloth_provide/service_detail_text）；
+  // 旧数据直接存顶层列（如 negative_count/clothing/service_detail/detail_images/quick_tags）。C 端一律 details 优先、顶层兜底。
+  const det = data.details && typeof data.details === 'object' ? data.details : {};
   const addons = Array.isArray(data.addons) ? data.addons : [];
-  const tags = Array.isArray(data.quick_tags) ? data.quick_tags : [];
-  const detailImages = Array.isArray(data.detail_images) ? data.detail_images : [];
   const marketing = data.marketing && typeof data.marketing === 'object' ? data.marketing : {};
   const marketingEntries = Object.entries(marketing).filter(([, v]) => v);
+  const tags = Array.isArray(det.tags) ? det.tags : (Array.isArray(data.quick_tags) ? data.quick_tags : []);
+  const detailImages = Array.isArray(det.detail_images) ? det.detail_images : (Array.isArray(data.detail_images) ? data.detail_images : []);
+  const videoUrl = det.video_url || data.video_url || '';
+  const warmTips = det.warm_tips || data.warm_tips || '';
+  const serviceDetail = det.service_detail_text || data.service_detail || '';
 
   // 更多服务展开区是否有内容（加购/优惠/标签/温馨提示/详情图/视频 任一有则视为有）
-  const hasExtras = addons.length > 0 || marketingEntries.length > 0 || tags.length > 0 || detailImages.length > 0 || !!data.video_url || !!data.warm_tips;
+  const hasExtras = addons.length > 0 || marketingEntries.length > 0 || tags.length > 0 || detailImages.length > 0 || !!videoUrl || !!warmTips;
 
   // ===== 规格网格（数据驱动，数据为空则隐藏该格；「更多服务」仅在有附加内容时显示，避免点击无反应）=====
-  const durationTxt = data.duration || '';
-  const shootTxt = data.negative_count ? `拍摄${data.negative_count}张` : '';
-  const retouchTxt = data.retouch_count ? `${data.retouch_count}张精修` : '';
-  // 底片：raw_policy 含「全部」则规整为「全部原片」，否则原样展示
+  // 拍摄时长：新模型为枚举（全天/半天/指定时长），旧模型可能是具体时间段（如 6:00-20:00），原样展示
+  const durationTxt = det.duration || data.duration || '';
+  // 拍摄张数：新模型 raw_count，旧模型 negative_count
+  const shootCount = det.raw_count || data.negative_count;
+  const shootTxt = shootCount ? `拍摄${shootCount}张` : '';
+  // 精修张数：retouch_count（B 端保存时同步到顶层列，这里双读）
+  const retouchCount = det.retouch_count || data.retouch_count;
+  const retouchTxt = retouchCount ? `${retouchCount}张精修` : '';
+  // 底片：新模型 raw_all_included（底片全送 bool）；旧模型 raw_policy 文案（含「全部」规整为「全部原片」）
   let rawTxt = '';
-  if (data.raw_policy) rawTxt = /全部/.test(data.raw_policy) ? '全部原片' : data.raw_policy;
-  // 服装：clothing / clothing_note 字段映射
+  if (det.raw_all_included) rawTxt = '全部原片';
+  else if (data.raw_policy) rawTxt = /全部/.test(data.raw_policy) ? '全部原片' : data.raw_policy;
+  // 服装：新模型 cloth_provide（provide=提供服装 / not=服装自备）；旧模型 clothing + clothing_note
   let clothingTxt = '';
-  if (data.clothing === 'provide') clothingTxt = data.clothing_note || '含服装';
+  if (det.cloth_provide === 'provide') clothingTxt = '提供服装';
+  else if (det.cloth_provide === 'not') clothingTxt = '服装自备';
+  else if (data.clothing === 'provide') clothingTxt = data.clothing_note || '含服装';
   else if (data.clothing === 'self') clothingTxt = data.clothing_note || '服装自备';
   else if (data.clothing_note) clothingTxt = data.clothing_note;
 
@@ -214,14 +228,14 @@ export default function PackagePublic() {
           </div>
         </div>
 
-        {/* 服务详情（始终展示，无数据时不渲染） */}
-        {data.service_detail && (
+        {/* 服务详情（始终展示，无数据时不渲染；新模型读 details.service_detail_text，旧模型读顶层 service_detail） */}
+        {serviceDetail && (
           <div style={{ background: '#fff', borderRadius: 16, padding: 18, marginTop: 10, boxShadow: '0 1px 6px rgba(0,0,0,0.05)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
               <span style={{ display: 'inline-block', width: 4, height: 14, borderRadius: 2, background: PRICE_RED }} />
               <span style={{ fontSize: 15, color: TEXT }}>服务详情</span>
             </div>
-            <div style={{ fontSize: 14, color: TEXT, lineHeight: 1.85, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{data.service_detail}</div>
+            <div style={{ fontSize: 14, color: TEXT, lineHeight: 1.85, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{serviceDetail}</div>
           </div>
         )}
 
@@ -287,10 +301,10 @@ export default function PackagePublic() {
                 )}
 
                 {/* 温馨提示 */}
-                {data.warm_tips && (
+                {warmTips && (
                   <div style={{ marginBottom: 14 }}>
                     <div style={{ fontSize: 13, color: SUB, marginBottom: 8 }}>温馨提示</div>
-                    <div style={{ fontSize: 14, color: TEXT, lineHeight: 1.8, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{data.warm_tips}</div>
+                    <div style={{ fontSize: 14, color: TEXT, lineHeight: 1.8, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{warmTips}</div>
                   </div>
                 )}
 
@@ -307,10 +321,10 @@ export default function PackagePublic() {
                 )}
 
                 {/* 视频 */}
-                {data.video_url && (
+                {videoUrl && (
                   <div>
                     <div style={{ fontSize: 13, color: SUB, marginBottom: 8 }}>视频</div>
-                    <a href={data.video_url} target="_blank" rel="noreferrer" style={{ fontSize: 14, color: BRAND, textDecoration: 'none' }}>查看视频 ›</a>
+                    <a href={videoUrl} target="_blank" rel="noreferrer" style={{ fontSize: 14, color: BRAND, textDecoration: 'none' }}>查看视频 ›</a>
                   </div>
                 )}
               </div>
