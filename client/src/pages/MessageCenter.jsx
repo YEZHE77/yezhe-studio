@@ -54,8 +54,9 @@ export default function MessageCenter() {
       read_status: 'all',
       pageSize: 200
     };
-    // 预约消息是 order 的 sub_type=reserve，单独筛选
+    // 预约消息是 order 的 sub_type=reserve，单独筛选；订单 tab 排除预约
     if (type === 'reserve') { params.biz_type = 'order'; params.sub_type = 'reserve'; }
+    else if (type === 'order') { params.biz_type = 'order'; params.sub_type_not = 'reserve'; }
     else if (type !== 'all') { params.biz_type = type; }
     http.get('/api/mobile/message/list', { params })
       .then((r) => setList(r.data.list || []))
