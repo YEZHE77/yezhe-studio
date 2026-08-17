@@ -1032,20 +1032,30 @@ export async function initSchema() {
   } catch (e) { console.error('[schema] 同步退订政策(orders.package_snapshot)失败', e); }
 
   // 三端统一前端异常日志表（异常监控 / 告警审计；最近 5000 条自动轮转）
+  // 注意：列名 end 是 PostgreSQL 保留字，必须用双引号 "end" 转义（SQLite 宽松可不加，但统一加引号两库一致）。
+  // 否则生产 PG 执行 DDL 会报「syntax error at or near "end"」(42601) 导致后端启动崩溃。
   const CLIENT_ERROR_LOG_DDL = dialect === 'pg'
     ? `CREATE TABLE IF NOT EXISTS client_error_log (
         id SERIAL PRIMARY KEY, type TEXT NOT NULL DEFAULT 'js',
-        end TEXT NOT NULL DEFAULT 'unknown', severity TEXT NOT NULL DEFAULT 'normal',
+        "end" TEXT NOT NULL DEFAULT 'unknown', severity TEXT NOT NULL DEFAULT 'normal',
         message TEXT NOT NULL, stack TEXT, url TEXT, ua TEXT, app_version TEXT,
         context TEXT, client_ts TEXT, created_at TIMESTAMPTZ DEFAULT now()
       )`
     : `CREATE TABLE IF NOT EXISTS client_error_log (
         id INTEGER PRIMARY KEY AUTOINCREMENT, type TEXT NOT NULL DEFAULT 'js',
-        end TEXT NOT NULL DEFAULT 'unknown', severity TEXT NOT NULL DEFAULT 'normal',
+        "end" TEXT NOT NULL DEFAULT 'unknown', severity TEXT NOT NULL DEFAULT 'normal',
         message TEXT NOT NULL, stack TEXT, url TEXT, ua TEXT, app_version TEXT,
         context TEXT, client_ts TEXT, created_at TEXT DEFAULT CURRENT_TIMESTAMP
       )`;
-  for (const s of CLIENT_ERROR_LOG_DDL.split(';').map((x) => x.trim()).filter(Boolean)) await run(s);
+  // DDL 拆语句执行：单条失败打印具体 SQL 片段，便于定位 parser 错误（避免盲猜第几条 SQL 挂了）。
+  for (const s of CLIENT_ERROR_LOG_DDL.split(';').map((x) => x.trim()).filter(Boolean)) {
+    try {
+      await run(s);
+    } catch (e) {
+      console.error('[schema] client_error_log DDL 执行失败：\n>>', s, '\n<< 报错：', e.message);
+      throw e; // 保留原行为（建表失败即抛出，便于部署健康检查捕获）
+    }
+  }
 
   console.log('[schema] 表结构已就绪');
 }

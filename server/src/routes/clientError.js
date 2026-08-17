@@ -99,8 +99,9 @@ router.post('/', async (req, res) => {
 
     if (!message) return res.status(400).json({ error: 'message 不能为空' });
 
+    // 列名 end 是 PostgreSQL 保留字，必须用双引号 "end" 转义（详见 schema.js 注释）。
     const id = await insert(
-      `INSERT INTO client_error_log (type, end, severity, message, stack, url, ua, app_version, context, client_ts)
+      `INSERT INTO client_error_log (type, "end", severity, message, stack, url, ua, app_version, context, client_ts)
        VALUES (?,?,?,?,?,?,?,?,?,?)`,
       [type, end, severity, message, stack, url, ua, appVersion, context, clientTs]
     );
@@ -133,12 +134,12 @@ router.get('/', authRequired, async (req, res) => {
     const severity = str(req.query.severity || '', 20);
     const where = [];
     const params = [];
-    if (end) { where.push('end = ?'); params.push(end); }
+    if (end) { where.push('"end" = ?'); params.push(end); }
     if (severity) { where.push('severity = ?'); params.push(severity); }
     const whereSql = where.length ? 'WHERE ' + where.join(' AND ') : '';
     const total = (await get(`SELECT COUNT(*) AS c FROM client_error_log ${whereSql}`, params)).c;
     const rows = await query(
-      `SELECT id, type, end, severity, message, url, app_version, client_ts, created_at
+      `SELECT id, type, "end", severity, message, url, app_version, client_ts, created_at
        FROM client_error_log ${whereSql} ORDER BY id DESC LIMIT ? OFFSET ?`,
       [...params, pageSize, (page - 1) * pageSize]
     );
