@@ -257,26 +257,6 @@ export default function MobileWorkbench() {
                   上传中
                 </span>
               )}
-              <span
-                style={{
-                  position: 'absolute',
-                  right: 0,
-                  bottom: 0,
-                  width: 18,
-                  height: 18,
-                  borderRadius: '50%',
-                  background: '#7ECDBB',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  border: '2px solid #1A1A1A'
-                }}
-              >
-                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z" />
-                  <circle cx="12" cy="13" r="3" />
-                </svg>
-              </span>
             </button>
             <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleAvatar} />
             <div>
