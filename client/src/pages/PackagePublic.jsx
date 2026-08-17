@@ -2,8 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import http, { img } from '../api.js';
 
-// ===== C 端套系预览页（/package?token=share_token）=====
-// 仅展示套系信息，无编辑；share_token 鉴权；底部「如需预定，请联系摄影师」；完全隐藏 B 端 UI
+// ===== C 端套系详情页（/package?id= 主链路读 B 端 packages；/package?token= 兼容旧 photo_package 分享链接）=====
+// 仅展示套系信息，无编辑；底部「如需预定，请联系摄影师」；完全隐藏 B 端 UI
 const TEXT = '#1D1D1F';
 const SUB = '#6E6E73';
 const FAINT = '#AEAEB2';
@@ -21,18 +21,36 @@ function Row({ label, value }) {
 
 export default function PackagePublic() {
   const [params] = useSearchParams();
+  const id = params.get('id') || '';
   const token = params.get('token') || '';
   const [data, setData] = useState(null);
   const [err, setErr] = useState('');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!token) { setErr('链接无效'); setLoading(false); return; }
-    http.get('/api/photo-package/public/' + token)
-      .then((r) => setData(r.data))
-      .catch((e) => setErr((e.response && e.response.data && e.response.data.error) || '加载失败'))
-      .finally(() => setLoading(false));
-  }, [token]);
+    if (id) {
+      // 新链路：读 B 端 packages（套系中心跳转）
+      http.get('/api/customer/package-detail', { params: { id } })
+        .then((r) => setData(r.data))
+        .catch((e) => setErr((e.response && e.response.data && e.response.data.error) || '加载失败'))
+        .finally(() => setLoading(false));
+    } else if (token) {
+      // 旧分享链接兼容：读 photo_package，映射到统一字段
+      http.get('/api/photo-package/public/' + token)
+        .then((r) => {
+          const d = r.data || {};
+          setData({
+            name: d.package_name, price: d.price, description: d.package_desc, cover_url: d.cover_image,
+            duration: d.shoot_duration, raw_policy: d.shoot_scope, retouch_count: d.retouch_count,
+            addon_price: d.additional_price, service_detail: d.other_service, warm_tips: d.notice
+          });
+        })
+        .catch((e) => setErr((e.response && e.response.data && e.response.data.error) || '加载失败'))
+        .finally(() => setLoading(false));
+    } else {
+      setErr('链接无效'); setLoading(false);
+    }
+  }, [id, token]);
 
   if (loading) return <div style={{ minHeight: '100vh', background: '#F5F5F7', display: 'flex', alignItems: 'center', justifyContent: 'center', color: FAINT, fontSize: 14 }}>加载中…</div>;
 
@@ -48,39 +66,37 @@ export default function PackagePublic() {
 
   return (
     <div style={{ minHeight: '100vh', background: '#F5F5F7', paddingBottom: 40 }}>
-      {data.cover_image && (
+      {data.cover_url && (
         <div style={{ height: 220, overflow: 'hidden' }}>
-          <img src={img(data.cover_image)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          <img src={img(data.cover_url)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
         </div>
       )}
       <div style={{ padding: 16 }}>
         <div style={{ background: '#fff', borderRadius: 16, padding: 18, boxShadow: '0 1px 6px rgba(0,0,0,0.05)' }}>
-          <div style={{ fontSize: 19, color: TEXT }}>{data.package_name}</div>
+          <div style={{ fontSize: 19, color: TEXT }}>{data.name}</div>
           <div style={{ fontSize: 24, color: '#FF5A5F', marginTop: 8 }}>¥{Number(data.price || 0).toFixed(0)}</div>
-          {data.package_desc && <div style={{ fontSize: 13, color: SUB, marginTop: 8, lineHeight: 1.7 }}>{data.package_desc}</div>}
+          {data.description && <div style={{ fontSize: 13, color: SUB, marginTop: 8, lineHeight: 1.7 }}>{data.description}</div>}
         </div>
 
         <div style={{ background: '#fff', borderRadius: 16, padding: '4px 18px', marginTop: 12, boxShadow: '0 1px 6px rgba(0,0,0,0.05)' }}>
-          <Row label="拍摄时长" value={data.shoot_duration} />
-          <Row label="拍摄范围" value={data.shoot_scope} />
-          <Row label="照片总数" value={data.photo_total ? data.photo_total + ' 张' : ''} />
+          <Row label="拍摄时长" value={data.duration} />
+          <Row label="拍摄范围" value={data.raw_policy} />
           <Row label="精修张数" value={data.retouch_count ? data.retouch_count + ' 张' : ''} />
-          <Row label="原片文件" value={data.original_file} />
-          <Row label="加片单价" value={data.additional_price ? '¥' + Number(data.additional_price).toFixed(0) + '/张' : ''} />
+          <Row label="加片单价" value={data.addon_price ? '¥' + Number(data.addon_price).toFixed(0) + '/张' : ''} />
         </div>
 
-        {(data.other_service || data.notice) && (
+        {(data.service_detail || data.warm_tips) && (
           <div style={{ background: '#fff', borderRadius: 16, padding: 18, marginTop: 12, boxShadow: '0 1px 6px rgba(0,0,0,0.05)' }}>
-            {data.other_service && (
+            {data.service_detail && (
               <div style={{ marginBottom: 12 }}>
-                <div style={{ fontSize: 13, color: SUB, marginBottom: 6 }}>其他服务</div>
-                <div style={{ fontSize: 14, color: TEXT, lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>{data.other_service}</div>
+                <div style={{ fontSize: 13, color: SUB, marginBottom: 6 }}>服务详情</div>
+                <div style={{ fontSize: 14, color: TEXT, lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>{data.service_detail}</div>
               </div>
             )}
-            {data.notice && (
+            {data.warm_tips && (
               <div>
                 <div style={{ fontSize: 13, color: SUB, marginBottom: 6 }}>温馨提示</div>
-                <div style={{ fontSize: 14, color: TEXT, lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>{data.notice}</div>
+                <div style={{ fontSize: 14, color: TEXT, lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>{data.warm_tips}</div>
               </div>
             )}
           </div>

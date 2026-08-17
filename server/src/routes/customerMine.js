@@ -82,14 +82,40 @@ function maskPhone(p) {
 
 function pickText(...vals) { for (const v of vals) { if (v) return String(v); } return ''; }
 
-// ===== 1. 获取 C 端可用套系列表（仅 is_enable 启用，按 sort 排序）=====
+// ===== 1. 获取 C 端可用套系列表（仅启用套系，按 sort 排序；同步 B 端 packages 全部套餐）=====
 router.get('/package-list', async (req, res) => {
   try {
     // packages.status: 'on' 启用 / 'off' 禁用（禁用后 C 端不展示）
     const rows = await query(
-      `SELECT id, name, price, description FROM packages WHERE status != 'off' ORDER BY sort ASC, id ASC`
+      `SELECT id, name, price, description, cover_url, subtitle, retouch_count, duration, addon_price
+       FROM packages WHERE status != 'off' ORDER BY sort ASC, id ASC`
     );
-    res.json(rows.map((p) => ({ id: p.id, name: p.name, price: Number(p.price) || 0, description: p.description || '' })));
+    res.json(rows.map((p) => ({
+      id: p.id, name: p.name, price: Number(p.price) || 0, description: p.description || '',
+      cover_url: p.cover_url || '', subtitle: p.subtitle || '',
+      retouch_count: parseInt(p.retouch_count, 10) || 0,
+      duration: p.duration || '', addon_price: Number(p.addon_price) || 0
+    })));
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ===== 1.1 C 端套系详情（公开，按 id；已下架/不存在返回 404）=====
+router.get('/package-detail', async (req, res) => {
+  try {
+    const id = parseInt(req.query.id, 10);
+    if (!id) return res.status(400).json({ error: '缺少套系 id' });
+    const p = await get('SELECT * FROM packages WHERE id = ?', [id]);
+    if (!p || p.status === 'off') return res.status(404).json({ error: '该套系不存在' });
+    res.json({
+      id: p.id, name: p.name, price: Number(p.price) || 0, description: p.description || '',
+      cover_url: p.cover_url || '', subtitle: p.subtitle || '',
+      duration: p.duration || '', raw_policy: p.raw_policy || '',
+      retouch_count: parseInt(p.retouch_count, 10) || 0,
+      addon_price: Number(p.addon_price) || 0,
+      service_detail: p.service_detail || '', warm_tips: p.warm_tips || ''
+    });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }

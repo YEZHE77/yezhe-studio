@@ -26,8 +26,8 @@ export default function PackageCenter() {
   const [tip, setTip] = useState('');
 
   useEffect(() => {
-    http.get('/api/photo-package/public-list')
-      .then((r) => setList(r.data.list || []))
+    http.get('/api/customer/package-list')
+      .then((r) => setList(Array.isArray(r.data) ? r.data : []))
       .catch(() => setList([]))
       .finally(() => setLoading(false));
   }, []);
@@ -71,28 +71,28 @@ export default function PackageCenter() {
           </div>
         ) : (
           list.map((p) => (
-            <button key={p.id} onClick={() => nav('/package?token=' + encodeURIComponent(p.share_token || ''))}
+            <button key={p.id} onClick={() => nav('/package?id=' + p.id)}
               style={{ width: '100%', display: 'flex', gap: 14, padding: 14, marginBottom: 12, background: '#fff', border: `1px solid ${DIV}`, borderRadius: 14, textAlign: 'left', cursor: 'pointer', alignItems: 'stretch' }}>
               {/* 封面 */}
               <div style={{ width: 92, height: 92, borderRadius: 10, background: '#F5F5F7', overflow: 'hidden', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                {p.cover_image ? (
-                  <img src={img(p.cover_image)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                {p.cover_url ? (
+                  <img src={img(p.cover_url)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 ) : (
                   <span style={{ fontSize: 28, color: '#D8D8DC' }}>📷</span>
                 )}
               </div>
               {/* 信息 */}
               <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                <div style={{ fontSize: 16, color: TEXT, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.package_name}</div>
+                <div style={{ fontSize: 16, color: TEXT, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</div>
                 <div style={{ fontSize: 17, color: BRAND, marginTop: 6 }}>
                   ¥{Number(p.price || 0).toLocaleString()}
-                  {Number(p.additional_price || 0) > 0 && <span style={{ fontSize: 12, color: FAINT }}> 起</span>}
+                  {Number(p.addon_price || 0) > 0 && <span style={{ fontSize: 12, color: FAINT }}> 起</span>}
                 </div>
-                {p.package_desc && (
-                  <div style={{ fontSize: 12, color: FAINT, marginTop: 6, lineHeight: 1.5, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{p.package_desc}</div>
+                {p.description && (
+                  <div style={{ fontSize: 12, color: FAINT, marginTop: 6, lineHeight: 1.5, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{p.description}</div>
                 )}
-                {p.photo_total > 0 && (
-                  <div style={{ fontSize: 12, color: SUB, marginTop: 6 }}>{p.photo_total} 张 · {p.retouch_count || 0} 张精修</div>
+                {p.retouch_count > 0 && (
+                  <div style={{ fontSize: 12, color: SUB, marginTop: 6 }}>{p.retouch_count} 张精修</div>
                 )}
               </div>
             </button>
