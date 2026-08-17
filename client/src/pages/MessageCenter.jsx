@@ -9,7 +9,6 @@ const TYPE_META = {
   select_photo: { label: '选片', color: '#2DB7F5', bg: 'rgba(45,183,245,0.12)' },
   schedule: { label: '日程', color: '#F5A623', bg: 'rgba(245,166,35,0.12)' },
   order: { label: '订单', color: '#7ECDBB', bg: 'rgba(126,205,187,0.14)' },
-  reserve: { label: '预约', color: '#FF8A5A', bg: 'rgba(255,138,90,0.12)' },
   system: { label: '系统', color: '#8E8E93', bg: 'rgba(142,142,147,0.12)' }
 };
 
@@ -29,10 +28,8 @@ function fmtTime(t) {
   return `${d.getMonth() + 1}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
 }
 
-// biz_type + sub_type → 跳转路径
+// biz_type → 跳转路径
 function navTarget(m, extra) {
-  // 预约消息（order 的 sub_type=reserve）跳预约管理
-  if (m.sub_type === 'reserve') return '/reservations';
   switch (m.biz_type) {
     case 'order': return m.biz_id ? '/orders/' + m.biz_id : null;
     case 'select_photo': return extra && extra.orderId ? '/orders/' + extra.orderId : '/selections';
@@ -54,9 +51,8 @@ export default function MessageCenter() {
       read_status: 'all',
       pageSize: 200
     };
-    // 预约消息是 order 的 sub_type=reserve，单独筛选；订单 tab 排除预约
-    if (type === 'reserve') { params.biz_type = 'order'; params.sub_type = 'reserve'; }
-    else if (type === 'order') { params.biz_type = 'order'; params.sub_type_not = 'reserve'; }
+    // 订单 tab 排除预约（reserve 的 biz_type 也是 order）
+    if (type === 'order') { params.biz_type = 'order'; params.sub_type_not = 'reserve'; }
     else if (type !== 'all') { params.biz_type = type; }
     http.get('/api/mobile/message/list', { params })
       .then((r) => setList(r.data.list || []))
@@ -98,7 +94,6 @@ export default function MessageCenter() {
 
   const types = [
     { key: 'all', label: '全部' },
-    { key: 'reserve', label: '预约' },
     { key: 'select_photo', label: '选片' },
     { key: 'order', label: '订单' },
     { key: 'schedule', label: '日程' },
@@ -132,7 +127,7 @@ export default function MessageCenter() {
       <div style={{ padding: 12 }}>
         {!list.length && <div style={{ textAlign: 'center', color: FAINT, fontSize: 14, padding: '50px 0' }}>{archived ? '暂无归档消息' : '暂无消息'}</div>}
         {list.map((m) => {
-          const meta = m.sub_type === 'reserve' ? TYPE_META.reserve : (TYPE_META[m.biz_type] || TYPE_META.system);
+          const meta = TYPE_META[m.biz_type] || TYPE_META.system;
           return (
             <div key={m.id} onClick={() => open(m)}
               style={{ background: '#fff', borderRadius: 14, padding: '14px 16px', marginBottom: 10, cursor: 'pointer', boxShadow: '0 1px 4px rgba(0,0,0,0.04)', opacity: m.is_read ? 0.75 : 1 }}>
