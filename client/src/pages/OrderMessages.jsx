@@ -1,12 +1,11 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import http from '../api.js';
 
 // 移动端「订单消息」二级页 —— 从消息页点击【订单消息】进入
+// 仅展示订单消息（已排除预约消息 sub_type=reserve，预约消息功能移至消息宫格直达预约管理页）
 // 规范：Glassmorphism 玻璃顶栏 + Soft-UI 卡片；禁止字体加粗，仅灰度/字号/间距分层
 // 顶部：返回 + 标题 + ⋯ 菜单（批量标记已读 / 清空消息）
-// 分类卡片：仅「订单消息 / 预约消息」两个入口（营销通知已移除）
-// 列表：时间倒序、分页滚动加载；点击按 sub_type 跳转订单详情或预约管理，并标记已读
 const TEXT = '#1f2329';
 const SUB = '#6E6E73';
 const FAINT = '#AEAEB2';
@@ -17,7 +16,7 @@ const BRAND = '#4A9FD8';
 function fmtTime(t) {
   if (!t) return '';
   const d = new Date(t);
-  if (isNaN(d.getTime())) return '';
+  if (isNaN(d.getTime())) return t;
   const p = (n) => String(n).padStart(2, '0');
   const now = new Date();
   if (d.toDateString() === now.toDateString()) return `${p(d.getHours())}:${p(d.getMinutes())}`;
@@ -38,9 +37,6 @@ const BackIcon = () => (
 
 export default function OrderMessages() {
   const nav = useNavigate();
-  const [params] = useSearchParams();
-  // 支持从消息页 /m/order-messages?tab=reserve 直达预约消息
-  const [tab, setTab] = useState(params.get('tab') === 'reserve' ? 'reserve' : 'order');
   const [list, setList] = useState([]);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
@@ -52,15 +48,13 @@ export default function OrderMessages() {
 
   const pageSize = 20;
 
-  // 当前 tab 的筛选参数：订单消息 = 排除预约；预约消息 = 仅预约
-  const queryOf = (t) => t === 'reserve'
-    ? { biz_type: 'order', sub_type: 'reserve' }
-    : { biz_type: 'order', sub_type_not: 'reserve' };
+  // 仅展示订单消息：biz_type=order 且排除预约(sub_type=reserve)
+  const query = { biz_type: 'order', sub_type_not: 'reserve' };
 
   const load = useCallback(async (p = 1, append = false) => {
     if (append) setLoadingMore(true); else setLoading(true);
     try {
-      const r = await http.get('/api/mobile/message/list', { params: { page: p, pageSize, ...queryOf(tab) } });
+      const r = await http.get('/api/mobile/message/list', { params: { page: p, pageSize, ...query } });
       const rows = Array.isArray(r.data.list) ? r.data.list : [];
       setList((prev) => (append ? [...prev, ...rows] : rows));
       setTotal(r.data.total || 0);
@@ -68,7 +62,7 @@ export default function OrderMessages() {
       setPage(p);
     } catch { if (!append) setList([]); }
     finally { setLoading(false); setLoadingMore(false); }
-  }, [tab]);
+  }, []);
 
   useEffect(() => { load(1); }, [load]);
 
@@ -78,24 +72,23 @@ export default function OrderMessages() {
     if (el.scrollHeight - el.scrollTop - el.clientHeight < 120) load(page + 1, true);
   };
 
-  // 点击消息：标记已读 + 按 sub_type 跳转（reserve → 预约管理；其余 → 订单详情）
+  // 点击消息：标记已读 + 跳订单详情
   const onItemClick = (m) => {
     http.put('/api/mobile/message/' + m.id + '/read').catch(() => {});
     setList((prev) => prev.map((x) => (x.id === m.id ? { ...x, is_read: 1 } : x)));
-    if (m.sub_type === 'reserve') nav('/reservations');
-    else if (m.biz_id) nav('/orders/' + m.biz_id);
-    else nav('/reservations');
+    if (m.biz_id) nav('/orders/' + m.biz_id);
+    else nav('/orders');
   };
 
   const markAllRead = async () => {
-    try { await http.put('/api/mobile/message/read-all', { params: queryOf(tab) }); load(1); } catch {}
+    try { await http.put('/api/mobile/message/read-all', { params: query }); load(1); } catch {}
     setMenuOpen(false);
   };
 
   const clearAll = async () => {
     setMenuOpen(false);
-    if (!window.confirm('确定清空当前分类的全部消息？此操作不可恢复。')) return;
-    try { await http.delete('/api/mobile/message/clear', { params: queryOf(tab) }); load(1); } catch {}
+    if (!window.confirm('确定清空订单消息？此操作不可恢复。')) return;
+    try { await http.delete('/api/mobile/message/clear', { params: query }); load(1); } catch {}
   };
 
   return (
@@ -114,16 +107,6 @@ export default function OrderMessages() {
               <button onClick={clearAll} style={{ display: 'block', width: '100%', textAlign: 'left', padding: '13px 16px', background: '#fff', border: 'none', fontSize: 14, color: DANGER }}>清空消息</button>
             </div>
           )}
-        </div>
-
-        {/* 分类卡片：仅订单消息 / 预约消息（营销通知已移除） */}
-        <div style={{ display: 'flex', gap: 8, padding: '8px 12px 12px' }}>
-          {[{ key: 'order', label: '订单消息' }, { key: 'reserve', label: '预约消息' }].map((t) => (
-            <button key={t.key} onClick={() => { setTab(t.key); setMenuOpen(false); }}
-              style={{ padding: '6px 18px', borderRadius: 16, border: 'none', fontSize: 13, cursor: 'pointer', background: tab === t.key ? BRAND : 'rgba(255,255,255,0.7)', color: tab === t.key ? '#fff' : SUB }}>
-              {t.label}
-            </button>
-          ))}
         </div>
       </div>
 

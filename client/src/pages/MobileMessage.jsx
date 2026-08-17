@@ -111,8 +111,8 @@ export default function MobileMessage() {
   }, []);
 
   const openConsult = (key) => {
-    // 预约消息 / 订单消息走专属二级页（含分类 tab + 批量已读/清空）；其余走通用消息列表
-    if (key === 'reserve') nav('/m/order-messages?tab=reserve');
+    // 预约消息直达预约管理页（订单消息页已不再展示预约消息 Tab）；订单消息走二级页；其余走通用消息列表
+    if (key === 'reserve') nav('/reservations');
     else if (key === 'order') nav('/m/order-messages');
     else nav('/m/messages?type=' + key);
   };
