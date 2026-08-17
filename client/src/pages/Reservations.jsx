@@ -4,11 +4,18 @@ import http from '../api.js';
 
 // 预约管理（reservations 表）：状态 pending 待确认 / contacted 已沟通 / rejected 已拒绝 / converted 已转订单
 const STATUS_LABEL = { pending: '待确认', contacted: '已沟通', rejected: '已拒绝', converted: '已转订单' };
+const ORDER_STATUS = { pending_deposit: '待付定金', deposit_paid: '已付定金', shot_done: '拍摄完成', completed: '已完结', cancelled: '已取消' };
+
+const inputCls = 'w-full px-3 py-2 rounded bg-panel2 border border-line text-white text-sm outline-none';
 
 export default function Reservations() {
   const [filter, setFilter] = useState('');
   const [list, setList] = useState([]);
+  const [pkgs, setPkgs] = useState([]);
+  const [personnel, setPersonnel] = useState([]);
   const [detail, setDetail] = useState(null);
+  const [conv, setConv] = useState(null); // 转订单弹窗：当前预约
+  const [convForm, setConvForm] = useState({});
   const [convResult, setConvResult] = useState(null); // 转订单结果 {order_no, access_token, order_id, name}
   const nav = useNavigate();
 
@@ -16,6 +23,8 @@ export default function Reservations() {
     http.get('/api/reservations').then((r) => setList(r.data)).catch(() => {});
   };
   useEffect(load, []);
+  useEffect(() => { http.get('/api/packages?status=all').then((r) => setPkgs(r.data || [])).catch(() => {}); }, []);
+  useEffect(() => { http.get('/api/admin/personnel').then((r) => setPersonnel(Array.isArray(r.data) ? r.data : [])).catch(() => {}); }, []);
 
   async function changeStatus(id, status) {
     try {
@@ -27,12 +36,72 @@ export default function Reservations() {
     }
   }
 
-  async function doConvert(r) {
-    if (!confirm(`确认将「${r.groom_name || r.bride_name || '客户'}」的预约转为订单？`)) return;
+  // 进入详情自动标记已读
+  function openDetail(r) {
+    setDetail(r);
+    if (!r.is_read) {
+      http.post('/api/reservations/' + r.id + '/read').then(() => load()).catch(() => {});
+    }
+  }
+
+  // 打开转订单中转编辑弹窗（预填预约数据；已拒绝/已转订单不可触发）
+  function openConvert(r) {
+    if (r.status === 'rejected' || r.status === 'converted') return;
+    const pkg = pkgs.find((p) => String(p.id) === String(r.package_id));
+    setConvForm({
+      groom_name: r.groom_name || '',
+      bride_name: r.bride_name || '',
+      phone: r.phone || '',
+      phone_two: r.phone_two || '',
+      package_id: r.package_id ? String(r.package_id) : '',
+      expect_date: r.expect_date || '',
+      shoot_location: r.shoot_location || '',
+      remark: r.remark || '',
+      executor_id: '',
+      price: pkg ? String(pkg.price || '') : '',
+      deposit: '',
+      order_status: 'pending_deposit',
+      deposit_pay_time: ''
+    });
+    setConv(r);
+    setDetail(null);
+  }
+
+  function onConv(k, v) {
+    setConvForm((f) => {
+      const next = { ...f, [k]: v };
+      // 套系切换时同步成交价默认值（用户未手改价格时）
+      if (k === 'package_id') {
+        const pkg = pkgs.find((p) => String(p.id) === String(v));
+        if (pkg) next.price = String(pkg.price || '');
+      }
+      return next;
+    });
+  }
+
+  async function submitConvert() {
+    if (!convForm.executor_id) { alert('请选择执行人'); return; }
+    if (convForm.deposit === '' || convForm.deposit === null || convForm.deposit === undefined) { alert('请填写定金金额'); return; }
+    const executor = personnel.find((p) => String(p.id) === String(convForm.executor_id));
     try {
-      const res = await http.post('/api/reservations/' + r.id + '/convert');
-      setConvResult({ name: r.groom_name || r.bride_name || '客户', ...res.data });
-      setDetail(null);
+      const res = await http.post('/api/reservations/' + conv.id + '/convert', {
+        groom_name: convForm.groom_name,
+        bride_name: convForm.bride_name,
+        phone: convForm.phone,
+        phone_two: convForm.phone_two,
+        package_id: convForm.package_id === '' ? null : parseInt(convForm.package_id, 10),
+        expect_date: convForm.expect_date,
+        shoot_location: convForm.shoot_location,
+        remark: convForm.remark,
+        executor_id: convForm.executor_id,
+        executor_name: executor ? executor.name : '',
+        price: parseFloat(convForm.price) || 0,
+        deposit: parseFloat(convForm.deposit) || 0,
+        order_status: convForm.order_status || 'pending_deposit',
+        deposit_pay_time: convForm.deposit_pay_time || ''
+      });
+      setConvResult({ name: convForm.groom_name || convForm.bride_name || '客户', ...res.data });
+      setConv(null);
       load();
     } catch (e) {
       alert((e.response && e.response.data && e.response.data.error) || '转订单失败');
@@ -77,18 +146,21 @@ export default function Reservations() {
             </thead>
             <tbody>
               {shown.map((r) => (
-                <tr key={r.id} onClick={() => setDetail(r)} className="border-b border-line last:border-0 cursor-pointer hover:bg-panel2">
-                  <td className="p-3 text-white">{[r.groom_name, r.bride_name].filter(Boolean).join(' / ') || '—'}</td>
+                <tr key={r.id} onClick={() => openDetail(r)} className="border-b border-line last:border-0 cursor-pointer hover:bg-panel2">
+                  <td className="p-3 text-white">
+                    {!r.is_read && <span className="inline-block w-2 h-2 rounded-full bg-sky-400 mr-1.5 align-middle"></span>}
+                    {[r.groom_name, r.bride_name].filter(Boolean).join(' / ') || '—'}
+                  </td>
                   <td className="p-3 text-white">{r.phone}{r.phone_two ? ' / ' + r.phone_two : ''}</td>
                   <td className="p-3 text-muted">{r.package_name ? `${r.package_name}（¥${r.package_price}）` : '暂未确定套系'}</td>
                   <td className="p-3 text-muted">{r.expect_date || '—'}{r.shoot_location ? ' · ' + r.shoot_location : ''}</td>
                   <td className="p-3"><span className={'px-2 py-1 rounded-full text-xs ' + badge(r.status)}>{STATUS_LABEL[r.status] || r.status}</span></td>
                   <td className="p-3 text-muted">{fmt(r.create_time)}</td>
                   <td className="p-3 text-right whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
-                    {r.status !== 'converted' ? (
-                      <button onClick={() => doConvert(r)} className="px-3 py-1.5 rounded bg-brand text-white text-xs hover:opacity-90">转为订单</button>
-                    ) : (
+                    {r.status === 'converted' ? (
                       <button onClick={() => nav('/orders/' + r.order_id)} className="px-3 py-1.5 rounded border border-line text-white text-xs hover:bg-panel2">查看订单 ›</button>
+                    ) : (
+                      <button onClick={() => openConvert(r)} disabled={r.status === 'rejected'} className={'px-3 py-1.5 rounded text-xs ' + (r.status === 'rejected' ? 'bg-line text-muted cursor-not-allowed' : 'bg-brand text-white hover:opacity-90')}>转为订单</button>
                     )}
                   </td>
                 </tr>
@@ -102,7 +174,7 @@ export default function Reservations() {
       {/* 详情弹窗 */}
       {detail && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" onClick={() => setDetail(null)}>
-          <div onClick={(e) => e.stopPropagation()} className="w-full max-w-md bg-panel border border-line rounded-xl2 p-6">
+          <div onClick={(e) => e.stopPropagation()} className="w-full max-w-md bg-panel border border-line rounded-xl2 p-6 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-4">
               <div className="text-white">预约详情</div>
               <button onClick={() => setDetail(null)} className="text-muted text-sm">✕</button>
@@ -128,7 +200,7 @@ export default function Reservations() {
                   {detail.status !== 'contacted' && <button onClick={() => changeStatus(detail.id, 'contacted')} className="px-3 py-1.5 rounded border border-line text-white text-xs">标记已沟通</button>}
                   {detail.status !== 'rejected' && <button onClick={() => changeStatus(detail.id, 'rejected')} className="px-3 py-1.5 rounded border border-line text-red-400 text-xs">拒绝</button>}
                   {detail.status !== 'pending' && <button onClick={() => changeStatus(detail.id, 'pending')} className="px-3 py-1.5 rounded border border-line text-white text-xs">恢复待确认</button>}
-                  <button onClick={() => doConvert(detail)} className="px-3 py-1.5 rounded bg-brand text-white text-xs">转为订单</button>
+                  <button onClick={() => openConvert(detail)} disabled={detail.status === 'rejected'} className={'px-3 py-1.5 rounded text-xs ' + (detail.status === 'rejected' ? 'bg-line text-muted cursor-not-allowed' : 'bg-brand text-white')}>转为订单</button>
                 </>
               )}
             </div>
@@ -136,13 +208,99 @@ export default function Reservations() {
         </div>
       )}
 
+      {/* 转订单中转编辑弹窗（预填预约数据 + 补充执行人/成交价/定金/状态/支付时间） */}
+      {conv && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[60] p-4" onClick={() => setConv(null)}>
+          <div onClick={(e) => e.stopPropagation()} className="w-full max-w-lg bg-panel border border-line rounded-xl2 p-6 max-h-[92vh] overflow-y-auto">
+            <div className="text-white mb-1">转为订单</div>
+            <div className="text-xs text-muted mb-4">预填预约信息，补全订单必要信息后生成订单</div>
+
+            <div className="grid grid-cols-2 gap-3 mb-3">
+              <div>
+                <label className="text-xs text-muted">新郎姓名</label>
+                <input className={inputCls} value={convForm.groom_name || ''} onChange={(e) => onConv('groom_name', e.target.value)} placeholder="新郎" />
+              </div>
+              <div>
+                <label className="text-xs text-muted">新娘姓名</label>
+                <input className={inputCls} value={convForm.bride_name || ''} onChange={(e) => onConv('bride_name', e.target.value)} placeholder="新娘" />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3 mb-3">
+              <div>
+                <label className="text-xs text-muted">主联系手机号</label>
+                <input className={inputCls} value={convForm.phone || ''} onChange={(e) => onConv('phone', e.target.value)} placeholder="主手机号" />
+              </div>
+              <div>
+                <label className="text-xs text-muted">第二联系手机号</label>
+                <input className={inputCls} value={convForm.phone_two || ''} onChange={(e) => onConv('phone_two', e.target.value)} placeholder="第二手机号（选填）" />
+              </div>
+            </div>
+
+            <label className="text-xs text-muted">套系</label>
+            <select className={inputCls + ' mb-3'} value={convForm.package_id || ''} onChange={(e) => onConv('package_id', e.target.value)}>
+              <option value="">暂未确定套系</option>
+              {pkgs.map((p) => <option key={p.id} value={p.id}>{p.name}（¥{p.price}）</option>)}
+            </select>
+
+            <div className="grid grid-cols-2 gap-3 mb-3">
+              <div>
+                <label className="text-xs text-muted">拍摄日期</label>
+                <input className={inputCls} type="date" value={convForm.expect_date || ''} onChange={(e) => onConv('expect_date', e.target.value)} />
+              </div>
+              <div>
+                <label className="text-xs text-muted">拍摄地点</label>
+                <input className={inputCls} value={convForm.shoot_location || ''} onChange={(e) => onConv('shoot_location', e.target.value)} placeholder="拍摄地点" />
+              </div>
+            </div>
+
+            <label className="text-xs text-muted">客户备注</label>
+            <textarea className={inputCls + ' mb-3 h-16'} value={convForm.remark || ''} onChange={(e) => onConv('remark', e.target.value)} placeholder="备注" />
+
+            <label className="text-xs text-muted">执行人（必填）</label>
+            <select className={inputCls + ' mb-3'} value={convForm.executor_id || ''} onChange={(e) => onConv('executor_id', e.target.value)}>
+              <option value="">请选择执行人</option>
+              {personnel.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+            </select>
+
+            <div className="grid grid-cols-2 gap-3 mb-3">
+              <div>
+                <label className="text-xs text-muted">成交价格</label>
+                <input className={inputCls} type="number" value={convForm.price || ''} onChange={(e) => onConv('price', e.target.value)} placeholder="成交价" />
+              </div>
+              <div>
+                <label className="text-xs text-muted">定金金额（必填）</label>
+                <input className={inputCls} type="number" value={convForm.deposit || ''} onChange={(e) => onConv('deposit', e.target.value)} placeholder="定金" />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 mb-4">
+              <div>
+                <label className="text-xs text-muted">订单状态</label>
+                <select className={inputCls} value={convForm.order_status || 'pending_deposit'} onChange={(e) => onConv('order_status', e.target.value)}>
+                  {Object.entries(ORDER_STATUS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="text-xs text-muted">定金支付时间（选填）</label>
+                <input className={inputCls} type="date" value={convForm.deposit_pay_time || ''} onChange={(e) => onConv('deposit_pay_time', e.target.value)} />
+              </div>
+            </div>
+
+            <div className="flex gap-2 justify-end">
+              <button onClick={() => setConv(null)} className="px-4 py-2 rounded border border-line text-white text-sm">取消</button>
+              <button onClick={submitConvert} className="px-4 py-2 rounded bg-brand text-white text-sm">确认生成订单</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* 转订单结果 */}
       {convResult && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[60] p-4" onClick={() => setConvResult(null)}>
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[70] p-4" onClick={() => setConvResult(null)}>
           <div onClick={(e) => e.stopPropagation()} className="w-full max-w-sm bg-panel border border-line rounded-xl2 p-6 text-center">
             <div className="text-emerald-400 text-2xl mb-2">✓</div>
-            <div className="text-white mb-1">已转为订单</div>
-            <div className="text-sm text-muted mb-4">客户「{convResult.name}」的预约已转为订单 {convResult.order_no || '#' + convResult.order_id}</div>
+            <div className="text-white mb-1">已生成订单</div>
+            <div className="text-sm text-muted mb-4">客户「{convResult.name}」的订单 {convResult.order_no || '#' + convResult.order_id} 已创建</div>
             {convResult.access_token && (
               <div className="text-left mb-4">
                 <div className="text-xs text-muted mb-1">订单免登录链接（accessToken）：</div>

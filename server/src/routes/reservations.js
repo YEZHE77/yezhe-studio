@@ -47,6 +47,7 @@ router.get('/', authRequired, async (req, res) => {
       status: r.status,
       status_label: RESERVATION_STATUS[r.status] || r.status,
       order_id: r.order_id || null,
+      is_read: !!Number(r.is_read),
       create_time: r.create_time || ''
     })));
   } catch (e) {
@@ -72,7 +73,18 @@ router.patch('/:id/status', authRequired, async (req, res) => {
   }
 });
 
-// ===== 转为订单（字段映射复制生成订单 + 生成 accessToken + 预约标记已转订单）=====
+// ===== 进入详情标记已读 =====
+router.post('/:id/read', authRequired, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    await run('UPDATE reservations SET is_read = 1 WHERE id = ?', [id]);
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ===== 转为订单（中转编辑弹窗提交：预填预约数据 + 执行人/成交价/定金/订单状态/定金支付时间；执行人与定金必填）=====
 router.post('/:id/convert', authRequired, requireRole(['admin', 'photographer', 'finance']), async (req, res) => {
   try {
     const id = parseInt(req.params.id, 10);
@@ -80,9 +92,38 @@ router.post('/:id/convert', authRequired, requireRole(['admin', 'photographer', 
     if (!r) return res.status(404).json({ error: '预约不存在' });
     if (r.status === 'converted') return res.status(400).json({ error: '该预约已转订单' });
 
-    // 读取套系（可为空）
+    const b = req.body || {};
+
+    // 预填项（可手动修改）：弹窗传入优先，回退到预约记录
+    const groom = String(b.groom_name != null ? b.groom_name : (r.groom_name || '')).trim();
+    const bride = String(b.bride_name != null ? b.bride_name : (r.bride_name || '')).trim();
+    const phone = String(b.phone != null ? b.phone : (r.phone || '')).trim();
+    const phoneTwo = String(b.phone_two != null ? b.phone_two : (r.phone_two || '')).trim();
+    const expectDate = String(b.expect_date != null ? b.expect_date : (r.expect_date || '')).trim();
+    const shootLocation = String(b.shoot_location != null ? b.shoot_location : (r.shoot_location || '')).trim();
+    const remark = String(b.remark != null ? b.remark : (r.remark || '')).trim();
+    const packageId = (b.package_id !== undefined && b.package_id !== null && b.package_id !== '')
+      ? parseInt(b.package_id, 10)
+      : (r.package_id || null);
+
+    // 补充确认字段
+    const executorName = String(b.executor_name || '').trim();
+    const executorId = b.executor_id ? parseInt(b.executor_id, 10) : null;
+    const orderStatus = String(b.order_status || 'pending_deposit').trim();
+    const depositPayTime = String(b.deposit_pay_time || '').trim();
+    const deposit = Math.max(0, parseFloat(b.deposit) || 0);
+    const price = Math.max(0, parseFloat(b.price) || 0);
+
+    if (!phone) return res.status(400).json({ error: '请填写主联系手机号' });
+    if (!executorName) return res.status(400).json({ error: '请选择执行人' });
+    if (!(deposit >= 0) || b.deposit === undefined || b.deposit === null || b.deposit === '') {
+      return res.status(400).json({ error: '请填写定金金额' });
+    }
+
+    // 读取套系（可为空；价格默认取套系价，可手动修改）
     let pkg = null;
-    if (r.package_id) pkg = await get('SELECT * FROM packages WHERE id = ?', [r.package_id]);
+    if (packageId) pkg = await get('SELECT * FROM packages WHERE id = ?', [packageId]);
+    const finalPrice = b.price !== undefined && b.price !== null && b.price !== '' ? price : (pkg ? (Number(pkg.price) || 0) : 0);
 
     // 生成 accessToken（复用 orders.customer_token 作为免登录密钥）
     const customer_token = crypto.randomBytes(16).toString('hex');
@@ -90,24 +131,21 @@ router.post('/:id/convert', authRequired, requireRole(['admin', 'photographer', 
     const package_snapshot = pkg ? JSON.stringify({
       name: pkg.name, price: pkg.price, description: pkg.description, cover_url: pkg.cover_url || ''
     }) : '{}';
-    const price = pkg ? (Number(pkg.price) || 0) : 0;
 
-    const groom = r.groom_name || '';
-    const bride = r.bride_name || '';
     const customer_name = groom || bride || '客户';
-    const phones = [r.phone, r.phone_two || ''].filter(Boolean);
+    const phones = [phone, phoneTwo].filter(Boolean);
+    const balance = Math.max(0, finalPrice - deposit);
+    const payment_status = deposit >= finalPrice && finalPrice > 0 ? 'paid' : (deposit > 0 ? 'deposit' : 'unpaid');
 
     const orderId = await insert(
       `INSERT INTO orders (order_no, customer_name, customer_phone, phone_two, reservation_id, package_id, package_name, package_snapshot,
-        status, order_status, deposit, deposit_amount, balance, total_amount, paid_amount,
-        shoot_date, address, groom_name, bride_name, remark, phones, customer_token, payment_status, date_tbd)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+        status, order_status, deposit, deposit_amount, balance, total_amount, paid_amount, executor, executors,
+        shoot_date, address, groom_name, bride_name, remark, phones, customer_token, payment_status, date_tbd, deposit_pay_time)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
       [
-        order_no, customer_name, r.phone || '', r.phone_two || '', id, r.package_id || null,
-        pkg ? pkg.name : '', package_snapshot,
-        'deposit', 'pending_deposit', 0, 0, price, price, 0,
-        r.expect_date || '', r.shoot_location || '', groom, bride, r.remark || '', JSON.stringify(phones),
-        customer_token, 'unpaid', 0
+        order_no, customer_name, phone, phoneTwo, id, packageId, pkg ? pkg.name : '', package_snapshot,
+        'deposit', orderStatus, deposit, deposit, balance, finalPrice, deposit, executorName, JSON.stringify([{ id: executorId, name: executorName }]),
+        expectDate, shootLocation, groom, bride, remark, JSON.stringify(phones), customer_token, payment_status, 0, depositPayTime || null
       ]
     );
 
@@ -115,7 +153,7 @@ router.post('/:id/convert', authRequired, requireRole(['admin', 'photographer', 
     await run('UPDATE reservations SET status = ?, order_id = ? WHERE id = ?', ['converted', orderId, id]);
 
     // 订单变更日志
-    await appendOrderLog(orderId, '由预约自动转为订单（来源预约 ' + id + '）', '系统');
+    await appendOrderLog(orderId, '由预约转为订单（来源预约 ' + id + '，成交价 ' + finalPrice + '，定金 ' + deposit + '）', '系统');
 
     res.json({ ok: true, order_id: orderId, order_no, access_token: customer_token });
   } catch (e) {

@@ -729,6 +729,7 @@ export async function initSchema() {
         create_time TEXT DEFAULT CURRENT_TIMESTAMP
       )`;
   for (const s of RESERVATIONS_DDL.split(';').map((x) => x.trim()).filter(Boolean)) await run(s);
+  await ensureColumn('reservations', 'is_read', 'INTEGER NOT NULL DEFAULT 0'); // 进入详情自动标记已读
 
   // 合同模板表（contract_template）
   for (const s of (dialect === 'pg' ? PG_CONTRACT_TEMPLATE : SQLITE_CONTRACT_TEMPLATE).split(';').map((x) => x.trim()).filter(Boolean)) await run(s);
