@@ -23,6 +23,7 @@ const OrderDetail = React.lazy(() => import('../pages/OrderDetail.jsx'));
 const OrderNotes = React.lazy(() => import('../pages/OrderNotes.jsx'));
 const Todo = React.lazy(() => import('../pages/Todo.jsx'));
 const Appointments = React.lazy(() => import('../pages/Appointments.jsx'));
+const Reservations = React.lazy(() => import('../pages/Reservations.jsx'));
 const Reviews = React.lazy(() => import('../pages/Reviews.jsx'));
 const Settings = React.lazy(() => import('../pages/Settings.jsx'));
 const Customers = React.lazy(() => import('../pages/Customers.jsx'));
@@ -212,6 +213,7 @@ function getPageTitle(path) {
   if (path === '/reviews') return '评价管理';
   if (path === '/selections') return '选片工具';
   if (path === '/appointments') return '预约管理';
+  if (path === '/reservations') return '预约管理';
   return '工作台';
 }
 
@@ -295,6 +297,7 @@ export default function MobileShell() {
                 <Route path="/orders/:id/notes" element={<OrderNotes />} />
 <Route path="/todo" element={<Todo />} />
                 <Route path="/appointments" element={<Appointments />} />
+                <Route path="/reservations" element={<Reservations />} />
                 <Route path="/reviews" element={<Reviews />} />
                 <Route path="/settings" element={<Settings />} />
                 <Route path="/customers" element={<Customers />} />
