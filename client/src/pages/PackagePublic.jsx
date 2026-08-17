@@ -1,364 +1,435 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import http, { img } from '../api.js';
+import { getRefundParagraphs, normalizePolicy } from '../utils/refundPolicy.js';
+import { getServiceAgreement } from '../utils/customerAgreement.js';
+import { DEFAULT_SERVICE_DETAIL } from '../utils/serviceDetail.js';
 
-// ===== C 端套系详情页（/package?id= 主链路读 B 端 packages；/package?token= 兼容旧 photo_package 分享链接）=====
-// 版式（参照设计稿）：固定毛玻璃顶栏 + 全宽封面 + 名称/价格/定金 + 2×3 规格图标网格
-//                   + 服务详情 + 更多服务（可展开：加购/优惠/标签/详情图/视频）
-//                   + 固定底部水印 + 立即预约
-// 数据：GET /api/packages/public/:id（B端 parseRow 全列）；GET /api/settings/studio（品牌水印）
-const TEXT = '#1D1D1F';
-const SUB = '#6E6E73';
-const FAINT = '#AEAEB2';
-const BRAND = '#7ECDBB';
-const PRICE_RED = '#FF5A5F';
-const MORE_RED = '#FF5A5F';
-const DIV = '#EEF0F3';
-const PAGE_BG = '#F5F5F7';
+/* ==========================================================================
+   C 端套系预览页（/package?id= 主链路读 B 端 packages；/package?token= 兼容旧 photo_package 分享链接）
+   —— 与后台「套系预览」(PackagePreview.jsx) 保持完全一致的功能效果与交互：
+      顶部白底导航 + 16/10 封面 + 标题价格 + 3 列规格网格 + 服务详情 + 温馨提示
+      + 须知/退订政策 + 全屏「套系服务详情」弹窗（字段清单 + 服务详情 + 退订政策 + 顾客协议）
+      + 后端生成的分享二维码弹窗。
+   差异仅限：①数据来自公开接口 ②无管理员操作(编辑/上架/下架/删除) ③分享走公开二维码接口 ④「立即预约」跳转 C 端预约页。
+   ========================================================================== */
 
-// 线性 SVG 图标（与 components/Icon.jsx 风格一致；规格网格用到 6 个）
-const IcoClock = (p) => (<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" {...p}><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>);
-const IcoCamera = (p) => (<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M4 8h3l2-2h6l2 2h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>);
-const IcoSparkle = (p) => (<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M12 3l1.6 4.4L18 9l-4.4 1.6L12 15l-1.6-4.4L6 9l4.4-1.6z"/></svg>);
-const IcoLayers = (p) => (<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M12 3l9 5-9 5-9-5 9-5z"/><path d="M3 13l9 5 9-5"/><path d="M3 17l9 5 9-5"/></svg>);
-const IcoShirt = (p) => (<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M4 7l4-3 2 2h4l2-2 4 3-2 4-2-1v9H8v-9l-2 1z"/></svg>);
-const IcoPlus = (p) => (<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" {...p}><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg>);
-// 顶栏图标
-const IcoBack = (p) => (<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M15 18l-6-6 6-6"/></svg>);
-const IcoShare = (p) => (<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" {...p}><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M8.2 11l7.6-4M8.2 13l7.6 4"/></svg>);
-const IcoMore = (p) => (<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" {...p}><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>);
-// 展开/收起箭头
-const IcoChevron = ({ open, ...p }) => (<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform .2s' }} {...p}><path d="M6 9l6 6 6-6"/></svg>);
+const MRED = '#FA5151';
+const MGRAY = '#999999';
+const MBORDER = '#F0F0F0';
+const MGREEN = '#07C160';
+
+// 内联 SVG 图标（与后台 PackagePreview 一致）
+function IconBack() {
+  return <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#333" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6"/></svg>;
+}
+function IconShare() {
+  return <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#333" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>;
+}
+function IconClock() {
+  return <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#999" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>;
+}
+function IconImage() {
+  return <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#999" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>;
+}
+function IconWand() {
+  return <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#999" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 2l-9 9-4-4-6 6"/><path d="M21 2l-2 2"/><path d="M3 21l4-4"/><path d="M15 6l4 4"/></svg>;
+}
+function IconShirt() {
+  return <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#999" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20.38 3.46 16 2a4 4 0 0 1-8 0L3.62 3.46a2 2 0 0 0-1.34 2.23l.58 3.47a1 1 0 0 0 .99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 0 0 2-2V10h2.15a1 1 0 0 0 .99-.84l.58-3.47a2 2 0 0 0-1.34-2.23z"/></svg>;
+}
+function IconFace() {
+  return <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#999" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>;
+}
+function IconMoreService() {
+  return <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#FA5151" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>;
+}
+function IconCloseX() {
+  return <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#999" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>;
+}
+
+function defaultDetails() {
+  return {
+    detail_images: [], video_url: '', service_params: '单规格服务', hide_price: false, hide_deposit: false,
+    deposit_is_full: false, show_currency: true, refund_policy: '严格', hide_refund: false,
+    raw_storage: '', prepay_enabled: false, questionnaire_visibility: 'none', questionnaire_verify_phone: false,
+    questionnaire: [], shoot_template: 'photo', duration: '全天', raw_count: '', raw_all_included: false,
+    retouch_count: '', extra_photo_fee: '', extra_photo_discount: '', cloth_provide: 'not',
+    makeup_provide: 'not', album_provide: 'not', service_location: '', show_service_content: true,
+    service_detail_text: '', public_all_visible: false, public_visible: '全部可见', consult_reminder: false,
+    warm_tips: '', tags: [], customer_agreement: ''
+  };
+}
 
 export default function PackagePublic() {
-  const nav = useNavigate();
   const [params] = useSearchParams();
   const id = params.get('id') || '';
   const token = params.get('token') || '';
+  const nav = useNavigate();
   const [data, setData] = useState(null);
-  const [studio, setStudio] = useState({ name: '叶哲 STUDIO', slogan: '' });
-  const [extrasOpen, setExtrasOpen] = useState(false); // 更多服务展开
-  const extrasRef = useRef(null); // 更多服务卡片锚点（点击网格入口时滚动到展开区）
-  const [err, setErr] = useState('');
+  const [studio, setStudio] = useState(null);
   const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    // 品牌水印（公开接口）
-    http.get('/api/settings/studio').then((r) => setStudio(r.data || {})).catch(() => {});
-    if (id) {
-      http.get('/api/packages/public/' + id)
-        .then((r) => setData(r.data))
-        .catch((e) => setErr((e.response && e.response.data && e.response.data.error) || '加载失败'))
-        .finally(() => setLoading(false));
-    } else if (token) {
-      // 旧分享链接兼容：读 photo_package，映射到统一字段
-      http.get('/api/photo-package/public/' + token)
-        .then((r) => {
-          const d = r.data || {};
-          setData({
-            name: d.package_name, price: d.price, description: d.package_desc, cover_url: d.cover_image,
-            duration: d.shoot_duration, raw_policy: d.shoot_scope, retouch_count: d.retouch_count,
-            addon_price: d.additional_price, service_detail: d.other_service, warm_tips: d.notice,
-            deposit: 0, service_spec: '', negative_count: 0, addon_discount: '', raw_save: '',
-            refund_policy: '', clothing: '', clothing_note: '', makeup: '', makeup_note: '',
-            album_service: '', album_note: '', location_mode: '', location_text: '',
-            quick_tags: [], addons: [], marketing: {}, detail_images: [], video_url: '',
-            subtitle: ''
-          });
-        })
-        .catch((e) => setErr((e.response && e.response.data && e.response.data.error) || '加载失败'))
-        .finally(() => setLoading(false));
-    } else {
-      setErr('链接无效'); setLoading(false);
-    }
-  }, [id, token]);
+  const [serviceModalOpen, setServiceModalOpen] = useState(false);
+  const [serviceDetailOpen, setServiceDetailOpen] = useState(false);
+  const [refundOpen, setRefundOpen] = useState(false);
+  const [agreementOpen, setAgreementOpen] = useState(false);
+  const [refundDetailOpen, setRefundDetailOpen] = useState(false);
+  const [shareModalOpen, setShareModalOpen] = useState(false);
+  const [shareData, setShareData] = useState(null);
+  const [shareBusy, setShareBusy] = useState(false);
 
   const back = () => { if (window.history.length > 1) nav(-1); else nav('/package-center'); };
-  const goBook = () => { nav('/customer/book?packageId=' + (data && (data.id || id) || '')); };
+  const goBook = () => { nav('/customer/book?packageId=' + (data ? (data.id || id || '') : (id || ''))); };
 
-  // 点击网格「更多服务」：展开 + 平滑滚动到展开区（手机上展开区在屏下方，必须滚动可见，否则像没反应）
-  const openExtras = () => {
-    const next = !extrasOpen;
-    setExtrasOpen(next);
-    if (next) {
-      setTimeout(() => {
-        if (extrasRef.current) extrasRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }, 80);
-    }
-  };
+  useEffect(() => {
+    setLoading(true);
+    Promise.all([
+      id
+        ? http.get('/api/packages/public/' + id)
+        : token
+          ? http.get('/api/photo-package/public/' + token)
+          : Promise.reject(new Error('invalid')),
+      http.get('/api/settings/studio').catch(() => null)
+    ])
+      .then(([pkgRes, studioRes]) => {
+        let p = pkgRes.data || {};
+        // 旧 photo_package 分享链接（无 details JSON）：映射到统一 details 字段，保证规格网格/弹窗正常渲染
+        if (token && !p.details) {
+          const legacy = p;
+          p = {
+            id: null,
+            name: legacy.package_name,
+            price: legacy.price,
+            deposit: 0,
+            cover_url: legacy.cover_image,
+            description: legacy.package_desc,
+            details: {
+              duration: legacy.shoot_duration || '',
+              raw_count: legacy.negative_count || '',
+              retouch_count: legacy.retouch_count || '',
+              raw_all_included: false,
+              cloth_provide: legacy.clothing === 'provide' ? 'provide' : 'not',
+              makeup_provide: 'not',
+              album_provide: 'not',
+              service_detail_text: legacy.other_service || '',
+              warm_tips: legacy.notice || '',
+              refund_policy: '',
+              hide_refund: false,
+              service_location: '',
+              quick_repair_cost: '',
+              delivery_time: '',
+              delivery_remark: '',
+              customer_agreement: ''
+            }
+          };
+        }
+        const d = { ...defaultDetails(), ...(p.details && typeof p.details === 'object' ? p.details : {}) };
+        setData({ ...p, details: d });
+        setStudio(studioRes?.data || null);
+      })
+      .catch(() => {
+        setData(null);
+      })
+      .finally(() => setLoading(false));
+  }, [id, token]);
 
-  // ===== 加载中 =====
   if (loading) {
     return (
-      <div style={{ minHeight: '100vh', background: PAGE_BG, display: 'flex', alignItems: 'center', justifyContent: 'center', color: FAINT, fontSize: 14, paddingTop: 44 }}>
-        加载中…
+      <div style={{ minHeight: '100vh', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ width: 28, height: 28, border: '3px solid #eee', borderTopColor: MRED, borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
       </div>
     );
   }
-
-  // ===== 出错 =====
-  if (err || !data) {
+  if (!data) {
     return (
-      <div style={{ minHeight: '100vh', background: PAGE_BG, display: 'flex', flexDirection: 'column' }}>
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 20, background: 'rgba(255,255,255,0.88)', backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)', borderBottom: '1px solid rgba(0,0,0,0.04)' }}>
-          <div style={{ position: 'relative', display: 'flex', alignItems: 'center', height: 44, padding: '0 12px' }}>
-            <button onClick={back} style={{ background: 'none', border: 'none', padding: 4, display: 'flex', alignItems: 'center', color: TEXT, cursor: 'pointer' }} aria-label="返回">
-              <IcoBack /><span style={{ fontSize: 15, marginLeft: 2 }}>返回</span>
-            </button>
-          </div>
-        </div>
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 24, textAlign: 'center' }}>
-          <div style={{ fontSize: 40, marginBottom: 12 }}>🖼️</div>
-          <div style={{ fontSize: 16, color: TEXT, marginBottom: 6 }}>{err || '该套系不存在'}</div>
-          <div style={{ fontSize: 13, color: FAINT, lineHeight: 1.7 }}>该套系不存在或链接已失效，请联系摄影师获取最新链接。</div>
-        </div>
+      <div style={{ minHeight: '100vh', background: '#fff', paddingTop: 80, textAlign: 'center' }}>
+        <div style={{ fontSize: 14, color: '#999' }}>套系不存在或链接已失效</div>
+        <button onClick={back} style={{ marginTop: 16, fontSize: 14, color: MRED, background: 'none', border: 'none' }}>返回</button>
       </div>
     );
   }
 
-  // ===== 解析复合字段 =====
-  // 数据模型双兼容：B 端 PackageEdit 新版把展示字段存 details JSON（新模型，键名如 raw_count/cloth_provide/service_detail_text）；
-  // 旧数据直接存顶层列（如 negative_count/clothing/service_detail/detail_images/quick_tags）。C 端一律 details 优先、顶层兜底。
-  const det = data.details && typeof data.details === 'object' ? data.details : {};
-  const addons = Array.isArray(data.addons) ? data.addons : [];
-  const marketing = data.marketing && typeof data.marketing === 'object' ? data.marketing : {};
-  const marketingEntries = Object.entries(marketing).filter(([, v]) => v);
-  const tags = Array.isArray(det.tags) ? det.tags : (Array.isArray(data.quick_tags) ? data.quick_tags : []);
-  const detailImages = Array.isArray(det.detail_images) ? det.detail_images : (Array.isArray(data.detail_images) ? data.detail_images : []);
-  const videoUrl = det.video_url || data.video_url || '';
-  const warmTips = det.warm_tips || data.warm_tips || '';
-  const serviceDetail = det.service_detail_text || data.service_detail || '';
+  const d = data.details || {};
+  const price = data.price ?? '';
+  const deposit = data.deposit ?? '';
 
-  // 更多服务展开区是否有内容（加购/优惠/标签/温馨提示/详情图/视频 任一有则视为有）
-  const hasExtras = addons.length > 0 || marketingEntries.length > 0 || tags.length > 0 || detailImages.length > 0 || !!videoUrl || !!warmTips;
+  // 信息网格项（与后台完全一致）
+  const gridItems = [];
+  if (d.duration) gridItems.push({ icon: <IconClock />, label: d.duration });
+  if (d.raw_count) gridItems.push({ icon: <IconImage />, label: `拍摄${d.raw_count}张` });
+  if (d.retouch_count) gridItems.push({ icon: <IconWand />, label: `${d.retouch_count}张精修` });
+  gridItems.push({
+    icon: <IconShirt />,
+    label: d.raw_all_included ? '全部原片' : '仅送精修'
+  });
+  const clothMap = { not: '服装自备', yes: '提供服装', extra: '服装另购' };
+  gridItems.push({ icon: <IconFace />, label: clothMap[d.cloth_provide] || '服装自备' });
 
-  // ===== 规格网格（数据驱动，数据为空则隐藏该格；「更多服务」仅在有附加内容时显示，避免点击无反应）=====
-  // 拍摄时长：新模型为枚举（全天/半天/指定时长），旧模型可能是具体时间段（如 6:00-20:00），原样展示
-  const durationTxt = det.duration || data.duration || '';
-  // 拍摄张数：新模型 raw_count，旧模型 negative_count
-  const shootCount = det.raw_count || data.negative_count;
-  const shootTxt = shootCount ? `拍摄${shootCount}张` : '';
-  // 精修张数：retouch_count（B 端保存时同步到顶层列，这里双读）
-  const retouchCount = det.retouch_count || data.retouch_count;
-  const retouchTxt = retouchCount ? `${retouchCount}张精修` : '';
-  // 底片：新模型 raw_all_included（底片全送 bool）；旧模型 raw_policy 文案（含「全部」规整为「全部原片」）
-  let rawTxt = '';
-  if (det.raw_all_included) rawTxt = '全部原片';
-  else if (data.raw_policy) rawTxt = /全部/.test(data.raw_policy) ? '全部原片' : data.raw_policy;
-  // 服装：新模型 cloth_provide（provide=提供服装 / not=服装自备）；旧模型 clothing + clothing_note
-  let clothingTxt = '';
-  if (det.cloth_provide === 'provide') clothingTxt = '提供服装';
-  else if (det.cloth_provide === 'not') clothingTxt = '服装自备';
-  else if (data.clothing === 'provide') clothingTxt = data.clothing_note || '含服装';
-  else if (data.clothing === 'self') clothingTxt = data.clothing_note || '服装自备';
-  else if (data.clothing_note) clothingTxt = data.clothing_note;
-
-  const gridItems = [
-    { key: 'duration', Ico: IcoClock, text: durationTxt, color: TEXT },
-    { key: 'shoot', Ico: IcoCamera, text: shootTxt, color: TEXT },
-    { key: 'retouch', Ico: IcoSparkle, text: retouchTxt, color: TEXT },
-    { key: 'raw', Ico: IcoLayers, text: rawTxt, color: TEXT },
-    { key: 'clothing', Ico: IcoShirt, text: clothingTxt, color: TEXT },
-    { key: 'more', Ico: IcoPlus, text: '更多服务', color: MORE_RED, isMore: true }
-  ].filter((it) => (it.isMore ? hasExtras : !!it.text));
+  // 分享：公开二维码接口（GET /api/settings/qrcode?text=URL）
+  const shareUrl = window.location.origin + '/package?id=' + encodeURIComponent(data.id || id || '');
+  const handleShare = async () => {
+    if (shareData) { setShareModalOpen(true); return; }
+    setShareBusy(true);
+    try {
+      const r = await http.get('/api/settings/qrcode?text=' + encodeURIComponent(shareUrl));
+      setShareData({ qr_url: r.data.dataUrl, share_url: shareUrl });
+      setShareModalOpen(true);
+    } catch (e) {
+      alert(e?.response?.data?.error || '生成分享失败');
+    } finally {
+      setShareBusy(false);
+    }
+  };
+  const copyShareLink = () => {
+    if (!shareData?.share_url) return;
+    navigator.clipboard?.writeText(shareData.share_url);
+    alert('链接已复制');
+  };
 
   return (
-    <div style={{ minHeight: '100vh', background: PAGE_BG, paddingBottom: 96 }}>
-      {/* 顶部毛玻璃导航（fixed，叠加在封面上方） */}
-      <div style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 20, background: 'rgba(255,255,255,0.78)', backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)', borderBottom: '1px solid rgba(0,0,0,0.04)' }}>
-        <div style={{ position: 'relative', display: 'flex', alignItems: 'center', height: 44, padding: '0 12px' }}>
-          <button onClick={back} style={{ background: 'none', border: 'none', padding: 4, display: 'flex', alignItems: 'center', color: TEXT, cursor: 'pointer' }} aria-label="返回">
-            <IcoBack /><span style={{ fontSize: 15, marginLeft: 2 }}>返回</span>
-          </button>
-          <div style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', display: 'flex', alignItems: 'center', gap: 4 }}>
-            <button
-              onClick={() => {
-                try {
-                  if (navigator.share) navigator.share({ title: data.name, url: window.location.href }).catch(() => {});
-                  else { navigator.clipboard.writeText(window.location.href); }
-                } catch (e) {}
-              }}
-              style={{ background: 'none', border: 'none', padding: 6, color: TEXT, cursor: 'pointer', display: 'flex' }} aria-label="分享">
-              <IcoShare />
-            </button>
-            <button style={{ background: 'none', border: 'none', padding: 6, color: TEXT, cursor: 'pointer', display: 'flex' }} aria-label="更多">
-              <IcoMore />
-            </button>
+    <div style={{ minHeight: '100vh', background: '#fff', overflowY: 'auto', WebkitOverflowScrolling: 'touch', paddingBottom: 'calc(56px + env(safe-area-inset-bottom))' }}>
+      {/* 顶部导航（与后台一致：白底 sticky，居中标题） */}
+      <div style={{ position: 'sticky', top: 0, zIndex: 50, background: '#fff', height: 48, display: 'flex', alignItems: 'center', padding: '0 12px', borderBottom: '1px solid ' + MBORDER }}>
+        <button onClick={back} style={{ background: 'none', border: 'none', padding: 4, display: 'flex', alignItems: 'center' }}><IconBack /></button>
+        <div style={{ flex: 1, textAlign: 'center', fontSize: 16, fontWeight: 500, color: '#333' }}>套系预览</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <button onClick={handleShare} disabled={shareBusy} style={{ background: 'none', border: 'none', padding: 4, display: 'flex', opacity: shareBusy ? 0.5 : 1 }}><IconShare /></button>
+        </div>
+      </div>
+
+      {/* 封面大图（16/10） */}
+      <div style={{ width: '100%', aspectRatio: '16/10', background: '#f5f5f5', overflow: 'hidden' }}>
+        {data.cover_url ? (
+          <img src={img(data.cover_url)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+        ) : (
+          <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ccc', fontSize: 14 }}>暂无封面</div>
+        )}
+      </div>
+
+      {/* 标题 + 价格 */}
+      <div style={{ padding: '16px 16px 14px', background: '#fff', borderBottom: '1px solid ' + MBORDER }}>
+        <div style={{ fontSize: 18, fontWeight: 600, color: '#1f2329', lineHeight: 1.4 }}>{data.name || '未命名套系'}</div>
+        <div style={{ marginTop: 10, display: 'flex', alignItems: 'baseline', gap: 10 }}>
+          <span style={{ color: MRED, display: 'flex', alignItems: 'baseline', gap: 1 }}>
+            <span style={{ fontSize: 16 }}>¥</span>
+            <span style={{ fontSize: 28, fontWeight: 700 }}>{Number(price || 0).toLocaleString()}</span>
+          </span>
+          {deposit ? <span style={{ fontSize: 13, color: '#999' }}>定金: ¥ {Number(deposit).toLocaleString()}</span> : null}
+        </div>
+      </div>
+
+      {/* 信息网格 */}
+      <div style={{ padding: '12px 16px 16px', background: '#fff' }}>
+        <div style={{ background: '#fafafa', borderRadius: 12, padding: '20px 16px', display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px 8px', textAlign: 'center' }}>
+          {gridItems.map((item, i) => (
+            <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{item.icon}</div>
+              <div style={{ fontSize: 12, color: '#666' }}>{item.label}</div>
+            </div>
+          ))}
+          <div onClick={() => setServiceModalOpen(true)} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}><IconMoreService /></div>
+            <div style={{ fontSize: 12, color: MRED }}>更多服务</div>
           </div>
         </div>
       </div>
 
-      {/* 封面（全宽，高度 240，顶栏 fixed 叠加其顶部 44px） */}
-      {data.cover_url && (
-        <div style={{ width: '100%', height: 240, overflow: 'hidden', background: '#EEE' }}>
-          <img src={img(data.cover_url)} alt={data.name || ''} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+      {/* 服务详情 */}
+      <div style={{ padding: '16px 16px 16px', background: '#fff', borderTop: '1px solid ' + MBORDER }}>
+        <div style={{ fontSize: 15, fontWeight: 600, color: '#333', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span style={{ width: 3, height: 14, background: MRED, borderRadius: 2, display: 'inline-block' }} />
+          服务详情：
+        </div>
+        <div style={{ fontSize: 14, color: '#555', lineHeight: 1.8, whiteSpace: 'pre-wrap' }}>
+          {d.service_detail_text || DEFAULT_SERVICE_DETAIL}
+        </div>
+      </div>
+
+      {/* 温馨提示 */}
+      {d.warm_tips ? (
+        <div style={{ padding: '16px 16px 24px', background: '#fff', borderTop: '1px solid ' + MBORDER }}>
+          <div style={{ fontSize: 15, fontWeight: 600, color: '#333', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ width: 3, height: 14, background: MRED, borderRadius: 2, display: 'inline-block' }} />
+            温馨提示：
+          </div>
+          <div style={{ fontSize: 14, color: '#555', lineHeight: 1.8, whiteSpace: 'pre-wrap' }}>
+            {d.warm_tips}
+          </div>
+        </div>
+      ) : null}
+
+      {/* 退订政策（hide_refund=false 时显示；与套系编辑退订政策编辑页共用文案） */}
+      {!d.hide_refund && (() => {
+        const policy = normalizePolicy(d.refund_policy);
+        return (
+          <div style={{ padding: '16px 16px 16px', background: '#fff', borderTop: '1px solid ' + MBORDER }}>
+            <div style={{ fontSize: 15, fontWeight: 600, color: '#333', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ width: 3, height: 14, background: MRED, borderRadius: 2, display: 'inline-block' }} />
+              须知：
+            </div>
+            <div style={{ fontSize: 14, color: '#555', lineHeight: 1.8 }}>
+              <span>退订政策 {policy}</span>
+              {!refundDetailOpen && (
+                <button type="button" onClick={() => setRefundDetailOpen(true)}
+                  style={{ display: 'block', marginTop: 8, background: 'none', border: 'none', color: MGREEN, fontSize: 13, cursor: 'pointer', textDecoration: 'underline', padding: 0 }}>
+                  查看详情
+                </button>
+              )}
+              {refundDetailOpen && (
+                <div style={{ marginTop: 10 }}>
+                  {(() => {
+                    const paras = getRefundParagraphs(d, policy);
+                    return paras.length ? paras.map((line, i) => (
+                      <div key={i} style={{ marginBottom: i < paras.length - 1 ? 6 : 0 }}>{line}</div>
+                    )) : <div style={{ color: MGRAY, fontSize: 13 }}>未填写</div>;
+                  })()}
+                  <button type="button" onClick={() => setRefundDetailOpen(false)}
+                    style={{ display: 'block', marginTop: 10, background: 'none', border: 'none', color: MGREEN, fontSize: 13, cursor: 'pointer', textDecoration: 'underline', padding: 0 }}>
+                    收起
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* 套系服务详情全屏页 */}
+      {serviceModalOpen && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 101, background: '#fff', display: 'flex', flexDirection: 'column' }}>
+          <div style={{ paddingTop: 'env(safe-area-inset-top, 0px)', height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', borderBottom: `1px solid ${MBORDER}`, flexShrink: 0 }}>
+            <span style={{ fontSize: 16, fontWeight: 500, color: '#333' }}>套系服务详情</span>
+          </div>
+          <div style={{ overflowY: 'auto', flex: 1, padding: '8px 20px' }}>
+            {[
+              { label: '拍摄时长', value: d.duration || '未设置', chevron: true },
+              { label: '原片', value: d.raw_count ? `${d.raw_count}张` : '未设置', chevron: true },
+              { label: '精修片', value: d.retouch_count ? `${d.retouch_count}张` : '未设置', chevron: true },
+              { label: '加片费', value: d.extra_photo_fee || '未设置', chevron: true },
+              { label: '快修费', value: d.quick_repair_cost || '未设置', chevron: true },
+              { label: '交付时间', value: d.delivery_time || '未设置', chevron: true },
+              { label: '交付备注', value: d.delivery_remark || '未设置', chevron: true, fullWidth: true },
+              { label: '化妆服装', value: `${d.cloth_provide === 'provide' ? '提供服装' : '不提供服装'} · ${d.makeup_provide === 'provide' ? '提供化妆' : '不提供化妆'}`, chevron: true },
+              { label: '提供相册', value: d.album_provide === 'provide' ? '是' : d.album_provide === 'extra' ? '相册另购' : '否', chevron: true },
+              { label: '服务地点', value: d.service_location || '未设置', chevron: true }
+            ].map((row, i, arr) => (
+              <div key={i} style={{ display: 'flex', alignItems: 'center', padding: '14px 0', borderBottom: i < arr.length - 1 ? `1px solid ${MBORDER}` : 'none' }}>
+                <span style={{ fontSize: 14, color: '#333', flex: 1 }}>{row.label}</span>
+                <span style={{ fontSize: 14, color: '#666', maxWidth: row.fullWidth ? '60%' : '60%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{row.value}</span>
+                {row.chevron && <span style={{ color: '#82C8AE', marginLeft: 6 }}>›</span>}
+              </div>
+            ))}
+
+            <div style={{ height: 1, background: MBORDER, margin: '12px -20px' }} />
+
+            <div style={{ padding: '14px 0' }}>
+              <div onClick={() => setServiceDetailOpen((v) => !v)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}>
+                <span style={{ fontSize: 14, color: '#333' }}>服务详情</span>
+                <span style={{ fontSize: 14, color: MGREEN }}>{serviceDetailOpen ? '收起' : '展开'}</span>
+              </div>
+              {serviceDetailOpen && (
+                <div style={{ marginTop: 10, fontSize: 13, color: '#666', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
+                  {d.service_detail_text || DEFAULT_SERVICE_DETAIL}
+                </div>
+              )}
+            </div>
+
+            <div style={{ padding: '14px 0', borderTop: `1px solid ${MBORDER}` }}>
+              <div onClick={() => setRefundOpen((v) => !v)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}>
+                <span style={{ fontSize: 14, color: '#333' }}>退订政策</span>
+                <span style={{ fontSize: 14, color: d.hide_refund ? '#999' : MGREEN }}>{d.hide_refund ? '该套系已设置为隐藏退订政策' : (refundOpen ? '收起' : '展开')}</span>
+              </div>
+              {!d.hide_refund && refundOpen && (() => {
+                const paras = getRefundParagraphs(d, normalizePolicy(d.refund_policy));
+                if (!paras.length) return <div style={{ marginTop: 10, fontSize: 13, color: '#666', lineHeight: 1.6 }}>未设置</div>;
+                return (
+                  <div style={{ marginTop: 10, fontSize: 13, color: '#666', lineHeight: 1.6 }}>
+                    {paras.map((p, i) => {
+                      const isHeading = /^[一二三四五六七八九十]+、|退订/.test(p);
+                      return (
+                        <div key={i} style={{ marginTop: isHeading && i > 0 ? 8 : 0, marginBottom: 4, fontSize: isHeading ? 14 : 13 }}>{p}</div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
+            </div>
+
+            <div style={{ padding: '14px 0', borderTop: `1px solid ${MBORDER}` }}>
+              <div onClick={() => setAgreementOpen((v) => !v)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}>
+                <span style={{ fontSize: 14, color: '#333' }}>顾客协议</span>
+                <span style={{ fontSize: 14, color: MGREEN }}>{agreementOpen ? '收起' : '展开'}</span>
+              </div>
+              {agreementOpen && (
+                <div style={{ marginTop: 10, fontSize: 13, color: '#666', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{getServiceAgreement(d)}</div>
+              )}
+            </div>
+
+            <div style={{ marginTop: 24, padding: '10px 14px', background: '#f5f9fa', borderRadius: 6, fontSize: 12, color: '#999', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span>💡</span>
+              <span>修改订单将同步更新以上数据</span>
+            </div>
+          </div>
+          <div style={{ padding: '20px 20px calc(20px + env(safe-area-inset-bottom))', display: 'flex', justifyContent: 'center', borderTop: `1px solid ${MBORDER}`, flexShrink: 0 }}>
+            <button onClick={() => { setServiceModalOpen(false); setServiceDetailOpen(false); setRefundOpen(false); setAgreementOpen(false); }} style={{ width: 44, height: 44, borderRadius: '50%', border: '1px solid #ddd', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <IconCloseX />
+            </button>
+          </div>
         </div>
       )}
-      {!data.cover_url && <div style={{ width: '100%', height: 120, background: 'linear-gradient(160deg,#E8F3EF 0%,#D6E7E0 100%)' }} />}
 
-      <div style={{ padding: '14px 14px 0' }}>
-        {/* 名称 + 价格 + 定金 */}
-        <div style={{ background: '#fff', borderRadius: 16, padding: '18px 18px 16px', boxShadow: '0 1px 6px rgba(0,0,0,0.05)' }}>
-          <div style={{ fontSize: 20, color: TEXT, lineHeight: 1.3 }}>{data.name}</div>
-          {data.subtitle && <div style={{ fontSize: 12, color: FAINT, marginTop: 4 }}>{data.subtitle}</div>}
-          <div style={{ display: 'flex', alignItems: 'baseline', flexWrap: 'wrap', gap: 12, marginTop: 10 }}>
-            <span style={{ fontSize: 26, color: PRICE_RED, lineHeight: 1 }}>¥{Number(data.price || 0).toFixed(0)}</span>
-            {data.deposit ? (
-              <span style={{ fontSize: 13, color: SUB }}>定金：¥{Number(data.deposit).toFixed(0)}</span>
-            ) : null}
-          </div>
-        </div>
-
-        {/* 2×3 规格图标网格 */}
-        <div style={{ background: '#fff', borderRadius: 16, padding: '14px 6px', marginTop: 10, boxShadow: '0 1px 6px rgba(0,0,0,0.05)' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', rowGap: 14 }}>
-            {gridItems.map((it) => {
-              const Ico = it.Ico;
-              return (
-                <div
-                  key={it.key}
-                  onClick={it.isMore ? openExtras : undefined}
-                  style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '6px 4px', cursor: it.isMore ? 'pointer' : 'default', color: it.color }}
-                >
-                  <Ico />
-                  <span style={{ fontSize: 13, lineHeight: 1.3, textAlign: 'center' }}>{it.text}</span>
+      {/* 分享弹窗（公开二维码接口） */}
+      {shareModalOpen && (
+        <>
+          <div onClick={() => setShareModalOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 120, background: 'rgba(0,0,0,0.5)' }} />
+          <div style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', zIndex: 121, width: 'calc(100% - 48px)', maxWidth: 320, background: '#fff', borderRadius: 16, padding: 24, textAlign: 'center' }}>
+            <div style={{ fontSize: 16, fontWeight: 500, color: '#333', marginBottom: 8 }}>分享套系</div>
+            <div style={{ fontSize: 12, color: '#999', marginBottom: 16 }}>扫码或复制链接分享给客户</div>
+            {shareData?.qr_url ? (
+              <>
+                <img src={shareData.qr_url} alt="分享二维码" style={{ width: 180, height: 180, margin: '0 auto', borderRadius: 8, background: '#fff', padding: 8, border: '1px solid ' + MBORDER }} />
+                <div style={{ fontSize: 12, color: '#666', marginTop: 12, wordBreak: 'break-all' }}>{shareData.share_url}</div>
+                <div style={{ display: 'flex', gap: 8, marginTop: 16, justifyContent: 'center' }}>
+                  <button onClick={copyShareLink} style={{ padding: '8px 16px', borderRadius: 20, border: 'none', background: MRED, color: '#fff', fontSize: 14 }}>复制链接</button>
+                  <button onClick={() => setShareModalOpen(false)} style={{ padding: '8px 16px', borderRadius: 20, border: '1px solid ' + MBORDER, background: '#fff', color: '#333', fontSize: 14 }}>关闭</button>
                 </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* 服务详情（始终展示，无数据时不渲染；新模型读 details.service_detail_text，旧模型读顶层 service_detail） */}
-        {serviceDetail && (
-          <div style={{ background: '#fff', borderRadius: 16, padding: 18, marginTop: 10, boxShadow: '0 1px 6px rgba(0,0,0,0.05)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-              <span style={{ display: 'inline-block', width: 4, height: 14, borderRadius: 2, background: PRICE_RED }} />
-              <span style={{ fontSize: 15, color: TEXT }}>服务详情</span>
-            </div>
-            <div style={{ fontSize: 14, color: TEXT, lineHeight: 1.85, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{serviceDetail}</div>
-          </div>
-        )}
-
-        {/* 更多服务展开区（点击网格「更多服务」/卡片展开按钮触发） */}
-        {hasExtras && (
-          <div ref={extrasRef} style={{ background: '#fff', borderRadius: 16, padding: 18, marginTop: 10, boxShadow: '0 1px 6px rgba(0,0,0,0.05)' }}>
-            <button
-              onClick={() => setExtrasOpen((v) => !v)}
-              style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: TEXT }}
-            >
-              <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ display: 'inline-block', width: 4, height: 14, borderRadius: 2, background: PRICE_RED }} />
-                <span style={{ fontSize: 15 }}>更多服务</span>
-              </span>
-              <span style={{ display: 'flex', alignItems: 'center', gap: 4, color: SUB, fontSize: 13 }}>
-                {extrasOpen ? '收起' : '展开'}
-                <IcoChevron open={extrasOpen} />
-              </span>
-            </button>
-
-            {extrasOpen && (
-              <div style={{ marginTop: 14 }}>
-                {/* 特色标签 */}
-                {tags.length > 0 && (
-                  <div style={{ marginBottom: 14 }}>
-                    <div style={{ fontSize: 13, color: SUB, marginBottom: 8 }}>特色标签</div>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                      {tags.map((t, i) => (
-                        <span key={i} style={{ padding: '5px 12px', borderRadius: 14, background: 'rgba(126,205,187,0.12)', color: BRAND, fontSize: 13 }}>{t}</span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* 加购项目 */}
-                {addons.length > 0 && (
-                  <div style={{ marginBottom: 14 }}>
-                    <div style={{ fontSize: 13, color: SUB, marginBottom: 8 }}>加购项目</div>
-                    <div>
-                      {addons.map((a, i) => (
-                        <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '10px 0', borderBottom: i < addons.length - 1 ? '1px solid ' + DIV : 'none', gap: 12 }}>
-                          <span style={{ fontSize: 14, color: TEXT }}>{a.name || ''}</span>
-                          <span style={{ fontSize: 14, color: BRAND, flexShrink: 0 }}>¥{Number(a.price || 0).toFixed(0)}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* 优惠活动 */}
-                {marketingEntries.length > 0 && (
-                  <div style={{ marginBottom: 14 }}>
-                    <div style={{ fontSize: 13, color: SUB, marginBottom: 8 }}>优惠活动</div>
-                    <div>
-                      {marketingEntries.map(([k, v], i) => (
-                        <div key={k} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '10px 0', borderBottom: i < marketingEntries.length - 1 ? '1px solid ' + DIV : 'none', gap: 12 }}>
-                          <span style={{ fontSize: 14, color: TEXT }}>{k === 'coupon' ? '优惠券' : k === 'activity' ? '活动' : k}</span>
-                          <span style={{ fontSize: 14, color: PRICE_RED, maxWidth: '60%', textAlign: 'right', whiteSpace: 'pre-wrap' }}>{String(v)}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* 温馨提示 */}
-                {warmTips && (
-                  <div style={{ marginBottom: 14 }}>
-                    <div style={{ fontSize: 13, color: SUB, marginBottom: 8 }}>温馨提示</div>
-                    <div style={{ fontSize: 14, color: TEXT, lineHeight: 1.8, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{warmTips}</div>
-                  </div>
-                )}
-
-                {/* 详情图片 */}
-                {detailImages.length > 0 && (
-                  <div style={{ marginBottom: 14 }}>
-                    <div style={{ fontSize: 13, color: SUB, marginBottom: 8 }}>详情图片</div>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                      {detailImages.map((u, i) => (
-                        <img key={i} src={img(u)} alt="" style={{ width: 'calc(33.333% - 6px)', height: 100, objectFit: 'cover', borderRadius: 8 }} />
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* 视频 */}
-                {videoUrl && (
-                  <div>
-                    <div style={{ fontSize: 13, color: SUB, marginBottom: 8 }}>视频</div>
-                    <a href={videoUrl} target="_blank" rel="noreferrer" style={{ fontSize: 14, color: BRAND, textDecoration: 'none' }}>查看视频 ›</a>
-                  </div>
-                )}
-              </div>
+              </>
+            ) : (
+              <div style={{ color: '#999', fontSize: 14, padding: 32 }}>生成中…</div>
             )}
           </div>
-        )}
+        </>
+      )}
 
-        {/* 描述（如果有，作为补充说明放在底部） */}
-        {data.description && (
-          <div style={{ background: '#fff', borderRadius: 16, padding: 18, marginTop: 10, boxShadow: '0 1px 6px rgba(0,0,0,0.05)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-              <span style={{ display: 'inline-block', width: 4, height: 14, borderRadius: 2, background: PRICE_RED }} />
-              <span style={{ fontSize: 15, color: TEXT }}>套餐简介</span>
+      {/* 底部固定栏 */}
+      <div style={{
+        position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 50,
+        background: '#fff', borderTop: '1px solid ' + MBORDER,
+        display: 'flex', alignItems: 'center', height: 56,
+        paddingBottom: 'env(safe-area-inset-bottom)'
+      }}>
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 10, paddingLeft: 12, overflow: 'hidden' }}>
+          {studio?.logo ? (
+            <img src={img(studio.logo)} alt="" style={{ width: 36, height: 36, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
+          ) : (
+            <div style={{ width: 36, height: 36, borderRadius: '50%', background: '#eee', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ccc" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
             </div>
-            <div style={{ fontSize: 14, color: TEXT, lineHeight: 1.85, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{data.description}</div>
+          )}
+          <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', overflow: 'hidden' }}>
+            <div style={{ fontSize: 13, fontWeight: 500, color: '#333', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{studio?.name || '岛像工作室'}</div>
+            <div style={{ fontSize: 11, color: '#999', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{studio?.slogan || ''}</div>
           </div>
-        )}
+        </div>
+        <button onClick={goBook} style={{
+          width: 140, height: 40, borderRadius: 20, background: MRED, color: '#fff',
+          fontSize: 15, fontWeight: 500, border: 'none', marginRight: 12, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center'
+        }}>
+          立即预约
+        </button>
       </div>
 
-      {/* 底部固定水印 + 立即预约 */}
-      <div style={{ position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 20, background: 'rgba(255,255,255,0.92)', backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)', borderTop: '1px solid rgba(0,0,0,0.05)', padding: '10px 14px calc(10px + env(safe-area-inset-bottom))' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-          <div style={{ minWidth: 0, flex: 1 }}>
-            <div style={{ fontSize: 14, color: TEXT, letterSpacing: 1 }}>{(studio.name || '叶哲 STUDIO').toUpperCase ? (studio.name || '叶哲 STUDIO') : '叶哲 STUDIO'}</div>
-            {studio.slogan ? <div style={{ fontSize: 11, color: FAINT, marginTop: 2, lineHeight: 1.4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{studio.slogan}</div> : null}
-          </div>
-          <button
-            onClick={goBook}
-            style={{ flexShrink: 0, padding: '12px 28px', borderRadius: 24, background: MORE_RED, color: '#fff', fontSize: 15, border: 'none', cursor: 'pointer', boxShadow: '0 6px 18px rgba(255,90,95,0.32)' }}
-          >
-            立即预约
-          </button>
-        </div>
-      </div>
+      <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
     </div>
   );
 }
