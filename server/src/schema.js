@@ -1079,7 +1079,7 @@ export async function initSchema() {
   }
   // 默认值种子：仅当 key 不存在时写入（管理员清空后不会回填；清空即代表「新订单不带默认备注」）
   try {
-    const DEFAULT_ORDER_SHARE_NOTE = '此链接为系统专属访问地址，受微信环境限制，请复制链接（填写在此处），在手机浏览器打开查看详情。';
+    const DEFAULT_ORDER_SHARE_NOTE = '这是我们团队开发的软件，此链接为专属访问地址，受微信环境限制，请复制链接（链接填写在此处），在手机浏览器打开查看订单详情。';
     const ex = await get("SELECT key FROM system_config WHERE key = 'customer_order_share_default_note'");
     if (!ex) await insert("INSERT INTO system_config (key, value) VALUES (?, ?)", ['customer_order_share_default_note', DEFAULT_ORDER_SHARE_NOTE]);
   } catch (e) { console.error('[schema] system_config 默认值种子失败', e.message); }
