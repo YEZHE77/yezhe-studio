@@ -21,6 +21,7 @@ const ShareIcon = () => (
 
 export default function PackageCenter() {
   const nav = useNavigate();
+  const back = () => { if (window.history.length > 1) nav(-1); else nav('/home'); };
   const [list, setList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [tip, setTip] = useState('');
@@ -48,9 +49,12 @@ export default function PackageCenter() {
 
   return (
     <div style={{ minHeight: '100vh', background: '#fff', display: 'flex', flexDirection: 'column' }}>
-      {/* 顶部：标题 + 右上角分享 */}
+      {/* 顶部：返回键 + 标题 + 右上角分享 */}
       <div style={{ position: 'sticky', top: 0, zIndex: 10, background: '#fff', borderBottom: `1px solid ${DIV}` }}>
         <div style={{ position: 'relative', display: 'flex', alignItems: 'center', height: 44, padding: '0 12px' }}>
+          <button onClick={back} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', padding: 4, display: 'flex', alignItems: 'center', color: TEXT }} aria-label="返回">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
+          </button>
           <div style={{ position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%, -50%)', fontSize: 17, color: TEXT }}>套系中心</div>
           <button onClick={sharePage} style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', padding: 4, display: 'flex', alignItems: 'center' }} aria-label="分享"><ShareIcon /></button>
         </div>

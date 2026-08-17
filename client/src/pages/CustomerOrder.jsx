@@ -144,7 +144,18 @@ export default function CustomerOrder() {
   const timeSlots = data.time_slots || [];
 
   return (
-    <div style={{ minHeight: '100vh', background: '#F5F5F7', padding: 16, paddingBottom: 40 }}>
+    <div style={{ minHeight: '100vh', background: '#F5F5F7', paddingBottom: 40 }}>
+      {/* 顶部导航：返回键 + 标题 */}
+      <div style={{ position: 'sticky', top: 0, zIndex: 10, background: '#fff', borderBottom: '1px solid #EEF0F3' }}>
+        <div style={{ position: 'relative', display: 'flex', alignItems: 'center', height: 44, padding: '0 12px' }}>
+          <button onClick={() => nav(-1)} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', padding: 4, display: 'flex', alignItems: 'center', color: '#1D1D1F' }} aria-label="返回">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
+          </button>
+          <div style={{ position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%, -50%)', fontSize: 17, color: '#1D1D1F' }}>订单详情</div>
+        </div>
+      </div>
+
+      <div style={{ padding: 16 }}>
       {/* 顶部：客户 + 订单号 + 状态 */}
       <Card>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -365,6 +376,7 @@ export default function CustomerOrder() {
       )}
 
       <div style={{ textAlign: 'center', fontSize: 12, color: FAINT, marginTop: 24 }}>YEZHE WORKSHOP · 订单信息仅供查看</div>
+      </div>
     </div>
   );
 }
