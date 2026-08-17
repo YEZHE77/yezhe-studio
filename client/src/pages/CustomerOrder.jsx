@@ -208,6 +208,13 @@ export default function CustomerOrder() {
       </div>
 
       <div style={{ padding: 16 }}>
+      {/* 订单分享备注（系统/单订单配置；仅可读，展示在详情页顶部；为空则不渲染） */}
+      {data.share_note ? (
+        <div style={{ marginBottom: 12, background: '#F2F2F4', borderRadius: 12, padding: '14px 16px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+          <div style={{ fontSize: 13, color: '#888', marginBottom: 6 }}>温馨提示</div>
+          <div style={{ fontSize: 14, color: '#444', lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>{data.share_note}</div>
+        </div>
+      ) : null}
       {/* 顶部：客户 + 订单号 + 状态 */}
       <Card>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>

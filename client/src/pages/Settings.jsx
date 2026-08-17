@@ -63,6 +63,11 @@ export default function Settings() {
   // 数据备份：手动导出全量业务 JSON
   const [backupBusy, setBackupBusy] = useState(false);
   const [backupTip, setBackupTip] = useState('');
+  // 订单分享默认备注（全局默认值；建单时带入客户查看页，单订单可覆盖）
+  const [orderShareNote, setOrderShareNote] = useState('');
+  const [osnLoaded, setOsnLoaded] = useState(false);
+  const [osnSaving, setOsnSaving] = useState(false);
+  const [osnTip, setOsnTip] = useState('');
   async function doBackup() {
     if (backupBusy) return;
     setBackupBusy(true);
@@ -106,6 +111,13 @@ export default function Settings() {
       });
       setBookingLoaded(true);
     }).catch(() => setBookingLoaded(true));
+
+    // 订单分享默认备注（全局默认值）
+    http.get('/api/system-config').then((r) => {
+      const d = r.data || {};
+      setOrderShareNote(d.customer_order_share_default_note || '');
+      setOsnLoaded(true);
+    }).catch(() => setOsnLoaded(true));
   }, []);
 
   function set(path, val) {
@@ -252,6 +264,17 @@ export default function Settings() {
     setTimeout(() => setBookingTip(''), 3000);
   }
 
+  // 订单分享默认备注（全局默认值；仅影响后续新生成订单，历史订单不批量更新）
+  async function saveOrderShareNote() {
+    setOsnSaving(true); setOsnTip('');
+    try {
+      await http.put('/api/system-config', { customer_order_share_default_note: orderShareNote });
+      setOsnTip('已保存，仅对后续新生成订单生效（历史订单不批量更新）');
+    } catch (e) { setOsnTip('保存失败：' + (e.response?.data?.error || e.message)); }
+    setOsnSaving(false);
+    setTimeout(() => setOsnTip(''), 4000);
+  }
+
   async function changePassword() {
     setPwTip('');
     if (pwNew.length < 8) { setPwTip('新密码至少 8 位'); return; }
@@ -314,6 +337,17 @@ export default function Settings() {
             </div>
             <input className={inputCls + ' mt-3 max-md:py-2.5'} value={form.portfolioUrl} onChange={(e) => set('portfolioUrl', e.target.value)} placeholder="公开作品集 H5 链接（如 https://…/home）" />
             <p className="text-xs text-muted mt-1 max-md:text-[11px] max-md:leading-relaxed">查订单页「查看作品集」跳转按钮的地址；留空则隐藏该按钮。价格开关默认关闭以保护报价隐私。</p>
+          </Field>
+          <Field label="订单分享默认备注（生成订单时自动带入客户查看页顶部；留空则不带，仅影响后续新订单）">
+            <textarea className={inputCls + ' h-20 resize-none max-md:py-2.5'} value={orderShareNote} onChange={(e) => setOrderShareNote(e.target.value)} placeholder="此链接为系统专属访问地址，受微信环境限制，请复制链接，在手机浏览器打开查看订单详情。" />
+            <div className="flex items-center gap-3 mt-3 max-md:mt-2">
+              <button onClick={saveOrderShareNote} disabled={osnSaving || !osnLoaded}
+                className="px-4 py-1.5 rounded-lg bg-brand text-white text-sm hover:opacity-90 disabled:opacity-50 max-md:text-xs max-md:px-3 max-md:py-1.5">
+                {osnSaving ? '保存中…' : '保存备注配置'}
+              </button>
+              {osnTip && <span className="text-xs text-emerald-600">{osnTip}</span>}
+            </div>
+            <p className="text-xs text-muted mt-1.5 max-md:text-[11px] max-md:leading-relaxed">该备注展示在 C 端免登录订单详情页顶部灰色卡片，客户仅可读不可编辑；修改后立即对新订单生效，不回溯历史订单；可在订单详情后台按单条单独覆盖。</p>
           </Field>
           <Field label="Logo">
             <div className="flex items-center gap-3 max-md:flex-col max-md:items-start">

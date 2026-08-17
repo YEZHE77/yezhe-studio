@@ -4,6 +4,7 @@ import { Router } from 'express';
 import crypto from 'node:crypto';
 import { query, get, insert, run } from '../db.js';
 import { authRequired, requireRole } from '../auth.js';
+import { getConfig } from '../configStore.js';
 
 const router = Router();
 
@@ -137,6 +138,8 @@ router.post('/:id/convert', authRequired, requireRole(['admin', 'photographer', 
     const balance = Math.max(0, finalPrice - deposit);
     const payment_status = deposit >= finalPrice && finalPrice > 0 ? 'paid' : (deposit > 0 ? 'deposit' : 'unpaid');
 
+    // 订单分享默认备注：建单时从系统配置默认值带入（管理员清空则不带）；单订单可后续单独覆盖
+    const shareNote = await getConfig('customer_order_share_default_note', '');
     const orderId = await insert(
       `INSERT INTO orders (order_no, customer_name, customer_phone, phone_two, reservation_id, package_id, package_name, package_snapshot,
         status, order_status, deposit, deposit_amount, balance, total_amount, paid_amount, executor, executors,
@@ -148,6 +151,10 @@ router.post('/:id/convert', authRequired, requireRole(['admin', 'photographer', 
         expectDate, shootLocation, groom, bride, remark, JSON.stringify(phones), customer_token, payment_status, 0, depositPayTime || null
       ]
     );
+    // 订单分享默认备注：建单时带入系统配置默认值（空则不带）
+    if (shareNote) {
+      try { await run('UPDATE orders SET share_note = ? WHERE id = ?', [shareNote, orderId]); } catch (e) { console.error('[reservations] 写入 share_note 失败', e.message); }
+    }
 
     // 预约标记已转订单 + 绑定订单 id
     await run('UPDATE reservations SET status = ?, order_id = ? WHERE id = ?', ['converted', orderId, id]);

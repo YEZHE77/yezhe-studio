@@ -90,6 +90,8 @@ export async function buildCustomerOrderDetail(o) {
     order_id: o.id,
     // 合同：只返回是否可下载（有私有文件且未作废），不返回公开 URL；预览/下载走后端鉴权中转
     contract_available: !!(o.contract_file_key && !Number(o.contract_invalid)),
-    contract_invalid: !!Number(o.contract_invalid)
+    contract_invalid: !!Number(o.contract_invalid),
+    // 订单分享备注（C 端订单详情顶部灰色卡片展示；仅可读，单订单可单独覆盖全局默认值）
+    share_note: o.share_note || ''
   };
 }

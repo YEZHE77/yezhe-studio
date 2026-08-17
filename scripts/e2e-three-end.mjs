@@ -164,6 +164,14 @@ async function main() {
     rec('异常监控·管理员查看', 'monitor', 'SKIP', '无管理员令牌，跳过');
   }
 
+  // ---------- 系统配置（订单分享默认备注）----------
+  try {
+    const r = await req('GET', '/api/system-config', { expectStatus: 200 });
+    const note = r.data && r.data.customer_order_share_default_note;
+    rec('系统配置·订单分享默认备注', 'monitor', (r.ok && typeof note === 'string') ? 'PASS' : 'FAIL',
+      `HTTP ${r.status} 默认值长度=${(note || '').length}`);
+  } catch (e) { rec('系统配置·订单分享默认备注', 'monitor', 'FAIL', e.message); }
+
   finish();
 }
 

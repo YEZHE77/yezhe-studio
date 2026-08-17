@@ -11,6 +11,7 @@ import { scheduleConflict, occupySchedule, releaseSchedule, conflictText, capaci
 import { emitMessage } from './message.js';
 import { emitBizToStaff, BIZ_TYPE } from './mobileMessage.js';
 import { syncOrderTodos, generateEventTodo, archiveOrderTodos } from '../todo.js';
+import { getConfig } from '../configStore.js';
 
 const router = Router();
 const JSON_COLS = ['package_snapshot', 'addons_snapshot', 'logs', 'phones', 'time_slots', 'extra_items', 'executors', 'order_photos'];
@@ -467,6 +468,8 @@ router.post('/', authRequired, requireRole(['admin', 'photographer', 'finance'])
     const contract_template_id = b.contract_template_id != null
       ? (b.contract_template_id ? parseInt(b.contract_template_id, 10) || null : null)
       : null;
+    // 订单分享默认备注：建单时从系统配置默认值带入（管理员清空则不带）；单订单可后续单独覆盖
+    const shareNote = await getConfig('customer_order_share_default_note', '');
     const id = await insert(
       `INSERT INTO orders (order_no, customer_name, customer_phone, package_id, package_snapshot, addons_snapshot, status,
         deposit, balance, deposit_method, balance_method, shoot_date, executor, total_amount, paid_amount, remark, logs,
@@ -485,6 +488,10 @@ router.post('/', authRequired, requireRole(['admin', 'photographer', 'finance'])
         groom_phone, bride_phone, shoot_position, total_negatives, retouch_count, album_electronic_num, album_price, shoot_cost, quick_repair_cost, pay_cash, pay_wechat, pay_alipay, pay_account_info, contract_template_id
       ]
     );
+    // 订单分享默认备注：建单时带入系统配置默认值（空则不带）
+    if (shareNote) {
+      try { await run('UPDATE orders SET share_note = ? WHERE id = ?', [shareNote, id]); } catch (e) { console.error('[orders] 写入 share_note 失败', e.message); }
+    }
     // 按收款状态登记流水：已付定金→定金一笔；已付全款→定金 + 尾款；未付定金→不登记
     if (payment_status !== 'unpaid') {
       if (deposit > 0) {
@@ -611,6 +618,8 @@ router.put('/:id', authRequired, requireRole(['admin', 'photographer', 'finance'
     const appointmentText = b.appointment_remark === undefined ? (cur.appointment_remark ?? null) : (b.appointment_remark || null);
     const internalText = b.internal_remark === undefined ? (cur.internal_remark ?? null) : (b.internal_remark || null);
     const externalText = b.external_remark === undefined ? (cur.external_remark ?? null) : (b.external_remark || null);
+    // 单订单分享备注：未传则保留原值；传空字符串则清空（仅作用本条订单，不影响 system_config 全局默认值）
+    const shareNoteText = b.share_note === undefined ? (cur.share_note ?? null) : (b.share_note ?? '');
     // 调查问卷答案（已有 questionnaire_answers 列，PUT 时允许前端覆盖）
     const questionnaireText = b.questionnaire_answers === undefined
       ? (cur.questionnaire_answers ?? null)
@@ -649,7 +658,7 @@ router.put('/:id', authRequired, requireRole(['admin', 'photographer', 'finance'
         order_name=?, phones=?, time_slots=?, extra_items=?, executors=?, channel=?, channel_id=?, date_tbd=?, payment_status=?,
         order_photos=?, birthday=?, appointment_remark=?, internal_remark=?, external_remark=?, questionnaire_answers=?,
         groom_phone=?, bride_phone=?, shoot_position=?, total_negatives=?, retouch_count=?, album_electronic_num=?, album_price=?, shoot_cost=?, quick_repair_cost=?, pay_cash=?, pay_wechat=?, pay_alipay=?, pay_account_info=?,
-        force_agreement=?
+        force_agreement=?, share_note=?
        WHERE id=?`,
       [customer_name, firstPhone,
        shoot_date, execText, b.remark ?? cur.remark, status,
@@ -661,7 +670,8 @@ router.put('/:id', authRequired, requireRole(['admin', 'photographer', 'finance'
        b.total_negatives ?? cur.total_negatives, b.retouch_count ?? cur.retouch_count, b.album_electronic_num ?? cur.album_electronic_num,
        b.album_price ?? cur.album_price, b.shoot_cost ?? cur.shoot_cost, b.quick_repair_cost ?? cur.quick_repair_cost,
        payBool(b.pay_cash, cur.pay_cash), payBool(b.pay_wechat, cur.pay_wechat), payBool(b.pay_alipay, cur.pay_alipay), b.pay_account_info ?? cur.pay_account_info,
-       (b.force_agreement !== undefined ? (b.force_agreement ? 1 : 0) : cur.force_agreement),
+        (b.force_agreement !== undefined ? (b.force_agreement ? 1 : 0) : cur.force_agreement),
+       shareNoteText,
        cur.id]
     );
     if (b.status && b.status !== cur.status) {

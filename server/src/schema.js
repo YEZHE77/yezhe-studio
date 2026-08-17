@@ -1,6 +1,6 @@
 // schema.js —— 建表与向前兼容迁移
 // 两种方言各自 DDL；首次启动自动创建；后续新增列用 ensureColumn 增量迁移，绝不破坏已有数据。
-import { dialect, run, query } from './db.js';
+import { dialect, run, query, get, insert } from './db.js';
 
 const PG_DDL = `
 CREATE TABLE IF NOT EXISTS users (
@@ -542,7 +542,9 @@ const ORDERS_NEW_COLUMNS = [
   ['reservation_id', 'INTEGER'], // 来源预约 id（预约转订单时写入，可为 null）
   ['order_status', `TEXT NOT NULL DEFAULT 'pending_deposit'`], // 简化订单状态：pending_deposit 待付定金 / deposit_paid 已付定金 / shot_done 拍摄完成 / completed 已完结 / cancelled 已取消
   ['deposit_amount', 'REAL NOT NULL DEFAULT 0'], // 定金金额（预约转订单体系）
-  ['deposit_pay_time', 'TEXT'] // 定金支付时间（可为空）
+  ['deposit_pay_time', 'TEXT'], // 定金支付时间（可为空）
+  // ↓↓ 订单分享备注（C 端免登录订单详情页顶部灰色卡片展示；建单时从 system_config 默认值带入，单订单可单独覆盖）
+  ['share_note', 'TEXT']
 ];
 
 // 渠道来源表（后端可配置，前端下拉实时读取，绝不写死）
@@ -1056,6 +1058,31 @@ export async function initSchema() {
       throw e; // 保留原行为（建表失败即抛出，便于部署健康检查捕获）
     }
   }
+
+  // 系统级配置表（离散系统开关/默认值，如「订单分享默认备注」；与 settings 表的对外资料 JSON 区分）
+  const SYSTEM_CONFIG_DDL = dialect === 'pg'
+    ? `CREATE TABLE IF NOT EXISTS system_config (
+        id SERIAL PRIMARY KEY, key TEXT NOT NULL UNIQUE, value TEXT,
+        updated_at TIMESTAMPTZ DEFAULT now()
+      )`
+    : `CREATE TABLE IF NOT EXISTS system_config (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, key TEXT NOT NULL UNIQUE, value TEXT,
+        updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+      )`;
+  for (const s of SYSTEM_CONFIG_DDL.split(';').map((x) => x.trim()).filter(Boolean)) {
+    try {
+      await run(s);
+    } catch (e) {
+      console.error('[schema] system_config DDL 执行失败：\n>>', s, '\n<< 报错：', e.message);
+      throw e;
+    }
+  }
+  // 默认值种子：仅当 key 不存在时写入（管理员清空后不会回填；清空即代表「新订单不带默认备注」）
+  try {
+    const DEFAULT_ORDER_SHARE_NOTE = '此链接为系统专属访问地址，受微信环境限制，请复制链接，在手机浏览器打开查看订单详情。';
+    const ex = await get("SELECT key FROM system_config WHERE key = 'customer_order_share_default_note'");
+    if (!ex) await insert("INSERT INTO system_config (key, value) VALUES (?, ?)", ['customer_order_share_default_note', DEFAULT_ORDER_SHARE_NOTE]);
+  } catch (e) { console.error('[schema] system_config 默认值种子失败', e.message); }
 
   console.log('[schema] 表结构已就绪');
 }

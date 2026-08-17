@@ -4,6 +4,7 @@ import { Router } from 'express';
 import crypto from 'node:crypto';
 import { query, get, insert, run } from '../db.js';
 import { authRequired, requirePerm, PERMISSIONS } from '../auth.js';
+import { getConfig } from '../configStore.js';
 import { lunarOf } from './schedules.js';
 import { isR2Enabled, isCloudStorageEnabled, getActiveProviderName, deleteMediaByUrl } from '../storage.js';
 import { cfConfigured, getR2Egress } from '../cf.js';
@@ -119,6 +120,8 @@ async function doConfirm(req, res) {
     const order_no = 'NO' + Date.now();
     const logs = JSON.stringify([{ t: nowISO(), text: '由预约 #' + a.id + ' 确认转单' }]);
     const orderName = (a.name ? a.name + ' ' : '') + (package_snapshot ? package_snapshot.name : '拍摄订单');
+    // 订单分享默认备注：建单时从系统配置默认值带入（管理员清空则不带）；单订单可后续单独覆盖
+    const shareNote = await getConfig('customer_order_share_default_note', '');
     const orderId = await insert(
       `INSERT INTO orders (order_no, customer_name, customer_phone, package_id, package_snapshot,
         status, deposit, balance, total_amount, paid_amount, deposit_method, openid, remark, logs, shoot_date,
@@ -131,6 +134,10 @@ async function doConfirm(req, res) {
         JSON.stringify(b.photographer ? [{ id: null, name: b.photographer, avatar: '' }] : []),
         a.source || '小程序', 0, 'deposit']
     );
+    // 订单分享默认备注：建单时带入系统配置默认值（空则不带）
+    if (shareNote) {
+      try { await run('UPDATE orders SET share_note = ? WHERE id = ?', [shareNote, orderId]); } catch (e) { console.error('[admin] 写入 share_note 失败', e.message); }
+    }
 
     // 建单即视为已收定金，登记定金收款流水（channel：线上 online / 线下默认 cash）
     await insert(
