@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import http from '../api.js';
+import { customerHttp } from '../utils/customerAuth.js';
 
 // ===== C 端预约提交页（/customer/book）=====
-// 客户填写信息提交（姓名/手机号/拍摄类型/意向日期/意向风格/拍摄地点/预算/备注）；提交后不可修改；
-// 写入预约表（status=pending 待确认）+ 客资 + B 端收到顾客咨询消息。
+// 表单：新郎/新娘姓名 + 主/第二联系手机号 + 意向套系下拉 + 意向拍摄日期 + 拍摄地点 + 备注
+// 加载：GET /api/customer/package-list（仅启用套系）+ GET /api/customer/me（登录态回填主手机号）
+// 提交：POST /api/customer/reservation-submit（游客可提交，主手机号+意向日期必填）
 // 禁加粗，灰度/字号/间距分层，卡片圆角 + 柔和阴影，移动端优先。
 const TEXT = '#1D1D1F';
 const SUB = '#6E6E73';
@@ -14,33 +15,46 @@ const BRAND = '#7ECDBB';
 const inputStyle = { width: '100%', padding: '13px 16px', borderRadius: 14, border: '1px solid #E4E4E7', background: '#fff', fontSize: 15, color: TEXT, boxSizing: 'border-box', outline: 'none' };
 const labelStyle = { fontSize: 13, color: SUB, marginBottom: 8, display: 'block' };
 
-const SHOOT_TYPES = ['婚纱照', '写真', '亲子照', '婚礼跟拍', '活动跟拍', '其他'];
-const STYLES = ['纪实', '胶片', '户外', '室内', '唯美', '复古', '简约'];
-const BUDGETS = ['面议', '3000 以下', '3000-5000', '5000-8000', '8000-12000', '12000 以上'];
-
 export default function AppointmentForm() {
   const nav = useNavigate();
-  const [form, setForm] = useState({ name: '', phone: '', shoot_type: '', hope_date: '', style_req: '', location: '', budget: '', remark: '' });
+  const [packages, setPackages] = useState([]);
+  const [form, setForm] = useState({ groom_name: '', bride_name: '', phone: '', phone_two: '', package_id: '', expect_date: '', shoot_location: '', remark: '' });
   const [done, setDone] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
 
   const set = (k) => (v) => setForm((f) => ({ ...f, [k]: v }));
 
+  // 套系列表 + 登录态回填
+  useEffect(() => {
+    customerHttp.get('/api/customer/package-list')
+      .then((r) => setPackages(r.data || []))
+      .catch(() => {});
+    customerHttp.get('/api/customer/me')
+      .then((r) => {
+        if (r.data && r.data.isLogin && r.data.rawPhone) {
+          setForm((f) => ({ ...f, phone: r.data.rawPhone }));
+        }
+      })
+      .catch(() => {});
+  }, []);
+
   const submit = async (e) => {
     e.preventDefault();
-    if (!form.name.trim() || !form.phone.trim()) { setErr('请填写姓名与手机号'); return; }
+    if (!form.phone.trim()) { setErr('请填写主联系手机号'); return; }
     if (!/^1\d{10}$/.test(form.phone.trim())) { setErr('请输入正确的 11 位手机号'); return; }
+    if (form.phone_two.trim() && !/^1\d{10}$/.test(form.phone_two.trim())) { setErr('第二联系手机号格式不正确'); return; }
+    if (!form.expect_date) { setErr('请选择意向拍摄日期'); return; }
     setBusy(true); setErr('');
     try {
-      await http.post('/api/customer/reservation-submit', {
-        name: form.name.trim(),
+      await customerHttp.post('/api/customer/reservation-submit', {
+        groom_name: form.groom_name.trim(),
+        bride_name: form.bride_name.trim(),
         phone: form.phone.trim(),
-        shoot_type: form.shoot_type,
-        hope_date: form.hope_date,
-        style_req: form.style_req,
-        location: form.location.trim(),
-        budget: form.budget,
+        phone_two: form.phone_two.trim(),
+        package_id: form.package_id === '' ? null : parseInt(form.package_id, 10),
+        expect_date: form.expect_date,
+        shoot_location: form.shoot_location.trim(),
         remark: form.remark.trim()
       });
       setDone(true);
@@ -54,7 +68,8 @@ export default function AppointmentForm() {
         <div style={{ fontSize: 48, marginBottom: 16 }}>✅</div>
         <div style={{ fontSize: 18, color: TEXT, marginBottom: 8 }}>提交完成，请等待摄影师确认</div>
         <div style={{ fontSize: 13, color: FAINT, marginBottom: 24 }}>我们会在确认后尽快与您联系。</div>
-        <button onClick={() => nav('/home')} style={{ padding: '12px 32px', borderRadius: 14, background: BRAND, color: '#fff', fontSize: 14, border: 'none', cursor: 'pointer' }}>返回首页</button>
+        <button onClick={() => nav('/home')} style={{ padding: '12px 32px', borderRadius: 14, background: BRAND, color: '#fff', fontSize: 14, border: 'none', cursor: 'pointer', marginBottom: 10 }}>返回首页</button>
+        <button onClick={() => nav('/customer/mine')} style={{ padding: '12px 32px', borderRadius: 14, background: '#fff', color: SUB, fontSize: 14, border: '1px solid #E4E4E7', cursor: 'pointer' }}>去我的页面查看预约进度</button>
       </div>
     );
   }
@@ -66,61 +81,44 @@ export default function AppointmentForm() {
         <span style={{ fontSize: 20, lineHeight: 1 }}>‹</span>返回
       </button>
       <div style={{ flex: 1, display: 'flex', alignItems: 'flex-start', justifyContent: 'center' }}>
-        <div style={{ width: '100%', maxWidth: 400, background: 'rgba(255,255,255,0.72)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', borderRadius: 24, padding: '28px 22px', boxShadow: '0 20px 50px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.7)' }}>
+        <div style={{ width: '100%', maxWidth: 420, background: 'rgba(255,255,255,0.72)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', borderRadius: 24, padding: '28px 22px', boxShadow: '0 20px 50px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.7)' }}>
           <div style={{ fontSize: 20, color: TEXT, marginBottom: 4 }}>预约拍摄</div>
           <div style={{ fontSize: 13, color: SUB, marginBottom: 20 }}>填写信息，摄影师将尽快与您确认</div>
           <form onSubmit={submit}>
-            <input style={{ ...inputStyle, marginBottom: 14 }} value={form.name} onChange={(e) => set('name')(e.target.value)} placeholder="您的称呼" />
-            <input style={{ ...inputStyle, marginBottom: 14 }} type="tel" inputMode="numeric" maxLength={11} value={form.phone} onChange={(e) => set('phone')(e.target.value.replace(/\D/g, ''))} placeholder="联系电话" />
-
-            <div style={{ marginBottom: 14 }}>
-              <span style={labelStyle}>拍摄类型</span>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                {SHOOT_TYPES.map((s) => (
-                  <button key={s} type="button" onClick={() => set('shoot_type')(form.shoot_type === s ? '' : s)}
-                    style={{ padding: '7px 14px', borderRadius: 16, border: '1px solid ' + (form.shoot_type === s ? BRAND : '#E4E4E7'), background: form.shoot_type === s ? 'rgba(126,205,187,0.14)' : '#fff', color: form.shoot_type === s ? BRAND : SUB, fontSize: 13, cursor: 'pointer' }}>
-                    {s}
-                  </button>
-                ))}
+            <div style={{ display: 'flex', gap: 12, marginBottom: 14 }}>
+              <div style={{ flex: 1 }}>
+                <input style={inputStyle} value={form.groom_name} onChange={(e) => set('groom_name')(e.target.value)} placeholder="新郎姓名" />
+              </div>
+              <div style={{ flex: 1 }}>
+                <input style={inputStyle} value={form.bride_name} onChange={(e) => set('bride_name')(e.target.value)} placeholder="新娘姓名" />
               </div>
             </div>
 
+            <input style={{ ...inputStyle, marginBottom: 14 }} type="tel" inputMode="numeric" maxLength={11} value={form.phone} onChange={(e) => set('phone')(e.target.value.replace(/\D/g, ''))} placeholder="主联系手机号（必填）" />
+            <input style={{ ...inputStyle, marginBottom: 14 }} type="tel" inputMode="numeric" maxLength={11} value={form.phone_two} onChange={(e) => set('phone_two')(e.target.value.replace(/\D/g, ''))} placeholder="第二联系手机号（选填）" />
+
             <div style={{ marginBottom: 14 }}>
-              <span style={labelStyle}>意向日期</span>
-              <input style={inputStyle} type="date" value={form.hope_date} onChange={(e) => set('hope_date')(e.target.value)} />
+              <span style={labelStyle}>意向套系</span>
+              <select style={{ ...inputStyle, appearance: 'none' }} value={form.package_id} onChange={(e) => set('package_id')(e.target.value)}>
+                <option value="">暂未确定套系</option>
+                {packages.map((p) => (
+                  <option key={p.id} value={p.id}>{p.name}（¥{p.price}）</option>
+                ))}
+              </select>
             </div>
 
             <div style={{ marginBottom: 14 }}>
-              <span style={labelStyle}>意向风格</span>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                {STYLES.map((s) => (
-                  <button key={s} type="button" onClick={() => set('style_req')(form.style_req === s ? '' : s)}
-                    style={{ padding: '7px 14px', borderRadius: 16, border: '1px solid ' + (form.style_req === s ? BRAND : '#E4E4E7'), background: form.style_req === s ? 'rgba(126,205,187,0.14)' : '#fff', color: form.style_req === s ? BRAND : SUB, fontSize: 13, cursor: 'pointer' }}>
-                    {s}
-                  </button>
-                ))}
-              </div>
+              <span style={labelStyle}>意向拍摄日期</span>
+              <input style={inputStyle} type="date" value={form.expect_date} onChange={(e) => set('expect_date')(e.target.value)} />
             </div>
 
             <div style={{ marginBottom: 14 }}>
               <span style={labelStyle}>拍摄地点</span>
-              <input style={inputStyle} value={form.location} onChange={(e) => set('location')(e.target.value)} placeholder="意向拍摄地点（选填）" />
-            </div>
-
-            <div style={{ marginBottom: 14 }}>
-              <span style={labelStyle}>预算</span>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                {BUDGETS.map((s) => (
-                  <button key={s} type="button" onClick={() => set('budget')(form.budget === s ? '' : s)}
-                    style={{ padding: '7px 14px', borderRadius: 16, border: '1px solid ' + (form.budget === s ? BRAND : '#E4E4E7'), background: form.budget === s ? 'rgba(126,205,187,0.14)' : '#fff', color: form.budget === s ? BRAND : SUB, fontSize: 13, cursor: 'pointer' }}>
-                    {s}
-                  </button>
-                ))}
-              </div>
+              <input style={inputStyle} value={form.shoot_location} onChange={(e) => set('shoot_location')(e.target.value)} placeholder="意向拍摄地点（选填）" />
             </div>
 
             <div style={{ marginBottom: 12 }}>
-              <span style={labelStyle}>备注</span>
+              <span style={labelStyle}>备注说明</span>
               <textarea style={{ ...inputStyle, minHeight: 70, resize: 'vertical' }} value={form.remark} onChange={(e) => set('remark')(e.target.value)} placeholder="其他需求（选填）" />
             </div>
 

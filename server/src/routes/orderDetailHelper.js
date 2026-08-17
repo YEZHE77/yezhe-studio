@@ -41,6 +41,8 @@ export async function buildCustomerOrderDetail(o) {
 
   const STATUS_LABEL = { deposit: '已付定金', shot: '已拍摄', selecting: '选片中', retouching: '精修中', delivered: '已交付', completed: '已完成' };
   const PAY_LABEL = { unpaid: '未付定金', deposit: '已付定金', paid: '已付全款' };
+  // 简化订单状态（预约转订单体系）：优先展示 order_status，旧订单回退到 status
+  const ORDER_STATUS = { pending_deposit: '待付定金', deposit_paid: '已付定金', shot_done: '拍摄完成', completed: '已完结', cancelled: '已取消' };
 
   return {
     order_no: o.order_no,
@@ -52,8 +54,9 @@ export async function buildCustomerOrderDetail(o) {
     date_tbd: !!Number(o.date_tbd),
     time_slots: timeSlots,
     address: o.address || '',
-    status: o.status,
-    status_label: STATUS_LABEL[o.status] || o.status,
+    status: o.order_status || o.status,
+    status_label: ORDER_STATUS[o.order_status] || STATUS_LABEL[o.status] || o.status,
+    order_status: o.order_status || '',
     // 套系快照
     package: {
       name: pkgName,

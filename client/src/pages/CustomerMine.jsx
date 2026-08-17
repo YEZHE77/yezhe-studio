@@ -1,37 +1,29 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { customerHttp, maskPhone } from '../utils/customerAuth.js';
+import { customerHttp } from '../utils/customerAuth.js';
 import http, { img } from '../api.js';
 
 // ===== C 端【我的】页面（/customer/mine）=====
-// 登录逻辑在本页弹窗完成，不跳转独立登录页。非开放注册：仅校验手机号下是否有订单记录。
-// 未登录：灰色占位头像 +「未登录」，点击头像唤起登录弹窗；菜单置灰不可点。
-// 已登录：头像 + 脱敏手机号 + 功能菜单；底部【退出登录】。菜单不含「商家管理后台」（C 端权限边界）。
-// 禁加粗，靠灰度/字号/间距分层，卡片圆角 + 柔和阴影。
+// 登录弹窗完成（非开放注册：phone/phone_two 命中预约或订单才允许）。双手机号匹配预约+订单。
+// 菜单：我的预约 / 我的订单 / 我的评价 / 拍摄提醒 / 联系我们 / 关于；不含「商家管理后台」（仅 admin 后台可见）。
+// 禁加粗，灰度/字号/间距分层，卡片圆角 + 柔和阴影，移动端优先。
 const TEXT = '#1D1D1F';
 const SUB = '#6E6E73';
 const FAINT = '#AEAEB2';
 const LINE = '#F0F0F2';
 const BRAND = '#7ECDBB';
 
-const glass = { background: 'rgba(255,255,255,0.66)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)' };
 const softCard = { background: '#fff', borderRadius: 16, boxShadow: '0 8px 24px rgba(31,35,41,0.06)' };
 
 const MENU = [
-  { key: 'appointments', label: '我的预约', tag: 'appointments' },
+  { key: 'reservations', label: '我的预约', tag: 'reservations' },
   { key: 'orders', label: '我的订单', tag: 'orders' },
   { key: 'evaluates', label: '我的评价', tag: 'evaluates' },
-  { key: 'schedules', label: '拍摄提醒订阅', tag: 'schedules' },
-  { key: 'contact', label: '联系摄影师', tag: 'contact' },
-  { key: 'about', label: '关于我们', tag: 'about' }
+  { key: 'remind', label: '拍摄提醒', tag: 'remind' },
+  { key: 'contact', label: '联系我们', tag: 'contact' },
+  { key: 'about', label: '关于', tag: 'about' }
 ];
 // ⚠️ 注意：不包含「商家管理后台」——C 端客户完全隐藏，仅 admin 后台可见。
-
-const ORDER_STATUS = {
-  deposit: '已付定金', waiting: '等待拍摄', shot: '拍摄中', selecting: '待选片',
-  retouching: '精修中', deliver: '待交付', delivered: '已交付', completed: '已完成', cancelled: '已关闭'
-};
-const APPT_STATUS = { pending: '待确认', confirmed: '已确认', cancelled: '已取消', rejected: '已拒绝' };
 
 function Sheet({ title, onClose, children }) {
   return (
@@ -47,11 +39,19 @@ function Sheet({ title, onClose, children }) {
   );
 }
 
+const fmtTime = (t) => {
+  if (!t) return '';
+  const d = new Date(t);
+  if (isNaN(d.getTime())) return t;
+  const p = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+};
+
 export default function CustomerMine() {
   const nav = useNavigate();
   const [studio, setStudio] = useState({ name: '', logo: '', contact: {} });
   const [auth, setAuth] = useState(null);        // null=校验中 / {isLogin:false} / {isLogin:true,phone}
-  const [biz, setBiz] = useState({ orders: [], appointments: [], schedules: [] });
+  const [biz, setBiz] = useState({ reservations: [], orders: [] });
   const [loginOpen, setLoginOpen] = useState(false);
   const [phone, setPhone] = useState('');
   const [busy, setBusy] = useState(false);
@@ -88,7 +88,7 @@ export default function CustomerMine() {
       if (r.data && r.data.ok) {
         setLoginOpen(false);
         setPhone('');
-        loadAuth(); // 刷新进入已登录状态
+        loadAuth();
       }
     } catch (e) {
       setLoginErr((e.response && e.response.data && e.response.data.error) || '登录失败');
@@ -100,7 +100,7 @@ export default function CustomerMine() {
   const logout = async () => {
     try { await customerHttp.post('/api/customer/logout'); } catch (e) {}
     setAuth({ isLogin: false });
-    setBiz({ orders: [], appointments: [], schedules: [] });
+    setBiz({ reservations: [], orders: [] });
     flashToast('已退出登录');
   };
 
@@ -184,7 +184,7 @@ export default function CustomerMine() {
           </button>
         )}
 
-        <div style={{ textAlign: 'center', fontSize: 12, color: FAINT, marginTop: 14 }}>仅展示本人订单与档期 · 全部只读</div>
+        <div style={{ textAlign: 'center', fontSize: 12, color: FAINT, marginTop: 14 }}>仅展示本人预约与订单 · 全部只读</div>
       </div>
 
       {/* 登录弹窗：仅手机号输入 + 确认提交，无验证码无密码 */}
@@ -192,7 +192,7 @@ export default function CustomerMine() {
         <div onClick={() => setLoginOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
           <div onClick={(e) => e.stopPropagation()} style={{ ...softCard, padding: 24, width: '100%', maxWidth: 340 }}>
             <div style={{ fontSize: 18, color: TEXT, marginBottom: 4 }}>手机号登录</div>
-            <div style={{ fontSize: 12, color: FAINT, marginBottom: 18 }}>仅限已有订单的客户登录</div>
+            <div style={{ fontSize: 12, color: FAINT, marginBottom: 18 }}>仅限已有预约或订单的客户登录</div>
             <input type="tel" inputMode="numeric" maxLength={11} autoFocus value={phone}
               onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))}
               onKeyDown={(e) => { if (e.key === 'Enter') submitLogin(); }}
@@ -208,61 +208,68 @@ export default function CustomerMine() {
         </div>
       )}
 
-      {/* 列表 sheet：订单 / 预约 / 档期 / 评价 / 关于 */}
+      {/* 我的预约：预约卡片（已转订单可跳订单详情，已拒绝置灰） */}
+      {sheet === 'reservations' && (
+        <Sheet title="我的预约" onClose={() => setSheet('')}>
+          {biz.reservations.length === 0 ? (
+            <div style={{ textAlign: 'center', color: FAINT, padding: '30px 0', fontSize: 14 }}>暂无预约</div>
+          ) : biz.reservations.map((r) => {
+            const rejected = r.status === 'rejected';
+            const converted = r.status === 'converted';
+            return (
+              <div key={r.id} style={{ padding: '14px 0', borderBottom: '1px solid ' + LINE, opacity: rejected ? 0.45 : 1 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: 14, color: TEXT }}>{(r.groom_name || r.bride_name) ? `${r.groom_name}${r.bride_name ? ' & ' + r.bride_name : ''}` : '客户'}</span>
+                  <span style={{ fontSize: 12, padding: '3px 8px', borderRadius: 8, background: rejected ? 'rgba(0,0,0,0.06)' : 'rgba(126,205,187,0.15)', color: rejected ? '#8E8E93' : '#3E9C8B' }}>{r.status_label}</span>
+                </div>
+                <div style={{ fontSize: 12, color: FAINT, marginTop: 6 }}>提交时间 {fmtTime(r.create_time)}</div>
+                <div style={{ fontSize: 12, color: SUB, marginTop: 4 }}>主手机号 {r.phone}{r.phone_two ? ' · 副 ' + r.phone_two : ''}</div>
+                <div style={{ fontSize: 12, color: SUB, marginTop: 4 }}>套系 {r.package_name || '暂未确定套系'}</div>
+                <div style={{ fontSize: 12, color: SUB, marginTop: 4 }}>意向日期 {r.expect_date || '待定'}{r.shoot_location ? ' · ' + r.shoot_location : ''}</div>
+                {converted && r.order_token && (
+                  <button onClick={() => nav('/customer/order?accessToken=' + encodeURIComponent(r.order_token))}
+                    style={{ marginTop: 10, padding: '7px 16px', borderRadius: 14, border: '1px solid ' + BRAND, background: '#fff', color: BRAND, fontSize: 12, cursor: 'pointer' }}>
+                    查看对应订单 ›
+                  </button>
+                )}
+              </div>
+            );
+          })}
+        </Sheet>
+      )}
+
+      {/* 我的订单：订单卡片（点击进详情） */}
       {sheet === 'orders' && (
         <Sheet title="我的订单" onClose={() => setSheet('')}>
           {biz.orders.length === 0 ? (
             <div style={{ textAlign: 'center', color: FAINT, padding: '30px 0', fontSize: 14 }}>暂无订单</div>
           ) : biz.orders.map((o) => (
-            <div key={o.id} onClick={() => { setSheet(''); nav('/customer/order?accessToken=' + encodeURIComponent(o.customer_token || '')); }} style={{ padding: '12px 0', borderBottom: '1px solid ' + LINE, cursor: 'pointer' }}>
+            <div key={o.id} onClick={() => { setSheet(''); nav('/customer/order?accessToken=' + encodeURIComponent(o.customer_token || '')); }} style={{ padding: '14px 0', borderBottom: '1px solid ' + LINE, cursor: 'pointer' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span style={{ fontSize: 14, color: TEXT }}>{o.package_name || ('订单 ' + o.order_no)}</span>
                 <span style={{ fontSize: 12, padding: '3px 8px', borderRadius: 8, background: 'rgba(126,205,187,0.15)', color: '#3E9C8B' }}>{o.status_label}</span>
               </div>
-              <div style={{ fontSize: 12, color: FAINT, marginTop: 6 }}>拍摄日期 {o.shoot_date}</div>
+              <div style={{ fontSize: 12, color: FAINT, marginTop: 6 }}>拍摄日期 {o.expect_date}</div>
               <div style={{ fontSize: 12, color: FAINT, marginTop: 4, textAlign: 'right' }}>查看详情 ›</div>
             </div>
           ))}
         </Sheet>
       )}
-      {sheet === 'appointments' && (
-        <Sheet title="我的预约" onClose={() => setSheet('')}>
-          {biz.appointments.length === 0 ? (
-            <div style={{ textAlign: 'center', color: FAINT, padding: '30px 0', fontSize: 14 }}>暂无预约</div>
-          ) : biz.appointments.map((a) => (
-            <div key={a.id} style={{ padding: '12px 0', borderBottom: '1px solid ' + LINE }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: 14, color: TEXT }}>{a.hope_date ? ('期望日期 ' + a.hope_date) : '日期待定'}</span>
-                <span style={{ fontSize: 12, padding: '3px 8px', borderRadius: 8, background: 'rgba(126,205,187,0.15)', color: '#3E9C8B' }}>{APPT_STATUS[a.status] || a.status || '待确认'}</span>
-              </div>
-              {a.style_req && <div style={{ fontSize: 12, color: SUB, marginTop: 6 }}>风格：{a.style_req}</div>}
-              {a.remark && <div style={{ fontSize: 12, color: FAINT, marginTop: 4 }}>备注：{a.remark}</div>}
-            </div>
-          ))}
-        </Sheet>
-      )}
-      {sheet === 'schedules' && (
-        <Sheet title="拍摄提醒订阅" onClose={() => setSheet('')}>
-          {biz.schedules.length === 0 ? (
-            <div style={{ textAlign: 'center', color: FAINT, padding: '30px 0', fontSize: 14 }}>暂无档期</div>
-          ) : biz.schedules.map((s) => (
-            <div key={s.id} style={{ padding: '12px 0', borderBottom: '1px solid ' + LINE }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: 14, color: TEXT }}>{s.date || '日期待定'}</span>
-                <span style={{ fontSize: 12, padding: '3px 8px', borderRadius: 8, background: 'rgba(126,205,187,0.15)', color: '#3E9C8B' }}>{s.status === 'booked' ? '已预约' : (s.status || '空闲')}</span>
-              </div>
-              {s.address && <div style={{ fontSize: 12, color: FAINT, marginTop: 6 }}>{s.address}</div>}
-            </div>
-          ))}
-        </Sheet>
-      )}
+
       {sheet === 'evaluates' && (
         <Sheet title="我的评价" onClose={() => setSheet('')}>
           <div style={{ textAlign: 'center', color: FAINT, padding: '30px 0', fontSize: 14 }}>暂无评价</div>
         </Sheet>
       )}
+
+      {sheet === 'remind' && (
+        <Sheet title="拍摄提醒" onClose={() => setSheet('')}>
+          <div style={{ textAlign: 'center', color: FAINT, padding: '30px 0', fontSize: 14 }}>拍摄提醒即将上线，敬请期待</div>
+        </Sheet>
+      )}
+
       {sheet === 'about' && (
-        <Sheet title="关于我们" onClose={() => setSheet('')}>
+        <Sheet title="关于" onClose={() => setSheet('')}>
           <div style={{ fontSize: 13, color: SUB, lineHeight: 1.8, whiteSpace: 'pre-wrap' }}>{studio.intro || '用影像记录时光。'}</div>
         </Sheet>
       )}

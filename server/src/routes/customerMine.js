@@ -1,8 +1,10 @@
-// routes/customerMine.js —— C 端免验证码手机号登录（不是开放注册）+ 我的页面数据
-// 核心约束：①非开放注册——手机号必须在订单表(cancelled=0 & is_deleted=0)有记录才允许登录 ②IP 限流 3/分
-//  ③cookie 会话 24h（与原 customerAuth 共用 c_session + customer_user 表，互斥覆盖）
-//  ④只读+行级隔离：登录后只能读自己手机号的订单/预约/档期，无任何写接口
-//  ⑤与原有 customer_token 单订单链接方式并行（不取代）
+// routes/customerMine.js —— C 端客户业务（套系 / 预约 / 双手机号登录 / 我的预约订单）
+// 核心约束：
+//  ①非开放注册——手机号必须在 reservations(phone/phone_two) 或 orders(customer_phone/phone_two) 有记录才允许登录
+//  ②IP 限流：登录 3/分，预约提交 1/分
+//  ③cookie 会话（c_session + customer_user 表），有效期 24h
+//  ④只读 + 行级隔离：登录后只能读自己手机号（phone 或 phone_two）的预约/订单，无任何写业务数据接口
+//  ⑤预约提交游客可提交（主手机号必填）；accessToken 仅访问单条订单
 import { Router } from 'express';
 import { randomBytes } from 'node:crypto';
 import { query, get, insert, run } from '../db.js';
@@ -18,18 +20,14 @@ const COOKIE_TTL = SESSION_HOURS * 3600 * 1000;
 
 // 内存态限流（单实例够用；Render 重启失效可接受）
 const loginRate = new Map(); // ip -> [timestamps]
-const RATE_MAX = 3;
-const RATE_WINDOW = 60 * 1000;
-// 预约提交限流：同一 IP 1 分钟最多 1 次
+const LOGIN_MAX = 3;
+const LOGIN_WINDOW = 60 * 1000;
 const reserveRate = new Map();
 const RESERVE_MAX = 1;
 const RESERVE_WINDOW = 60 * 1000;
 
-const STATUS_LABEL = {
-  deposit: '已付定金', waiting: '等待拍摄', shot: '拍摄中', selecting: '待选片',
-  retouching: '精修中', deliver: '待交付', delivered: '已交付', completed: '已完成', cancelled: '已关闭'
-};
-const SCHEDULE_STATUS = { free: '空闲', booked: '已预约', locked: '已锁定', done: '已完成' };
+const RESERVATION_STATUS = { pending: '待确认', contacted: '已沟通', rejected: '已拒绝', converted: '已转订单' };
+const ORDER_STATUS = { pending_deposit: '待付定金', deposit_paid: '已付定金', shot_done: '拍摄完成', completed: '已完结', cancelled: '已取消' };
 
 function nowISO() { return new Date().toISOString(); }
 
@@ -85,38 +83,91 @@ function maskPhone(p) {
 
 function pickText(...vals) { for (const v of vals) { if (v) return String(v); } return ''; }
 
-function buildOrder(o) {
-  const pkg = (() => { try { return JSON.parse(o.package_snapshot || '{}') || {}; } catch { return {}; } })();
-  return {
-    id: o.id,
-    order_no: o.order_no || '',
-    shoot_date: o.date_tbd ? '日期待定' : (o.shoot_date || '未排期'),
-    package_name: pickText(pkg.name, o.package_name),
-    status: o.status || '',
-    status_label: STATUS_LABEL[o.status] || o.status || '进行中',
-    // 单订单访问令牌（用于跳 /customer/order?accessToken= 详情页，与 B 端分享链接同一令牌）
-    customer_token: o.customer_token || ''
-    // 安全：不返回备注(remark/appointment_remark/external_remark)与订单变更记录(logs)，C 端客户不可见
-  };
-}
+// ===== 1. 获取 C 端可用套系列表（仅 is_enable 启用，按 sort 排序）=====
+router.get('/package-list', async (req, res) => {
+  try {
+    // packages.status: 'on' 启用 / 'off' 禁用（禁用后 C 端不展示）
+    const rows = await query(
+      `SELECT id, name, price, description FROM packages WHERE status != 'off' ORDER BY sort ASC, id ASC`
+    );
+    res.json(rows.map((p) => ({ id: p.id, name: p.name, price: Number(p.price) || 0, description: p.description || '' })));
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
 
-// ===== 1. 免验证码手机号登录（不是开放注册）=====
+// ===== 2. 提交预约（游客可提交；主手机号必填；IP 限流 1 分钟最多 1 次）=====
+router.post('/reservation-submit', async (req, res) => {
+  try {
+    const ip = getIp(req);
+    if (rateHit(reserveRate, ip, RESERVE_MAX, RESERVE_WINDOW)) {
+      return res.status(429).json({ error: '提交过于频繁，请稍后再试' });
+    }
+    const b = req.body || {};
+    const groomName = String(b.groom_name || '').trim();
+    const brideName = String(b.bride_name || '').trim();
+    const phone = String(b.phone || '').trim();
+    const phoneTwo = String(b.phone_two || '').trim();
+    const expectDate = String(b.expect_date || '').trim();
+    const shootLocation = String(b.shoot_location || '').trim();
+    const remark = String(b.remark || '').trim();
+    const packageId = (b.package_id === null || b.package_id === undefined || b.package_id === '') ? null : parseInt(b.package_id, 10);
+
+    if (!phone) return res.status(400).json({ error: '请填写主联系手机号' });
+    if (!/^1\d{10}$/.test(phone)) return res.status(400).json({ error: '请输入正确的 11 位手机号' });
+    if (phoneTwo && !/^1\d{10}$/.test(phoneTwo)) return res.status(400).json({ error: '第二联系手机号格式不正确' });
+    if (!expectDate) return res.status(400).json({ error: '请选择意向拍摄日期' });
+
+    const id = await insert(
+      `INSERT INTO reservations (groom_name, bride_name, phone, phone_two, package_id, expect_date, shoot_location, remark, status, order_id)
+       VALUES (?,?,?,?,?,?,?,?,?,?)`,
+      [groomName, brideName, phone, phoneTwo, packageId, expectDate, shootLocation, remark, 'pending', null]
+    );
+
+    // 通知商家
+    const pkgName = packageId ? (await get('SELECT name FROM packages WHERE id = ?', [packageId]) || {}).name || '' : '';
+    try {
+      await emitMessage({
+        message_type: 'customer_consult', business_event: 'customer_consult',
+        title: '新预约',
+        content: `${groomName || brideName || '客户'}（${phone}）提交了预约${pkgName ? '，套系 ' + pkgName : ''}${expectDate ? '，意向日期 ' + expectDate : ''}${shootLocation ? '，地点 ' + shootLocation : ''}`,
+        rel_id: String(id), rel_model: 'reservation'
+      });
+    } catch (e) { console.error('[customerMine] 预约消息失败：', e.message); }
+    try {
+      await emitBizToStaff({
+        title: '新预约',
+        content: `${groomName || brideName || '客户'}（${phone}）提交了预约${pkgName ? '，套系 ' + pkgName : ''}${expectDate ? '，意向日期 ' + expectDate : ''}${shootLocation ? '，地点 ' + shootLocation : ''}`,
+        biz_type: BIZ_TYPE.ORDER, biz_id: id, sub_type: 'reserve',
+        biz_extra: JSON.stringify({ reservationId: id })
+      });
+    } catch (e) { console.error('[customerMine] 预约 biz 消息失败：', e.message); }
+
+    res.json({ ok: true, id, message: '提交成功，请等待摄影师确认' });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ===== 3. 免验证码手机号登录（非开放注册，双手机号匹配预约/订单；IP 限流 3/分）=====
 router.post('/login', async (req, res) => {
   try {
     const ip = getIp(req);
-    if (rateHit(loginRate, ip, RATE_MAX, RATE_WINDOW)) {
+    if (rateHit(loginRate, ip, LOGIN_MAX, LOGIN_WINDOW)) {
       return res.status(429).json({ error: '访问过于频繁，请稍后再试' });
     }
     const phone = String((req.body && req.body.phone) || '').trim();
     if (!/^1\d{10}$/.test(phone)) return res.status(400).json({ error: '请输入正确的 11 位手机号' });
 
-    // 非开放注册：必须有有效订单（cancelled=0 & is_deleted=0）才允许登录
-    const exists = await get(
-      'SELECT id FROM orders WHERE customer_phone = ? AND cancelled = 0 AND is_deleted = 0 LIMIT 1',
-      [phone]
+    // 命中预约表：phone 或 phone_two
+    const rsv = await get('SELECT id FROM reservations WHERE phone = ? OR phone_two = ? LIMIT 1', [phone, phone]);
+    // 命中订单表：主手机号(customer_phone)或第二手机号(phone_two)
+    const ord = await get(
+      'SELECT id FROM orders WHERE (customer_phone = ? OR phone_two = ?) AND cancelled = 0 AND is_deleted = 0 LIMIT 1',
+      [phone, phone]
     );
-    if (!exists) {
-      return res.status(403).json({ error: '未找到该手机号对应的订单，请确认手机号或联系摄影师' });
+    if (!rsv && !ord) {
+      return res.status(403).json({ error: '未找到该手机号对应的预约或订单，请确认手机号或联系摄影师' });
     }
 
     const now = nowISO();
@@ -135,7 +186,7 @@ router.post('/login', async (req, res) => {
   }
 });
 
-// ===== 2. 退出登录 =====
+// ===== 4. 退出登录 =====
 router.post('/logout', async (req, res) => {
   try {
     const cookie = String(req.headers.cookie || '');
@@ -151,59 +202,80 @@ router.post('/logout', async (req, res) => {
   }
 });
 
-// ===== 3. 当前登录信息（脱敏手机号；未登录返回未登录标识）=====
+// ===== 5. 当前登录信息（脱敏手机号 + 回填用原手机号；未登录返回未登录标识）=====
 router.get('/me', async (req, res) => {
   try {
     const phone = await resolveSession(req);
     if (!phone) return res.json({ isLogin: false, phone: '' });
-    res.json({ isLogin: true, phone: maskPhone(phone) });
+    // phone 用于展示脱敏；rawPhone 用于预约页回填（仅本人可见，非敏感）
+    res.json({ isLogin: true, phone: maskPhone(phone), rawPhone: phone });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
 });
 
-// ===== 4. 我的业务数据（预约 + 订单 + 档期，全部按会话手机号行级隔离只读）=====
+// ===== 6. 我的预约 + 订单（双手机号匹配，行级隔离只读）=====
 router.get('/my-business', async (req, res) => {
   try {
     const phone = await resolveSession(req);
     if (!phone) return res.status(401).json({ error: '未登录' });
 
-    // 订单
+    // 预约：phone 或 phone_two（已转订单的预约附带对应订单 accessToken，供「查看对应订单」跳转）
+    const resvRows = await query(
+      `SELECT r.*, (SELECT p.name FROM packages p WHERE p.id = r.package_id LIMIT 1) AS package_name,
+              (SELECT o.customer_token FROM orders o WHERE o.id = r.order_id LIMIT 1) AS order_token
+       FROM reservations r WHERE r.phone = ? OR r.phone_two = ? ORDER BY r.id DESC`,
+      [phone, phone]
+    );
+
+    // 订单：customer_phone 或 phone_two
     const orderRows = await query(
-      `SELECT o.id, o.order_no, o.shoot_date, o.date_tbd, o.status, o.remark,
-              o.appointment_remark, o.external_remark, o.package_snapshot, o.customer_token,
-              (SELECT p.name FROM packages p WHERE p.id = o.package_id LIMIT 1) AS package_name
+      `SELECT o.id, o.order_no, o.customer_phone, o.phone_two, o.shoot_date, o.date_tbd, o.status, o.order_status,
+              o.package_name, o.package_snapshot, o.customer_token, o.total_amount
        FROM orders o
-       WHERE o.customer_phone = ? AND o.cancelled = 0 AND o.is_deleted = 0
+       WHERE (o.customer_phone = ? OR o.phone_two = ?) AND o.cancelled = 0 AND o.is_deleted = 0
        ORDER BY o.id DESC`,
-      [phone]
-    );
-
-    // 预约
-    const apptRows = await query(
-      `SELECT id, package_id, hope_date, status, remark, style_req, source, created_at
-       FROM appointments WHERE phone = ? ORDER BY id DESC`,
-      [phone]
-    );
-
-    // 档期（拍摄日程）
-    const scheduleRows = await query(
-      `SELECT id, date, period, status, photographer, groom_name, bride_name, address, note
-       FROM schedules WHERE contact_phone = ? ORDER BY date DESC`,
-      [phone]
+      [phone, phone]
     );
 
     res.json({
-      orders: orderRows.map(buildOrder),
-      appointments: apptRows,
-      schedules: scheduleRows
+      reservations: resvRows.map((r) => ({
+        id: r.id,
+        groom_name: r.groom_name || '',
+        bride_name: r.bride_name || '',
+        phone: maskPhone(r.phone || ''),
+        phone_two: maskPhone(r.phone_two || ''),
+        package_id: r.package_id,
+        package_name: r.package_name || '',
+        expect_date: r.expect_date || '',
+        shoot_location: r.shoot_location || '',
+        remark: r.remark || '',
+        status: r.status,
+        status_label: RESERVATION_STATUS[r.status] || r.status,
+        order_id: r.order_id || null,
+        order_token: r.order_token || '', // 已转订单的 accessToken（跳详情页用）
+        create_time: r.create_time || ''
+      })),
+      orders: orderRows.map((o) => {
+        const pkg = (() => { try { return JSON.parse(o.package_snapshot || '{}') || {}; } catch { return {}; } })();
+        return {
+          id: o.id,
+          order_no: o.order_no || '',
+          package_name: pickText(o.package_name, pkg.name),
+          expect_date: o.date_tbd ? '日期待定' : (o.shoot_date || '未排期'),
+          status: o.order_status || o.status,
+          status_label: ORDER_STATUS[o.order_status] || o.status || '进行中',
+          customer_token: o.customer_token || '', // accessToken
+          price: Number(o.total_amount) || 0
+        };
+      })
     });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
 });
 
-// ===== 5. 单订单详情（accessToken 校验，仅返回该 token 绑定的单条订单；无效返回 404）=====
+// ===== 7. 单订单详情（accessToken 校验，仅返回该 token 绑定的单条订单；无效返回 404）=====
 router.get('/order-detail', async (req, res) => {
   try {
     const token = String(req.query.accessToken || '').trim();
@@ -216,75 +288,6 @@ router.get('/order-detail', async (req, res) => {
       if (!Number.isNaN(exp) && exp < Date.now()) return res.status(403).json({ error: '访问链接已过期，请联系商家' });
     }
     res.json(await buildCustomerOrderDetail(o));
-  } catch (e) {
-    res.status(500).json({ error: e.message });
-  }
-});
-
-// ===== 6. C 端预约提交（只读提交，写入预约表 status=pending；IP 限流 1 分钟最多 1 次）=====
-router.post('/reservation-submit', async (req, res) => {
-  try {
-    const ip = getIp(req);
-    if (rateHit(reserveRate, ip, RESERVE_MAX, RESERVE_WINDOW)) {
-      return res.status(429).json({ error: '提交过于频繁，请稍后再试' });
-    }
-    const b = req.body || {};
-    const name = String(b.name || '').trim();
-    const phone = String(b.phone || '').trim();
-    if (!name || !phone) return res.status(400).json({ error: '请填写姓名与手机号' });
-    if (!/^1\d{10}$/.test(phone)) return res.status(400).json({ error: '请输入正确的 11 位手机号' });
-
-    // H5 匿名访问拿不到微信 openid，用手机号派生稳定标识，同一手机号归并到同一客资
-    const openid = 'h5_' + phone;
-    const shootType = String(b.shoot_type || '').trim();
-    const hopeDate = String(b.hope_date || '').trim();
-    const styleReq = String(b.style_req || '').trim();
-    const location = String(b.location || '').trim();
-    const budget = String(b.budget || '').trim();
-    const remark = String(b.remark || '').trim();
-
-    // 写入客资（upsert：同一手机号更新，否则新建）
-    const existCust = await get('SELECT id FROM customers WHERE openid = ?', [openid]);
-    if (existCust) {
-      await run('UPDATE customers SET nickname = ?, phone = ?, updated_at = ? WHERE openid = ?', [name, phone, nowISO(), openid]);
-    } else {
-      await insert('INSERT INTO customers (openid, nickname, phone, created_at, updated_at) VALUES (?,?,?,?,?)', [openid, name, phone, nowISO(), nowISO()]);
-    }
-
-    // 写入预约（status=pending 待确认）
-    const id = await insert(
-      `INSERT INTO appointments (openid, name, phone, package_id, hope_date, remark, status, source, style_req, shoot_type, location, budget, created_at)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-      [openid, name, phone, null, hopeDate, remark, 'pending', 'h5', styleReq, shootType, location, budget, nowISO()]
-    );
-
-    // 消息中心：客资新增 → customer_consult
-    await emitMessage({
-      message_type: 'customer_consult', business_event: 'customer_consult',
-      title: '新顾客咨询',
-      content: `${name}（${phone}）提交了预约${shootType ? '，拍摄类型 ' + shootType : ''}${hopeDate ? '，意向日期 ' + hopeDate : ''}${styleReq ? '，风格 ' + styleReq : ''}${location ? '，地点 ' + location : ''}${budget ? '，预算 ' + budget : ''}`,
-      rel_id: openid, rel_model: 'customer'
-    });
-
-    // 订单消息子类型：预约消息 reserve
-    try {
-      await emitBizToStaff({
-        title: '新预约',
-        content: `${name}（${phone}）提交了预约${shootType ? '，拍摄类型 ' + shootType : ''}${hopeDate ? '，意向日期 ' + hopeDate : ''}${styleReq ? '，风格 ' + styleReq : ''}${location ? '，地点 ' + location : ''}${budget ? '，预算 ' + budget : ''}`,
-        biz_type: BIZ_TYPE.ORDER, biz_id: id, sub_type: 'reserve',
-        biz_extra: JSON.stringify({ appointmentId: id })
-      });
-    } catch (e) { console.error('[customerMine] 生成预约消息失败：', e.message); }
-
-    // 待办：新预约待确认
-    try {
-      await insert(
-        'INSERT INTO todo_items (order_id, todo_type, title, content, status, biz_key) VALUES (?,?,?,?,?,?)',
-        [0, 'appointment', '新预约待确认', `${name}（${phone}）提交预约${shootType ? '，拍摄类型 ' + shootType : ''}${hopeDate ? '，意向日期 ' + hopeDate : ''}${styleReq ? '，风格 ' + styleReq : ''}${location ? '，地点 ' + location : ''}${budget ? '，预算 ' + budget : ''}${remark ? '，备注：' + remark : ''}`, 'pending', `appointment_${id}`]
-      );
-    } catch (e) { console.error('[customerMine] 生成预约待办失败：', e.message); }
-
-    res.json({ ok: true, message: '提交成功，请等待摄影师确认' });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }

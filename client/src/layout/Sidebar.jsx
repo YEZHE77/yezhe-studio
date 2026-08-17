@@ -21,6 +21,7 @@ const ITEMS = [
   { label: '套系', to: '/packages', icon: 'package' },
   { label: '作品', to: '/works', icon: 'photo' },
   { label: '档期', to: '/schedule', icon: 'calendar' },
+  { label: '预约管理', to: '/reservations', icon: 'calendar' },
   { label: '订单中心', to: '/orders', icon: 'order', sep: true },
   { label: '在线选片', to: '/selections', icon: 'select' },
   { label: '合同模板', to: '/contract-templates', icon: 'order' },

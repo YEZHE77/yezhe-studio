@@ -535,7 +535,14 @@ const ORDERS_NEW_COLUMNS = [
   ['channel', 'TEXT'], // 渠道来源名称快照（渠道被删也保留历史）
   ['channel_id', 'INTEGER'], // 渠道 id（关联 channels 表）
   ['date_tbd', 'INTEGER NOT NULL DEFAULT 0'], // 1=日期待定（意向订单，不占日历档期）
-  ['payment_status', `TEXT NOT NULL DEFAULT 'deposit'`] // unpaid 未付定金 / deposit 已付定金 / paid 已付全款
+  ['payment_status', `TEXT NOT NULL DEFAULT 'deposit'`], // unpaid 未付定金 / deposit 已付定金 / paid 已付全款
+  // ↓↓ C 端预约转订单体系（2026-08-17）：双手机号 + 来源预约 + 简化订单状态 + 定金支付时间
+  ['package_name', 'TEXT'], // 套系名称快照（预约转订单时写入；历史订单回退 package_snapshot.name）
+  ['phone_two', 'TEXT'], // 第二联系手机号（非必填，支持登录）
+  ['reservation_id', 'INTEGER'], // 来源预约 id（预约转订单时写入，可为 null）
+  ['order_status', `TEXT NOT NULL DEFAULT 'pending_deposit'`], // 简化订单状态：pending_deposit 待付定金 / deposit_paid 已付定金 / shot_done 拍摄完成 / completed 已完结 / cancelled 已取消
+  ['deposit_amount', 'REAL NOT NULL DEFAULT 0'], // 定金金额（预约转订单体系）
+  ['deposit_pay_time', 'TEXT'] // 定金支付时间（可为空）
 ];
 
 // 渠道来源表（后端可配置，前端下拉实时读取，绝不写死）
@@ -704,6 +711,24 @@ export async function initSchema() {
         created_at TEXT DEFAULT CURRENT_TIMESTAMP
       )`;
   for (const s of CUSTOMER_USER_DDL.split(';').map((x) => x.trim()).filter(Boolean)) await run(s);
+
+  // C 端预约表（预约转订单体系，2026-08-17）：双手机号（phone 主 / phone_two 副）+ 意向套系 + 状态机 + 转订单绑定
+  const RESERVATIONS_DDL = dialect === 'pg'
+    ? `CREATE TABLE IF NOT EXISTS reservations (
+        id SERIAL PRIMARY KEY, groom_name TEXT, bride_name TEXT,
+        phone TEXT NOT NULL, phone_two TEXT,
+        package_id INTEGER, expect_date TEXT, shoot_location TEXT, remark TEXT,
+        status TEXT NOT NULL DEFAULT 'pending', order_id INTEGER,
+        create_time TIMESTAMPTZ DEFAULT now()
+      )`
+    : `CREATE TABLE IF NOT EXISTS reservations (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, groom_name TEXT, bride_name TEXT,
+        phone TEXT NOT NULL, phone_two TEXT,
+        package_id INTEGER, expect_date TEXT, shoot_location TEXT, remark TEXT,
+        status TEXT NOT NULL DEFAULT 'pending', order_id INTEGER,
+        create_time TEXT DEFAULT CURRENT_TIMESTAMP
+      )`;
+  for (const s of RESERVATIONS_DDL.split(';').map((x) => x.trim()).filter(Boolean)) await run(s);
 
   // 合同模板表（contract_template）
   for (const s of (dialect === 'pg' ? PG_CONTRACT_TEMPLATE : SQLITE_CONTRACT_TEMPLATE).split(';').map((x) => x.trim()).filter(Boolean)) await run(s);
