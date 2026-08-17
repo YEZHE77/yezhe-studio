@@ -121,7 +121,7 @@ export default function AppointmentForm() {
 
             <div style={{ marginBottom: 14 }}>
               <span style={labelStyle}>意向拍摄日期</span>
-              <input style={inputStyle} type="date" value={form.expect_date} onChange={(e) => set('expect_date')(e.target.value)} />
+              <input style={{ ...inputStyle, minWidth: 0, maxWidth: '100%' }} type="date" value={form.expect_date} onChange={(e) => set('expect_date')(e.target.value)} />
             </div>
 
             <div style={{ marginBottom: 14 }}>
