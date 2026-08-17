@@ -17,7 +17,9 @@ const EMPTY = {
   // 客户自助查订单：价格是否对 C 端客户展示（默认关闭，保护报价隐私）
   showPriceToCustomer: false,
   // 公开作品集 H5 链接（客户自助查订单页「查看作品集」跳转按钮；留空隐藏）
-  portfolioUrl: ''
+  portfolioUrl: '',
+  // 团队分享备注词（C 端右上角菜单「分享该团队」展示；留空则隐藏备注行）
+  shareNote: ''
 };
 
 const inputCls = 'w-full border border-line rounded-lg px-3 py-2 text-sm bg-panel text-fg outline-none focus:border-brand';
@@ -98,7 +100,8 @@ export default function Settings() {
           qr: (d.miniProgram && d.miniProgram.qr) || ''
         },
         showPriceToCustomer: !!d.showPriceToCustomer,
-        portfolioUrl: d.portfolioUrl || ''
+        portfolioUrl: d.portfolioUrl || '',
+        shareNote: d.shareNote !== undefined ? d.shareNote : ''
       });
       setLoaded(true);
     }).catch(() => setLoaded(true));
@@ -348,6 +351,10 @@ export default function Settings() {
               {osnTip && <span className="text-xs text-emerald-600">{osnTip}</span>}
             </div>
             <p className="text-xs text-muted mt-1.5 max-md:text-[11px] max-md:leading-relaxed">该备注展示在 C 端免登录订单详情页顶部灰色卡片，客户仅可读不可编辑；修改后立即对新订单生效，不回溯历史订单；可在订单详情后台按单条单独覆盖。</p>
+          </Field>
+          <Field label="团队分享备注词（C 端右上角菜单「分享该团队」展示；留空则隐藏备注行）">
+            <input className={inputCls + ' max-md:py-2.5'} value={form.shareNote} onChange={(e) => set('shareNote', e.target.value)} placeholder="海口婚礼 / 人像摄影 · YEZHE WORKSHOP，记录平凡生活中的美好。" />
+            <p className="text-xs text-muted mt-1 max-md:text-[11px] max-md:leading-relaxed">当朋友打开你分享的客户端主页链接时，这段文字会随链接一起展示，帮助对方了解工作室。</p>
           </Field>
           <Field label="Logo">
             <div className="flex items-center gap-3 max-md:flex-col max-md:items-start">

@@ -46,7 +46,9 @@ const DEFAULT_STUDIO = {
   // 客户自助查订单：价格是否对 C 端客户展示（默认关闭，保护报价隐私）
   showPriceToCustomer: false,
   // 公开作品集 H5 链接（客户自助查订单页的「查看作品集」跳转按钮；留空则隐藏按钮）
-  portfolioUrl: ''
+  portfolioUrl: '',
+  // 团队分享备注词（C 端右上角菜单「分享该团队」展示；留空则隐藏备注行）
+  shareNote: '海口婚礼 / 人像摄影 · YEZHE WORKSHOP，记录平凡生活中的美好。'
 };
 
 function safeParse(v) {

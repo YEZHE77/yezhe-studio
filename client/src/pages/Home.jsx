@@ -57,6 +57,7 @@ export default function Home() {
   const [showServiceQr, setShowServiceQr] = useState(false);
   const [toast, setToast] = useState('');
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false); // 抽屉内「分享该团队」子面板
   const [syncing, setSyncing] = useState(true);
 
   // 异步加载作品，返回 Promise 供首次同步状态聚合
@@ -133,6 +134,20 @@ export default function Home() {
     setDrawerOpen(false);
     const el = document.getElementById(id);
     if (el) el.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  // 抽屉关闭时回到菜单层（分享子面板不残留）
+  useEffect(() => { if (!drawerOpen) setShareOpen(false); }, [drawerOpen]);
+
+  // 分享该团队：客户端主页链接 + 分享备注词（备注词来自「资料设置」团队分享备注词）
+  const homeUrl = typeof window !== 'undefined' ? window.location.origin + '/home' : '';
+  const shareText = [(studio.shareNote || '').trim(), homeUrl].filter(Boolean).join('\n');
+  const copyShare = (t) => {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(t).then(() => setToast('已复制')).catch(() => setToast(t));
+    } else {
+      setToast(t);
+    }
   };
 
   if (gate.status === 'blocked') return <VisitorBlockedView />;
@@ -426,13 +441,41 @@ export default function Home() {
           <div className="px-6 py-6 border-b border-gray-100 flex items-center">
             <span className="text-base truncate">{studio.name || ''}</span>
           </div>
-          <nav className="flex-1">
-            <button onClick={() => { setDrawerOpen(false); nav('/home'); }} className="w-full text-left px-6 py-4 border-b border-gray-100">主页</button>
-            <button onClick={() => scrollTo('gallery-section')} className="w-full text-left px-6 py-4 border-b border-gray-100">作品</button>
-            <button onClick={() => { setDrawerOpen(false); nav('/package-center'); }} className="w-full text-left px-6 py-4 border-b border-gray-100">套系</button>
-            <button onClick={() => { setDrawerOpen(false); nav('/customer/mine'); }} className="w-full text-left px-6 py-4 border-b border-gray-100">我的</button>
-            <button onClick={() => scrollTo('footer-section')} className="w-full text-left px-6 py-4 border-b border-gray-100">联系我们</button>
-          </nav>
+          {!shareOpen ? (
+            <nav className="flex-1">
+              <button onClick={() => { setDrawerOpen(false); nav('/home'); }} className="w-full text-left px-6 py-4 border-b border-gray-100">主页</button>
+              <button onClick={() => scrollTo('gallery-section')} className="w-full text-left px-6 py-4 border-b border-gray-100">作品</button>
+              <button onClick={() => { setDrawerOpen(false); nav('/package-center'); }} className="w-full text-left px-6 py-4 border-b border-gray-100">套系</button>
+              <button onClick={() => { setDrawerOpen(false); nav('/customer/mine'); }} className="w-full text-left px-6 py-4 border-b border-gray-100">我的</button>
+              <button onClick={() => scrollTo('footer-section')} className="w-full text-left px-6 py-4 border-b border-gray-100">联系我们</button>
+              <button onClick={() => setShareOpen(true)} className="w-full text-left px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+                <span>分享该团队</span>
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="text-gray-300"><path d="m9 6 6 6-6 6" /></svg>
+              </button>
+            </nav>
+          ) : (
+            <div className="flex-1 flex flex-col overflow-y-auto px-6 py-4">
+              <button onClick={() => setShareOpen(false)} className="flex items-center gap-1 text-sm text-gray-500 mb-4 w-full">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="m15 6-6 6 6 6" /></svg>
+                返回
+              </button>
+              <div className="text-base mb-1">分享该团队</div>
+              <div className="text-xs text-gray-400 mb-4 leading-relaxed">把工作室主页分享给朋友，方便对方查看作品与套系。</div>
+              {(studio.shareNote || '').trim() && (
+                <>
+                  <div className="text-xs text-gray-400 mb-1">分享备注词</div>
+                  <div className="text-sm leading-relaxed bg-gray-50 rounded-lg p-3 mb-4 whitespace-pre-wrap">{studio.shareNote}</div>
+                </>
+              )}
+              <div className="text-xs text-gray-400 mb-1">客户端主页链接</div>
+              <div className="flex items-center gap-2 bg-gray-50 rounded-lg p-3 mb-4">
+                <span className="flex-1 text-xs text-gray-500 break-all min-w-0">{homeUrl}</span>
+                <button onClick={() => copyShare(homeUrl)} className="shrink-0 px-3 py-1.5 rounded-md bg-[#2c2c2c] text-white text-xs">复制</button>
+              </div>
+              <button onClick={() => copyShare(shareText)} className="w-full py-3 rounded-lg text-white text-sm" style={{ background: TEAL }}>复制备注+链接</button>
+              <div className="text-xs text-gray-400 mt-3 text-center leading-relaxed">复制后可在微信中粘贴，发给朋友或发到朋友圈。</div>
+            </div>
+          )}
         </div>
       </div>
     </div>
