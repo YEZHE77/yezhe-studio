@@ -53,13 +53,7 @@ const ConsultMail = ({ color }) => (
   </svg>
 );
 
-// ===== 更多列表图标（Megaphone / Database / HelpCircle）=====
-const IconMegaphone = ({ color }) => (
-  <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M3 11l18-5v12L3 14v-3z" />
-    <path d="M11.6 16.8a3 3 0 1 1-5.8-1.6" />
-  </svg>
-);
+// ===== 更多列表图标（Database / HelpCircle）=====
 const IconDatabase = ({ color }) => (
   <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
     <ellipse cx="12" cy="5" rx="9" ry="3" />
@@ -160,7 +154,7 @@ export default function MobileMessage() {
         ))}
       </div>
 
-      {/* 更多（Soft-UI 列表：访客 / 活动公告 / 已用空间 / 帮助中心） */}
+      {/* 更多（Soft-UI 列表：访客 / 已用空间 / 帮助中心） */}
       <SectionTitle title="更多" />
       <div style={{ background: '#FFFFFF', margin: '0 12px', borderRadius: 16, overflow: 'hidden', boxShadow: '0 8px 24px rgba(31,35,41,0.06), 0 1px 3px rgba(31,35,41,0.04)' }}>
         {/* 访客（V2 上线） */}
@@ -172,17 +166,6 @@ export default function MobileMessage() {
             <div style={{ fontSize: 12, color: FAINT, marginTop: 2 }}>访客列表与访问记录</div>
           </div>
           <span style={{ fontSize: 12, color: FAINT }}>&gt;</span>
-        </button>
-
-        {/* 活动公告 */}
-        <button onClick={() => nav('/m/messages?type=announce')}
-          style={{ width: '100%', display: 'flex', alignItems: 'center', padding: '14px 14px', border: 'none', background: '#fff', borderBottom: `1px solid ${DIV}`, textAlign: 'left', cursor: 'pointer', gap: 12 }}>
-          <RoundIcon Icon={IconMegaphone} color="#D99A3D" bg="#FAF0DF" size={36} />
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 14, color: TEXT }}>活动公告</div>
-            <div style={{ fontSize: 12, color: FAINT, marginTop: 2 }}>V4.3.2 | 功能更新</div>
-          </div>
-          <span style={{ fontSize: 12, color: FAINT }}>07-21</span>
         </button>
 
         {/* 已用空间（读 R2 实际用量 + 自定义阈值告警红点） */}
