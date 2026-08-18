@@ -180,21 +180,9 @@ export default function AlbumGrid({ gallery, onBack, albumId }) {
         )}
       </div>
 
-      {/* 信息区：标题 + 视图切换 + 分类 + 文案 */}
+      {/* 信息区：标题 + 分类 + 文案 + 视图切换（列表/宫格 pill 按钮） */}
       <div style={{ padding: '16px 16px 4px' }}>
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
-          <div style={{ fontSize: 18, color: '#1f2329', lineHeight: 1.4, fontWeight: 600, flex: 1, minWidth: 0 }}>{title || '作品相册'}</div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0, paddingTop: 4 }}>
-            <button onClick={() => switchView('single')} title="单列大图"
-              style={{ background: 'none', border: 'none', padding: 4, color: view === 'single' ? '#1f2329' : '#bbb', fontSize: 18, lineHeight: 1 }}>
-              ☰
-            </button>
-            <button onClick={() => switchView('grid')} title="网格总览"
-              style={{ background: 'none', border: 'none', padding: 4, color: view === 'grid' ? '#1f2329' : '#bbb', fontSize: 18, lineHeight: 1 }}>
-              ▦
-            </button>
-          </div>
-        </div>
+        <div style={{ fontSize: 18, color: '#1f2329', lineHeight: 1.4, fontWeight: 600 }}>{title || '作品相册'}</div>
         {category && (
           <span style={{ marginTop: 8, display: 'inline-block', fontSize: 12, color: MGRAY, background: '#f5f5f5', padding: '3px 10px', borderRadius: 4 }}>{category}</span>
         )}
@@ -204,6 +192,15 @@ export default function AlbumGrid({ gallery, onBack, albumId }) {
         {typeof views === 'number' && views > 0 && (
           <div style={{ marginTop: 8, fontSize: 11, color: '#bbb' }}>已被浏览 {views} 次</div>
         )}
+        {/* 视图切换：列表/宫格 pill 按钮（移动端醒目，避免标题侧挤） */}
+        <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
+          <button onClick={() => switchView('single')} aria-pressed={view === 'single'} style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '7px 14px', borderRadius: 18, border: 'none', fontSize: 13, lineHeight: 1, background: view === 'single' ? '#1f2329' : '#f5f5f5', color: view === 'single' ? '#fff' : '#666' }}>
+            <span style={{ fontSize: 14 }}>☰</span>列表
+          </button>
+          <button onClick={() => switchView('grid')} aria-pressed={view === 'grid'} style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '7px 14px', borderRadius: 18, border: 'none', fontSize: 13, lineHeight: 1, background: view === 'grid' ? '#1f2329' : '#f5f5f5', color: view === 'grid' ? '#fff' : '#666' }}>
+            <span style={{ fontSize: 14 }}>▦</span>宫格
+          </button>
+        </div>
       </div>
 
       {/* 照片区：参照歪猫小程序——2列不等高规则网格/单列大图纵向滑动（无小标题） */}
@@ -218,12 +215,12 @@ export default function AlbumGrid({ gallery, onBack, albumId }) {
             ))}
           </div>
         ) : (
-          // 单列大图纵向滑动（默认）：整张铺满屏宽、原图直角、照片间距 2px、横竖版自适应
+          // 单列大图纵向滑动（默认）：整张铺满屏宽、原图直角、照片间距 2px、横竖版自适应；div 容器避免 button UA 灰底
           <div>
             {photos.map((p, i) => (
-              <button key={i} onClick={() => setFull(i)} style={{ display: 'block', width: '100%', padding: 0, border: 'none', borderRadius: 0, overflow: 'hidden', marginBottom: 2, background: '#f5f5f5' }}>
+              <div key={i} role="button" tabIndex={0} onClick={() => setFull(i)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setFull(i); } }} style={{ display: 'block', width: '100%', padding: 0, border: 'none', borderRadius: 0, overflow: 'hidden', marginBottom: 2, background: '#f5f5f5', cursor: 'pointer' }}>
                 <img src={img(p, 'preview')} alt="" style={{ width: '100%', height: 'auto', display: 'block' }} loading="lazy" />
-              </button>
+              </div>
             ))}
           </div>
         )}
