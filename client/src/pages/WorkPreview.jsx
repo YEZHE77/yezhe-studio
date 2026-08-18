@@ -273,15 +273,15 @@ export default function WorkPreview() {
         </div>
       )}
 
-      {/* 封面大图：移动端 aspectRatio 3/4 全屏 / PC 端 max-height:60vh 居中 contain 不裁剪 */}
+      {/* 封面大图：移动端原比例 100%宽 + maxHeight 85vh 居中不裁 / PC 端 max-height:60vh 居中 contain */}
       {isMobile ? (
-        <div style={{ width: '100%', aspectRatio: '3/4', background: '#1a1a1a', position: 'relative', overflow: 'hidden' }}>
+        <div style={{ width: '100%', background: '#1a1a1a', display: 'flex', alignItems: 'center', justifyContent: 'center', maxHeight: '85vh', overflow: 'hidden' }}>
           {cover ? (
-            <img src={img(cover)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            <img src={img(cover)} alt="" style={{ width: '100%', height: 'auto', maxHeight: '85vh', objectFit: 'contain', display: 'block' }} />
           ) : albums[0] ? (
-            <img src={img(albums[0].photo_url)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            <img src={img(albums[0].photo_url)} alt="" style={{ width: '100%', height: 'auto', maxHeight: '85vh', objectFit: 'contain', display: 'block' }} />
           ) : (
-            <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#666', fontSize: 14 }}>暂无封面</div>
+            <div style={{ width: '100%', height: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#666', fontSize: 14 }}>暂无封面</div>
           )}
         </div>
       ) : (
@@ -346,7 +346,7 @@ export default function WorkPreview() {
         </div>
       )}
 
-      {/* 相册样片网格：移动端 2 列 / PC 端 3 列 */}
+      {/* 相册样片网格：移动端 2 列 grid row-major 原比例（[1.2/3.4]）/ PC 端 3 列方形卡片 */}
       {albums.length > 0 && (
         isMobile ? (
           <div style={{ padding: '0 16px 20px' }}>
@@ -354,10 +354,10 @@ export default function WorkPreview() {
               <span style={{ width: 3, height: 14, background: MRED, borderRadius: 2, display: 'inline-block' }} />
               作品相册
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 4 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 4, alignItems: 'start' }}>
               {albums.map((a, i) => (
-                <div key={a.id || i} style={{ aspectRatio: '1', background: '#f5f5f5', borderRadius: 4, overflow: 'hidden' }}>
-                  <img src={img(a.thumb_url || a.photo_url)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} loading="lazy" />
+                <div key={a.id || i} style={{ width: '100%', background: '#f5f5f5', borderRadius: 4, overflow: 'hidden' }}>
+                  <img src={img(a.thumb_url || a.photo_url)} alt="" style={{ width: '100%', height: 'auto', display: 'block' }} loading="lazy" />
                 </div>
               ))}
             </div>
