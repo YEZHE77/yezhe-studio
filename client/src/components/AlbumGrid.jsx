@@ -228,18 +228,20 @@ export default function AlbumGrid({ gallery, onBack, albumId }) {
           <span style={{ fontSize: 12, color: MGRAY }}>（{photos.length} 张）</span>
         </div>
         {view === 'grid' ? (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 4 }}>
+          // 网格：3 列瀑布流（自适应高度，按原比例无留白）
+          <div style={{ columnCount: 3, columnGap: 4 }}>
             {photos.map((p, i) => (
-              <button key={i} onClick={() => setFull(i)} style={{ aspectRatio: '1', background: '#f5f5f5', borderRadius: 4, overflow: 'hidden', padding: 0, border: 'none' }}>
-                <img src={img(p, 'thumb')} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }} loading="lazy" />
+              <button key={i} onClick={() => setFull(i)} style={{ display: 'block', width: '100%', padding: 0, border: 'none', borderRadius: 4, overflow: 'hidden', marginBottom: 4, background: '#f5f5f5' }}>
+                <img src={img(p, 'thumb')} alt="" style={{ width: '100%', height: 'auto', display: 'block' }} loading="lazy" />
               </button>
             ))}
           </div>
         ) : (
+          // 列表：单列，按原比例自适应高度
           <div>
             {photos.map((p, i) => (
-              <button key={i} onClick={() => setFull(i)} style={{ display: 'block', width: '100%', aspectRatio: '4/3', background: '#f5f5f5', borderRadius: 8, overflow: 'hidden', marginBottom: 8, padding: 0, border: 'none' }}>
-                <img src={img(p, 'preview')} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }} loading="lazy" />
+              <button key={i} onClick={() => setFull(i)} style={{ display: 'block', width: '100%', padding: 0, border: 'none', borderRadius: 8, overflow: 'hidden', marginBottom: 8, background: '#f5f5f5' }}>
+                <img src={img(p, 'preview')} alt="" style={{ width: '100%', height: 'auto', display: 'block' }} loading="lazy" />
               </button>
             ))}
           </div>
