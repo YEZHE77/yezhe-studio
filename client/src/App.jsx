@@ -22,19 +22,20 @@ function useIsMobile() {
 
 // ===== 方案A：管理后台专属入口密钥（安全隔离） =====
 // 客户端（C 端）任何链接都无法进入管理后台，即使是管理员本人。
-// 管理员必须先访问专属入口 /enter?k=专属密钥 验证（写入 sessionStorage 标记），
-// 之后才能访问后台路由（/login、/、/works、/orders 等）；无标记一律重定向 C 端主页 /home。
+// 管理员先访问专属入口 /enter?k=专属密钥 验证（写入 localStorage 标记，A2：持久化一次验证长期有效），
+// 之后访问后台路由（/login、/、/works、/orders 等）不再受限；无标记一律重定向 C 端主页 /home。
+// 清除浏览器数据/手动退出后才需重新走专属链接。
 // ⚠️ 密钥位于前端 bundle，可被技术用户扒出——方案A防"客户误入/手输地址"，不防黑客（如需更严请升级方案B双域名）。
 const ADMIN_ENTER_KEY = 'yezhe-admin-2026';
 const isAdminEntered = () => {
-  try { return sessionStorage.getItem('admin_entered') === '1'; } catch { return false; }
+  try { return localStorage.getItem('admin_entered') === '1'; } catch { return false; }
 };
 function AdminEnter() {
   const nav = useNavigate();
   useEffect(() => {
     const k = new URLSearchParams(window.location.search).get('k');
     if (k === ADMIN_ENTER_KEY) {
-      try { sessionStorage.setItem('admin_entered', '1'); } catch {}
+      try { localStorage.setItem('admin_entered', '1'); } catch {}
       nav('/login', { replace: true });
     } else {
       nav('/home', { replace: true });
