@@ -160,23 +160,15 @@ export default function AlbumGrid({ gallery, onBack, albumId }) {
 
   return (
     <div className="min-h-screen bg-white" style={{ minHeight: '100vh', paddingBottom: 'calc(70px + env(safe-area-inset-bottom))' }}>
-      {/* 顶部渐变悬浮导航：左侧返回，右侧三圆按钮（列表/宫格/分享）紧凑并列 */}
+      {/* 顶部渐变悬浮导航：左侧返回，右侧分享 */}
       <div className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-3"
         style={{ paddingTop: 'calc(8px + env(safe-area-inset-top))', paddingBottom: 8, background: 'linear-gradient(to bottom, rgba(0,0,0,0.35), transparent)' }}>
         <button onClick={goBack} style={{ background: 'none', border: 'none', padding: 4, display: 'flex', alignItems: 'center' }}>
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
         </button>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <button onClick={() => switchView('single')} title="列表" aria-label="列表视图" aria-pressed={view === 'single'} style={{ width: 32, height: 32, borderRadius: '50%', background: view === 'single' ? '#fff' : 'rgba(255,255,255,0.25)', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', color: view === 'single' ? '#1f2329' : '#fff', fontSize: 15, lineHeight: 1, fontWeight: 600 }}>
-            ☰
-          </button>
-          <button onClick={() => switchView('grid')} title="宫格" aria-label="宫格视图" aria-pressed={view === 'grid'} style={{ width: 32, height: 32, borderRadius: '50%', background: view === 'grid' ? '#fff' : 'rgba(255,255,255,0.25)', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', color: view === 'grid' ? '#1f2329' : '#fff', fontSize: 15, lineHeight: 1, fontWeight: 600 }}>
-            ▦
-          </button>
-          <button onClick={openShare} aria-label="分享" style={{ width: 32, height: 32, borderRadius: '50%', background: MRED, border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
-          </button>
-        </div>
+        <button onClick={openShare} aria-label="分享" style={{ width: 32, height: 32, borderRadius: '50%', background: MRED, border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
+        </button>
       </div>
 
       {/* 封面：原比例适配显示（横版/竖版/方版均按图本身比例，宽 100%、高 auto；极端长竖图以 85vh 兜底，contain 居中不裁切） */}
@@ -188,9 +180,19 @@ export default function AlbumGrid({ gallery, onBack, albumId }) {
         )}
       </div>
 
-      {/* 信息区：标题 + 分类 + 文案（视图切换已移至顶部固定栏，避免标题区被挤） */}
+      {/* 信息区：标题（右侧同排 列表/宫格 切换按钮）+ 标题下方标签 + 文案 */}
       <div style={{ padding: '16px 16px 4px' }}>
-        <div style={{ fontSize: 18, color: '#1f2329', lineHeight: 1.4, fontWeight: 600 }}>{title || '作品相册'}</div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+          <div style={{ fontSize: 18, color: '#1f2329', lineHeight: 1.4, fontWeight: 600, flex: 1, minWidth: 0 }}>{title || '作品相册'}</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+            <button onClick={() => switchView('single')} aria-pressed={view === 'single'} style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '6px 12px', borderRadius: 16, border: 'none', fontSize: 12, lineHeight: 1, background: view === 'single' ? '#1f2329' : '#f5f5f5', color: view === 'single' ? '#fff' : '#666' }}>
+              ☰ 列表
+            </button>
+            <button onClick={() => switchView('grid')} aria-pressed={view === 'grid'} style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '6px 12px', borderRadius: 16, border: 'none', fontSize: 12, lineHeight: 1, background: view === 'grid' ? '#1f2329' : '#f5f5f5', color: view === 'grid' ? '#fff' : '#666' }}>
+              ▦ 宫格
+            </button>
+          </div>
+        </div>
         {category && (
           <span style={{ marginTop: 8, display: 'inline-block', fontSize: 12, color: MGRAY, background: '#f5f5f5', padding: '3px 10px', borderRadius: 4 }}>{category}</span>
         )}
