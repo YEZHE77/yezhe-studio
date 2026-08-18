@@ -14,9 +14,9 @@ const MBORDER = '#F0F0F0';
 const BGM_URL = '';
 const bgmSrc = BGM_URL || '/bgm/bgm.mp3';
 
-// 客片电子相册 —— 视觉/交互对齐「后端预览（WorkPreview）小程序风」：
-// 浅色底 + 3/4 封面 + 顶部渐变悬浮导航 + 信息区 + 照片「单列大图纵向滑动（默认）↔ 网格总览」切换 +
-// 底部品牌栏（头像+Slogan ｜ 播放 ｜ 预约服务，带竖线分隔线，参照歪猫/picbling 底部分隔感）；
+// 客片电子相册 —— 视觉/交互对齐「后端预览（WorkPreview）小程序风」+ 参照歪猫公社小程序：
+// 浅色底 + 3/4 封面 + 顶部渐变悬浮导航 + 信息区 + 照片「单列大图纵向滑动（默认）↔ 2列不等高规则网格」切换 +
+// 底部品牌栏（头像+Slogan ｜ 播放 ｜ 投屏 ｜ 预约服务，三道竖线分隔，参照歪猫底部分隔感）；
 // 「播放」按钮独立跳转黑底幻灯片（3s 自动轮播 + 暂停 + 进度点 + BGM）。
 // 保留 C 端全部真实功能：分享(微信/朋友圈/二维码)、投屏、预约、全屏查看、返回。
 export default function AlbumGrid({ gallery, onBack, albumId }) {
@@ -198,7 +198,7 @@ export default function AlbumGrid({ gallery, onBack, albumId }) {
       {/* 信息区：标题 + 视图切换 + 分类 + 文案 */}
       <div style={{ padding: '16px 16px 4px' }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
-          <div style={{ fontSize: 20, color: '#1f2329', lineHeight: 1.4, flex: 1, minWidth: 0 }}>{title || '作品相册'}</div>
+          <div style={{ fontSize: 18, color: '#1f2329', lineHeight: 1.4, fontWeight: 600, flex: 1, minWidth: 0 }}>{title || '作品相册'}</div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0, paddingTop: 4 }}>
             <button onClick={() => switchView('single')} title="单列大图"
               style={{ background: 'none', border: 'none', padding: 4, color: view === 'single' ? '#1f2329' : '#bbb', fontSize: 18, lineHeight: 1 }}>
@@ -221,18 +221,13 @@ export default function AlbumGrid({ gallery, onBack, albumId }) {
         )}
       </div>
 
-      {/* 照片区：作品相册 标题 + 网格↔列表 */}
-      <div style={{ padding: '14px 16px 20px' }}>
-        <div style={{ fontSize: 15, color: '#333', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
-          <span style={{ width: 3, height: 14, background: TEAL, borderRadius: 2, display: 'inline-block' }} />
-          作品相册
-          <span style={{ fontSize: 12, color: MGRAY }}>（{photos.length} 张）</span>
-        </div>
+      {/* 照片区：参照歪猫小程序——2列不等高规则网格/单列大图纵向滑动（无小标题） */}
+      <div style={{ padding: '8px 0 20px' }}>
         {view === 'grid' ? (
-          // 网格总览：3 列瀑布流（按原比例无留白），快速找图
-          <div style={{ columnCount: 3, columnGap: 4 }}>
+          // 网格总览：2 列不等高规则网格（原比例紧贴排列，参照歪猫）
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 3 }}>
             {photos.map((p, i) => (
-              <button key={i} onClick={() => setFull(i)} style={{ display: 'block', width: '100%', padding: 0, border: 'none', borderRadius: 4, overflow: 'hidden', marginBottom: 4, background: '#f5f5f5' }}>
+              <button key={i} onClick={() => setFull(i)} style={{ display: 'block', width: '100%', padding: 0, border: 'none', borderRadius: 0, overflow: 'hidden', background: '#f5f5f5' }}>
                 <img src={img(p, 'thumb')} alt="" style={{ width: '100%', height: 'auto', display: 'block' }} loading="lazy" />
               </button>
             ))}
@@ -270,9 +265,15 @@ export default function AlbumGrid({ gallery, onBack, albumId }) {
             <span style={{ fontSize: 17, lineHeight: 1 }}>▶</span>
             <span style={{ fontSize: 10, marginTop: 2 }}>播放</span>
           </button>
-          {/* 竖线分隔线：播放与预约服务之间 */}
-          <div style={{ width: 1, height: 22, background: MBORDER, margin: '0 16px' }} />
-          <button onClick={goAppointment} style={{ height: 34, padding: '0 14px', borderRadius: 8, border: 'none', background: TEAL, color: '#fff', fontSize: 14 }}>
+          {/* 竖线分隔线：播放与投屏之间 */}
+          <div style={{ width: 1, height: 22, background: MBORDER, margin: '0 12px' }} />
+          <button onClick={castScreen} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, background: 'none', border: 'none', color: '#666', minWidth: 44 }}>
+            <span style={{ fontSize: 17, lineHeight: 1 }}>⍟</span>
+            <span style={{ fontSize: 10, marginTop: 2 }}>投屏</span>
+          </button>
+          {/* 竖线分隔线：投屏与预约服务之间 */}
+          <div style={{ width: 1, height: 22, background: MBORDER, margin: '0 12px' }} />
+          <button onClick={goAppointment} style={{ height: 34, padding: '0 14px', borderRadius: 8, border: 'none', background: MRED, color: '#fff', fontSize: 14 }}>
             预约服务
           </button>
         </div>
