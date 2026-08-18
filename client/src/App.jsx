@@ -20,30 +20,6 @@ function useIsMobile() {
   return isMobile;
 }
 
-// ===== 方案A：管理后台专属入口密钥（安全隔离） =====
-// 客户端（C 端）任何链接都无法进入管理后台，即使是管理员本人。
-// 管理员先访问专属入口 /enter?k=专属密钥 验证（写入 localStorage 标记，A2：持久化一次验证长期有效），
-// 之后访问后台路由（/login、/、/works、/orders 等）不再受限；无标记一律重定向 C 端主页 /home。
-// 清除浏览器数据/手动退出后才需重新走专属链接。
-// ⚠️ 密钥位于前端 bundle，可被技术用户扒出——方案A防"客户误入/手输地址"，不防黑客（如需更严请升级方案B双域名）。
-const ADMIN_ENTER_KEY = 'yezhe-admin-2026';
-const isAdminEntered = () => {
-  try { return localStorage.getItem('admin_entered') === '1'; } catch { return false; }
-};
-function AdminEnter() {
-  const nav = useNavigate();
-  useEffect(() => {
-    const k = new URLSearchParams(window.location.search).get('k');
-    if (k === ADMIN_ENTER_KEY) {
-      try { localStorage.setItem('admin_entered', '1'); } catch {}
-      nav('/login', { replace: true });
-    } else {
-      nav('/home', { replace: true });
-    }
-  }, [nav]);
-  return null;
-}
-
 // 首屏必须同步加载（Login + Dashboard + Sidebar）
 import Login from './pages/Login.jsx';
 import Dashboard from './pages/Dashboard.jsx';
@@ -227,8 +203,6 @@ export default function App() {
       <Route path="/appointment-form" element={
         <Suspense fallback={<PageLoader />}><AppointmentForm /></Suspense>
       } />
-      {/* 管理后台专属入口（方案A）：/enter?k=专属密钥 验证通过才能访问后台；错误密钥/无密钥重定向 C 端主页 */}
-      <Route path="/enter" element={<AdminEnter />} />
       {/* 线上手机端模拟器：公开页面，iframe 加载移动端页面，带 iPhone 外框与设备切换 */}
       <Route path="/phone-simulator" element={
         <Suspense fallback={<PageLoader />}><PhoneSimulator /></Suspense>
@@ -249,17 +223,18 @@ export default function App() {
       } />
       {!user && (
         <>
-          {/* 后台登录页：必须先走专属入口（admin_entered 标记），否则重定向 C 端主页——客户/手输地址一律进不去后台 */}
-          <Route path="/login" element={isAdminEntered() ? <Login /> : <Navigate to="/home" replace />} />
-          <Route path="/" element={<Navigate to={isAdminEntered() ? '/login' : '/home'} replace />} />
-          <Route path="*" element={<Navigate to={isAdminEntered() ? '/login' : '/home'} replace />} />
+          {/* 后台登录页：未登录直接可访问，输入 admin/admin123 登录 */}
+          <Route path="/login" element={<Login />} />
+          <Route path="/" element={<Navigate to="/login" replace />} />
+          <Route path="*" element={<Navigate to="/login" replace />} />
         </>
       )}
-      {user && (isAdminEntered()
-        ? (isMobile
-          ? <Route path="/*" element={<MobileShell />} />
-          : <Route path="/*" element={<AppShell />} />)
-        : <Route path="/*" element={<Navigate to="/home" replace />} />
+      {user && (
+        <>
+          {/* 已登录：/login 重定向到后台首页，其余路由按设备渲染 MobileShell / AppShell */}
+          <Route path="/login" element={<Navigate to="/" replace />} />
+          <Route path="/*" element={isMobile ? <MobileShell /> : <AppShell />} />
+        </>
       )}
     </Routes>
     </ErrorBoundary>
