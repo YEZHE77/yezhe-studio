@@ -15,7 +15,7 @@ const BGM_URL = '';
 const bgmSrc = BGM_URL || '/bgm/bgm.mp3';
 
 // 客片电子相册 —— 视觉/交互对齐「后端预览（WorkPreview）小程序风」+ 参照歪猫公社小程序：
-// 浅色底 + 原比例封面（横版/竖版/方版均按图本身比例 100% 宽自适应）+ 顶部渐变悬浮导航 + 信息区 + 照片「单列大图纵向滑动（默认）↔ 2列 Grid row-major（1.2/3.4/5.6 严格逐行顺序）」切换 +
+// 浅色底 + 原比例封面（横版/竖版/方版均按图本身比例 100% 宽自适应）+ 顶部渐变悬浮导航 + 信息区 + 照片「单列大图纵向滑动（默认）↔ 2列 multi-column（DOM顺序=后台排序，列内紧贴2px无大量空白）」切换 +
 // 底部品牌栏（头像+品牌名/Slogan 上下结构 ｜ 播放 ｜ 预约服务，两道竖线分隔，参照歪猫底部分隔感）；
 // 「播放」按钮独立跳转黑底幻灯片（3s 自动轮播 + 暂停 + 进度点 + BGM）。
 // 保留 C 端全部真实功能：分享(微信/朋友圈/二维码)、投屏、预约、全屏查看、返回。
@@ -209,10 +209,10 @@ export default function AlbumGrid({ gallery, onBack, albumId }) {
       {/* 照片区：参照歪猫小程序——2列不等高规则网格/单列大图纵向滑动（无小标题） */}
       <div style={{ padding: '8px 0 20px' }}>
         {view === 'grid' ? (
-          // 网格总览：2 列 CSS Grid row-major（严格按 photos 顺序 1.2 / 3.4 / 5.6 逐行排列；div 容器避免 button UA 灰底；alignItems:start 避免 stretch 变形）
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2, alignItems: 'start' }}>
+          // 网格总览：2 列 CSS multi-column（DOM 顺序严格 = photos = 后台排序，未被重排；列内紧贴 2px 无大量空白；div 容器避免 button UA 灰底）
+          <div style={{ columnCount: 2, columnGap: 2 }}>
             {photos.map((p, i) => (
-              <div key={i} role="button" tabIndex={0} onClick={() => setFull(i)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setFull(i); } }} style={{ display: 'block', width: '100%', padding: 0, border: 'none', borderRadius: 0, overflow: 'hidden', background: '#f5f5f5', cursor: 'pointer' }}>
+              <div key={i} role="button" tabIndex={0} onClick={() => setFull(i)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setFull(i); } }} style={{ display: 'block', width: '100%', padding: 0, border: 'none', borderRadius: 0, overflow: 'hidden', marginBottom: 2, background: '#f5f5f5', cursor: 'pointer', breakInside: 'avoid' }}>
                 <img src={img(p, 'thumb')} alt="" style={{ width: '100%', height: 'auto', display: 'block' }} loading="lazy" />
               </div>
             ))}
