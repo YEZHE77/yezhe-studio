@@ -15,7 +15,7 @@ const BGM_URL = '';
 const bgmSrc = BGM_URL || '/bgm/bgm.mp3';
 
 // 客片电子相册 —— 视觉/交互对齐「后端预览（WorkPreview）小程序风」+ 参照歪猫公社小程序：
-// 浅色底 + 原比例封面（横版/竖版/方版均按图本身比例 100% 宽自适应）+ 顶部渐变悬浮导航 + 信息区 + 照片「单列大图纵向滑动（默认）↔ 2列网格 row-major 保持原顺序」切换 +
+// 浅色底 + 原比例封面（横版/竖版/方版均按图本身比例 100% 宽自适应）+ 顶部渐变悬浮导航 + 信息区 + 照片「单列大图纵向滑动（默认）↔ 2列 multi-column 列内紧贴2px」切换 +
 // 底部品牌栏（头像+品牌名/Slogan 上下结构 ｜ 播放 ｜ 预约服务，两道竖线分隔，参照歪猫底部分隔感）；
 // 「播放」按钮独立跳转黑底幻灯片（3s 自动轮播 + 暂停 + 进度点 + BGM）。
 // 保留 C 端全部真实功能：分享(微信/朋友圈/二维码)、投屏、预约、全屏查看、返回。
@@ -209,10 +209,10 @@ export default function AlbumGrid({ gallery, onBack, albumId }) {
       {/* 照片区：参照歪猫小程序——2列不等高规则网格/单列大图纵向滑动（无小标题） */}
       <div style={{ padding: '8px 0 20px' }}>
         {view === 'grid' ? (
-          // 网格总览：2 列 CSS Grid row-major（保持原始 photos 顺序 [1,2]/[3,4]/[5,6]，横竖版均原比例；用 div 而非 button 避免 UA 样式 font/line-height 撑高容器露灰底；alignItems:start 避免 grid stretch；行内不同高度图底部小空隙可接受）
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2, alignItems: 'start' }}>
+          // 网格总览：2 列 CSS multi-column（列内紧贴 2px 错位填补，右列横版图下方紧接下一张；div 容器避免 button UA 样式露灰底）
+          <div style={{ columnCount: 2, columnGap: 2 }}>
             {photos.map((p, i) => (
-              <div key={i} role="button" tabIndex={0} onClick={() => setFull(i)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setFull(i); } }} style={{ display: 'block', width: '100%', padding: 0, border: 'none', borderRadius: 0, overflow: 'hidden', background: '#f5f5f5', cursor: 'pointer' }}>
+              <div key={i} role="button" tabIndex={0} onClick={() => setFull(i)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setFull(i); } }} style={{ display: 'block', width: '100%', padding: 0, border: 'none', borderRadius: 0, overflow: 'hidden', marginBottom: 2, background: '#f5f5f5', cursor: 'pointer', breakInside: 'avoid' }}>
                 <img src={img(p, 'thumb')} alt="" style={{ width: '100%', height: 'auto', display: 'block' }} loading="lazy" />
               </div>
             ))}
