@@ -224,8 +224,8 @@ export default function AlbumGrid({ gallery, onBack, albumId }) {
       {/* 照片区：参照歪猫小程序——2列不等高规则网格/单列大图纵向滑动（无小标题） */}
       <div style={{ padding: '8px 0 20px' }}>
         {view === 'grid' ? (
-          // 网格总览：2 列不等高规则网格（原比例紧贴排列，参照歪猫）
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 3 }}>
+          // 网格总览：2 列不等高规则网格（原图直角、2px 间距、横竖版自适应，参照歪猫）
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
             {photos.map((p, i) => (
               <button key={i} onClick={() => setFull(i)} style={{ display: 'block', width: '100%', padding: 0, border: 'none', borderRadius: 0, overflow: 'hidden', background: '#f5f5f5' }}>
                 <img src={img(p, 'thumb')} alt="" style={{ width: '100%', height: 'auto', display: 'block' }} loading="lazy" />
@@ -233,10 +233,10 @@ export default function AlbumGrid({ gallery, onBack, albumId }) {
             ))}
           </div>
         ) : (
-          // 单列大图纵向滑动（默认）：整张铺满屏宽、按原比例、上下连续滑动沉浸浏览
+          // 单列大图纵向滑动（默认）：整张铺满屏宽、原图直角、照片间距 2px、横竖版自适应
           <div>
             {photos.map((p, i) => (
-              <button key={i} onClick={() => setFull(i)} style={{ display: 'block', width: '100%', padding: 0, border: 'none', borderRadius: 6, overflow: 'hidden', marginBottom: 10, background: '#f5f5f5' }}>
+              <button key={i} onClick={() => setFull(i)} style={{ display: 'block', width: '100%', padding: 0, border: 'none', borderRadius: 0, overflow: 'hidden', marginBottom: 2, background: '#f5f5f5' }}>
                 <img src={img(p, 'preview')} alt="" style={{ width: '100%', height: 'auto', display: 'block' }} loading="lazy" />
               </button>
             ))}
