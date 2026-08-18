@@ -75,5 +75,5 @@ export default function WorkPublic() {
     );
   }
 
-  return <AlbumGrid gallery={gallery} albumId={id} onBack={() => nav('/')} />;
+  return <AlbumGrid gallery={gallery} albumId={id} onBack={() => nav('/home')} />;
 }

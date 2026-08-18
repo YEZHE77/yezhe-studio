@@ -105,7 +105,7 @@ export default function AlbumGrid({ gallery, onBack, albumId }) {
   const goBack = () => {
     if (onBack) { onBack(); return; }
     if (window.history.length > 1) window.history.back();
-    else window.location.href = window.location.origin + '/';
+    else window.location.href = window.location.origin + '/home'; // C 端兜底回主页，绝不落管理后台
   };
 
   // 分享弹窗：微信好友/朋友圈（H5 受浏览器限制，引导在微信内操作）；下载二维码（扫码直达相册）

@@ -98,9 +98,9 @@ export default function GalleryAlbum({ gallery, startIndex = 0, onClose }) {
   };
 
   const goMore = () => {
-    // 查看更多：返回工作室主页（H5 公开落地页首页）
+    // 查看更多：返回 C 端主页（公开落地页），绝不落管理后台
     const base = window.location.origin;
-    window.location.href = base + '/';
+    window.location.href = base + '/home';
   };
 
   const copyAlbumLink = async () => {
@@ -121,7 +121,7 @@ export default function GalleryAlbum({ gallery, startIndex = 0, onClose }) {
           <button onClick={onClose}
             className="w-9 h-9 rounded-full bg-black/30 flex items-center justify-center text-white/90 text-xl">×</button>
         ) : (
-          <button onClick={() => window.history.length > 1 ? window.history.back() : (window.location.href = window.location.origin + '/')}
+          <button onClick={() => window.history.length > 1 ? window.history.back() : (window.location.href = window.location.origin + '/home')}
             className="w-9 h-9 rounded-full bg-black/30 flex items-center justify-center text-white/90 text-lg">‹</button>
         )}
         <div className="text-center flex-1">
