@@ -231,7 +231,7 @@ export default function AlbumGrid({ gallery, onBack, albumId }) {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 4 }}>
             {photos.map((p, i) => (
               <button key={i} onClick={() => setFull(i)} style={{ aspectRatio: '1', background: '#f5f5f5', borderRadius: 4, overflow: 'hidden', padding: 0, border: 'none' }}>
-                <img src={img(p, 'thumb')} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} loading="lazy" />
+                <img src={img(p, 'thumb')} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }} loading="lazy" />
               </button>
             ))}
           </div>
@@ -239,7 +239,7 @@ export default function AlbumGrid({ gallery, onBack, albumId }) {
           <div>
             {photos.map((p, i) => (
               <button key={i} onClick={() => setFull(i)} style={{ display: 'block', width: '100%', aspectRatio: '4/3', background: '#f5f5f5', borderRadius: 8, overflow: 'hidden', marginBottom: 8, padding: 0, border: 'none' }}>
-                <img src={img(p)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} loading="lazy" />
+                <img src={img(p, 'preview')} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }} loading="lazy" />
               </button>
             ))}
           </div>
