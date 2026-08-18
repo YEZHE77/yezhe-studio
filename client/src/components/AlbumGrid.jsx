@@ -15,7 +15,7 @@ const BGM_URL = '';
 const bgmSrc = BGM_URL || '/bgm/bgm.mp3';
 
 // 客片电子相册 —— 视觉/交互对齐「后端预览（WorkPreview）小程序风」+ 参照歪猫公社小程序：
-// 浅色底 + 3/4 封面 + 顶部渐变悬浮导航 + 信息区 + 照片「单列大图纵向滑动（默认）↔ 2列不等高规则网格」切换 +
+// 浅色底 + 原比例封面（横版/竖版/方版均按图本身比例 100% 宽自适应）+ 顶部渐变悬浮导航 + 信息区 + 照片「单列大图纵向滑动（默认）↔ 2列不等高规则网格」切换 +
 // 底部品牌栏（头像+品牌名/Slogan 上下结构 ｜ 播放 ｜ 预约服务，两道竖线分隔，参照歪猫底部分隔感）；
 // 「播放」按钮独立跳转黑底幻灯片（3s 自动轮播 + 暂停 + 进度点 + BGM）。
 // 保留 C 端全部真实功能：分享(微信/朋友圈/二维码)、投屏、预约、全屏查看、返回。
@@ -171,12 +171,12 @@ export default function AlbumGrid({ gallery, onBack, albumId }) {
         </button>
       </div>
 
-      {/* 封面 3/4 全宽（后端预览同款） */}
-      <div className="w-full" style={{ aspectRatio: '3/4', background: '#1a1a1a', position: 'relative', overflow: 'hidden' }}>
+      {/* 封面：原比例适配显示（横版/竖版/方版均按图本身比例，宽 100%、高 auto；极端长竖图以 85vh 兜底，contain 居中不裁切） */}
+      <div className="w-full" style={{ background: '#1a1a1a', display: 'flex', alignItems: 'center', justifyContent: 'center', maxHeight: '85vh', overflow: 'hidden' }}>
         {cover ? (
-          <img src={img(cover)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          <img src={img(cover)} alt="" style={{ width: '100%', height: 'auto', maxHeight: '85vh', objectFit: 'contain', display: 'block' }} />
         ) : (
-          <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#666', fontSize: 14 }}>暂无封面</div>
+          <div style={{ width: '100%', height: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#666', fontSize: 14 }}>暂无封面</div>
         )}
       </div>
 
