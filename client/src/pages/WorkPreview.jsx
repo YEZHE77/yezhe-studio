@@ -346,7 +346,7 @@ export default function WorkPreview() {
         </div>
       )}
 
-      {/* 相册样片网格：移动端 2 列 multi-column 列向填充（左[1,3,5]/右[2,4,6] 无留白）/ PC 端 3 列方形卡片 */}
+      {/* 相册样片网格：移动端 JS 奇偶双列（左[0,2,4]/右[1,3,5] = 1左2右、3左4右）+ 列内紧贴无行内空白 / PC 端 3 列方形卡片 */}
       {albums.length > 0 && (
         isMobile ? (
           <div style={{ padding: '0 16px 20px' }}>
@@ -354,12 +354,21 @@ export default function WorkPreview() {
               <span style={{ width: 3, height: 14, background: MRED, borderRadius: 2, display: 'inline-block' }} />
               作品相册
             </div>
-            <div style={{ columnCount: 2, columnGap: 4 }}>
-              {albums.map((a, i) => (
-                <div key={a.id || i} style={{ width: '100%', background: '#f5f5f5', borderRadius: 4, overflow: 'hidden', marginBottom: 4, breakInside: 'avoid' }}>
-                  <img src={img(a.thumb_url || a.photo_url)} alt="" style={{ width: '100%', height: 'auto', display: 'block' }} loading="lazy" />
-                </div>
-              ))}
+            <div style={{ display: 'flex', gap: 4, alignItems: 'flex-start' }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                {albums.map((a, i) => i % 2 === 0 ? (
+                  <div key={a.id || i} style={{ width: '100%', background: '#f5f5f5', borderRadius: 4, overflow: 'hidden', marginBottom: 4 }}>
+                    <img src={img(a.thumb_url || a.photo_url)} alt="" style={{ width: '100%', height: 'auto', display: 'block' }} loading="lazy" />
+                  </div>
+                ) : null)}
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                {albums.map((a, i) => i % 2 === 1 ? (
+                  <div key={a.id || i} style={{ width: '100%', background: '#f5f5f5', borderRadius: 4, overflow: 'hidden', marginBottom: 4 }}>
+                    <img src={img(a.thumb_url || a.photo_url)} alt="" style={{ width: '100%', height: 'auto', display: 'block' }} loading="lazy" />
+                  </div>
+                ) : null)}
+              </div>
             </div>
           </div>
         ) : (

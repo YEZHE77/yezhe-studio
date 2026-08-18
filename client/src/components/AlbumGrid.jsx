@@ -209,13 +209,23 @@ export default function AlbumGrid({ gallery, onBack, albumId }) {
       {/* 照片区：参照歪猫小程序——2列不等高规则网格/单列大图纵向滑动（无小标题） */}
       <div style={{ padding: '8px 0 20px' }}>
         {view === 'grid' ? (
-          // 网格总览：2 列 CSS multi-column（DOM 顺序严格 = photos = 后台排序，未被重排；列内紧贴 2px 无大量空白；div 容器避免 button UA 灰底）
-          <div style={{ columnCount: 2, columnGap: 2 }}>
-            {photos.map((p, i) => (
-              <div key={i} role="button" tabIndex={0} onClick={() => setFull(i)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setFull(i); } }} style={{ display: 'block', width: '100%', padding: 0, border: 'none', borderRadius: 0, overflow: 'hidden', marginBottom: 2, background: '#f5f5f5', cursor: 'pointer', breakInside: 'avoid' }}>
-                <img src={img(p, 'thumb')} alt="" style={{ width: '100%', height: 'auto', display: 'block' }} loading="lazy" />
-              </div>
-            ))}
+          // 宫格：JS 奇偶拆分双列（左列 photos[0,2,4] / 右列 photos[1,3,5] = 1左2右、3左4右 顺序）
+          // 列内紧贴 2px、不强制行对齐——消除 row-major 行高差导致的矮图下方大空白，仅列底轻微不齐
+          <div style={{ display: 'flex', gap: 2, alignItems: 'flex-start' }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              {photos.map((p, i) => i % 2 === 0 ? (
+                <div key={i} role="button" tabIndex={0} onClick={() => setFull(i)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setFull(i); } }} style={{ display: 'block', width: '100%', padding: 0, border: 'none', borderRadius: 0, overflow: 'hidden', marginBottom: 2, background: '#f5f5f5', cursor: 'pointer' }}>
+                  <img src={img(p, 'thumb')} alt="" style={{ width: '100%', height: 'auto', display: 'block' }} loading="lazy" />
+                </div>
+              ) : null)}
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              {photos.map((p, i) => i % 2 === 1 ? (
+                <div key={i} role="button" tabIndex={0} onClick={() => setFull(i)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setFull(i); } }} style={{ display: 'block', width: '100%', padding: 0, border: 'none', borderRadius: 0, overflow: 'hidden', marginBottom: 2, background: '#f5f5f5', cursor: 'pointer' }}>
+                  <img src={img(p, 'thumb')} alt="" style={{ width: '100%', height: 'auto', display: 'block' }} loading="lazy" />
+                </div>
+              ) : null)}
+            </div>
           </div>
         ) : (
           // 单列大图纵向滑动（默认）：整张铺满屏宽、原图直角、照片间距 2px、横竖版自适应；div 容器避免 button UA 灰底
