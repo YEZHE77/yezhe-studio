@@ -67,6 +67,7 @@ export default function WorkPreview() {
   const gate = useVisitorGate({ page: '/works/' + (id || ''), source: 'h5', needPassword: true });
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [view, setView] = useState('grid'); // 移动端相册视图：grid 宫格 / list 列表
   // 响应式：PC 端走受限布局（封面不全屏、标题卡片化、相册 3 列、品牌栏 static），移动端保持原 3/4 全屏 + fixed 品牌栏
   const [isMobile, setIsMobile] = useState(() => (typeof window !== 'undefined' ? window.innerWidth < 768 : true));
   useEffect(() => {
@@ -346,30 +347,59 @@ export default function WorkPreview() {
         </div>
       )}
 
-      {/* 相册样片网格：移动端 JS 奇偶双列（左[0,2,4]/右[1,3,5] = 1左2右、3左4右）+ 列内紧贴无行内空白 / PC 端 3 列方形卡片 */}
+      {/* 相册样片：移动端支持列表/宫格切换 / PC 端 3 列方形卡片 */}
       {albums.length > 0 && (
         isMobile ? (
           <div style={{ padding: '0 16px 20px' }}>
-            <div style={{ fontSize: 15, color: '#333', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
-              <span style={{ width: 3, height: 14, background: MRED, borderRadius: 2, display: 'inline-block' }} />
-              作品相册
-            </div>
-            <div style={{ display: 'flex', gap: 4, alignItems: 'flex-start' }}>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                {albums.map((a, i) => i % 2 === 0 ? (
-                  <div key={a.id || i} style={{ width: '100%', background: '#f5f5f5', borderRadius: 0, overflow: 'hidden', marginBottom: 4 }}>
-                    <img src={img(a.thumb_url || a.photo_url)} alt="" style={{ width: '100%', height: 'auto', display: 'block' }} loading="lazy" />
-                  </div>
-                ) : null)}
+            {/* 标签行：作品相册标题 + 右侧视图切换图标 */}
+            <div style={{ marginBottom: 10, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ width: 3, height: 14, background: MRED, borderRadius: 2, display: 'inline-block' }} />
+                <span style={{ fontSize: 15, color: '#333' }}>作品相册</span>
               </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                {albums.map((a, i) => i % 2 === 1 ? (
-                  <div key={a.id || i} style={{ width: '100%', background: '#f5f5f5', borderRadius: 0, overflow: 'hidden', marginBottom: 4 }}>
-                    <img src={img(a.thumb_url || a.photo_url)} alt="" style={{ width: '100%', height: 'auto', display: 'block' }} loading="lazy" />
-                  </div>
-                ) : null)}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                <button onClick={() => setView('list')} title="列表视图" aria-label="列表视图" aria-pressed={view === 'list'}
+                  style={{ background: 'none', border: 'none', padding: 4, color: view === 'list' ? '#1f2329' : '#bbb', fontSize: 18, lineHeight: 1, cursor: 'pointer' }}>
+                  ☰
+                </button>
+                <button onClick={() => setView('grid')} title="宫格视图" aria-label="宫格视图" aria-pressed={view === 'grid'}
+                  style={{ background: 'none', border: 'none', padding: 4, color: view === 'grid' ? '#1f2329' : '#bbb', fontSize: 18, lineHeight: 1, cursor: 'pointer' }}>
+                  ▦
+                </button>
               </div>
             </div>
+            {view === 'grid' ? (
+              // 宫格：JS 奇偶双列（左[0,2,4]/右[1,3,5] = 1左2右、3左4右）+ 列内紧贴无行内空白
+              <div style={{ display: 'flex', gap: 4, alignItems: 'flex-start' }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  {albums.map((a, i) => i % 2 === 0 ? (
+                    <div key={a.id || i} style={{ width: '100%', background: '#f5f5f5', borderRadius: 0, overflow: 'hidden', marginBottom: 4 }}>
+                      <img src={img(a.thumb_url || a.photo_url)} alt="" style={{ width: '100%', height: 'auto', display: 'block' }} loading="lazy" />
+                    </div>
+                  ) : null)}
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  {albums.map((a, i) => i % 2 === 1 ? (
+                    <div key={a.id || i} style={{ width: '100%', background: '#f5f5f5', borderRadius: 0, overflow: 'hidden', marginBottom: 4 }}>
+                      <img src={img(a.thumb_url || a.photo_url)} alt="" style={{ width: '100%', height: 'auto', display: 'block' }} loading="lazy" />
+                    </div>
+                  ) : null)}
+                </div>
+              </div>
+            ) : (
+              // 列表：每个相册一行（封面缩略图 + 标题 + 照片数）
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {albums.map((a, i) => (
+                  <div key={a.id || i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: 10, background: '#f9f9f9', borderRadius: 0, overflow: 'hidden' }}>
+                    <img src={img(a.thumb_url || a.photo_url)} alt="" style={{ width: 64, height: 64, objectFit: 'cover', flexShrink: 0, background: '#f5f5f5' }} />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 14, color: '#1f2329', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.title || a.album_name || `相册 ${i + 1}`}</div>
+                      <div style={{ fontSize: 12, color: '#999', marginTop: 4 }}>{a.photo_count || 0} 张</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         ) : (
           <div style={{ maxWidth: 900, margin: '20px auto 0', padding: '0 24px' }}>
