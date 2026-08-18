@@ -43,6 +43,8 @@ export default function MiniProgramPreview() {
         <span style={{ width: 1, height: 20, background: '#2a2a2a', margin: '0 4px' }} />
         <button onClick={() => setUrl(window.location.origin + '/home')} style={{ padding: '8px 12px', background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 6, cursor: 'pointer', fontSize: 13, color: '#fff' }}>微官网</button>
         <button onClick={() => setUrl(window.location.origin + '/package-center')} style={{ padding: '8px 12px', background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 6, cursor: 'pointer', fontSize: 13, color: '#fff' }}>套系中心</button>
+        {/* 管理后台：iframe 加载根路径，390px 手机宽度下自动渲染 MobileShell（手机端后台管理） */}
+        <button onClick={() => setUrl(window.location.origin + '/')} style={{ padding: '8px 12px', background: '#2DB7F5', border: '1px solid #2DB7F5', borderRadius: 6, cursor: 'pointer', fontSize: 13, color: '#fff' }}>管理后台</button>
       </div>
 
       {/* 设备预览区（纯黑底 + 居中 + iPhone 框架） */}
@@ -71,7 +73,7 @@ export default function MiniProgramPreview() {
 
       {/* 说明 + 错误 */}
       <div style={{ padding: '12px 24px 24px', textAlign: 'center', fontSize: 12, color: '#999' }}>
-        {error ? '⚠️ iframe 加载失败，请检查链接是否可访问 / 是否被 X-Frame-Options 限制' : '按真实手机屏幕比例（' + device + '）展示 iframe 内容；右侧工具栏可切换设备型号 / 刷新 / 跳到常用页面'}
+        {error ? '⚠️ iframe 加载失败，请检查链接是否可访问 / 是否被 X-Frame-Options 限制' : '按真实手机屏幕比例（' + device + '）展示 iframe 内容；工具栏可切换设备 / 刷新 / 跳到 微官网·套系中心·管理后台（管理后台 = 手机端 MobileShell，与真机一致）'}
       </div>
     </div>
   );
