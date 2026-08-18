@@ -143,7 +143,8 @@ export default function AlbumGrid({ gallery, onBack, albumId }) {
   };
 
   const goAppointment = () => {
-    window.location.href = window.location.origin + '/schedule';
+    // 客户预约服务：跳转 C 端公开预约提交页（写入预约表待确认），而非管理后台档期
+    window.location.href = window.location.origin + '/customer/book';
   };
 
   // 切换视图并尽量保留滚动位置（整页滚动，用 window.scrollY）
