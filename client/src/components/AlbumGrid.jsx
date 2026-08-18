@@ -1,24 +1,34 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { img } from '../api.js';
+import http, { img } from '../api.js';
 import GalleryAlbum from './GalleryAlbum.jsx';
 
 const TEAL = 'var(--brand-green)';
-// 幻灯片背景音乐：留空即使用前端本地打包的默认 BGM（public/bgm/bgm.mp3，
-// 当前默认曲《Kiss The Rain - Yiruma》）。如需自有曲子，可在此填
-// 真实 HTTPS URL（建议上传 MP3 至 R2 私有桶，通过 yezhe-img-proxy.yezhe128627.workers.dev 代理；
-// 小程序端需在微信公众平台 downloadFile 合法域名添加该域名）。留空则不播放声音，但播放/暂停/退出逻辑保持完整。
-const BGM_URL = '';
+const MRED = '#FA5151';
+const MGRAY = '#999999';
+const MBORDER = '#F0F0F0';
 
-// 客片电子相册（纵向长图流式 / 缩略图网格 双视图）—— 与小程序「相册详情页」UI/交互保持一致
-// 封面右上悬浮青绿色「分享」按钮；标题栏右侧视图切换；底部品牌工具栏（播放/投屏/预约服务）
+// 幻灯片背景音乐：留空则使用前端本地打包的默认 BGM（public/bgm/bgm.mp3，
+// 默认曲《Kiss The Rain - Yiruma》）。如需自有曲子，可在此填真实 HTTPS URL
+// （建议上传 MP3 至 R2 私有桶，通过 yezhe-img-proxy.yezhe128627.workers.dev 代理；
+// 小程序端需在微信公众平台 downloadFile 合法域名添加该域名）。
+const BGM_URL = '';
+const bgmSrc = BGM_URL || '/bgm/bgm.mp3';
+
+// 客片电子相册 —— 视觉/交互对齐「后端预览（WorkPreview）小程序风」：
+// 浅色底 + 3/4 封面 + 顶部渐变悬浮导航 + 信息区 + 照片「网格↔列表」切换 +
+// 底部品牌栏；「播放」按钮独立跳转黑底幻灯片（3s 自动轮播 + 暂停 + 进度点 + BGM）。
+// 保留 C 端全部真实功能：分享(微信/朋友圈/二维码)、投屏、预约、全屏查看、返回。
 export default function AlbumGrid({ gallery, onBack, albumId }) {
-  const { title, subtitle, category, albumCopy, cover_url, photos = [], brand_name, brand_slogan, brand_intro, brand_logo } = gallery;
-  const [view, setView] = useState('flow'); // flow 纵向长图（默认） | grid 缩略网格
+  const { title, subtitle, category, albumCopy, cover_url, photos = [], brand_name, brand_slogan, brand_intro, brand_logo, views } = gallery;
+  const [view, setView] = useState('grid'); // grid 网格（默认） | list 列表
   const [full, setFull] = useState(-1);     // >=0 打开全屏查看的起始索引
   const [toast, setToast] = useState('');
   const [shareOpen, setShareOpen] = useState(false);
-  const [playing, setPlaying] = useState(false);
-  const playTimerRef = useRef(null);
+  // 幻灯片：独立黑底播放 + BGM
+  const [slideOpen, setSlideOpen] = useState(false);
+  const [slideIdx, setSlideIdx] = useState(0);
+  const [slidePaused, setSlidePaused] = useState(false);
+  const slideTimerRef = useRef(null);
   const audioRef = useRef(null);
 
   useEffect(() => {
@@ -27,69 +37,74 @@ export default function AlbumGrid({ gallery, onBack, albumId }) {
     return () => clearTimeout(t);
   }, [toast]);
 
-  // 初始化背景音乐（仅客户端，且已配置 BGM_URL 时）
+  // 幻灯片自动轮播（3s）
   useEffect(() => {
-    if (typeof window === 'undefined' || !BGM_URL) return;
-    const audio = new Audio(BGM_URL);
-    audio.loop = true;
-    audioRef.current = audio;
-    return () => {
-      audio.pause();
-      audio.src = '';
-    };
-  }, []);
-
-  // 幻灯片播放状态变化时同步背景音乐：播放→自动响 BGM；暂停/退出→停止
-  useEffect(() => {
-    const audio = audioRef.current;
-    if (!audio) return;
-    if (playing) {
-      audio.play().catch(() => {});
-    } else {
-      audio.pause();
-      audio.currentTime = 0;
-    }
-  }, [playing]);
-
-  // 幻灯片播放：自动向下滚动
-  useEffect(() => {
-    if (!playing || !photos.length) {
-      if (playTimerRef.current) { clearInterval(playTimerRef.current); playTimerRef.current = null; }
+    if (!slideOpen || slidePaused || photos.length < 2) {
+      if (slideTimerRef.current) { clearInterval(slideTimerRef.current); slideTimerRef.current = null; }
       return;
     }
-    playTimerRef.current = setInterval(() => {
-      if (typeof window === 'undefined') return;
-      const viewH = window.innerHeight;
-      const next = window.scrollY + viewH * 0.88;
-      window.scrollTo({ top: next, behavior: 'smooth' });
-    }, 2400);
-    return () => { if (playTimerRef.current) clearInterval(playTimerRef.current); };
-  }, [playing, photos.length]);
+    slideTimerRef.current = setInterval(() => setSlideIdx((i) => (i + 1) % photos.length), 3000);
+    return () => { if (slideTimerRef.current) clearInterval(slideTimerRef.current); };
+  }, [slideOpen, slidePaused, photos.length]);
 
-  // 退出页面：停止播放与音乐
+  // 幻灯片 BGM：打开播放 / 暂停暂停 / 关闭停止
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio || !slideOpen) return;
+    if (slidePaused) {
+      audio.pause();
+    } else {
+      audio.play().catch(() => {});
+    }
+    return () => { audio.pause(); };
+  }, [slideOpen, slidePaused]);
+
+  // 退出页面：停止轮播与音乐
   useEffect(() => {
     return () => {
-      if (playTimerRef.current) { clearInterval(playTimerRef.current); playTimerRef.current = null; }
+      if (slideTimerRef.current) { clearInterval(slideTimerRef.current); slideTimerRef.current = null; }
       if (audioRef.current) {
         audioRef.current.pause();
-        audioRef.current.currentTime = 0;
+        audioRef.current.src = '';
+        audioRef.current = null;
       }
     };
   }, []);
+
+  const cover = cover_url || photos[0] || '';
+
+  const ensureAudio = () => {
+    if (audioRef.current) return audioRef.current;
+    try {
+      const a = new Audio(bgmSrc);
+      a.loop = true;
+      audioRef.current = a;
+      // 在用户手势内先尝试播放（iOS 需要解锁音频）
+      a.play().catch(() => {});
+    } catch { /* 忽略音频初始化失败 */ }
+    return audioRef.current;
+  };
+
+  const startSlide = () => {
+    if (!photos.length) return;
+    ensureAudio();
+    setSlideIdx(0);
+    setSlidePaused(false);
+    setSlideOpen(true);
+  };
+  const stopSlide = () => {
+    setSlideOpen(false);
+    setSlidePaused(false);
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+    }
+  };
 
   const goBack = () => {
     if (onBack) { onBack(); return; }
     if (window.history.length > 1) window.history.back();
     else window.location.href = window.location.origin + '/';
-  };
-
-  const copyLink = async () => {
-    try {
-      await navigator.clipboard.writeText(window.location.href);
-      setToast('链接已复制，可粘贴给亲友 / 微信转发');
-    } catch {
-      setToast('复制失败，请手动复制浏览器地址栏链接');
-    }
   };
 
   // 分享弹窗：微信好友/朋友圈（H5 受浏览器限制，引导在微信内操作）；下载二维码（扫码直达相册）
@@ -124,10 +139,6 @@ export default function AlbumGrid({ gallery, onBack, albumId }) {
     window.location.href = window.location.origin + '/schedule';
   };
 
-  const togglePlay = () => {
-    setPlaying((v) => !v);
-  };
-
   // 切换视图并尽量保留滚动位置（整页滚动，用 window.scrollY）
   const switchView = (v) => {
     if (v === view) return;
@@ -140,109 +151,147 @@ export default function AlbumGrid({ gallery, onBack, albumId }) {
     });
   };
 
-  const cover = cover_url || photos[0] || '';
-
   return (
-    <div className="min-h-screen bg-[#f7f7f5] text-neutral-900 pb-24">
-      {/* 顶部栏：返回 + 标题 + 播放/投屏 */}
-      <div className="fixed top-0 left-0 right-0 z-30 flex items-center justify-between px-3 h-14 bg-[#111111] text-white">
-        <button onClick={goBack} className="w-10 h-10 flex items-center justify-center text-3xl leading-none">‹</button>
-        <div className="flex-1 text-center text-sm font-medium truncate px-2">{title || subtitle || '作品相册'}</div>
-        <div className="flex items-center gap-1">
-          <button onClick={togglePlay} className="w-10 h-10 flex items-center justify-center text-lg leading-none">
-            {playing ? '⏸' : '▶'}
-          </button>
-          <button onClick={castScreen} className="w-10 h-10 flex items-center justify-center text-lg leading-none">⍟</button>
-        </div>
-      </div>
-      <div className="h-14" />
-
-      {/* 封面图 + 右上悬浮分享按钮（适中圆角，青绿底白字） */}
-      <div className="relative w-full h-[65vw] max-h-[520px] bg-neutral-200">
-        {cover && <img src={img(cover)} alt="" className="w-full h-full object-cover" />}
-        <button onClick={openShare}
-          className="fixed top-[72px] right-4 z-40 h-8 px-4 rounded-lg text-white text-sm font-medium shadow-lg active:opacity-90"
-          style={{ background: TEAL }}>
-          分享
+    <div className="min-h-screen bg-white" style={{ minHeight: '100vh', paddingBottom: 'calc(70px + env(safe-area-inset-bottom))' }}>
+      {/* 顶部渐变悬浮导航（悬浮于封面上方，后端预览同款） */}
+      <div className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-3"
+        style={{ paddingTop: 'calc(8px + env(safe-area-inset-top))', paddingBottom: 8, background: 'linear-gradient(to bottom, rgba(0,0,0,0.35), transparent)' }}>
+        <button onClick={goBack} style={{ background: 'none', border: 'none', padding: 4, display: 'flex', alignItems: 'center' }}>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+        </button>
+        <button onClick={openShare} style={{ width: 32, height: 32, borderRadius: '50%', background: MRED, border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
         </button>
       </div>
 
-      {/* 相册信息区 */}
-      <div className="px-5 pt-5 pb-3">
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-semibold text-[#2c2c2c] tracking-wide truncate pr-4">{title || '作品相册'}</h1>
-          <div className="flex items-center gap-4 shrink-0">
-            <button onClick={() => switchView('flow')}
-              className={'text-2xl leading-none ' + (view === 'flow' ? 'text-[#2c2c2c]' : 'text-neutral-400')}>
-              ≡
-            </button>
-            <button onClick={() => switchView('grid')}
-              className={'text-xl leading-none ' + (view === 'grid' ? 'text-[#2c2c2c]' : 'text-neutral-400')}>
+      {/* 封面 3/4 全宽（后端预览同款） */}
+      <div className="w-full" style={{ aspectRatio: '3/4', background: '#1a1a1a', position: 'relative', overflow: 'hidden' }}>
+        {cover ? (
+          <img src={img(cover)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+        ) : (
+          <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#666', fontSize: 14 }}>暂无封面</div>
+        )}
+      </div>
+
+      {/* 信息区：标题 + 视图切换 + 分类 + 文案 */}
+      <div style={{ padding: '16px 16px 4px' }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
+          <div style={{ fontSize: 20, color: '#1f2329', lineHeight: 1.4, flex: 1, minWidth: 0 }}>{title || '作品相册'}</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0, paddingTop: 4 }}>
+            <button onClick={() => switchView('grid')} title="网格"
+              style={{ background: 'none', border: 'none', padding: 4, color: view === 'grid' ? '#1f2329' : '#bbb', fontSize: 18, lineHeight: 1 }}>
               ▦
+            </button>
+            <button onClick={() => switchView('list')} title="列表"
+              style={{ background: 'none', border: 'none', padding: 4, color: view === 'list' ? '#1f2329' : '#bbb', fontSize: 18, lineHeight: 1 }}>
+              ☰
             </button>
           </div>
         </div>
-        {category && <span className="inline-block mt-2 px-3 py-1 bg-neutral-200 text-neutral-600 text-xs rounded">{category}</span>}
-        {albumCopy && <div className="mt-3 text-sm leading-7 text-neutral-600 whitespace-pre-line">{albumCopy}</div>}
+        {category && (
+          <span style={{ marginTop: 8, display: 'inline-block', fontSize: 12, color: MGRAY, background: '#f5f5f5', padding: '3px 10px', borderRadius: 4 }}>{category}</span>
+        )}
+        {albumCopy && (
+          <div style={{ marginTop: 12, fontSize: 14, color: '#555', lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>{albumCopy}</div>
+        )}
+        {typeof views === 'number' && views > 0 && (
+          <div style={{ marginTop: 8, fontSize: 11, color: '#bbb' }}>已被浏览 {views} 次</div>
+        )}
       </div>
 
-      {/* 照片内容：流式 / 网格（上下增加白色呼吸间距） */}
-      <div>
-        {view === 'flow' ? (
-          <div className="px-0">
+      {/* 照片区：作品相册 标题 + 网格↔列表 */}
+      <div style={{ padding: '14px 16px 20px' }}>
+        <div style={{ fontSize: 15, color: '#333', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span style={{ width: 3, height: 14, background: TEAL, borderRadius: 2, display: 'inline-block' }} />
+          作品相册
+          <span style={{ fontSize: 12, color: MGRAY }}>（{photos.length} 张）</span>
+        </div>
+        {view === 'grid' ? (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 4 }}>
             {photos.map((p, i) => (
-              <button key={i} onClick={() => setFull(i)}
-                className="block w-full mb-4 bg-neutral-200 active:opacity-90">
-                <img src={img(p)} alt="" className="w-full block" loading="lazy" />
+              <button key={i} onClick={() => setFull(i)} style={{ aspectRatio: '1', background: '#f5f5f5', borderRadius: 4, overflow: 'hidden', padding: 0, border: 'none' }}>
+                <img src={img(p, 'thumb')} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} loading="lazy" />
               </button>
             ))}
           </div>
         ) : (
-          <div className="grid grid-cols-3 gap-2.5 px-2">
+          <div>
             {photos.map((p, i) => (
-              <button key={i} onClick={() => setFull(i)}
-                className="block aspect-[3/4] overflow-hidden bg-neutral-200 active:opacity-90">
-                <img src={img(p, 'thumb')} alt="" className="w-full h-full object-cover" loading="lazy" />
+              <button key={i} onClick={() => setFull(i)} style={{ display: 'block', width: '100%', aspectRatio: '4/3', background: '#f5f5f5', borderRadius: 8, overflow: 'hidden', marginBottom: 8, padding: 0, border: 'none' }}>
+                <img src={img(p)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} loading="lazy" />
               </button>
             ))}
           </div>
         )}
-        {!photos.length && <div className="text-center text-neutral-400 py-24">该相册暂未添加照片</div>}
+        {!photos.length && <div style={{ textAlign: 'center', color: '#999', fontSize: 14, padding: '48px 0' }}>该相册暂未添加照片</div>}
       </div>
 
-      {/* 底部品牌工具栏 */}
-      <div className="fixed bottom-0 left-0 right-0 z-30 bg-[#2c2c2c] px-5 py-3 flex items-center justify-between">
-        <div className="flex items-center min-w-0">
+      {/* 底部品牌栏（白底，后端预览同款） */}
+      <div className="fixed bottom-0 left-0 right-0 z-50 bg-white flex items-center justify-between px-4"
+        style={{ borderTop: '1px solid ' + MBORDER, paddingTop: 10, paddingBottom: 'calc(10px + env(safe-area-inset-bottom))' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, minWidth: 0 }}>
           {brand_logo ? (
-            <img src={img(brand_logo)} alt="" className="w-10 h-10 rounded-full object-cover bg-white shrink-0" />
+            <img src={img(brand_logo)} alt="" style={{ width: 36, height: 36, borderRadius: '50%', objectFit: 'cover', background: '#f2f2f2', flexShrink: 0 }} />
           ) : (
-            <div className="w-10 h-10 rounded-full flex items-center justify-center text-white text-xs font-semibold shrink-0" style={{ background: TEAL }}>YE</div>
+            <div style={{ width: 36, height: 36, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 13, fontWeight: 600, flexShrink: 0, background: TEAL }}>YE</div>
           )}
-          <div className="ml-3 min-w-0">
-            <div className="text-sm font-medium text-white truncate">{brand_name || 'YEZHE WORKSHOP'}</div>
-            {(brand_slogan || brand_intro) && <div className="text-[11px] text-neutral-400 truncate">{brand_slogan || brand_intro}</div>}
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontSize: 13, color: '#333', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{brand_name || 'YEZHE WORKSHOP'}</div>
+            {(brand_slogan || brand_intro) && (
+              <div style={{ fontSize: 11, color: MGRAY, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{brand_slogan || brand_intro}</div>
+            )}
           </div>
         </div>
-        <div className="flex items-center gap-4 shrink-0">
-          <button onClick={togglePlay} className="flex flex-col items-center text-white/90 min-w-[48px]">
-            <span className="text-lg leading-none">{playing ? '⏸' : '▶'}</span>
-            <span className="text-[10px] mt-0.5">{playing ? '暂停' : '播放'}</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexShrink: 0 }}>
+          <button onClick={startSlide} disabled={!photos.length} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, background: 'none', border: 'none', color: photos.length ? '#666' : '#ccc', minWidth: 44 }}>
+            <span style={{ fontSize: 17, lineHeight: 1 }}>▶</span>
+            <span style={{ fontSize: 10, marginTop: 2 }}>播放</span>
           </button>
-          <button onClick={castScreen} className="flex flex-col items-center text-white/90 min-w-[48px]">
-            <span className="text-lg leading-none">⍟</span>
-            <span className="text-[10px] mt-0.5">投屏</span>
+          <button onClick={castScreen} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, background: 'none', border: 'none', color: '#666', minWidth: 44 }}>
+            <span style={{ fontSize: 17, lineHeight: 1 }}>⍟</span>
+            <span style={{ fontSize: 10, marginTop: 2 }}>投屏</span>
           </button>
-          <button onClick={goAppointment}
-            className="h-9 px-4 rounded-md text-white text-sm font-medium active:opacity-90"
-            style={{ background: TEAL }}>
+          <button onClick={goAppointment} style={{ height: 34, padding: '0 14px', borderRadius: 8, border: 'none', background: TEAL, color: '#fff', fontSize: 14 }}>
             预约服务
           </button>
         </div>
       </div>
 
+      {/* 幻灯片：独立黑底播放 + BGM（3s 自动轮播 / 暂停 / 进度点 / 计数） */}
+      {slideOpen && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 300, background: '#000' }}>
+          <div style={{
+            position: 'absolute', top: 0, left: 0, right: 0, zIndex: 10,
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            padding: '12px 16px', paddingTop: 'calc(12px + env(safe-area-inset-top))',
+            background: 'linear-gradient(to bottom, rgba(0,0,0,0.55), transparent)'
+          }}>
+            <button onClick={stopSlide} style={{ background: 'none', border: 'none', padding: 4, display: 'flex', alignItems: 'center' }}>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+            </button>
+            <span style={{ color: '#fff', fontSize: 13 }}>{slideIdx + 1} / {photos.length}</span>
+            <button onClick={() => setSlidePaused(!slidePaused)} style={{ width: 32, height: 32, borderRadius: '50%', background: 'rgba(255,255,255,0.2)', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 13 }}>
+              {slidePaused ? '▶' : '❚❚'}
+            </button>
+          </div>
+          <div onClick={() => setSlidePaused(!slidePaused)} style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+            {photos.length ? (
+              <img src={img(photos[slideIdx])} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+            ) : (
+              <span style={{ color: '#666', fontSize: 14 }}>暂无照片</span>
+            )}
+          </div>
+          <div style={{ position: 'absolute', bottom: 'calc(24px + env(safe-area-inset-bottom))', left: 0, right: 0, display: 'flex', justifyContent: 'center', gap: 6 }}>
+            {photos.map((_, i) => (
+              <span key={i} style={{ width: 6, height: 6, borderRadius: '50%', background: i === slideIdx ? '#fff' : 'rgba(255,255,255,0.35)', transition: 'background 0.2s' }} />
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* 轻提示 */}
       {toast && (
-        <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[60] bg-black/80 text-white text-xs px-4 py-2.5 rounded-lg max-w-[80%] text-center">
+        <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[60]" style={{ background: 'rgba(0,0,0,0.8)', color: '#fff', fontSize: 12, padding: '10px 16px', borderRadius: 8, maxWidth: '80%', textAlign: 'center' }}>
           {toast}
         </div>
       )}
@@ -251,18 +300,18 @@ export default function AlbumGrid({ gallery, onBack, albumId }) {
       {shareOpen && (
         <div className="fixed inset-0 z-[70] flex items-end justify-center bg-black/40" onClick={closeShare}>
           <div className="w-full max-w-md rounded-t-2xl bg-white p-6" onClick={(e) => e.stopPropagation()}>
-            <div className="mb-5 text-center text-base font-medium text-[#2c2c2c]">分享相册</div>
+            <div className="mb-5 text-center text-base font-medium" style={{ color: '#2c2c2c' }}>分享相册</div>
             <div className="mb-5 flex justify-around">
               <button onClick={shareToWx} className="flex flex-col items-center">
                 <div className="flex h-14 w-14 items-center justify-center rounded-full text-2xl text-white" style={{ background: TEAL }}>💬</div>
                 <div className="mt-2 text-xs text-gray-500">微信好友</div>
               </button>
               <button onClick={shareToWx} className="flex flex-col items-center">
-                <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[#1aad19] text-2xl text-white">🌈</div>
+                <div className="flex h-14 w-14 items-center justify-center rounded-full text-2xl text-white" style={{ background: '#1aad19' }}>🌈</div>
                 <div className="mt-2 text-xs text-gray-500">朋友圈</div>
               </button>
               <button onClick={downloadQR} className="flex flex-col items-center">
-                <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[#2c2c2c] text-2xl text-white">📷</div>
+                <div className="flex h-14 w-14 items-center justify-center rounded-full text-2xl text-white" style={{ background: '#2c2c2c' }}>📷</div>
                 <div className="mt-2 text-xs text-gray-500">下载二维码</div>
               </button>
             </div>
@@ -271,7 +320,7 @@ export default function AlbumGrid({ gallery, onBack, albumId }) {
         </div>
       )}
 
-      {/* 全屏查看（复用沉浸式画廊，隐藏分享按钮） */}
+      {/* 全屏查看（复用沉浸式画廊） */}
       {full >= 0 && (
         <div className="fixed inset-0 z-50">
           <GalleryAlbum gallery={gallery} startIndex={full} onClose={() => setFull(-1)} />
