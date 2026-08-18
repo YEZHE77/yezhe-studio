@@ -180,11 +180,14 @@ export default function AlbumGrid({ gallery, onBack, albumId }) {
         )}
       </div>
 
-      {/* 信息区：标题（右侧同排 纯图标 视图切换）+ 标题下方标签 + 文案 */}
+      {/* 信息区：标题 + 标签行（标签左侧、列表/宫格图标右侧同排）+ 文案 */}
       <div style={{ padding: '16px 16px 4px' }}>
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
-          <div style={{ fontSize: 18, color: '#1f2329', lineHeight: 1.4, fontWeight: 600, flex: 1, minWidth: 0 }}>{title || '作品相册'}</div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0, paddingTop: 4 }}>
+        <div style={{ fontSize: 18, color: '#1f2329', lineHeight: 1.4, fontWeight: 600 }}>{title || '作品相册'}</div>
+        <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+          {category ? (
+            <span style={{ display: 'inline-block', fontSize: 12, color: MGRAY, background: '#f5f5f5', padding: '3px 10px', borderRadius: 4 }}>{category}</span>
+          ) : <span />}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
             <button onClick={() => switchView('single')} title="列表视图" aria-label="列表视图" aria-pressed={view === 'single'}
               style={{ background: 'none', border: 'none', padding: 4, color: view === 'single' ? '#1f2329' : '#bbb', fontSize: 18, lineHeight: 1, cursor: 'pointer' }}>
               ☰
@@ -195,9 +198,6 @@ export default function AlbumGrid({ gallery, onBack, albumId }) {
             </button>
           </div>
         </div>
-        {category && (
-          <span style={{ marginTop: 8, display: 'inline-block', fontSize: 12, color: MGRAY, background: '#f5f5f5', padding: '3px 10px', borderRadius: 4 }}>{category}</span>
-        )}
         {albumCopy && (
           <div style={{ marginTop: 12, fontSize: 14, color: '#555', lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>{albumCopy}</div>
         )}
