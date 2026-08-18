@@ -180,16 +180,18 @@ export default function AlbumGrid({ gallery, onBack, albumId }) {
         )}
       </div>
 
-      {/* 信息区：标题（右侧同排 列表/宫格 切换按钮）+ 标题下方标签 + 文案 */}
+      {/* 信息区：标题（右侧同排 纯图标 视图切换）+ 标题下方标签 + 文案 */}
       <div style={{ padding: '16px 16px 4px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
           <div style={{ fontSize: 18, color: '#1f2329', lineHeight: 1.4, fontWeight: 600, flex: 1, minWidth: 0 }}>{title || '作品相册'}</div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
-            <button onClick={() => switchView('single')} aria-pressed={view === 'single'} style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '6px 12px', borderRadius: 16, border: 'none', fontSize: 12, lineHeight: 1, background: view === 'single' ? '#1f2329' : '#f5f5f5', color: view === 'single' ? '#fff' : '#666' }}>
-              ☰ 列表
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0, paddingTop: 4 }}>
+            <button onClick={() => switchView('single')} title="列表视图" aria-label="列表视图" aria-pressed={view === 'single'}
+              style={{ background: 'none', border: 'none', padding: 4, color: view === 'single' ? '#1f2329' : '#bbb', fontSize: 18, lineHeight: 1, cursor: 'pointer' }}>
+              ☰
             </button>
-            <button onClick={() => switchView('grid')} aria-pressed={view === 'grid'} style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '6px 12px', borderRadius: 16, border: 'none', fontSize: 12, lineHeight: 1, background: view === 'grid' ? '#1f2329' : '#f5f5f5', color: view === 'grid' ? '#fff' : '#666' }}>
-              ▦ 宫格
+            <button onClick={() => switchView('grid')} title="宫格视图" aria-label="宫格视图" aria-pressed={view === 'grid'}
+              style={{ background: 'none', border: 'none', padding: 4, color: view === 'grid' ? '#1f2329' : '#bbb', fontSize: 18, lineHeight: 1, cursor: 'pointer' }}>
+              ▦
             </button>
           </div>
         </div>
