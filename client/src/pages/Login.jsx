@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Navigate } from 'react-router-dom';
 import { useAuth } from '../auth.jsx';
 
@@ -8,6 +8,21 @@ export default function Login() {
   const [u, setU] = useState('admin');
   const [p, setP] = useState('');
   const [err, setErr] = useState('');
+
+  // 返回守卫：若用户是通过浏览器「返回」进入登录页（back_forward 导航），
+  // 判定来自 C 端分享链路（客户在 /home 按返回 → 历史里的 /login 项），
+  // 自动 replace 回 C 端主页，避免客户在手机浏览器看到后台登录页；
+  // replace 会替换历史中的 /login 条目，再按返回即退出浏览器。
+  useEffect(() => {
+    if (user) return; // 已登录走下方 <Navigate to="/" />，不触发守卫
+    try {
+      const navEntries = performance.getEntriesByType('navigation');
+      const navType = navEntries.length ? navEntries[0].type : '';
+      if (navType === 'back_forward') {
+        nav('/home', { replace: true });
+      }
+    } catch { /* 不支持 performance API 的环境安全降级 */ }
+  }, [nav, user]);
 
   if (user) return <Navigate to="/" replace />;
 
