@@ -256,21 +256,14 @@ export default function AlbumGrid({ gallery, onBack, albumId }) {
           ) : (
             <div style={{ width: 36, height: 36, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 13, fontWeight: 600, flexShrink: 0, background: TEAL }}>YE</div>
           )}
-          <div style={{ minWidth: 0 }}>
-            <div style={{ fontSize: 13, color: '#333', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{brand_name || 'YEZHE WORKSHOP'}</div>
-            {(brand_slogan || brand_intro) && (
-              <div style={{ fontSize: 11, color: MGRAY, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{brand_slogan || brand_intro}</div>
-            )}
-          </div>
+          {(brand_slogan || brand_intro) && (
+            <div style={{ minWidth: 0, fontSize: 11, color: MGRAY, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{brand_slogan || brand_intro}</div>
+          )}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexShrink: 0 }}>
           <button onClick={startSlide} disabled={!photos.length} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, background: 'none', border: 'none', color: photos.length ? '#666' : '#ccc', minWidth: 44 }}>
             <span style={{ fontSize: 17, lineHeight: 1 }}>▶</span>
             <span style={{ fontSize: 10, marginTop: 2 }}>播放</span>
-          </button>
-          <button onClick={castScreen} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, background: 'none', border: 'none', color: '#666', minWidth: 44 }}>
-            <span style={{ fontSize: 17, lineHeight: 1 }}>⍟</span>
-            <span style={{ fontSize: 10, marginTop: 2 }}>投屏</span>
           </button>
           <button onClick={goAppointment} style={{ height: 34, padding: '0 14px', borderRadius: 8, border: 'none', background: TEAL, color: '#fff', fontSize: 14 }}>
             预约服务
