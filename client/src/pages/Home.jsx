@@ -273,7 +273,7 @@ export default function Home() {
         {/* 作品网格：两列瀑布流，封面统一 7:5 横版，标题/标签在图片下方（与小程序一致） */}
         <div className="flex flex-wrap -mx-1.5">
           {works.map((w) => (
-            <div key={w.id} onClick={() => nav('/w/' + w.id)} className="mb-4 ml-1.5 mr-1.5 w-[calc(50%-12px)] overflow-hidden rounded-2xl bg-gray-100" style={{ borderRadius: '16px' }}>
+            <div key={w.id} onClick={() => nav('/w/' + w.id)} className="mb-4 ml-1.5 mr-1.5 w-[calc(50%-12px)] overflow-hidden bg-gray-100">
               <div className="relative w-full overflow-hidden bg-gray-100" style={{ paddingBottom: '71.43%' }}>
                 {w.cover ? (
                   <img src={w.cover} alt="" loading="lazy" className="absolute top-0 left-0 w-full h-full object-cover"
