@@ -2,7 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { img } from '../api.js';
 
 // 客片电子相册沉浸式页面（对应零屿 VISION 这类婚礼电子相册 H5）
-// 全屏上下滑动浏览照片 + 新人名字/分类/专属文案 + 底部品牌工具栏（播放/投屏/查看更多）
+// 全屏上下滑动浏览照片 + 新人名字/分类/专属文案 + 底部品牌工具栏（播放[带BGM] / 更多）
+// 幻灯片自动轮播与 BGM 同步：开启播放时一并启动音频，暂停/退出停止音频（iOS 需用户手势内解锁音频）
 export default function GalleryAlbum({ gallery, startIndex = 0, onClose }) {
   const { title, subtitle, category, blessing, albumCopy, photos = [], brand_name, brand_slogan, brand_intro, brand_logo } = gallery;
   // 自定义相册文案（albumCopy）优先级高于旧 blessing，作为相册正文文案模块
@@ -13,7 +14,16 @@ export default function GalleryAlbum({ gallery, startIndex = 0, onClose }) {
   const [showShare, setShowShare] = useState(false);
   const scrollRef = useRef(null);
   const timerRef = useRef(null);
+  const audioRef = useRef(null);
   const winH = typeof window !== 'undefined' ? window.innerHeight : 800;
+
+  // BGM：与 AlbumGrid 幻灯片同一来源（/bgm/bgm.mp3），保持品牌统一
+  const BGM_SRC = '/bgm/bgm.mp3';
+  const ensureAudio = () => {
+    if (audioRef.current) return audioRef.current;
+    try { const a = new Audio(BGM_SRC); a.loop = true; audioRef.current = a; } catch { /* 忽略音频初始化失败 */ }
+    return audioRef.current;
+  };
 
   // 自动播放（幻灯片模式）：每隔 3.5s 滚动到下一张
   useEffect(() => {
@@ -26,6 +36,17 @@ export default function GalleryAlbum({ gallery, startIndex = 0, onClose }) {
     }, 3500);
     return () => clearInterval(timerRef.current);
   }, [playing, photos.length, winH]);
+
+  // 组件卸载：清理 BGM（关闭全屏预览/切到其它页时停止音乐）
+  useEffect(() => {
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.src = '';
+        audioRef.current = null;
+      }
+    };
+  }, []);
 
   useEffect(() => {
     const t = setTimeout(() => setToast(''), 2200);
@@ -63,9 +84,17 @@ export default function GalleryAlbum({ gallery, startIndex = 0, onClose }) {
     }
   };
 
-  const castScreen = () => {
-    // H5 无标准投屏 API：引导用户使用系统级屏幕镜像
-    showToast('请下拉/上滑手机控制中心 → 屏幕镜像 → 投屏到电视');
+  const togglePlay = () => {
+    const next = !playing;
+    setPlaying(next);
+    if (next) {
+      // iOS 需用户手势内解锁音频：开启播放时立即触发 audio.play()
+      const a = ensureAudio();
+      if (a) a.play().catch(() => {});
+    } else {
+      const a = audioRef.current;
+      if (a) a.pause();
+    }
   };
 
   const goMore = () => {
@@ -154,13 +183,9 @@ export default function GalleryAlbum({ gallery, startIndex = 0, onClose }) {
             </div>
           </div>
           <div className="flex items-center gap-5 shrink-0">
-            <button onClick={() => setPlaying(!playing)} className="flex flex-col items-center text-white/90">
+            <button onClick={togglePlay} className="flex flex-col items-center text-white/90">
               <span className="text-lg leading-none">{playing ? '❚❚' : '▶'}</span>
               <span className="text-[10px] mt-1">{playing ? '暂停' : '播放'}</span>
-            </button>
-            <button onClick={castScreen} className="flex flex-col items-center text-white/90">
-              <span className="text-lg leading-none">📺</span>
-              <span className="text-[10px] mt-1">投屏</span>
             </button>
             <button onClick={goMore} className="flex flex-col items-center text-brand-light">
               <span className="text-lg leading-none">＋</span>
