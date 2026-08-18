@@ -209,12 +209,12 @@ export default function AlbumGrid({ gallery, onBack, albumId }) {
       {/* 照片区：参照歪猫小程序——2列不等高规则网格/单列大图纵向滑动（无小标题） */}
       <div style={{ padding: '8px 0 20px' }}>
         {view === 'grid' ? (
-          // 网格总览：2 列 CSS Grid row-major（保持原始 photos 顺序 [1,2]/[3,4]/[5,6]，横竖版均原比例；alignItems:start 避免 grid stretch 撑高横图；行内不同高度图底部会有小空隙）
+          // 网格总览：2 列 CSS Grid row-major（保持原始 photos 顺序 [1,2]/[3,4]/[5,6]，横竖版均原比例；用 div 而非 button 避免 UA 样式 font/line-height 撑高容器露灰底；alignItems:start 避免 grid stretch；行内不同高度图底部小空隙可接受）
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2, alignItems: 'start' }}>
             {photos.map((p, i) => (
-              <button key={i} onClick={() => setFull(i)} style={{ display: 'block', width: '100%', padding: 0, border: 'none', borderRadius: 0, overflow: 'hidden', background: '#f5f5f5' }}>
+              <div key={i} role="button" tabIndex={0} onClick={() => setFull(i)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setFull(i); } }} style={{ display: 'block', width: '100%', padding: 0, border: 'none', borderRadius: 0, overflow: 'hidden', background: '#f5f5f5', cursor: 'pointer' }}>
                 <img src={img(p, 'thumb')} alt="" style={{ width: '100%', height: 'auto', display: 'block' }} loading="lazy" />
-              </button>
+              </div>
             ))}
           </div>
         ) : (
