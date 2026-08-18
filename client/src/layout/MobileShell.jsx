@@ -117,11 +117,12 @@ function TopBack({ title }) {
   );
 }
 
-// 底部 Tab（工作台 / 微官网 / + / 消息）——「套系」已与首页共用抽屉菜单入口，不再占底部 Tab 位
+// 底部 Tab（工作台 / 微官网 / + / 作品 / 消息）——「套系」已与首页共用抽屉菜单入口，不再占底部 Tab 位
 const TABS = [
   { key: 'home', label: '工作台', icon: 'monitor', to: '/' },
   { key: 'site', label: '微官网', icon: 'home', to: '/m/site' },
   { key: 'plus', label: '', icon: 'plus', to: '' },
+  { key: 'works', label: '作品', icon: 'photo', to: '/works' },
   { key: 'msg', label: '消息', icon: 'bell', to: '/m/msg' }
 ];
 
@@ -243,7 +244,7 @@ export default function MobileShell() {
     return () => { clearInterval(t); window.removeEventListener('focus', onFocus); window.removeEventListener('biz-message-read', onMsgRead); };
   }, []);
 
-  const tabRoots = ['/', '/m/site', '/m/msg'];
+  const tabRoots = ['/', '/m/site', '/works', '/m/msg'];
   const hideTopBackRoutes = ['/works', '/packages', '/schedule', '/orders', '/todo', '/m/order-messages', '/m/reserve-messages'];
   const isTab = tabRoots.includes(location.pathname);
   // /packages/* /orders/* /schedule/* 等子路由由页面内自带顶部导航，避免双层 TopBack
@@ -252,6 +253,7 @@ export default function MobileShell() {
   const activeKey = (() => {
     if (location.pathname === '/') return 'home';
     if (location.pathname.startsWith('/m/site')) return 'site';
+    if (location.pathname.startsWith('/works')) return 'works';
     if (location.pathname.startsWith('/m/msg') || location.pathname.startsWith('/m/messages')) return 'msg';
     return '';
   })();
@@ -323,7 +325,7 @@ export default function MobileShell() {
           </ErrorBoundary>
         </div>
       </div>
-      {/* 底栏仅在首页一级 Tab 页显示（工作台 / 微官网 / 套系 / 消息）；二级业务页只显示内容，不占底栏空间 */}
+      {/* 底栏仅在首页一级 Tab 页显示（工作台 / 微官网 / 作品 / 消息）；二级业务页只显示内容，不占底栏空间 */}
       {isTab && <TabBar active={activeKey} unread={unread} onTab={(to) => nav(to)} onPlus={() => setSheetOpen(true)} />}
       <ActionSheet open={sheetOpen} onClose={() => setSheetOpen(false)} />
     </div>
