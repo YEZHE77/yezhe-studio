@@ -16,7 +16,7 @@ const bgmSrc = BGM_URL || '/bgm/bgm.mp3';
 
 // 客片电子相册 —— 视觉/交互对齐「后端预览（WorkPreview）小程序风」+ 参照歪猫公社小程序：
 // 浅色底 + 3/4 封面 + 顶部渐变悬浮导航 + 信息区 + 照片「单列大图纵向滑动（默认）↔ 2列不等高规则网格」切换 +
-// 底部品牌栏（头像+Slogan ｜ 播放 ｜ 投屏 ｜ 预约服务，三道竖线分隔，参照歪猫底部分隔感）；
+// 底部品牌栏（头像+品牌名/Slogan 上下结构 ｜ 播放 ｜ 预约服务，两道竖线分隔，参照歪猫底部分隔感）；
 // 「播放」按钮独立跳转黑底幻灯片（3s 自动轮播 + 暂停 + 进度点 + BGM）。
 // 保留 C 端全部真实功能：分享(微信/朋友圈/二维码)、投屏、预约、全屏查看、返回。
 export default function AlbumGrid({ gallery, onBack, albumId }) {
@@ -254,9 +254,13 @@ export default function AlbumGrid({ gallery, onBack, albumId }) {
           ) : (
             <div style={{ width: 36, height: 36, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 13, fontWeight: 600, flexShrink: 0, background: TEAL }}>YE</div>
           )}
-          {(brand_slogan || brand_intro) && (
-            <div style={{ minWidth: 0, fontSize: 11, color: MGRAY, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{brand_slogan || brand_intro}</div>
-          )}
+          {/* 品牌名 + Slogan 上下结构（参照歪猫底部） */}
+          <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 1 }}>
+            <div style={{ fontSize: 13, color: '#333', fontWeight: 600, lineHeight: 1.3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{brand_name || 'YEZHE STUDIO'}</div>
+            {(brand_slogan || brand_intro) && (
+              <div style={{ fontSize: 10, color: MGRAY, lineHeight: 1.3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{brand_slogan || brand_intro}</div>
+            )}
+          </div>
         </div>
         {/* 竖线分隔线：品牌区与操作区之间（参照歪猫/picbling 底部） */}
         <div style={{ width: 1, height: 26, background: MBORDER, flexShrink: 0, marginRight: 16 }} />
@@ -265,13 +269,7 @@ export default function AlbumGrid({ gallery, onBack, albumId }) {
             <span style={{ fontSize: 17, lineHeight: 1 }}>▶</span>
             <span style={{ fontSize: 10, marginTop: 2 }}>播放</span>
           </button>
-          {/* 竖线分隔线：播放与投屏之间 */}
-          <div style={{ width: 1, height: 22, background: MBORDER, margin: '0 12px' }} />
-          <button onClick={castScreen} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, background: 'none', border: 'none', color: '#666', minWidth: 44 }}>
-            <span style={{ fontSize: 17, lineHeight: 1 }}>⍟</span>
-            <span style={{ fontSize: 10, marginTop: 2 }}>投屏</span>
-          </button>
-          {/* 竖线分隔线：投屏与预约服务之间 */}
+          {/* 竖线分隔线：播放与预约服务之间 */}
           <div style={{ width: 1, height: 22, background: MBORDER, margin: '0 12px' }} />
           <button onClick={goAppointment} style={{ height: 34, padding: '0 14px', borderRadius: 8, border: 'none', background: MRED, color: '#fff', fontSize: 14 }}>
             预约服务
