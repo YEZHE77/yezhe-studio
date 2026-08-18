@@ -357,14 +357,14 @@ export default function WorkPreview() {
             <div style={{ display: 'flex', gap: 4, alignItems: 'flex-start' }}>
               <div style={{ flex: 1, minWidth: 0 }}>
                 {albums.map((a, i) => i % 2 === 0 ? (
-                  <div key={a.id || i} style={{ width: '100%', background: '#f5f5f5', borderRadius: 4, overflow: 'hidden', marginBottom: 4 }}>
+                  <div key={a.id || i} style={{ width: '100%', background: '#f5f5f5', borderRadius: 0, overflow: 'hidden', marginBottom: 4 }}>
                     <img src={img(a.thumb_url || a.photo_url)} alt="" style={{ width: '100%', height: 'auto', display: 'block' }} loading="lazy" />
                   </div>
                 ) : null)}
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 {albums.map((a, i) => i % 2 === 1 ? (
-                  <div key={a.id || i} style={{ width: '100%', background: '#f5f5f5', borderRadius: 4, overflow: 'hidden', marginBottom: 4 }}>
+                  <div key={a.id || i} style={{ width: '100%', background: '#f5f5f5', borderRadius: 0, overflow: 'hidden', marginBottom: 4 }}>
                     <img src={img(a.thumb_url || a.photo_url)} alt="" style={{ width: '100%', height: 'auto', display: 'block' }} loading="lazy" />
                   </div>
                 ) : null)}
