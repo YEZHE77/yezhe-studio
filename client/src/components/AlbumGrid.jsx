@@ -15,12 +15,13 @@ const BGM_URL = '';
 const bgmSrc = BGM_URL || '/bgm/bgm.mp3';
 
 // 客片电子相册 —— 视觉/交互对齐「后端预览（WorkPreview）小程序风」：
-// 浅色底 + 3/4 封面 + 顶部渐变悬浮导航 + 信息区 + 照片「网格↔列表」切换 +
-// 底部品牌栏；「播放」按钮独立跳转黑底幻灯片（3s 自动轮播 + 暂停 + 进度点 + BGM）。
+// 浅色底 + 3/4 封面 + 顶部渐变悬浮导航 + 信息区 + 照片「单列大图纵向滑动（默认）↔ 网格总览」切换 +
+// 底部品牌栏（头像+Slogan ｜ 播放 ｜ 预约服务，带竖线分隔线，参照歪猫/picbling 底部分隔感）；
+// 「播放」按钮独立跳转黑底幻灯片（3s 自动轮播 + 暂停 + 进度点 + BGM）。
 // 保留 C 端全部真实功能：分享(微信/朋友圈/二维码)、投屏、预约、全屏查看、返回。
 export default function AlbumGrid({ gallery, onBack, albumId }) {
   const { title, subtitle, category, albumCopy, cover_url, photos = [], brand_name, brand_slogan, brand_intro, brand_logo, views } = gallery;
-  const [view, setView] = useState('grid'); // grid 网格（默认） | list 列表
+  const [view, setView] = useState('single'); // single 单列大图纵向滑动（默认） | grid 网格总览
   const [full, setFull] = useState(-1);     // >=0 打开全屏查看的起始索引
   const [toast, setToast] = useState('');
   const [shareOpen, setShareOpen] = useState(false);
@@ -199,13 +200,13 @@ export default function AlbumGrid({ gallery, onBack, albumId }) {
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
           <div style={{ fontSize: 20, color: '#1f2329', lineHeight: 1.4, flex: 1, minWidth: 0 }}>{title || '作品相册'}</div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0, paddingTop: 4 }}>
-            <button onClick={() => switchView('grid')} title="网格"
+            <button onClick={() => switchView('single')} title="单列大图"
+              style={{ background: 'none', border: 'none', padding: 4, color: view === 'single' ? '#1f2329' : '#bbb', fontSize: 18, lineHeight: 1 }}>
+              ☰
+            </button>
+            <button onClick={() => switchView('grid')} title="网格总览"
               style={{ background: 'none', border: 'none', padding: 4, color: view === 'grid' ? '#1f2329' : '#bbb', fontSize: 18, lineHeight: 1 }}>
               ▦
-            </button>
-            <button onClick={() => switchView('list')} title="列表"
-              style={{ background: 'none', border: 'none', padding: 4, color: view === 'list' ? '#1f2329' : '#bbb', fontSize: 18, lineHeight: 1 }}>
-              ☰
             </button>
           </div>
         </div>
@@ -228,7 +229,7 @@ export default function AlbumGrid({ gallery, onBack, albumId }) {
           <span style={{ fontSize: 12, color: MGRAY }}>（{photos.length} 张）</span>
         </div>
         {view === 'grid' ? (
-          // 网格：3 列瀑布流（自适应高度，按原比例无留白）
+          // 网格总览：3 列瀑布流（按原比例无留白），快速找图
           <div style={{ columnCount: 3, columnGap: 4 }}>
             {photos.map((p, i) => (
               <button key={i} onClick={() => setFull(i)} style={{ display: 'block', width: '100%', padding: 0, border: 'none', borderRadius: 4, overflow: 'hidden', marginBottom: 4, background: '#f5f5f5' }}>
@@ -237,10 +238,10 @@ export default function AlbumGrid({ gallery, onBack, albumId }) {
             ))}
           </div>
         ) : (
-          // 列表：单列，按原比例自适应高度
+          // 单列大图纵向滑动（默认）：整张铺满屏宽、按原比例、上下连续滑动沉浸浏览
           <div>
             {photos.map((p, i) => (
-              <button key={i} onClick={() => setFull(i)} style={{ display: 'block', width: '100%', padding: 0, border: 'none', borderRadius: 8, overflow: 'hidden', marginBottom: 8, background: '#f5f5f5' }}>
+              <button key={i} onClick={() => setFull(i)} style={{ display: 'block', width: '100%', padding: 0, border: 'none', borderRadius: 6, overflow: 'hidden', marginBottom: 10, background: '#f5f5f5' }}>
                 <img src={img(p, 'preview')} alt="" style={{ width: '100%', height: 'auto', display: 'block' }} loading="lazy" />
               </button>
             ))}
@@ -262,11 +263,15 @@ export default function AlbumGrid({ gallery, onBack, albumId }) {
             <div style={{ minWidth: 0, fontSize: 11, color: MGRAY, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{brand_slogan || brand_intro}</div>
           )}
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexShrink: 0 }}>
+        {/* 竖线分隔线：品牌区与操作区之间（参照歪猫/picbling 底部） */}
+        <div style={{ width: 1, height: 26, background: MBORDER, flexShrink: 0, marginRight: 16 }} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 0, flexShrink: 0 }}>
           <button onClick={startSlide} disabled={!photos.length} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, background: 'none', border: 'none', color: photos.length ? '#666' : '#ccc', minWidth: 44 }}>
             <span style={{ fontSize: 17, lineHeight: 1 }}>▶</span>
             <span style={{ fontSize: 10, marginTop: 2 }}>播放</span>
           </button>
+          {/* 竖线分隔线：播放与预约服务之间 */}
+          <div style={{ width: 1, height: 22, background: MBORDER, margin: '0 16px' }} />
           <button onClick={goAppointment} style={{ height: 34, padding: '0 14px', borderRadius: 8, border: 'none', background: TEAL, color: '#fff', fontSize: 14 }}>
             预约服务
           </button>
