@@ -130,6 +130,27 @@ export default function AlbumGrid({ gallery, onBack, albumId }) {
     }
     setShareOpen(false);
   };
+  const copyLink = async () => {
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(shareUrl);
+      } else {
+        const ta = document.createElement('textarea');
+        ta.value = shareUrl;
+        ta.setAttribute('readonly', '');
+        ta.style.position = 'absolute';
+        ta.style.left = '-9999px';
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+      }
+      setToast('链接已复制');
+    } catch {
+      setToast('复制失败，请手动长按地址栏复制');
+    }
+    setShareOpen(false);
+  };
 
   const castScreen = () => {
     setToast('请下拉/上滑手机控制中心 → 屏幕镜像 → 投屏到电视');
@@ -313,6 +334,10 @@ export default function AlbumGrid({ gallery, onBack, albumId }) {
               <button onClick={downloadQR} className="flex flex-col items-center">
                 <div className="flex h-14 w-14 items-center justify-center rounded-full text-2xl text-white" style={{ background: '#2c2c2c' }}>📷</div>
                 <div className="mt-2 text-xs text-gray-500">下载二维码</div>
+              </button>
+              <button onClick={copyLink} className="flex flex-col items-center">
+                <div className="flex h-14 w-14 items-center justify-center rounded-full text-2xl text-white" style={{ background: '#7ecdbb' }}>📋</div>
+                <div className="mt-2 text-xs text-gray-500">复制链接</div>
               </button>
             </div>
             <button onClick={closeShare} className="w-full rounded-lg bg-gray-100 py-3 text-sm text-gray-600">取消</button>
