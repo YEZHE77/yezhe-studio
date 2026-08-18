@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import http, { img } from '../api.js';
+import { img } from '../api.js';
 import GalleryAlbum from './GalleryAlbum.jsx';
 
 const TEAL = 'var(--brand-green)';
@@ -114,30 +114,15 @@ export default function AlbumGrid({ gallery, onBack, albumId }) {
     : '';
   const openShare = () => setShareOpen(true);
   const closeShare = () => setShareOpen(false);
-  const shareToWx = () => {
-    setShareOpen(false);
-    setToast('请在微信中打开本页，点击右上角「···」分享给好友或朋友圈');
-  };
-  const downloadQR = async () => {
-    try {
-      const r = await http.get('/api/qrcode?text=' + encodeURIComponent(shareUrl));
-      const a = document.createElement('a');
-      a.href = r.data.dataUrl;
-      a.download = 'album-qr.png';
-      document.body.appendChild(a); a.click(); a.remove();
-      setToast('二维码已下载');
-    } catch {
-      setToast('二维码生成失败');
-    }
-    setShareOpen(false);
-  };
-  const copyLink = async () => {
+  // 分享文案：固定话术 + 真实链接替换（）内文字（与订单分享默认备注同款口径）
+  const shareNote = `这是我们团队开发的软件，此链接为专属访问地址，受微信环境限制，请复制链接（${shareUrl}），在手机浏览器打开查看详情。`;
+  const copyShareNote = async () => {
     try {
       if (navigator.clipboard && navigator.clipboard.writeText) {
-        await navigator.clipboard.writeText(shareUrl);
+        await navigator.clipboard.writeText(shareNote);
       } else {
         const ta = document.createElement('textarea');
-        ta.value = shareUrl;
+        ta.value = shareNote;
         ta.setAttribute('readonly', '');
         ta.style.position = 'absolute';
         ta.style.left = '-9999px';
@@ -146,9 +131,9 @@ export default function AlbumGrid({ gallery, onBack, albumId }) {
         document.execCommand('copy');
         document.body.removeChild(ta);
       }
-      setToast('链接已复制');
+      setToast('分享文案已复制，可粘贴发送给客户');
     } catch {
-      setToast('复制失败，请手动长按地址栏复制');
+      setToast('复制失败，请手动长按复制');
     }
     setShareOpen(false);
   };
@@ -316,30 +301,19 @@ export default function AlbumGrid({ gallery, onBack, albumId }) {
         </div>
       )}
 
-      {/* 分享弹窗（底部滑入） */}
+      {/* 分享弹窗（底部滑入）：只保留复制分享文案（固定话术+链接） */}
       {shareOpen && (
         <div className="fixed inset-0 z-[70] flex items-end justify-center bg-black/40" onClick={closeShare}>
           <div className="w-full max-w-md rounded-t-2xl bg-white p-6" onClick={(e) => e.stopPropagation()}>
-            <div className="mb-5 text-center text-base font-medium" style={{ color: '#2c2c2c' }}>分享相册</div>
-            <div className="mb-5 flex justify-around">
-              <button onClick={shareToWx} className="flex flex-col items-center">
-                <div className="flex h-14 w-14 items-center justify-center rounded-full text-2xl text-white" style={{ background: TEAL }}>💬</div>
-                <div className="mt-2 text-xs text-gray-500">微信好友</div>
-              </button>
-              <button onClick={shareToWx} className="flex flex-col items-center">
-                <div className="flex h-14 w-14 items-center justify-center rounded-full text-2xl text-white" style={{ background: '#1aad19' }}>🌈</div>
-                <div className="mt-2 text-xs text-gray-500">朋友圈</div>
-              </button>
-              <button onClick={downloadQR} className="flex flex-col items-center">
-                <div className="flex h-14 w-14 items-center justify-center rounded-full text-2xl text-white" style={{ background: '#2c2c2c' }}>📷</div>
-                <div className="mt-2 text-xs text-gray-500">下载二维码</div>
-              </button>
-              <button onClick={copyLink} className="flex flex-col items-center">
-                <div className="flex h-14 w-14 items-center justify-center rounded-full text-2xl text-white" style={{ background: '#7ecdbb' }}>📋</div>
-                <div className="mt-2 text-xs text-gray-500">复制链接</div>
-              </button>
+            <div className="mb-4 text-center text-base font-medium" style={{ color: '#2c2c2c' }}>分享相册</div>
+            {/* 分享文案预览：链接已替换进括号 */}
+            <div className="mb-5 max-h-40 overflow-auto rounded-lg p-3 text-xs leading-relaxed" style={{ background: '#f7f7f7', color: '#555', wordBreak: 'break-all', whiteSpace: 'pre-wrap' }}>
+              {shareNote}
             </div>
-            <button onClick={closeShare} className="w-full rounded-lg bg-gray-100 py-3 text-sm text-gray-600">取消</button>
+            <button onClick={copyShareNote} className="w-full rounded-lg py-3 text-sm text-white" style={{ background: MRED }}>
+              复制分享文案
+            </button>
+            <button onClick={closeShare} className="mt-2 w-full rounded-lg bg-gray-100 py-3 text-sm text-gray-600">取消</button>
           </div>
         </div>
       )}
