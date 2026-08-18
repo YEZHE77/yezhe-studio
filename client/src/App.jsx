@@ -92,6 +92,7 @@ const ContractTemplates = React.lazy(() => import('./pages/ContractTemplates.jsx
 const ContractAudit = React.lazy(() => import('./pages/ContractAudit.jsx'));
 const ConsistencyCheck = React.lazy(() => import('./pages/ConsistencyCheck.jsx'));
 const MiniProgramPreview = React.lazy(() => import('./pages/MiniProgramPreview.jsx'));
+const PhoneSimulator = React.lazy(() => import('./pages/PhoneSimulator.jsx'));
 const CustomerAgreement = React.lazy(() => import('./pages/CustomerAgreement.jsx'));
 const CustomerAgreementEdit = React.lazy(() => import('./pages/CustomerAgreementEdit.jsx'));
 const RefundPolicyEdit = React.lazy(() => import('./pages/RefundPolicyEdit.jsx'));
@@ -228,6 +229,10 @@ export default function App() {
       } />
       {/* 管理后台专属入口（方案A）：/enter?k=专属密钥 验证通过才能访问后台；错误密钥/无密钥重定向 C 端主页 */}
       <Route path="/enter" element={<AdminEnter />} />
+      {/* 线上手机端模拟器：公开页面，iframe 加载移动端页面，带 iPhone 外框与设备切换 */}
+      <Route path="/phone-simulator" element={
+        <Suspense fallback={<PageLoader />}><PhoneSimulator /></Suspense>
+      } />
       {/* C 端微官网首页 / 作品 / 套系中心：公开可访问，与登录态无关（顾客手机端所见即此；
           小程序预览 iframe 也加载这些路径，确保电脑端预览 = 顾客端 100% 一致） */}
       <Route path="/home" element={
