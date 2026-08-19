@@ -210,20 +210,20 @@ export default function AlbumGrid({ gallery, onBack, albumId }) {
       {/* 照片区：参照歪猫小程序——2列不等高规则网格/单列大图纵向滑动（无小标题） */}
       <div style={{ padding: '8px 0 20px' }}>
         {view === 'grid' ? (
-          // 宫格：JS 奇偶拆分双列（左列 photos[0,2,4] / 右列 photos[1,3,5] = 1左2右、3左4右 顺序）
-          // 列内紧贴 2px、不强制行对齐——消除 row-major 行高差导致的矮图下方大空白，仅列底轻微不齐
-          <div style={{ display: 'flex', gap: 2, alignItems: 'flex-start' }}>
-            <div style={{ flex: 1, minWidth: 0 }}>
+          // 宫格：CSS grid 1fr 1fr 确保两列严格等宽 + JS 奇偶拆分（左列 i%2===0，右列 i%2===1）= 1左2右、3左4右、5左6右
+          // 列内 flex-column 紧贴 2px gap；原比例图；img 加载失败时半透明占位，避免单张失败导致整列坍缩为 0 高、右半屏大量空白
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2, alignItems: 'start' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
               {photos.map((p, i) => i % 2 === 0 ? (
-                <div key={i} role="button" tabIndex={0} onClick={() => setFull(i)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setFull(i); } }} style={{ display: 'block', width: '100%', padding: 0, border: 'none', borderRadius: 0, overflow: 'hidden', marginBottom: 2, background: '#f5f5f5', cursor: 'pointer' }}>
-                  <img src={img(p, 'thumb')} alt="" style={{ width: '100%', height: 'auto', display: 'block' }} loading="lazy" />
+                <div key={'L' + i} role="button" tabIndex={0} onClick={() => setFull(i)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setFull(i); } }} style={{ width: '100%', overflow: 'hidden', background: '#f5f5f5', cursor: 'pointer' }}>
+                  <img src={img(p, 'thumb')} alt="" style={{ width: '100%', height: 'auto', display: 'block' }} loading="lazy" onError={(e) => { e.currentTarget.style.opacity = '0.3'; }} />
                 </div>
               ) : null)}
             </div>
-            <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
               {photos.map((p, i) => i % 2 === 1 ? (
-                <div key={i} role="button" tabIndex={0} onClick={() => setFull(i)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setFull(i); } }} style={{ display: 'block', width: '100%', padding: 0, border: 'none', borderRadius: 0, overflow: 'hidden', marginBottom: 2, background: '#f5f5f5', cursor: 'pointer' }}>
-                  <img src={img(p, 'thumb')} alt="" style={{ width: '100%', height: 'auto', display: 'block' }} loading="lazy" />
+                <div key={'R' + i} role="button" tabIndex={0} onClick={() => setFull(i)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setFull(i); } }} style={{ width: '100%', overflow: 'hidden', background: '#f5f5f5', cursor: 'pointer' }}>
+                  <img src={img(p, 'thumb')} alt="" style={{ width: '100%', height: 'auto', display: 'block' }} loading="lazy" onError={(e) => { e.currentTarget.style.opacity = '0.3'; }} />
                 </div>
               ) : null)}
             </div>
