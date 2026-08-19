@@ -22,6 +22,7 @@ const bgmSrc = BGM_URL || '/bgm/bgm.mp3';
 export default function AlbumGrid({ gallery, onBack, albumId }) {
   const { title, subtitle, category, albumCopy, cover_url, photos = [], brand_name, brand_slogan, brand_intro, brand_logo, views } = gallery;
   const [view, setView] = useState('single'); // single 单列大图纵向滑动（默认） | grid 网格总览
+  const [gridLayout, setGridLayout] = useState(null); // 宫格瀑布流布局：{ left:[原始索引], right:[原始索引] }，null 时用奇偶双列兜底
   const [full, setFull] = useState(-1);     // >=0 打开全屏查看的起始索引
   const [toast, setToast] = useState('');
   const [shareOpen, setShareOpen] = useState(false);
@@ -147,6 +148,38 @@ export default function AlbumGrid({ gallery, onBack, albumId }) {
     window.location.href = window.location.origin + '/customer/book';
   };
 
+  // 宫格瀑布流：预加载极小缩略图（?w=40）测量每张真实宽高比 → 贪心分配两列（每张放入当前较矮的列），
+  // 两列底部尽量齐平、消除"右侧大量空白"；第 1 张强制左列，之后按高度平衡分配（顺序大致 1左2右 交替，高度平衡时偶尔连续同列）。
+  // 测量完成前 gridLayout 为 null → 渲染兜底的奇偶双列，避免等待期空白。
+  useEffect(() => {
+    if (view !== 'grid' || !photos.length) { setGridLayout(null); return; }
+    let cancelled = false;
+    const ratios = new Array(photos.length).fill(1.4); // 默认按 3:4 竖图比例兜底
+    let done = 0;
+    const finish = () => {
+      done += 1;
+      if (done >= photos.length && !cancelled) {
+        const left = [], right = [];
+        let lh = 0, rh = 0;
+        photos.forEach((_, i) => {
+          const h = ratios[i] || 1.4;
+          if (left.length === 0 || lh <= rh) { left.push(i); lh += h; }
+          else { right.push(i); rh += h; }
+        });
+        setGridLayout({ left, right });
+      }
+    };
+    photos.forEach((p, i) => {
+      const base = img(p);
+      if (!base) { finish(); return; }
+      const im = new Image();
+      im.onload = () => { if (!cancelled && im.naturalWidth > 0) ratios[i] = im.naturalHeight / im.naturalWidth; finish(); };
+      im.onerror = finish;
+      im.src = base + (base.includes('?') ? '&w=40' : '?w=40');
+    });
+    return () => { cancelled = true; };
+  }, [view, photos]);
+
   // 切换视图并尽量保留滚动位置（整页滚动，用 window.scrollY）
   const switchView = (v) => {
     if (v === view) return;
@@ -210,24 +243,29 @@ export default function AlbumGrid({ gallery, onBack, albumId }) {
       {/* 照片区：参照歪猫小程序——2列不等高规则网格/单列大图纵向滑动（无小标题） */}
       <div style={{ padding: '8px 0 20px' }}>
         {view === 'grid' ? (
-          // 宫格：CSS grid 1fr 1fr 确保两列严格等宽 + JS 奇偶拆分（左列 i%2===0，右列 i%2===1）= 1左2右、3左4右、5左6右
-          // 列内 flex-column 紧贴 2px gap；原比例图；img 加载失败时半透明占位，避免单张失败导致整列坍缩为 0 高、右半屏大量空白
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2, alignItems: 'start' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
-              {photos.map((p, i) => i % 2 === 0 ? (
-                <div key={'L' + i} role="button" tabIndex={0} onClick={() => setFull(i)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setFull(i); } }} style={{ width: '100%', overflow: 'hidden', background: '#f5f5f5', cursor: 'pointer' }}>
-                  <img src={img(p, 'thumb')} alt="" style={{ width: '100%', height: 'auto', display: 'block' }} loading="lazy" onError={(e) => { e.currentTarget.style.opacity = '0.3'; }} />
+          // 宫格：动态瀑布流平衡——按实测宽高比贪心分配两列（每张放入当前较矮列），两列底部几乎齐平；
+          // 测量未完成时（gridLayout=null）用奇偶双列兜底；列内 flex-column 紧贴 2px gap；img 失败半透明占位防列坍缩
+          (() => {
+            const cols = gridLayout || {
+              left: photos.map((_, i) => i).filter((i) => i % 2 === 0),
+              right: photos.map((_, i) => i).filter((i) => i % 2 === 1),
+            };
+            const renderThumb = (idx) => (
+              <div key={idx} role="button" tabIndex={0} onClick={() => setFull(idx)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setFull(idx); } }} style={{ width: '100%', overflow: 'hidden', background: '#f5f5f5', cursor: 'pointer' }}>
+                <img src={img(photos[idx], 'thumb')} alt="" style={{ width: '100%', height: 'auto', display: 'block' }} loading="lazy" onError={(e) => { e.currentTarget.style.opacity = '0.3'; }} />
+              </div>
+            );
+            return (
+              <div style={{ display: 'flex', gap: 2, alignItems: 'flex-start' }}>
+                <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  {cols.left.map(renderThumb)}
                 </div>
-              ) : null)}
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
-              {photos.map((p, i) => i % 2 === 1 ? (
-                <div key={'R' + i} role="button" tabIndex={0} onClick={() => setFull(i)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setFull(i); } }} style={{ width: '100%', overflow: 'hidden', background: '#f5f5f5', cursor: 'pointer' }}>
-                  <img src={img(p, 'thumb')} alt="" style={{ width: '100%', height: 'auto', display: 'block' }} loading="lazy" onError={(e) => { e.currentTarget.style.opacity = '0.3'; }} />
+                <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  {cols.right.map(renderThumb)}
                 </div>
-              ) : null)}
-            </div>
-          </div>
+              </div>
+            );
+          })()
         ) : (
           // 单列大图纵向滑动（默认）：整张铺满屏宽、原图直角、照片间距 2px、横竖版自适应；div 容器避免 button UA 灰底
           <div>
