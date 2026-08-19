@@ -68,6 +68,7 @@ export default function WorkPreview() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState('grid'); // 移动端相册视图：grid 宫格 / list 列表
+  const [gridLayout, setGridLayout] = useState(null); // 宫格瀑布流布局：{ left:[索引], right:[索引] }，null 时奇偶双列兜底
   // 响应式：PC 端走受限布局（封面不全屏、标题卡片化、相册 3 列、品牌栏 static），移动端保持原 3/4 全屏 + fixed 品牌栏
   const [isMobile, setIsMobile] = useState(() => (typeof window !== 'undefined' ? window.innerWidth < 768 : true));
   useEffect(() => {
@@ -113,6 +114,39 @@ export default function WorkPreview() {
     const t = setInterval(() => setSlideIdx((i) => (i + 1) % slideCount), 3000);
     return () => clearInterval(t);
   }, [slideOpen, slidePaused, slideCount]);
+
+  // 宫格瀑布流：与 C 端 AlbumGrid 同一套——切到宫格时预加载 ?w=40 极窄缩略图测每张真实宽高比，
+  // 贪心分配两列（第 1 张强制左列，之后每张放入当前较矮列），两列底部几乎齐平；测量完成前奇偶双列兜底
+  useEffect(() => {
+    if (view !== 'grid') { setGridLayout(null); return; }
+    const list = (data?.albums || []).filter((a) => a.zone === 'sample' && a.photo_url);
+    if (!list.length) { setGridLayout(null); return; }
+    let cancelled = false;
+    const ratios = new Array(list.length).fill(1.4);
+    let done = 0;
+    const finish = () => {
+      done += 1;
+      if (done >= list.length && !cancelled) {
+        const left = [], right = [];
+        let lh = 0, rh = 0;
+        list.forEach((_, i) => {
+          const h = ratios[i] || 1.4;
+          if (left.length === 0 || lh <= rh) { left.push(i); lh += h; }
+          else { right.push(i); rh += h; }
+        });
+        setGridLayout({ left, right });
+      }
+    };
+    list.forEach((a, i) => {
+      const base = img(a.thumb_url || a.photo_url);
+      if (!base) { finish(); return; }
+      const im = new Image();
+      im.onload = () => { if (!cancelled && im.naturalWidth > 0) ratios[i] = im.naturalHeight / im.naturalWidth; finish(); };
+      im.onerror = finish;
+      im.src = base + (base.includes('?') ? '&w=40' : '?w=40');
+    });
+    return () => { cancelled = true; };
+  }, [view, data]);
 
   if (loading) {
     return (
@@ -369,23 +403,29 @@ export default function WorkPreview() {
               </div>
             </div>
             {view === 'grid' ? (
-              // 宫格：JS 奇偶双列（左[0,2,4]/右[1,3,5] = 1左2右、3左4右）+ 列内紧贴无行内空白
-              <div style={{ display: 'flex', gap: 4, alignItems: 'flex-start' }}>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  {albums.map((a, i) => i % 2 === 0 ? (
-                    <div key={a.id || i} style={{ width: '100%', background: '#f5f5f5', borderRadius: 0, overflow: 'hidden', marginBottom: 4 }}>
-                      <img src={img(a.thumb_url || a.photo_url)} alt="" style={{ width: '100%', height: 'auto', display: 'block' }} loading="lazy" />
+              // 宫格：动态瀑布流平衡（与 C 端 AlbumGrid 同一套）——按实测宽高比贪心分配两列，两列底部几乎齐平；
+              // 测量未完成时（gridLayout=null）用奇偶双列兜底；列内 flex-column 紧贴 4px gap；img 失败半透明占位防列坍缩
+              (() => {
+                const cols = gridLayout || {
+                  left: albums.map((_, i) => i).filter((i) => i % 2 === 0),
+                  right: albums.map((_, i) => i).filter((i) => i % 2 === 1),
+                };
+                const renderThumb = (idx) => (
+                  <div key={albums[idx]?.id || idx} style={{ width: '100%', background: '#f5f5f5', borderRadius: 0, overflow: 'hidden' }}>
+                    <img src={img(albums[idx].thumb_url || albums[idx].photo_url)} alt="" style={{ width: '100%', height: 'auto', display: 'block' }} loading="lazy" onError={(e) => { e.currentTarget.style.opacity = '0.3'; }} />
+                  </div>
+                );
+                return (
+                  <div style={{ display: 'flex', gap: 4, alignItems: 'flex-start' }}>
+                    <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                      {cols.left.map(renderThumb)}
                     </div>
-                  ) : null)}
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  {albums.map((a, i) => i % 2 === 1 ? (
-                    <div key={a.id || i} style={{ width: '100%', background: '#f5f5f5', borderRadius: 0, overflow: 'hidden', marginBottom: 4 }}>
-                      <img src={img(a.thumb_url || a.photo_url)} alt="" style={{ width: '100%', height: 'auto', display: 'block' }} loading="lazy" />
+                    <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                      {cols.right.map(renderThumb)}
                     </div>
-                  ) : null)}
-                </div>
-              </div>
+                  </div>
+                );
+              })()
             ) : (
               // 列表：每个相册一行（封面缩略图 + 标题 + 照片数）
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
