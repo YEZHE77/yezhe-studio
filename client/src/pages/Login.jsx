@@ -8,6 +8,7 @@ export default function Login() {
   const [u, setU] = useState('admin');
   const [p, setP] = useState('');
   const [err, setErr] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
   // 返回守卫：若用户是通过浏览器「返回」进入登录页（back_forward 导航），
   // 判定来自 C 端分享链路（客户在 /home 按返回 → 历史里的 /login 项），
@@ -28,12 +29,16 @@ export default function Login() {
 
   async function submit(e) {
     e.preventDefault();
+    if (submitting) return;
     setErr('');
+    setSubmitting(true);
     try {
       await login(u, p);
       nav('/');
     } catch (e) {
       setErr(e.response?.data?.error || '登录失败');
+    } finally {
+      setSubmitting(false);
     }
   }
 
@@ -50,7 +55,7 @@ export default function Login() {
         <input type="password" className="w-full mb-3 px-3 py-2 rounded bg-panel2 border border-line text-white outline-none"
           placeholder="密码" value={p} onChange={(e) => setP(e.target.value)} />
         {err && <div className="text-red-400 text-xs mb-3">{err}</div>}
-        <button className="w-full py-2 rounded bg-brand text-white hover:opacity-90">登 录</button>
+        <button disabled={submitting} className="w-full py-2 rounded bg-brand text-white hover:opacity-90 disabled:opacity-60">{submitting ? '登录中…' : '登 录'}</button>
         <div className="text-xs text-muted mt-4 text-center">默认账号 admin / admin123（首次登录请修改）</div>
       </form>
     </div>

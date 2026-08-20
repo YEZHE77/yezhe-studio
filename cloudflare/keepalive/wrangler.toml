@@ -1,0 +1,19 @@
+# Cloudflare Worker —— Render 后端保活（避免 free 实例休眠冷启动）
+# 部署步骤：
+#   cd cloudflare/keepalive
+#   npx wrangler login
+#   npx wrangler deploy        # 首次会询问注册 Cron Trigger，选 Yes
+# 原理：Render free 约 15 分钟无请求休眠；本 Worker 每 5 分钟请求一次
+#   /api/keepalive（触库 SELECT 1），既防休眠又预热 Neon 连接。
+# 也可在 CF Dashboard → Workers & Pages → yezhe-server-keepalive → Triggers → Cron 添加 */5 * * * *
+
+name = "yezhe-server-keepalive"
+main = "worker.js"
+compatibility_date = "2024-09-23"
+account_id = "0bde736e2d9fef22b049ffc833bae06c"
+
+[triggers]
+crons = ["*/5 * * * *"]
+
+[vars]
+TARGET_URL = "https://yezhe-studio-server.onrender.com/api/keepalive"

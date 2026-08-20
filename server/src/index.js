@@ -27,6 +27,7 @@ import paymentsRoutes from './routes/payments.js';
 import financeRoutes from './routes/finance.js';
 import statsRoutes from './routes/stats.js';
 import healthRoutes from './routes/health.js';
+import keepaliveRoutes from './routes/keepalive.js';
 import wxRoutes from './routes/wx.js';
 import customerRoutes from './routes/customer.js';
 import customerMineRoutes from './routes/customerMine.js';
@@ -149,6 +150,7 @@ app.use('/api/payments', paymentsRoutes);
 app.use('/api/finance', financeRoutes);
 app.use('/api/stats', statsRoutes);
 app.use('/api/health', healthRoutes);
+app.use('/api/keepalive', keepaliveRoutes);
 app.use('/api/wx', wxRoutes);
 app.use('/api/customer', customerRoutes);
 app.use('/api/customer', customerMineRoutes);
@@ -177,31 +179,46 @@ app.use((err, req, res, next) => {
 
 app.use((req, res) => res.status(404).json({ error: '接口不存在' }));
 
-initSchema().then(async () => {
+// 生产环境护栏（模块顶层，两种启动方式均生效）：未配置 DATABASE_URL 时会落到 Render 临时磁盘的本地 SQLite，
+// 实例休眠/重启/重新部署即清空数据（作品、相册、订单、财务全部丢失）。绝不允许静默发生。
+const isProdLike = process.env.NODE_ENV === 'production' || process.env.RENDER || process.env.RENDER_EXTERNAL_URL;
+if (dialect !== 'pg' && isProdLike) {
+  console.error('');
+  console.error('╔══════════════════════════════════════════════════════════════════════════╗');
+  console.error('║  ⚠️  严重：生产环境未检测到 DATABASE_URL，当前使用临时本地 SQLite！          ║');
+  console.error('║  所有数据（作品/相册/订单/财务）将随实例重启或重新部署丢失。                  ║');
+  console.error('║  立即在 Render 环境变量中添加 DATABASE_URL = postgresql://<Neon连接串> 并重新部署。║');
+  console.error('╚══════════════════════════════════════════════════════════════════════════╝');
+  console.error('');
+}
+
+const onListen = () => {
+  console.log(`[server] 已启动 → http://localhost:${PORT}`);
+  console.log(`[server] CORS 放行: ${CORS_ORIGIN.join(', ')}`);
+  console.log(`[server] 数据库方言: ${dialect}`);
+};
+
+// 后台初始化任务：建表/迁移（冷启动加速后 initSchema 仅 1 次 SELECT，毫秒级）→ 种子 → 每日调度
+const runBootTasks = () => initSchema().then(async () => {
   await seedIfNeeded();
   // 备份由外部 Mac mini + rclone 独立完成，业务层不做自动备份（安全需求第7条）
   // 数据一致性巡检：每日凌晨 02:00 批量校验（档期冲突/精修超额/合同快照不匹配/套系未绑模板），异常入库 + 推送提醒
   try { scheduleConsistencyCheck(); } catch (e) { console.error('[check] 调度失败', e.message); }
   // 业务提醒扫描：每日 08:00（选片任务到期 / 摄影日程临近 → 生成移动端消息）
   try { scheduleReminders(); } catch (e) { console.error('[reminder] 调度失败', e.message); }
-  const server = app.listen(PORT, () => {
-    console.log(`[server] 已启动 → http://localhost:${PORT}`);
-    console.log(`[server] CORS 放行: ${CORS_ORIGIN.join(', ')}`);
-    console.log(`[server] 数据库方言: ${dialect}`);
-  });
-  // 需求 D：上传接口超时放大到 60 秒（分片小、连接多，单请求远超默认短超时，
-  // 避免弱网下大图/多分片被过早掐断）。Node 默认 server.timeout=0（无限），此处显式设为 60s。
-  server.setTimeout(60000);
-  // 生产环境护栏：未配置 DATABASE_URL 时会落到 Render 临时磁盘的本地 SQLite，
-  // 实例休眠/重启/重新部署即清空数据（作品、相册、订单、财务全部丢失）。绝不允许静默发生。
-  const isProdLike = process.env.NODE_ENV === 'production' || process.env.RENDER || process.env.RENDER_EXTERNAL_URL;
-  if (dialect !== 'pg' && isProdLike) {
-    console.error('');
-    console.error('╔══════════════════════════════════════════════════════════════════════════╗');
-    console.error('║  ⚠️  严重：生产环境未检测到 DATABASE_URL，当前使用临时本地 SQLite！          ║');
-    console.error('║  所有数据（作品/相册/订单/财务）将随实例重启或重新部署丢失。                  ║');
-    console.error('║  立即在 Render 环境变量中添加 DATABASE_URL = postgresql://<Neon连接串> 并重新部署。║');
-    console.error('╚══════════════════════════════════════════════════════════════════════════╝');
-    console.error('');
-  }
 });
+
+if (process.env.SYNC_BOOT === '1') {
+  // 回滚开关：SYNC_BOOT=1 恢复旧串行（initSchema 全部完成后再监听）
+  runBootTasks().then(() => {
+    const server = app.listen(PORT, onListen);
+    // 需求 D：上传接口超时放大到 60 秒（分片小、连接多，单请求远超默认短超时，
+    // 避免弱网下大图/多分片被过早掐断）。Node 默认 server.timeout=0（无限），此处显式设为 60s。
+    server.setTimeout(60000);
+  }).catch((e) => console.error('[schema] 初始化失败', e));
+} else {
+  // 冷启动加速：先监听（Render 健康检查 /api/health 立即 200，首请求不再阻塞等待建表），后台并行初始化
+  const server = app.listen(PORT, onListen);
+  server.setTimeout(60000);
+  runBootTasks().catch((e) => console.error('[schema] 初始化失败', e));
+}

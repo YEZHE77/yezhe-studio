@@ -41,8 +41,8 @@ http.interceptors.response.use(
     const cfg = err.config;
     if (axios.isCancel(err)) return Promise.reject({ type: 'cancel', message: '请求已取消' });
 
-    // 自动重试：GET 请求在超时/网关错误/无响应时最多重试 1 次
-    if (cfg && cfg.method === 'get' && cfg.__retryCount < 1) {
+    // 自动重试：GET 请求在超时/网关错误/无响应时最多重试 2 次（缓解 Render Free 冷启动首访慢）
+    if (cfg && cfg.method === 'get' && cfg.__retryCount < 2) {
       const shouldRetry = !err.response || err.code === 'ECONNABORTED' || [502, 503, 504].includes(err.response?.status);
       if (shouldRetry) {
         cfg.__retryCount += 1;

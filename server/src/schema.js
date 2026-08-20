@@ -2,6 +2,10 @@
 // 两种方言各自 DDL；首次启动自动创建；后续新增列用 ensureColumn 增量迁移，绝不破坏已有数据。
 import { dialect, run, query, get, insert } from './db.js';
 
+// 表结构版本号：已初始化的库启动时跳过全量 DDL/ensureColumn（Render 冷启动加速，130+ 次 DB 往返 → 1 次 SELECT）。
+// 约定：新增表/列/约束时同步 +1，下次启动自动全量幂等重跑并回写新版本号。
+const SCHEMA_VERSION = 1;
+
 const PG_DDL = `
 CREATE TABLE IF NOT EXISTS users (
   id SERIAL PRIMARY KEY, username TEXT UNIQUE NOT NULL, password_hash TEXT NOT NULL,
@@ -656,6 +660,35 @@ async function ensureSelectionConstraints() {
 }
 
 export async function initSchema() {
+  // 系统级配置表（离散系统开关/默认值，如「订单分享默认备注」；与 settings 表的对外资料 JSON 区分）
+  // 提前到最前创建：schema_version 版本标记就存这里，表不存在时无法读取
+  const SYSTEM_CONFIG_DDL = dialect === 'pg'
+    ? `CREATE TABLE IF NOT EXISTS system_config (
+        id SERIAL PRIMARY KEY, key TEXT NOT NULL UNIQUE, value TEXT,
+        updated_at TIMESTAMPTZ DEFAULT now()
+      )`
+    : `CREATE TABLE IF NOT EXISTS system_config (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, key TEXT NOT NULL UNIQUE, value TEXT,
+        updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+      )`;
+  for (const s of SYSTEM_CONFIG_DDL.split(';').map((x) => x.trim()).filter(Boolean)) {
+    try {
+      await run(s);
+    } catch (e) {
+      console.error('[schema] system_config DDL 执行失败：\n>>', s, '\n<< 报错：', e.message);
+      throw e;
+    }
+  }
+
+  // 冷启动加速：库已初始化（schema_version 标记命中）则跳过全量 DDL/ensureColumn/数据迁移，仅 1 次 SELECT
+  try {
+    const row = await get("SELECT value FROM system_config WHERE key = 'schema_version'");
+    if (row && Number(row.value) >= SCHEMA_VERSION) {
+      console.log('[schema] 已是最新 v' + SCHEMA_VERSION + '，跳过');
+      return;
+    }
+  } catch (e) { console.warn('[schema] 读取版本标记失败，走全量初始化：', e.message); }
+
   const ddl = dialect === 'pg' ? PG_DDL : SQLITE_DDL;
   const stmts = ddl.split(';').map((s) => s.trim()).filter(Boolean);
   for (const s of stmts) await run(s);
@@ -1059,30 +1092,21 @@ export async function initSchema() {
     }
   }
 
-  // 系统级配置表（离散系统开关/默认值，如「订单分享默认备注」；与 settings 表的对外资料 JSON 区分）
-  const SYSTEM_CONFIG_DDL = dialect === 'pg'
-    ? `CREATE TABLE IF NOT EXISTS system_config (
-        id SERIAL PRIMARY KEY, key TEXT NOT NULL UNIQUE, value TEXT,
-        updated_at TIMESTAMPTZ DEFAULT now()
-      )`
-    : `CREATE TABLE IF NOT EXISTS system_config (
-        id INTEGER PRIMARY KEY AUTOINCREMENT, key TEXT NOT NULL UNIQUE, value TEXT,
-        updated_at TEXT DEFAULT CURRENT_TIMESTAMP
-      )`;
-  for (const s of SYSTEM_CONFIG_DDL.split(';').map((x) => x.trim()).filter(Boolean)) {
-    try {
-      await run(s);
-    } catch (e) {
-      console.error('[schema] system_config DDL 执行失败：\n>>', s, '\n<< 报错：', e.message);
-      throw e;
-    }
-  }
+  // （system_config 建表已上移至 initSchema 开头，供 schema_version 标记使用）
+
   // 默认值种子：仅当 key 不存在时写入（管理员清空后不会回填；清空即代表「新订单不带默认备注」）
   try {
     const DEFAULT_ORDER_SHARE_NOTE = '这是我们团队开发的软件，此链接为专属访问地址，受微信环境限制，请复制链接（链接填写在此处），在手机浏览器打开查看订单详情。';
     const ex = await get("SELECT key FROM system_config WHERE key = 'customer_order_share_default_note'");
     if (!ex) await insert("INSERT INTO system_config (key, value) VALUES (?, ?)", ['customer_order_share_default_note', DEFAULT_ORDER_SHARE_NOTE]);
   } catch (e) { console.error('[schema] system_config 默认值种子失败', e.message); }
+
+  // 回写表结构版本标记：下次启动命中即跳过全量初始化（冷启动加速）
+  try {
+    const ex = await get("SELECT 1 FROM system_config WHERE key = 'schema_version'");
+    if (ex) await run("UPDATE system_config SET value = ? WHERE key = 'schema_version'", [String(SCHEMA_VERSION)]);
+    else await insert("INSERT INTO system_config (key, value) VALUES (?, ?)", ['schema_version', String(SCHEMA_VERSION)]);
+  } catch (e) { console.error('[schema] 写版本标记失败', e.message); }
 
   console.log('[schema] 表结构已就绪');
 }
