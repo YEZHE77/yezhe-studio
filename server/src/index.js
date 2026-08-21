@@ -11,6 +11,7 @@ import { initSchema } from './schema.js';
 import { saveImage } from './storage.js';
 import { scheduleConsistencyCheck } from './consistencyCheck.js';
 import { scheduleReminders } from './reminder.js';
+import { scheduleDailyBackup } from './backup.js';
 import { authRequired } from './auth.js';
 import { seedIfNeeded } from './seed.js';
 
@@ -201,7 +202,9 @@ const onListen = () => {
 // 后台初始化任务：建表/迁移（冷启动加速后 initSchema 仅 1 次 SELECT，毫秒级）→ 种子 → 每日调度
 const runBootTasks = () => initSchema().then(async () => {
   await seedIfNeeded();
-  // 备份由外部 Mac mini + rclone 独立完成，业务层不做自动备份（安全需求第7条）
+  // 每日 03:10 自动全量备份：业务 JSON 写入对象存储 /backup/ 目录（COS 优先 / R2 兜底）。
+  // 数据安全网：Neon 免费 PITR 仅 6h，超过该窗口的历史数据只能靠这份每日 JSON 恢复。
+  try { scheduleDailyBackup(); } catch (e) { console.error('[backup] 调度失败', e.message); }
   // 数据一致性巡检：每日凌晨 02:00 批量校验（档期冲突/精修超额/合同快照不匹配/套系未绑模板），异常入库 + 推送提醒
   try { scheduleConsistencyCheck(); } catch (e) { console.error('[check] 调度失败', e.message); }
   // 业务提醒扫描：每日 08:00（选片任务到期 / 摄影日程临近 → 生成移动端消息）
