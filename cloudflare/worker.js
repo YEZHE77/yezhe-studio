@@ -25,6 +25,12 @@ export default {
       return new Response('Not Found', { status: 404 });
     }
 
+    // 安全边界：backup/ 目录存放全量业务数据备份（含客户电话/密码哈希等），
+    // 仅应通过 R2 私有桶 API 访问，禁止经公开代理读取（防枚举文件名泄露）。
+    if (url.pathname.startsWith('/r2/backup/')) {
+      return new Response('Not Found', { status: 404 });
+    }
+
     // 防盗链（Referer 白名单）：拒绝其他外部站点盗用图片
     // 小程序 wx.request 不发送 Referer，直接放行；同源/白名单域名放行；其他带 Referer 的外部域名 → 403
     const referer = request.headers.get('Referer');

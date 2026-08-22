@@ -11,6 +11,11 @@ export default {
 
     // R2 图片代理：/r2/<key> → 转发到 Worker
     if (url.pathname.startsWith('/r2/')) {
+      // 安全边界：backup/ 目录存放全量业务数据备份（含客户电话/密码哈希等），
+      // 仅应通过 R2 私有桶 API 访问，禁止经公开代理读取（防枚举文件名泄露）。
+      if (url.pathname.startsWith('/r2/backup/')) {
+        return new Response('Not Found', { status: 404 });
+      }
       const target = R2_WORKER_ORIGIN + url.pathname + url.search;
       try {
         const upstream = await fetch(target, {
