@@ -58,21 +58,22 @@ router.post('/status-columns', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// PUT /api/media/status-columns/order  { ids: [..] }  —— 拖拽调整列顺序
+// 注意：必须注册在 /status-columns/:id 之前，否则 Express 会把 'order' 当成 :id 吃掉
+router.put('/status-columns/order', async (req, res) => {
+  try {
+    const ids = (req.body.ids || []).map((x) => Number(x)).filter((x) => Number.isFinite(x));
+    for (let i = 0; i < ids.length; i++) await run('UPDATE media_status_column SET sort = ? WHERE id = ?', [i, ids[i]]);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // PUT /api/media/status-columns/:id  { name }
 router.put('/status-columns/:id', async (req, res) => {
   try {
     const name = String(req.body.name || '').trim();
     if (!name) return res.status(400).json({ error: '列名不能为空' });
     await run('UPDATE media_status_column SET name = ? WHERE id = ?', [name, num(req.params.id)]);
-    res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
-});
-
-// PUT /api/media/status-columns/order  { ids: [..] }  —— 拖拽调整列顺序
-router.put('/status-columns/order', async (req, res) => {
-  try {
-    const ids = (req.body.ids || []).map((x) => Number(x)).filter((x) => Number.isFinite(x));
-    for (let i = 0; i < ids.length; i++) await run('UPDATE media_status_column SET sort = ? WHERE id = ?', [i, ids[i]]);
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -217,10 +218,12 @@ router.post('/inspirations/parse', async (req, res) => {
         catch { return res.status(400).json({ error: '链接格式无效，需以 http:// 或 https:// 开头的完整 URL' }); }
       }
     const isDouyin = /douyin\.com/.test(host) || /iesdouyin\.com/.test(host);
-    const isXhs = /xiaohongshu\.com/.test(host) || /xhslink\.com/.test(host);
+    // 小红书短链域名 xhslink.com / xhslink.cn 都可能是用户从分享复制出来的（如 xhslink.cn/o/xxx）
+    const isXhs = /xiaohongshu\.com/.test(host) || /xhslink\.com/.test(host) || /xhslink\.cn/.test(host);
     if (!isDouyin && !isXhs) return res.status(400).json({ error: '仅支持抖音 / 小红书链接（当前域名：' + host + '）' });
-    // 从 URL 中提取笔记/视频短 id 作为占位标题语义（不抓取正文）；兼容 explore/（小红书笔记直链）
-    const m = url.match(/(?:note|video|discovery\/item|share\/video|explore)\/([A-Za-z0-9]+)/) || url.match(/\/video\/([A-Za-z0-9]+)/);
+    // 从 URL 中提取笔记/视频短 id 作为占位标题语义（不抓取正文）；
+    // 兼容 explore/（小红书笔记直链）与短链 o/ s/ 路径（xhslink.cn/o/xxx 分享短链）
+    const m = url.match(/(?:note|video|discovery\/item|share\/video|explore|[os])\/([A-Za-z0-9]+)/) || url.match(/\/video\/([A-Za-z0-9]+)/);
     const id = m ? m[1] : '';
     if (!id) return res.status(400).json({ error: '链接中未找到笔记 / 视频 ID，无法解析' });
     const platform = isXhs ? '小红书' : '抖音';
