@@ -1490,7 +1490,7 @@ export default function WorkDetail() {
                 该分区暂无照片，点击右上角「批量上传」添加
               </div>
             ) : (
-              <div className={`grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3 ${reordering ? 'opacity-60' : ''}`}>
+              <div className={`grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3 items-start ${reordering ? 'opacity-60' : ''}`}>
                 {zoneAlbums.map((a, index) => {
                   const src = img(a.photo_url); // falsy → 空字符串，下面走占位兜底
                   const broken = brokenSet.has(a.id);

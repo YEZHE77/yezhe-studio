@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import http, { img } from '../api.js';
 import { useVisitorGate } from '../hooks/useVisitorGate.js';
 import { VisitorBlockedView, VisitorPasswordView } from '../components/VisitorGateViews.jsx';
+import Lightbox from '../components/Lightbox.jsx';
 
 /* ==========================================================================
    作品预览页（1:1 复刻小程序风格）
@@ -91,6 +92,9 @@ export default function WorkPreview() {
   const [commentsModalOpen, setCommentsModalOpen] = useState(false);
   const [visitsList, setVisitsList] = useState([]);
   const [commentsList, setCommentsList] = useState([]);
+  // PC 端相册单图预览（Lightbox）：单击打开，← → 切换，ESC 关闭
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewIdx, setPreviewIdx] = useState(0);
 
   useEffect(() => {
     if (!id) return;
@@ -178,6 +182,7 @@ export default function WorkPreview() {
   const slidePhotos = albums.map((a) => img(a.photo_url));
 
   const startSlide = () => { setSlideIdx(0); setSlidePaused(false); setSlideOpen(true); };
+  const openPreview = (i) => { setPreviewIdx(i); setPreviewOpen(true); };
 
   // 下架（is_public 0：C 端不可见）—— 与套系预览一致：确认后返回列表
   const handleOff = async () => {
@@ -449,10 +454,10 @@ export default function WorkPreview() {
                 作品相册
                 <span style={{ fontSize: 12, color: '#999' }}>（{albums.length} 张）</span>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, alignItems: 'start' }}>
                 {albums.map((a, i) => (
-                  <div key={a.id || i} style={{ aspectRatio: '1', background: '#f5f5f5', borderRadius: 6, overflow: 'hidden', cursor: 'pointer' }}>
-                    <img src={img(a.thumb_url || a.photo_url)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} loading="lazy" />
+                  <div key={a.id || i} onClick={() => openPreview(i)} style={{ background: '#f5f5f5', borderRadius: 6, overflow: 'hidden', cursor: 'pointer' }}>
+                    <img src={img(a.thumb_url || a.photo_url)} alt="" style={{ width: '100%', height: 'auto', objectFit: 'contain', display: 'block' }} loading="lazy" onError={(e) => { e.currentTarget.style.opacity = '0.3'; }} />
                   </div>
                 ))}
               </div>
@@ -552,6 +557,11 @@ export default function WorkPreview() {
             ))}
           </div>
         </div>
+      )}
+
+      {/* 单张大图预览：PC 端相册单击打开，← → 切换，ESC 关闭 */}
+      {previewOpen && (
+        <Lightbox photos={albums.map((a) => img(a.photo_url))} index={previewIdx} open={previewOpen} onClose={() => setPreviewOpen(false)} title={w.title || ''} />
       )}
 
       {/* 右上角操作弹窗（Action Sheet，与套系预览 1:1） */}
