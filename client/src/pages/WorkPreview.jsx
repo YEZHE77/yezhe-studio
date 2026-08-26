@@ -454,14 +454,25 @@ export default function WorkPreview() {
                 作品相册
                 <span style={{ fontSize: 12, color: '#999' }}>（{albums.length} 张）</span>
               </div>
-              {/* PC 端相册：多列瀑布流（与移动端一致，照片按原始比例紧贴，不再按行对齐留白） */}
-              <div style={{ columnCount: 3, columnGap: 8 }}>
-                {albums.map((a, i) => (
-                  <div key={a.id || i} onClick={() => openPreview(i)} style={{ breakInside: 'avoid', marginBottom: 8, background: '#f5f5f5', borderRadius: 6, overflow: 'hidden', cursor: 'pointer' }}>
-                    <img src={img(a.thumb_url || a.photo_url)} alt="" style={{ width: '100%', height: 'auto', objectFit: 'contain', display: 'block' }} loading="lazy" onError={(e) => { e.currentTarget.style.opacity = '0.3'; }} />
+              {/* PC 端相册：flex 多列 + 按索引轮询分配，视觉顺序从左到右 1.2.3 / 4.5.6，列内独立堆叠无行内空白 */}
+              {(() => {
+                const cols = [[], [], []];
+                albums.forEach((_, i) => cols[i % 3].push(i));
+                const renderThumb = (idx) => (
+                  <div key={albums[idx]?.id || idx} onClick={() => openPreview(idx)} style={{ marginBottom: 8, background: '#f5f5f5', borderRadius: 6, overflow: 'hidden', cursor: 'pointer' }}>
+                    <img src={img(albums[idx].thumb_url || albums[idx].photo_url)} alt="" style={{ width: '100%', height: 'auto', objectFit: 'contain', display: 'block' }} loading="lazy" onError={(e) => { e.currentTarget.style.opacity = '0.3'; }} />
                   </div>
-                ))}
-              </div>
+                );
+                return (
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                    {cols.map((col, ci) => (
+                      <div key={ci} style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+                        {col.map(renderThumb)}
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
             </div>
           </div>
         )

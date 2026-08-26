@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import http, { img, compressImage, uploadImage, BASE } from '../api.js';
 import bgm from '../bgm.js';
@@ -187,8 +187,13 @@ export default function WorkDetail() {
   const albumCopyRef = useRef(null); // 文案 textarea 自适应高度
   // 移动端响应式：宽度 < 768px 视为手机，内联样式按 isMobile 降级，避免固定宽度溢出
   const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' ? window.innerWidth < 768 : false);
+  // PC 端相册列数：与 Tailwind 断点一致（默认 3 / sm:640 4 / md:768 5）
+  const [pcCols, setPcCols] = useState(() => typeof window !== 'undefined' ? (window.innerWidth < 640 ? 3 : window.innerWidth < 768 ? 4 : 5) : 5);
   useEffect(() => {
-    const onResize = () => setIsMobile(window.innerWidth < 768);
+    const onResize = () => {
+      setIsMobile(window.innerWidth < 768);
+      setPcCols(window.innerWidth < 640 ? 3 : window.innerWidth < 768 ? 4 : 5);
+    };
     window.addEventListener('resize', onResize);
     return () => window.removeEventListener('resize', onResize);
   }, []);
@@ -896,6 +901,65 @@ export default function WorkDetail() {
 
   const zoneAlbums = albums.filter((a) => a.zone === zone).sort((a, b) => (a.sort - b.sort) || (a.id - b.id));
 
+  // PC 端相册：按索引轮询分成 pcCols 列，视觉顺序从左到右 1.2.3 / 4.5.6，同时每列独立堆叠、无行内空白
+  const zoneCols = useMemo(() => {
+    const cols = Array.from({ length: pcCols }, () => []);
+    zoneAlbums.forEach((_, i) => cols[i % pcCols].push(i));
+    return cols;
+  }, [zoneAlbums, pcCols]);
+  function renderCard(idx) {
+    const a = zoneAlbums[idx];
+    const src = img(a.photo_url);
+    const broken = brokenSet.has(a.id);
+    const noUrl = !a.photo_url;
+    return (
+      <div
+        key={a.id}
+        draggable
+        onDragStart={(e) => handleDragStart(e, a.id)}
+        onDragOver={(e) => handleDragOver(e, a.id)}
+        onDrop={(e) => handleDrop(e, a.id)}
+        onDragEnd={handleDragEnd}
+        onClick={() => openPreview(idx)}
+        className={`group relative border rounded-xl2 overflow-hidden bg-ink cursor-grab active:cursor-grabbing select-none mb-3
+          ${selected.has(a.id) ? 'border-brand ring-1 ring-brand' : dragOverId === a.id ? 'border-brand ring-2 ring-brand' : 'border-line'}
+          ${draggedId === a.id ? 'opacity-40' : ''}`}
+      >
+        <div className="relative">
+          {src && !broken ? (
+            // 电脑端专项优化：按原始宽高比完整显示，不裁切、不变形（原为 aspect-square + object-cover 强制裁成 1:1）
+            <img src={src} loading="lazy" decoding="async" onError={() => markBroken(a.id)} draggable={false} className="w-full h-auto object-contain bg-ink pointer-events-none select-none" alt="" title="单击预览大图" />
+          ) : (
+            // url 为空 / 裂图：灰色占位，杜绝空白框；文案区分原因
+            <div className="w-full min-h-[120px] flex items-center justify-center bg-ink text-[11px] text-muted px-1 text-center leading-tight">
+              {noUrl ? '无图片地址' : '图片加载失败'}
+            </div>
+          )}
+        </div>
+        {/* 选中遮罩 */}
+        {selected.has(a.id) && <div className="absolute inset-0 bg-brand/10 pointer-events-none" />}
+        {/* 操作层 */}
+        <div className="absolute top-2 left-2">
+          <input type="checkbox" checked={selected.has(a.id)} onChange={() => toggleSelect(a.id)} onClick={(e) => e.stopPropagation()} className="w-4 h-4 accent-brand" />
+        </div>
+        <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          {work.cover_url !== a.photo_url && (
+            <button onClick={(e) => { e.stopPropagation(); setCover(a.photo_url); }} title="设为封面" className="px-2 py-1 rounded bg-black/60 text-white text-[10px]">封面</button>
+          )}
+          <button onClick={(e) => { e.stopPropagation(); deletePhoto(a.id); }} title="删除" className="px-2 py-1 rounded bg-red-500/80 text-white text-[10px]">删除</button>
+        </div>
+        <div
+          className="absolute bottom-0 left-0 right-0 bg-black/50 px-2 py-1 flex items-center justify-between opacity-0 group-hover:opacity-100 transition-opacity"
+          onClick={(e) => e.stopPropagation()}
+          onMouseDown={(e) => e.stopPropagation()}
+        >
+          <span className="text-white text-[10px]">排序</span>
+          <input type="number" defaultValue={a.sort} onBlur={(e) => updateSort(a.id, e.target.value)} className="w-12 px-1 py-0.5 rounded text-[10px] text-fg bg-white text-center" />
+        </div>
+      </div>
+    );
+  }
+
   // 全屏幻灯片：用户点击【播放】手势内触发 BGM 播放
   function openSlide() {
     if (!zoneAlbums.length) return;
@@ -1490,58 +1554,12 @@ export default function WorkDetail() {
                 该分区暂无照片，点击右上角「批量上传」添加
               </div>
             ) : (
-              <div className={`columns-3 sm:columns-4 md:columns-5 gap-3 ${reordering ? 'opacity-60' : ''}`}>
-                {zoneAlbums.map((a, index) => {
-                  const src = img(a.photo_url); // falsy → 空字符串，下面走占位兜底
-                  const broken = brokenSet.has(a.id);
-                  const noUrl = !a.photo_url; // url 为空 → 异常 UI
-                  return (
-                  <div
-                    key={a.id}
-                    draggable
-                    onDragStart={(e) => handleDragStart(e, a.id)}
-                    onDragOver={(e) => handleDragOver(e, a.id)}
-                    onDrop={(e) => handleDrop(e, a.id)}
-                    onDragEnd={handleDragEnd}
-                    onClick={() => openPreview(index)}
-                    className={`group relative border rounded-xl2 overflow-hidden bg-ink cursor-grab active:cursor-grabbing select-none break-inside-avoid mb-3
-                      ${selected.has(a.id) ? 'border-brand ring-1 ring-brand' : dragOverId === a.id ? 'border-brand ring-2 ring-brand' : 'border-line'}
-                      ${draggedId === a.id ? 'opacity-40' : ''}`}
-                  >
-                    <div className="relative">
-                      {src && !broken ? (
-                        // 电脑端专项优化：按原始宽高比完整显示，不裁切、不变形（原为 aspect-square + object-cover 强制裁成 1:1）
-                        <img src={src} loading="lazy" decoding="async" onError={() => markBroken(a.id)} draggable={false} className="w-full h-auto object-contain bg-ink pointer-events-none select-none" alt="" title="单击预览大图" />
-                      ) : (
-                        // url 为空 / 裂图：灰色占位，杜绝空白框；文案区分原因
-                        <div className="w-full min-h-[120px] flex items-center justify-center bg-ink text-[11px] text-muted px-1 text-center leading-tight">
-                          {noUrl ? '无图片地址' : '图片加载失败'}
-                        </div>
-                      )}
-                    </div>
-                    {/* 选中遮罩 */}
-                    {selected.has(a.id) && <div className="absolute inset-0 bg-brand/10 pointer-events-none" />}
-                    {/* 操作层 */}
-                    <div className="absolute top-2 left-2">
-                      <input type="checkbox" checked={selected.has(a.id)} onChange={() => toggleSelect(a.id)} onClick={(e) => e.stopPropagation()} className="w-4 h-4 accent-brand" />
-                    </div>
-                    <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      {work.cover_url !== a.photo_url && (
-                        <button onClick={(e) => { e.stopPropagation(); setCover(a.photo_url); }} title="设为封面" className="px-2 py-1 rounded bg-black/60 text-white text-[10px]">封面</button>
-                      )}
-                      <button onClick={(e) => { e.stopPropagation(); deletePhoto(a.id); }} title="删除" className="px-2 py-1 rounded bg-red-500/80 text-white text-[10px]">删除</button>
-                    </div>
-                    <div
-                      className="absolute bottom-0 left-0 right-0 bg-black/50 px-2 py-1 flex items-center justify-between opacity-0 group-hover:opacity-100 transition-opacity"
-                      onClick={(e) => e.stopPropagation()}
-                      onMouseDown={(e) => e.stopPropagation()}
-                    >
-                      <span className="text-white text-[10px]">排序</span>
-                      <input type="number" defaultValue={a.sort} onBlur={(e) => updateSort(a.id, e.target.value)} className="w-12 px-1 py-0.5 rounded text-[10px] text-fg bg-white text-center" />
-                    </div>
+              <div className={`flex gap-3 items-start ${reordering ? 'opacity-60' : ''}`}>
+                {zoneCols.map((col, ci) => (
+                  <div key={ci} className="flex-1 min-w-0 flex flex-col">
+                    {col.map((idx) => renderCard(idx))}
                   </div>
-                  );
-                })}
+                ))}
               </div>
             )}
             {zoneAlbums.length > 1 && (
