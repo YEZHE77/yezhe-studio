@@ -25,6 +25,7 @@ const ITEMS = [
     { label: '内容生产', to: '/media/production', icon: 'appointment' },
     { label: '分发记录', to: '/media/publish', icon: 'marketing' },
     { label: '复盘报告', to: '/media/review', icon: 'review' },
+    { label: '对标账号', to: '/media/competitors', icon: 'team' },
     { label: '标签管理', to: '/media/tags', icon: 'tag' }
   ] },
   { label: '资料设置', to: '/settings', icon: 'settings', expandable: true, sep: true },

@@ -677,4 +677,150 @@ router.post('/reviews/:id/backflow', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// ---------- 对标账号库（media_competitor_account） ----------
+// 约束：严禁爬虫、不批量抓取账号作品；所有作品样本链接必须人工手动粘贴输入（规避平台风控）。
+
+// GET /api/media/competitors —— 列表
+router.get('/competitors', async (req, res) => {
+  try {
+    const rows = await query('SELECT * FROM media_competitor_account ORDER BY id DESC');
+    res.json(rows);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// POST /api/media/competitors —— 新增（前端解析回填后，用户手动点保存才调用）
+router.post('/competitors', async (req, res) => {
+  try {
+    const b = req.body || {};
+    const name = String(b.account_name || '').trim();
+    if (!name && !String(b.home_url || '').trim()) return res.status(400).json({ error: '账号名称和主页链接不能同时为空' });
+    const id = await insert(
+      'INSERT INTO media_competitor_account (account_name, home_url, platform, brief, manual_note, analyze_report) VALUES (?,?,?,?,?,?)',
+      [name, String(b.home_url || '').trim(), str(b.platform), str(b.brief), str(b.manual_note), b.analyze_report ? String(b.analyze_report) : null]
+    );
+    res.json({ ok: true, id });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// PUT /api/media/competitors/:id —— 编辑（含 analyze_report 覆盖保存）
+router.put('/competitors/:id', async (req, res) => {
+  try {
+    const b = req.body || {};
+    const existing = await get('SELECT * FROM media_competitor_account WHERE id = ?', [num(req.params.id)]);
+    if (!existing) return res.status(404).json({ error: '对标账号不存在' });
+    // 局部更新校验：未传的字段用库内现有值兜底
+    const name = b.account_name != null ? String(b.account_name).trim() : String(existing.account_name || '').trim();
+    const home = b.home_url != null ? String(b.home_url).trim() : String(existing.home_url || '').trim();
+    if (!name && !home) return res.status(400).json({ error: '账号名称和主页链接不能同时为空' });
+    const sets = [];
+    const params = [];
+    ['account_name', 'home_url', 'platform', 'brief', 'manual_note', 'analyze_report'].forEach((k) => {
+      if (k in b) {
+        sets.push(k + ' = ?');
+        params.push(k === 'account_name' || k === 'home_url' ? String(b[k] || '').trim() : (b[k] == null ? null : String(b[k])));
+      }
+    });
+    if (!sets.length) return res.status(400).json({ error: '没有可更新的字段' });
+    params.push(num(req.params.id));
+    await run('UPDATE media_competitor_account SET ' + sets.join(', ') + ' WHERE id = ?', params);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// DELETE /api/media/competitors/:id
+router.delete('/competitors/:id', async (req, res) => {
+  try { await run('DELETE FROM media_competitor_account WHERE id = ?', [num(req.params.id)]); res.json({ ok: true }); }
+  catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// POST /api/media/competitors/fetch —— 单次读取账号主页公开信息（昵称/简介）；失败 422 不生成记录
+router.post('/competitors/fetch', async (req, res) => {
+  try {
+    const raw = String(req.body.url || '').trim();
+    if (!raw) return res.status(400).json({ error: '链接格式无效，请粘贴抖音/小红书博主主页链接' });
+    let url = raw;
+    let m = raw.match(/https?:\/\/[^\s"'<>()]+/i);
+    if (m) {
+      url = m[0].replace(/[，。；、,.;:!！?？)）】\]>]+$/, '');
+    } else {
+      m = raw.match(/(?:^|[^\w@/])((?:[a-z0-9-]+\.)*(?:douyin|iesdouyin|xiaohongshu|xhslink)\.(?:com|cn)(?::\d+)?(?:\/[^\s"'<>()]*)?)/i);
+      if (m) url = 'https://' + m[1];
+    }
+    const full = /^https?:\/\//i.test(url) ? url : 'https://' + url.replace(/^\/+/, '');
+    let host = '';
+    try { host = new URL(full).hostname.replace(/^www\./i, '').replace(/^m\./i, ''); }
+    catch { return res.status(400).json({ error: '链接格式无效，请粘贴抖音/小红书博主主页链接' }); }
+    const isDouyin = /(^|\.)douyin\.com$/.test(host) || /(^|\.)iesdouyin\.com$/.test(host);
+    const isXhs = /(^|\.)xiaohongshu\.com$/.test(host) || /(^|\.)xhslink\.com$/.test(host) || /(^|\.)xhslink\.cn$/.test(host);
+    if (!isDouyin && !isXhs) return res.status(400).json({ error: '链接格式无效，请粘贴抖音/小红书博主主页链接' });
+    // 单次请求（8s 超时，512KB），绝不批量
+    let html = '';
+    try {
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 8000);
+      const resp = await fetch(full, {
+        signal: ctrl.signal,
+        redirect: 'follow',
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1',
+          'Accept-Language': 'zh-CN,zh;q=0.9',
+          'Accept': 'text/html,application/xhtml+xml'
+        }
+      });
+      clearTimeout(timer);
+      if (!resp.ok) throw new Error('HTTP ' + resp.status);
+      html = (await resp.text()).slice(0, 512 * 1024);
+    } catch {
+      return res.status(422).json({ error: '账号主页解析失败，请手动填写账号基础信息' });
+    }
+    const pick = (re) => { const x = html.match(re); return x ? unescapeHtml(x[1]) : ''; };
+    const ogTitle = pick(/<meta[^>]+property=["']og:title["'][^>]+content=["']([^"']+)["']/i) || pick(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:title["']/i);
+    const ogDesc = pick(/<meta[^>]+property=["']og:description["'][^>]+content=["']([^"']+)["']/i) || pick(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:description["']/i);
+    const docTitle = pick(/<title[^>]*>([\s\S]*?)<\/title>/i);
+    const accountName = (ogTitle || docTitle || '').replace(/\s*[-_|]\s*(抖音|小红书|Douyin|xiaohongshu)\s*$/i, '').trim();
+    const brief = ogDesc || '';
+    if (!accountName && !brief) {
+      return res.status(422).json({ error: '账号主页解析失败，请手动填写账号基础信息' });
+    }
+    res.json({ ok: true, platform: isXhs ? 'xiaohongshu' : 'douyin', home_url: full, account_name: accountName, brief });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// POST /api/media/competitors/:id/analyze —— 保存 AI 深度分析报告（报告由前端 callAI 生成，此处仅入库）
+router.post('/competitors/:id/analyze', async (req, res) => {
+  try {
+    const acc = await get('SELECT id FROM media_competitor_account WHERE id = ?', [num(req.params.id)]);
+    if (!acc) return res.status(404).json({ error: '对标账号不存在' });
+    const report = String(req.body.report || '').trim();
+    if (!report) return res.status(400).json({ error: '分析报告不能为空' });
+    await run('UPDATE media_competitor_account SET analyze_report = ? WHERE id = ?', [report, num(req.params.id)]);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// POST /api/media/competitors/:id/pain-to-inspirations —— 报告痛点 → 灵感库
+// source_type 标记为「对标账号分析」，自动打上标签「对标账号」；生成后仍需用户在灵感库手动复制生成选题
+router.post('/competitors/:id/pain-to-inspirations', async (req, res) => {
+  try {
+    const acc = await get('SELECT * FROM media_competitor_account WHERE id = ?', [num(req.params.id)]);
+    if (!acc) return res.status(404).json({ error: '对标账号不存在' });
+    const pains = (req.body.pains || []).filter((p) => p && String(p.title || p.content || '').trim());
+    if (!pains.length) return res.status(400).json({ error: '没有可提取的痛点' });
+    // 确保「对标账号」标签存在
+    let tag = await get('SELECT id FROM media_tag WHERE name = ?', ['对标账号']);
+    const tagId = tag ? tag.id : await insert('INSERT INTO media_tag (name, color) VALUES (?,?)', ['对标账号', '#9B7ED8']);
+    let created = 0;
+    for (const p of pains) {
+      const title = String(p.title || p).trim();
+      const content = String(p.content || '');
+      const id = await insert(
+        'INSERT INTO media_inspiration (title, content, source_type, source_url, pain_points, pain_strength, tags, card_color) VALUES (?,?,?,?,?,?,?,?)',
+        [title, content, 'competitor_analysis', acc.home_url || '', jstr([content]), 4, jstr([String(tagId)]), '#9B7ED8']
+      );
+      if (id) created++;
+    }
+    res.json({ ok: true, created, tagId });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 export default router;

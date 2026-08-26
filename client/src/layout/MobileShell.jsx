@@ -62,6 +62,7 @@ const MediaProduction = React.lazy(() => import('../pages/media/MediaProduction.
 const MediaPublish = React.lazy(() => import('../pages/media/MediaPublish.jsx'));
 const MediaReview = React.lazy(() => import('../pages/media/MediaReview.jsx'));
 const MediaTags = React.lazy(() => import('../pages/media/MediaTags.jsx'));
+const MediaCompetitors = React.lazy(() => import('../pages/media/MediaCompetitors.jsx'));
 
 const GREEN = '#7ECDBB';
 const GREEN_DARK = '#5FBBA6';
@@ -335,6 +336,7 @@ export default function MobileShell() {
                 <Route path="/media/publish" element={<MediaPublish />} />
                 <Route path="/media/review" element={<MediaReview />} />
                 <Route path="/media/tags" element={<MediaTags />} />
+                <Route path="/media/competitors" element={<MediaCompetitors />} />
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
             </Suspense>

@@ -4,7 +4,7 @@ import { dialect, run, query, get, insert } from './db.js';
 
 // 表结构版本号：已初始化的库启动时跳过全量 DDL/ensureColumn（Render 冷启动加速，130+ 次 DB 往返 → 1 次 SELECT）。
 // 约定：新增表/列/约束时同步 +1，下次启动自动全量幂等重跑并回写新版本号。
-const SCHEMA_VERSION = 2;
+const SCHEMA_VERSION = 3;
 
 const PG_DDL = `
 CREATE TABLE IF NOT EXISTS users (
@@ -676,6 +676,23 @@ CREATE TABLE IF NOT EXISTS media_review (
   created_at TEXT DEFAULT CURRENT_TIMESTAMP
 );`;
 
+// ===== 自媒体 · 对标账号库（media_competitor_account）=====
+// analyze_report 存 AI 深度分析完整报告（固定 6 段结构），随时查看历史、不重复调用 AI。
+const PG_MEDIA_COMPETITOR = `
+CREATE TABLE IF NOT EXISTS media_competitor_account (
+  id SERIAL PRIMARY KEY,
+  account_name TEXT NOT NULL DEFAULT '', home_url TEXT NOT NULL DEFAULT '', platform TEXT NOT NULL DEFAULT '',
+  brief TEXT, manual_note TEXT, analyze_report TEXT,
+  create_time TIMESTAMPTZ DEFAULT now()
+);`;
+const SQLITE_MEDIA_COMPETITOR = `
+CREATE TABLE IF NOT EXISTS media_competitor_account (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  account_name TEXT NOT NULL DEFAULT '', home_url TEXT NOT NULL DEFAULT '', platform TEXT NOT NULL DEFAULT '',
+  brief TEXT, manual_note TEXT, analyze_report TEXT,
+  create_time TEXT DEFAULT CURRENT_TIMESTAMP
+);`;
+
 async function colsOf(table) {
   if (dialect === 'pg') {
     const r = await query(`SELECT column_name FROM information_schema.columns WHERE table_name = $1`, [table]);
@@ -933,6 +950,8 @@ export async function initSchema() {
 
   // 自媒体工作台 7 表（灵感库/状态列/选题/草稿/分发记录/复盘/标签）
   for (const s of (dialect === 'pg' ? PG_MEDIA_WORKBENCH : SQLITE_MEDIA_WORKBENCH).split(';').map((x) => x.trim()).filter(Boolean)) await run(s);
+  // 自媒体 · 对标账号库
+  for (const s of (dialect === 'pg' ? PG_MEDIA_COMPETITOR : SQLITE_MEDIA_COMPETITOR).split(';').map((x) => x.trim()).filter(Boolean)) await run(s);
   // 默认选题状态列种子（幂等：表空才插 5 列，与需求「默认状态列：待构思、撰写中、待发布、已发布、归档」一致）
   try {
     const c = await get('SELECT COUNT(*) AS c FROM media_status_column');
