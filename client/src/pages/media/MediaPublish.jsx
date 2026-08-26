@@ -78,7 +78,7 @@ export default function MediaPublish() {
           </tr>
         </thead>
         <tbody>
-          {records.map((r) => (
+          {(records || []).map((r) => (
             <tr key={r.id} style={{ borderBottom: '1px solid #F5F5F5' }}>
               <td className="px-3 py-2.5 text-xs" style={{ color: '#333333', maxWidth: 160 }}>
                 <span className="truncate block">{r.topic_id ? topicName(r.topic_id) : '—'}</span>
@@ -131,13 +131,13 @@ export default function MediaPublish() {
         </div>
         <div className="grid grid-cols-7 gap-1.5">
           {weekday.map((w) => <div key={w} className="text-center text-[11px] py-1" style={{ color: '#999999' }}>周{w}</div>)}
-          {cells.map((d, i) => {
+          {(cells || []).map((d, i) => {
             if (d == null) return <div key={'e' + i} />;
             const tps = topicFor(d);
             return (
               <div key={d} className="border" style={{ borderColor: '#EEEEEE', borderRadius: 6, minHeight: 88, background: '#fff', padding: 6, display: 'flex', flexDirection: 'column', gap: 3 }}>
                 <span className="text-[11px]" style={{ color: tps.length ? '#2DB7F5' : '#BBBBBB', fontWeight: tps.length ? 600 : 400 }}>{d}</span>
-                {tps.slice(0, 3).map((t) => (
+                {(tps || []).slice(0, 3).map((t) => (
                   <div key={t.id} className="text-[10px] px-1 py-0.5 rounded truncate" style={{ background: (t.card_color || '#2DB7F5') + '1A', color: '#555555' }} title={t.title}>{t.title || '未命名'}</div>
                 ))}
                 {tps.length > 3 && <span className="text-[10px]" style={{ color: '#999999' }}>+{tps.length - 3}</span>}

@@ -46,7 +46,7 @@ export default function MediaBoard() {
     }
   }, [params, setParams, columns]);
 
-  const topicsOf = (colId) => topics
+  const topicsOf = (colId) => (topics || [])
     .filter((t) => String(t.status_id) === String(colId))
     .sort((a, b) => (a.sort || 0) - (b.sort || 0) || (a.id || 0) - (b.id || 0));
 
@@ -223,7 +223,7 @@ export default function MediaBoard() {
               {(works || []).map((w) => <option key={w.id} value={w.id}>{w.title || ('作品#' + w.id)}</option>)}
             </select>
             <div className="mt-1 flex flex-wrap gap-1" style={{ maxHeight: 120, overflowY: 'auto' }}>
-              {albums.slice(0, 60).map((a) => {
+              {(albums || []).slice(0, 60).map((a) => {
                 const on = (ref.album_ids || []).includes(a.id);
                 return (
                   <div key={a.id} onClick={() => toggleAlbum(a)} style={{ width: 44, height: 44, borderRadius: 4, overflow: 'hidden', border: on ? '2px solid #2DB7F5' : '2px solid transparent', cursor: 'pointer', opacity: a.photo_url ? 1 : 0.3, position: 'relative' }}>
@@ -297,7 +297,7 @@ export default function MediaBoard() {
   // ---------- 渲染：看板视图 ----------
   const renderBoard = () => (
     <div className="flex gap-3 items-start" style={{ overflowX: 'auto', paddingBottom: 12, minHeight: 300 }}>
-      {columns.map((c) => {
+      {(columns || []).map((c) => {
         const cards = topicsOf(c.id);
         return (
           <div
@@ -355,7 +355,7 @@ export default function MediaBoard() {
           </tr>
         </thead>
         <tbody>
-          {topics.map((t) => {
+          {(topics || []).map((t) => {
             const p = PRIORITY_OPTS.find((x) => x.value === (t.priority || 'medium')) || PRIORITY_OPTS[1];
             return (
               <tr key={t.id} style={{ borderBottom: '1px solid #F5F5F5' }}>
@@ -467,13 +467,13 @@ export default function MediaBoard() {
               <div>
                 <div className="text-xs mb-1" style={{ color: '#666666' }}>标签</div>
                 <div className="flex flex-wrap gap-1.5">
-                  {tags.map((t) => {
+                  {(tags || []).map((t) => {
                     const on = (form.tags || []).includes(String(t.id));
                     return (
                       <button key={t.id} type="button" onClick={() => setFormTag(t.id)} className="text-xs" style={on ? { background: t.color || '#2DB7F5', color: '#fff', border: 'none', padding: '5px 12px', borderRadius: 100, cursor: 'pointer' } : { background: '#fff', color: '#666666', border: '1px solid #E0E0E0', padding: '5px 12px', borderRadius: 100, cursor: 'pointer' }}>{t.name}</button>
                     );
                   })}
-                  {!tags.length && <span className="text-xs" style={{ color: '#AAAAAA' }}>暂无标签，可到「标签管理」创建</span>}
+                  {!(tags || []).length && <span className="text-xs" style={{ color: '#AAAAAA' }}>暂无标签，可到「标签管理」创建</span>}
                 </div>
               </div>
               <div>

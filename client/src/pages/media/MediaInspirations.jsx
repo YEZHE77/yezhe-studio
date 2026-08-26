@@ -113,7 +113,7 @@ export default function MediaInspirations() {
           placeholder="搜索标题 / 内容"
           style={{ width: 220, height: 32, border: '1px solid #E0E0E0', borderRadius: 6, padding: '0 10px', fontSize: 13, outline: 'none' }}
         />
-        {allTags.map((t) => {
+        {(allTags || []).map((t) => {
           const on = filterTags.includes(String(t.id));
           return (
             <button
@@ -133,7 +133,7 @@ export default function MediaInspirations() {
       {/* 卡片列表 */}
       {shown.length ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-          {shown.map((it) => {
+          {(shown || []).map((it) => {
             const src = SOURCE_OPTS.find((s) => s.value === it.source_type);
             return (
               <div key={it.id} className="bg-white border flex flex-col" style={{ borderRadius: 6, borderColor: '#EEEEEE', overflow: 'hidden' }}>
@@ -207,7 +207,7 @@ export default function MediaInspirations() {
               <div>
                 <div className="text-xs mb-1" style={{ color: '#666666' }}>自定义标签（点击选择，可多选）</div>
                 <div className="flex flex-wrap gap-1.5">
-                  {allTags.map((t) => {
+                  {(allTags || []).map((t) => {
                     const on = form.tags.includes(String(t.id));
                     return (
                       <button key={t.id} type="button" onClick={() => toggleFormTag(t.id)} className="text-xs" style={on ? { background: t.color || '#2DB7F5', color: '#fff', border: 'none', padding: '5px 12px', borderRadius: 100, cursor: 'pointer' } : { background: '#fff', color: '#666666', border: '1px solid #E0E0E0', padding: '5px 12px', borderRadius: 100, cursor: 'pointer' }}>{t.name}</button>

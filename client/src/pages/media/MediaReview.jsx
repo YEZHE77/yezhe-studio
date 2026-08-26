@@ -33,7 +33,7 @@ export default function MediaReview() {
   const generate = async () => {
     if (!selRecords.length) { toast('请先勾选已发布的分发记录', 'warn'); return; }
     setGenerating(true);
-    const rows = selRecords.map((r, i) => `记录${i + 1}：选题《${r.topic_id ? topicName(r.topic_id) : '未关联'}》 平台=${r.platform || '未知'} 点赞=${r.likes || 0} 收藏=${r.favorites || 0} 评论=${r.comments || 0} 私信咨询=${r.inquiries || 0} 备注=${r.note || '无'}`);
+    const rows = (selRecords || []).map((r, i) => `记录${i + 1}：选题《${r.topic_id ? topicName(r.topic_id) : '未关联'}》 平台=${r.platform || '未知'} 点赞=${r.likes || 0} 收藏=${r.favorites || 0} 评论=${r.comments || 0} 私信咨询=${r.inquiries || 0} 备注=${r.note || '无'}`);
     const dataText = rows.join('\n');
     const sys = '你是一位严谨的数据复盘分析师。只能基于用户提供的数据做归纳与洞察，禁止编造任何数据。输出格式：\n【数据概览】\n【表现亮点】\n【待改进】\n【下期建议】\n【识别出的用户痛点】（每条痛点一行，格式：痛点标题|痛点说明）';
     const user = '以下是本期发布记录的真实回填数据：\n' + dataText + '\n请基于这些真实数据生成复盘报告。';
@@ -43,7 +43,7 @@ export default function MediaReview() {
       cmts: selRecords.reduce((a, r) => a + (r.comments || 0), 0),
       inqs: selRecords.reduce((a, r) => a + (r.inquiries || 0), 0)
     };
-    const fallback = `【数据概览】本期共 ${selRecords.length} 条发布记录，合计：点赞 ${totals.likes}、收藏 ${totals.favs}、评论 ${totals.cmts}、私信咨询 ${totals.inqs}。\n【表现亮点】${totals.inqs > 0 ? '私信咨询 ' + totals.inqs + ' 条，说明内容具备转化潜力。' : '暂无私信咨询线索。'}${totals.likes > 0 ? '点赞 ' + totals.likes + ' 个。' : ''}\n【待改进】${totals.cmts === 0 ? '评论互动较少，可在文末增加互动引导。' : '评论区活跃，可继续维护。'}\n【下期建议】延续高互动选题方向，针对咨询集中的痛点做内容深化。\n【识别出的用户痛点】\n${selRecords.map((r, i) => `痛点${i + 1}|${(r.note || '内容相关）用户关注度较高。').slice(0, 30)}`).join('\n')}\n\n（本报告由本地模板基于真实回填数据生成；配置 AI 接口后调用真实模型生成更深入洞察）`;
+    const fallback = `【数据概览】本期共 ${selRecords.length} 条发布记录，合计：点赞 ${totals.likes}、收藏 ${totals.favs}、评论 ${totals.cmts}、私信咨询 ${totals.inqs}。\n【表现亮点】${totals.inqs > 0 ? '私信咨询 ' + totals.inqs + ' 条，说明内容具备转化潜力。' : '暂无私信咨询线索。'}${totals.likes > 0 ? '点赞 ' + totals.likes + ' 个。' : ''}\n【待改进】${totals.cmts === 0 ? '评论互动较少，可在文末增加互动引导。' : '评论区活跃，可继续维护。'}\n【下期建议】延续高互动选题方向，针对咨询集中的痛点做内容深化。\n【识别出的用户痛点】\n${(selRecords || []).map((r, i) => `痛点${i + 1}|${(r.note || '内容相关）用户关注度较高。').slice(0, 30)}`).join('\n')}\n\n（本报告由本地模板基于真实回填数据生成；配置 AI 接口后调用真实模型生成更深入洞察）`;
     try {
       const r = await callAI(sys, user, fallback);
       const pains = parsePains(r.text);
@@ -131,7 +131,7 @@ export default function MediaReview() {
         <div className="text-xs mb-2" style={{ color: '#666666' }}>已发布分发记录（勾选参与复盘）</div>
         {records.length ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
-            {records.map((r) => {
+            {(records || []).map((r) => {
               const on = selected.includes(r.id);
               return (
                 <div key={r.id} onClick={() => toggleSel(r.id)} className="border flex items-center gap-2 cursor-pointer" style={{ borderColor: on ? '#2DB7F5' : '#EEEEEE', borderRadius: 6, padding: '8px 10px', background: on ? '#F0F7FF' : '#fff' }}>
@@ -176,7 +176,7 @@ export default function MediaReview() {
         <div className="text-[15px] mb-2" style={{ color: '#333333' }}>历史报告（{reviews.length}）</div>
         {reviews.length ? (
           <div className="space-y-3">
-            {reviews.map((r) => {
+            {(reviews || []).map((r) => {
               const recs = records.filter((x) => r.record_ids.includes(x.id));
               return (
                 <div key={r.id} className="bg-white border" style={{ borderRadius: 6, borderColor: '#EEEEEE', padding: 14 }}>
@@ -189,7 +189,7 @@ export default function MediaReview() {
                   </div>
                   {recs.length ? (
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-3">
-                      {recs.map((rec) => (
+                      {(recs || []).map((rec) => (
                         <div key={rec.id} className="border rounded" style={{ borderColor: '#F0F0F0', padding: 10 }}>
                           <div className="text-xs truncate mb-1" style={{ color: '#333333' }}>{rec.topic_id ? topicName(rec.topic_id) : (rec.platform || '未关联')}</div>
                           <BarChart rec={rec} />

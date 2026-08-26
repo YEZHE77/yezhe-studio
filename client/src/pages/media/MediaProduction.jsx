@@ -196,7 +196,7 @@ export default function MediaProduction() {
       {/* 草稿版本栏 */}
       <div className="bg-white border mb-4" style={{ borderRadius: 6, borderColor: '#EEEEEE', padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
         <span className="text-xs" style={{ color: '#888888' }}>草稿版本：</span>
-        {drafts.length ? drafts.map((d) => (
+        (drafts || []).length ? (drafts || []).map((d) => (
           <button
             key={d.id}
             type="button"

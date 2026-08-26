@@ -37,7 +37,7 @@ export default function MediaTags() {
   };
 
   const merge = async (t) => {
-    const target = window.prompt('合并到哪个标签？（输入目标标签 ID）\n\n当前标签：#' + t.id + ' ' + t.name + '\n可用标签：' + tags.map((x) => '#' + x.id + ' ' + x.name).join('，'));
+    const target = window.prompt('合并到哪个标签？（输入目标标签 ID）\n\n当前标签：#' + t.id + ' ' + t.name + '\n可用标签：' + (tags || []).map((x) => '#' + x.id + ' ' + x.name).join('，'));
     const toId = Number(target);
     if (!target || !toId) return;
     if (toId === t.id) { toast('不能合并到自身', 'warn'); return; }
@@ -67,7 +67,7 @@ export default function MediaTags() {
 
       {tags.length ? (
         <div className="bg-white border divide-y" style={{ borderRadius: 6, borderColor: '#EEEEEE' }}>
-          {tags.map((t) => (
+          {(tags || []).map((t) => (
             <div key={t.id} className="flex items-center gap-3 px-4 py-3" style={{ borderColor: '#F5F5F5' }}>
               <span className="w-3 h-3 rounded-full shrink-0" style={{ background: t.color || '#2DB7F5' }} />
               <div className="min-w-0 flex-1">
