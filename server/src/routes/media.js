@@ -278,6 +278,80 @@ router.post('/inspirations', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// HTML 实体反转义
+function unescapeHtml(s) {
+  return String(s || '').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&nbsp;/g, ' ').trim();
+}
+
+// POST /api/media/inspirations/fetch  { url } —— 读取单条抖音/小红书链接的页面公开内容
+// 目标：提取作品标题、正文文案、发布账号，回填灵感表单（不自动存库）。
+// 约束：不做爬虫、不批量拉取、不登录、不爬评论区；仅单次请求读取该链接页面公开的 og:title / og:description / <title>。
+// 失败（格式错 400 / 读取不到内容 422）：明确报错，前端不生成空灵感记录。
+router.post('/inspirations/fetch', async (req, res) => {
+  try {
+    const raw = String(req.body.url || '').trim();
+    if (!raw) return res.status(400).json({ error: '链接格式无效，请粘贴小红书/抖音作品链接' });
+    // 1) 提取 URL（同 parse：https?:// 优先，否则按平台域名定位）
+    let url = raw;
+    let m = raw.match(/https?:\/\/[^\s"'<>()]+/i);
+    if (m) {
+      url = m[0].replace(/[，。；、,.;:!！?？)）】\]>]+$/, '');
+    } else {
+      m = raw.match(/(?:^|[^\w@/])((?:[a-z0-9-]+\.)*(?:douyin|iesdouyin|xiaohongshu|xhslink)\.(?:com|cn)(?::\d+)?(?:\/[^\s"'<>()]*)?)/i);
+      if (m) url = 'https://' + m[1];
+    }
+    const full = /^https?:\/\//i.test(url) ? url : 'https://' + url.replace(/^\/+/, '');
+    let host = '';
+    try { host = new URL(full).hostname.replace(/^www\./i, '').replace(/^m\./i, ''); }
+    catch { return res.status(400).json({ error: '链接格式无效，请粘贴小红书/抖音作品链接' }); }
+    const isDouyin = /(^|\.)douyin\.com$/.test(host) || /(^|\.)iesdouyin\.com$/.test(host);
+    const isXhs = /(^|\.)xiaohongshu\.com$/.test(host) || /(^|\.)xhslink\.com$/.test(host) || /(^|\.)xhslink\.cn$/.test(host);
+    if (!isDouyin && !isXhs) return res.status(400).json({ error: '链接格式无效，请粘贴小红书/抖音作品链接' });
+
+    // 2) 单次请求读取该页面公开内容（8s 超时，响应截断 512KB；绝不批量/循环）
+    let html = '';
+    try {
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 8000);
+      const resp = await fetch(full, {
+        signal: ctrl.signal,
+        redirect: 'follow',
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1',
+          'Accept-Language': 'zh-CN,zh;q=0.9',
+          'Accept': 'text/html,application/xhtml+xml'
+        }
+      });
+      clearTimeout(timer);
+      if (!resp.ok) throw new Error('HTTP ' + resp.status);
+      html = (await resp.text()).slice(0, 512 * 1024);
+    } catch {
+      // 反爬/超时/网络失败 → 明确失败，不生成空记录
+      return res.status(422).json({ error: '解析失败，无法获取内容，请手动录入灵感' });
+    }
+
+    // 3) 从 HTML 提取公开元信息（og:title / og:description / <title>，属性顺序两种都兼容）
+    const pick = (re) => { const x = html.match(re); return x ? unescapeHtml(x[1]) : ''; };
+    const ogTitle = pick(/<meta[^>]+property=["']og:title["'][^>]+content=["']([^"']+)["']/i) || pick(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:title["']/i);
+    const ogDesc = pick(/<meta[^>]+property=["']og:description["'][^>]+content=["']([^"']+)["']/i) || pick(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:description["']/i);
+    const docTitle = pick(/<title[^>]*>([\s\S]*?)<\/title>/i);
+    const author = pick(/<meta[^>]+(?:name|property)=["']author["'][^>]+content=["']([^"']+)["']/i) || pick(/<meta[^>]+content=["']([^"']+)["'][^>]+(?:name|property)=["']author["']/i);
+    const title = (ogTitle || docTitle || '').replace(/\s*[-_|]\s*(抖音|小红书|Douyin|xiaohongshu)\s*$/i, '').trim();
+    const desc = ogDesc || '';
+    if (!title && !desc) {
+      return res.status(422).json({ error: '解析失败，无法获取内容，请手动录入灵感' });
+    }
+    const platform = isXhs ? '小红书' : '抖音';
+    // content = 标题 + 正文（公开信息合并；评论区痛点因反爬不抓取，留给用户手动补充）
+    const parts = [];
+    if (title) parts.push('标题：' + title);
+    if (desc) parts.push('正文：' + desc);
+    if (author.trim()) parts.push('发布账号：' + author.trim());
+    res.json({ ok: true, source_type: isXhs ? 'xiaohongshu' : 'douyin', source_url: full, title, content: parts.join('\n'), author: author.trim() });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // PUT /api/media/inspirations/:id
 router.put('/inspirations/:id', async (req, res) => {
   try {

@@ -35,8 +35,8 @@ export default function MediaInspirations() {
   const openNew = () => setForm({ ...EMPTY });
   const openEdit = (it) => setForm({ id: it.id, title: it.title || '', content: it.content || '', source_type: it.source_type || 'manual', source_url: it.source_url || '', pain_strength: Number(it.pain_strength) || 3, tags: (it.tags || []).map(String), card_color: it.card_color || '#2DB7F5' });
 
-  // 解析链接（抖音/小红书）：成功回填标题与来源；失败弹窗提示错误，不保存
-  // 用户复制常见不带 https:// 前缀（如微信分享的 xhslink.cn/o/xxx），本地先自动补协议再发
+  // 解析链接（抖音/小红书）：读取该链接页面公开内容并【回填到表单，不自动保存】
+  // 用户可继续编辑内容/打标签，点「保存」才写入灵感库；解析失败弹窗报错，不生成空灵感记录。
   const doParse = async () => {
     let url = String(form.source_url || '').trim();
     if (!url) { toast('请先粘贴抖音 / 小红书链接', 'warn'); return; }
@@ -44,13 +44,28 @@ export default function MediaInspirations() {
     setForm((f) => ({ ...f, source_url: url }));
     setParsing(true);
     try {
-      const r = await http.post('/api/media/inspirations/parse', { url });
-      const d = r.data;
-      setForm((f) => ({ ...f, source_type: d.source_type || 'manual', title: d.title || f.title, source_url: url }));
-      toast('链接解析成功，请补充标题与评论痛点');
+      const r = await http.post('/api/media/inspirations/fetch', { url }, { skipToast: true });
+      const d = r.data || {};
+      // 成功：只回填表单（标题+正文+来源），绝不自动存库
+      setForm((f) => ({
+        ...f,
+        title: d.title || f.title,
+        content: d.content || f.content,
+        source_type: d.source_type || 'manual',
+        source_url: url
+      }));
+      toast('已解析并回填，请编辑后点「保存」');
     } catch (e) {
+      const status = e.status || (e.response && e.response.status);
       const msg = (e.data && e.data.error) || e.message || '解析失败';
-      window.alert('解析失败：' + msg + '\n\n小提示：\n1. 仅支持抖音 / 小红书链接\n2. 链接需以 http:// 或 https:// 开头');
+      if (status === 400) {
+        window.alert('链接格式无效，请粘贴小红书/抖音作品链接');
+      } else if (status === 422) {
+        // 内容获取不到 → 明确失败，不回填、不生成空记录
+        window.alert('解析失败，无法获取内容，请手动录入灵感');
+      } else {
+        window.alert('解析失败：' + msg + '\n\n小提示：仅支持抖音 / 小红书作品链接');
+      }
     } finally {
       setParsing(false);
     }
