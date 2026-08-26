@@ -174,7 +174,7 @@ export default function MediaBoard() {
     const [uploading, setUploading] = useState(false);
     const ref = value || { type: 'album', album_ids: [], urls: [] };
     const fileRef = React.useRef(null);
-    useEffect(() => { http.get('/api/works').then((r) => setWorks(r.data || [])).catch(() => {}); }, []);
+    useEffect(() => { http.get('/api/works').then((r) => setWorks((r.data && r.data.items) || [])).catch(() => {}); }, []);
     const loadAlbums = (wid) => {
       setSelWork(wid);
       if (!wid) { setAlbums([]); return; }
