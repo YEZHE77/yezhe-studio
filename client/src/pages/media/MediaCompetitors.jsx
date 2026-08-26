@@ -33,11 +33,21 @@ export default function MediaCompetitors() {
   const setF = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
   // AI 解析账号档案（粘贴主页链接 → 读取公开昵称/简介回填表单，不自动保存）
+  // 支持全面链接形式：完整 URL / 短链 / 裸域名 / 整段分享文案（自动提取 URL 并补协议）
   const parseAccount = async () => {
     let url = String(form.home_url || '').trim();
     if (!url) { toast('请先粘贴博主主页链接', 'warn'); return; }
+    // 1) 从整段文本提取第一个 URL；2) 提取不到则按平台域名定位；3) 自动补协议
+    let m = url.match(/https?:\/\/[^\s"'<>()]+/i);
+    if (m) {
+      url = m[0].replace(/[，。；、,.;:!！?？)）】\]>]+$/, '');
+    } else {
+      m = url.match(/(?:^|[^\w@/])((?:[a-z0-9-]+\.)*(?:douyin|iesdouyin|xiaohongshu|xhslink)\.(?:com|cn)(?::\d+)?(?:\/[^\s"'<>()]*)?)/i);
+      if (m) url = 'https://' + m[1];
+    }
     if (!/^https?:\/\//i.test(url)) url = 'https://' + url.replace(/^\/+/, '');
     setParsing(true);
+    setForm((f) => ({ ...f, home_url: url }));
     try {
       const r = await http.post('/api/media/competitors/fetch', { url }, { skipToast: true });
       const d = r.data || {};
@@ -46,7 +56,6 @@ export default function MediaCompetitors() {
     } catch (e) {
       const status = e.status || (e.response && e.response.status);
       if (status === 400) window.alert('链接格式无效，请粘贴小红书/抖音作品链接');
-      else if (status === 422) window.alert('账号主页解析失败，请手动填写账号基础信息');
       else window.alert('账号主页解析失败，请手动填写账号基础信息');
     } finally { setParsing(false); }
   };
@@ -216,12 +225,12 @@ export default function MediaCompetitors() {
             <div className="text-[16px] mb-4" style={{ color: '#333333' }}>{form.id ? '编辑对标账号' : '新增对标账号'}</div>
             <div className="space-y-3">
               <div>
-                <div className="text-xs mb-1" style={{ color: '#666666' }}>博主主页链接（抖音 / 小红书）</div>
+                <div className="text-xs mb-1" style={{ color: '#666666' }}>博主主页链接（抖音 / 小红书，支持各种形式）</div>
                 <div className="flex gap-2">
-                  <input value={form.home_url || ''} onChange={(e) => setF('home_url', e.target.value)} placeholder="粘贴博主主页链接，如 https://www.xiaohongshu.com/user/profile/xxx" style={{ flex: 1, height: 36, border: '1px solid #E0E0E0', borderRadius: 6, padding: '0 10px', fontSize: 12.5, outline: 'none' }} />
+                  <input value={form.home_url || ''} onChange={(e) => setF('home_url', e.target.value)} placeholder="粘贴主页链接或整段分享文案，如 xiaohongshu.com/user/profile/xxx、v.douyin.com/xxx…" style={{ flex: 1, height: 36, border: '1px solid #E0E0E0', borderRadius: 6, padding: '0 10px', fontSize: 12.5, outline: 'none' }} />
                   <button type="button" onClick={parseAccount} disabled={parsing} style={{ height: 36, padding: '0 12px', borderRadius: 6, border: '1px solid #ABE2FB', background: '#F0F7FF', color: '#2DB7F6', fontSize: 12.5, cursor: parsing ? 'default' : 'pointer', whiteSpace: 'nowrap' }}>{parsing ? '解析中…' : 'AI 解析账号档案'}</button>
                 </div>
-                <div className="text-[11px] mt-1" style={{ color: '#BBBBBB' }}>解析成功仅回填表单，点「保存」才入库；解析失败需手动填写</div>
+                <div className="text-[11px] mt-1" style={{ color: '#BBBBBB' }}>支持完整链接 / 短链 / 裸域名 / 整段分享文案；解析成功仅回填表单，点「保存」才入库</div>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
