@@ -1508,12 +1508,13 @@ export default function WorkDetail() {
                       ${selected.has(a.id) ? 'border-brand ring-1 ring-brand' : dragOverId === a.id ? 'border-brand ring-2 ring-brand' : 'border-line'}
                       ${draggedId === a.id ? 'opacity-40' : ''}`}
                   >
-                    <div className="aspect-square relative">
+                    <div className="relative">
                       {src && !broken ? (
-                        <img src={src} loading="lazy" decoding="async" onError={() => markBroken(a.id)} draggable={false} className="w-full h-full object-cover bg-ink pointer-events-none select-none" alt="" />
+                        // 电脑端专项优化：按原始宽高比完整显示，不裁切、不变形（原为 aspect-square + object-cover 强制裁成 1:1）
+                        <img src={src} loading="lazy" decoding="async" onError={() => markBroken(a.id)} draggable={false} className="w-full h-auto object-contain bg-ink pointer-events-none select-none" alt="" title="单击预览大图" />
                       ) : (
                         // url 为空 / 裂图：灰色占位，杜绝空白框；文案区分原因
-                        <div className="w-full h-full flex items-center justify-center bg-ink text-[11px] text-muted px-1 text-center leading-tight">
+                        <div className="w-full min-h-[120px] flex items-center justify-center bg-ink text-[11px] text-muted px-1 text-center leading-tight">
                           {noUrl ? '无图片地址' : '图片加载失败'}
                         </div>
                       )}
@@ -1544,7 +1545,7 @@ export default function WorkDetail() {
               </div>
             )}
             {zoneAlbums.length > 1 && (
-              <div className="text-xs text-muted mt-3">💡 提示：可用鼠标拖动照片自定义排序，也可在照片底部输入排序号。</div>
+              <div className="text-xs text-muted mt-3">💡 提示：单击照片可预览大图（预览中用 ← → 或两侧按钮切换）；可用鼠标拖动照片自定义排序，也可在照片底部输入排序号。</div>
             )}
           </div>
         </div>
