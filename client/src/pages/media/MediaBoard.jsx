@@ -15,7 +15,11 @@ const EMPTY_TOPIC = {
 
 export default function MediaBoard() {
   const [params, setParams] = useSearchParams();
-  const [view, setView] = useState('board');
+  // 窄屏（< 768）自动切到表格视图：手机端看板 3 列在窄屏会挤成竖排，拖拽体验也差
+  const [view, setView] = useState(() => {
+    if (typeof window === 'undefined') return 'board';
+    return window.innerWidth < 768 ? 'table' : 'board';
+  });
   const [columns, setColumns] = useState([]);
   const [topics, setTopics] = useState([]);
   const [tags, setTags] = useState([]);
