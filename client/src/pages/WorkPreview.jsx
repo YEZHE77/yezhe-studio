@@ -454,9 +454,10 @@ export default function WorkPreview() {
                 作品相册
                 <span style={{ fontSize: 12, color: '#999' }}>（{albums.length} 张）</span>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, alignItems: 'start' }}>
+              {/* PC 端相册：多列瀑布流（与移动端一致，照片按原始比例紧贴，不再按行对齐留白） */}
+              <div style={{ columnCount: 3, columnGap: 8 }}>
                 {albums.map((a, i) => (
-                  <div key={a.id || i} onClick={() => openPreview(i)} style={{ background: '#f5f5f5', borderRadius: 6, overflow: 'hidden', cursor: 'pointer' }}>
+                  <div key={a.id || i} onClick={() => openPreview(i)} style={{ breakInside: 'avoid', marginBottom: 8, background: '#f5f5f5', borderRadius: 6, overflow: 'hidden', cursor: 'pointer' }}>
                     <img src={img(a.thumb_url || a.photo_url)} alt="" style={{ width: '100%', height: 'auto', objectFit: 'contain', display: 'block' }} loading="lazy" onError={(e) => { e.currentTarget.style.opacity = '0.3'; }} />
                   </div>
                 ))}

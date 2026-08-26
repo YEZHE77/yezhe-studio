@@ -1490,7 +1490,7 @@ export default function WorkDetail() {
                 该分区暂无照片，点击右上角「批量上传」添加
               </div>
             ) : (
-              <div className={`grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3 items-start ${reordering ? 'opacity-60' : ''}`}>
+              <div className={`columns-3 sm:columns-4 md:columns-5 gap-3 ${reordering ? 'opacity-60' : ''}`}>
                 {zoneAlbums.map((a, index) => {
                   const src = img(a.photo_url); // falsy → 空字符串，下面走占位兜底
                   const broken = brokenSet.has(a.id);
@@ -1504,7 +1504,7 @@ export default function WorkDetail() {
                     onDrop={(e) => handleDrop(e, a.id)}
                     onDragEnd={handleDragEnd}
                     onClick={() => openPreview(index)}
-                    className={`group relative border rounded-xl2 overflow-hidden bg-ink cursor-grab active:cursor-grabbing select-none
+                    className={`group relative border rounded-xl2 overflow-hidden bg-ink cursor-grab active:cursor-grabbing select-none break-inside-avoid mb-3
                       ${selected.has(a.id) ? 'border-brand ring-1 ring-brand' : dragOverId === a.id ? 'border-brand ring-2 ring-brand' : 'border-line'}
                       ${draggedId === a.id ? 'opacity-40' : ''}`}
                   >
