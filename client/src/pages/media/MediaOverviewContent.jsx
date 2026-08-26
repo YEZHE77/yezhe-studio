@@ -16,19 +16,23 @@ export default function MediaOverviewContent() {
 
   useEffect(() => {
     let alive = true;
+    // 每个 .then 都确保返回数组/数字/对象，Promise.all 解构出任何 undefined 都会让 setRecentTopics
+    // 等位置 .slice / .length 报错。加 Array.isArray 兜底防止后端返回非标响应时整页崩溃。
+    const safeArr = (v) => (Array.isArray(v) ? v : []);
+    const safeNum = (v) => (typeof v === 'number' ? v : 0);
     Promise.all([
-      http.get('/api/media/inspirations', { params: { page: 1, pageSize: 1 } }).then((r) => (r.data && r.data.total) || 0).catch(() => 0),
-      http.get('/api/media/topics', { params: { includeArchived: 1 } }).then((r) => (r.data || []).length).catch(() => 0),
-      http.get('/api/media/publish-records').then((r) => (r.data || []).length).catch(() => 0),
-      http.get('/api/media/reviews').then((r) => (r.data || []).length).catch(() => 0),
-      http.get('/api/media/topics', { params: { includeArchived: 1 } }).then((r) => r.data || []).catch(() => []),
-      http.get('/api/media/status-columns').then((r) => r.data || []).catch(() => [])
+      http.get('/api/media/inspirations', { params: { page: 1, pageSize: 1 } }).then((r) => safeNum(r.data && r.data.total)).catch(() => 0),
+      http.get('/api/media/topics', { params: { includeArchived: 1 } }).then((r) => safeArr(r.data).length).catch(() => 0),
+      http.get('/api/media/publish-records').then((r) => safeArr(r.data).length).catch(() => 0),
+      http.get('/api/media/reviews').then((r) => safeArr(r.data).length).catch(() => 0),
+      http.get('/api/media/topics', { params: { includeArchived: 1 } }).then((r) => safeArr(r.data)).catch(() => []),
+      http.get('/api/media/status-columns').then((r) => safeArr(r.data)).catch(() => [])
     ]).then(([insp, top, pub, rev, topics, cols]) => {
       if (!alive) return;
       const sm = {};
-      cols.forEach((c) => { sm[String(c.id)] = c.name; });
-      setStats({ inspirations: insp, topics: top, published: pub, reviews: rev });
-      setRecentTopics(topics.slice().sort((a, b) => (b.id || 0) - (a.id || 0)).slice(0, 6));
+      safeArr(cols).forEach((c) => { if (c && c.id != null) sm[String(c.id)] = c.name; });
+      setStats({ inspirations: insp || 0, topics: top || 0, published: pub || 0, reviews: rev || 0 });
+      setRecentTopics(safeArr(topics).slice().sort((a, b) => (b.id || 0) - (a.id || 0)).slice(0, 6));
       setStatusMap(sm);
     }).finally(() => { if (alive) setLoading(false); });
     return () => { alive = false; };

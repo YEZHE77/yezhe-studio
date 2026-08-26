@@ -220,7 +220,7 @@ export default function MediaBoard() {
               style={{ width: '100%', height: 30, border: '1px solid #E0E0E0', borderRadius: 4, fontSize: 12, background: '#fff' }}
             >
               <option value="">选择作品</option>
-              {works.map((w) => <option key={w.id} value={w.id}>{w.title || ('作品#' + w.id)}</option>)}
+              {(works || []).map((w) => <option key={w.id} value={w.id}>{w.title || ('作品#' + w.id)}</option>)}
             </select>
             <div className="mt-1 flex flex-wrap gap-1" style={{ maxHeight: 120, overflowY: 'auto' }}>
               {albums.slice(0, 60).map((a) => {
@@ -371,7 +371,7 @@ export default function MediaBoard() {
                     try { await http.put('/api/media/topics/' + t.id + '/status', { status_id: v }); toast('状态已更新'); loadAll(); }
                     catch (err) { toast('更新失败', 'err'); loadAll(); }
                   }} style={{ height: 28, border: '1px solid #E0E0E0', borderRadius: 4, fontSize: 12, background: '#fff' }}>
-                    {columns.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    {(columns || []).map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
                   </select>
                 </td>
                 <td className="px-3 py-2.5"><span className="text-[11px] px-1.5 py-0.5 rounded" style={{ background: p.bg, color: p.color }}>{p.label}</span></td>
@@ -456,7 +456,7 @@ export default function MediaBoard() {
                 <div>
                   <div className="text-xs mb-1" style={{ color: '#666666' }}>所在状态列</div>
                   <select value={String(fv('status_id') || '')} onChange={(e) => setFormStatus(e.target.value)} style={{ width: '100%', height: 36, border: '1px solid #E0E0E0', borderRadius: 6, fontSize: 13, background: '#fff' }}>
-                    {columns.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    {(columns || []).map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
                   </select>
                 </div>
               </div>

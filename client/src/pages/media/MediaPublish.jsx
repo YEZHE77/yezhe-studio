@@ -177,7 +177,7 @@ export default function MediaPublish() {
                 <div className="text-xs mb-1" style={{ color: '#666666' }}>关联选题（可空）</div>
                 <select value={form.topic_id || ''} onChange={(e) => setF('topic_id', e.target.value ? Number(e.target.value) : null)} style={{ width: '100%', height: 36, border: '1px solid #E0E0E0', borderRadius: 6, fontSize: 13, background: '#fff' }}>
                   <option value="">不关联</option>
-                  {topics.map((t) => <option key={t.id} value={t.id}>{t.title || ('选题#' + t.id)}</option>)}
+                  {(topics || []).map((t) => <option key={t.id} value={t.id}>{t.title || ('选题#' + t.id)}</option>)}
                 </select>
               </div>
               <div className="grid grid-cols-2 gap-3">
