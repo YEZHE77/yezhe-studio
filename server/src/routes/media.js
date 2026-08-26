@@ -204,31 +204,53 @@ function decorInspiration(r) {
   };
 }
 
+// 从抖音/小红书链接中提取笔记/视频 ID（支持各种形式）
+function extractMediaId(url) {
+  let u;
+  try { u = new URL(url); } catch { return ''; }
+  // 1) 路径前缀形式：/video/xxx  /note/xxx  /discovery/item/xxx  /explore/xxx  /share/video/xxx  /share/note/xxx
+  const pathId = u.pathname.match(/\/(?:video|note|discovery\/item|share\/video|share\/note|explore)\/([A-Za-z0-9_-]+)/i);
+  if (pathId) return pathId[1];
+  // 1b) 分享短链路径前缀：/o/xxx  /s/xxx  /a/xxx  /m/xxx  /z/xxx（xhslink.com|cn/o/xxx、xhslink.com/a/xxx 等）
+  const shortId = u.pathname.match(/\/(?:o|s|a|m|z)\/([A-Za-z0-9_-]+)/i);
+  if (shortId) return shortId[1];
+  // 2) query 参数形式：?modal_id=xxx  ?item_id=xxx  ?video_id=xxx  ?note_id=xxx  ?id=xxx
+  for (const k of ['modal_id', 'item_id', 'video_id', 'note_id', 'id']) {
+    const v = u.searchParams.get(k);
+    if (v && /^[A-Za-z0-9_-]{4,}$/.test(v)) return v;
+  }
+  // 3) 短链/纯短码形式：v.douyin.com/i5T2xYN、xhslink.com/a/xxx、xhslink.cn/o/xxx、douyin.com/xxxx
+  const seg = u.pathname.split('/').filter(Boolean);
+  if (seg.length === 1 && /^[A-Za-z0-9_-]{4,}$/.test(seg[0])) return seg[0];
+  return '';
+}
+
 // POST /api/media/inspirations/parse  { url } —— 抖音/小红书链接解析（标题 + 评论痛点）
-// 说明：为遵守「禁止爬虫抓取平台数据」，不做自动抓取；根据链接结构解析标题语义，解析失败返回错误。
-// 用户复制常不带 https:// 前缀（如微信分享 xhslink.cn/o/xxx），自动补协议后再次尝试。
+// 说明：为遵守「禁止爬虫抓取平台数据」，不做自动抓取；仅从链接结构提取标题语义。
+// 支持各种形式：完整 URL、短链（v.douyin.com/xxx、xhslink.cn/o/xxx）、
+// query 参数（?modal_id=）、以及粘贴整段分享文案（自动提取第一个 URL）、无协议头自动补 https://。
 router.post('/inspirations/parse', async (req, res) => {
   try {
-    let url = String(req.body.url || '').trim();
-    if (!url) return res.status(400).json({ error: '请先粘贴抖音 / 小红书链接' });
+    const raw = String(req.body.url || '').trim();
+    if (!raw) return res.status(400).json({ error: '请先粘贴抖音 / 小红书链接' });
+    // 1) 从整段文字中提取第一个 URL（兼容"7.43 复制打开抖音，看看… https://v.douyin.com/xxx/"这种分享文案）
+    let url = raw;
+    const urlMatch = raw.match(/https?:\/\/[^\s"'<>()]+/i);
+    if (urlMatch) url = urlMatch[0].replace(/[，。；、,.;:!！?？)）】\]>]+$/, '');
+    // 2) 自动补协议（兼容不带 https:// 的裸域名/短链）
+    let full = /^https?:\/\//i.test(url) ? url : 'https://' + url.replace(/^\/+/, '');
     let host = '';
-    try { host = new URL(url).hostname; } catch {
-        // 自动补 https:// 再试一次（兼容用户复制不带协议头的短链）
-        try { url = 'https://' + url.replace(/^\/+/, ''); host = new URL(url).hostname; }
-        catch { return res.status(400).json({ error: '链接格式无效，需以 http:// 或 https:// 开头的完整 URL' }); }
-      }
-    const isDouyin = /douyin\.com/.test(host) || /iesdouyin\.com/.test(host);
-    // 小红书短链域名 xhslink.com / xhslink.cn 都可能是用户从分享复制出来的（如 xhslink.cn/o/xxx）
-    const isXhs = /xiaohongshu\.com/.test(host) || /xhslink\.com/.test(host) || /xhslink\.cn/.test(host);
+    try { host = new URL(full).hostname.replace(/^www\./i, '').replace(/^m\./i, ''); }
+    catch { return res.status(400).json({ error: '链接格式无效，需以 http:// 或 https:// 开头的完整 URL' }); }
+    // 3) 域名校验（抖音系 / 小红书系，含子域名与短链域名）
+    const isDouyin = /(^|\.)douyin\.com$/.test(host) || /(^|\.)iesdouyin\.com$/.test(host);
+    const isXhs = /(^|\.)xiaohongshu\.com$/.test(host) || /(^|\.)xhslink\.com$/.test(host) || /(^|\.)xhslink\.cn$/.test(host);
     if (!isDouyin && !isXhs) return res.status(400).json({ error: '仅支持抖音 / 小红书链接（当前域名：' + host + '）' });
-    // 从 URL 中提取笔记/视频短 id 作为占位标题语义（不抓取正文）；
-    // 兼容 explore/（小红书笔记直链）与短链 o/ s/ 路径（xhslink.cn/o/xxx 分享短链）
-    const m = url.match(/(?:note|video|discovery\/item|share\/video|explore|[os])\/([A-Za-z0-9]+)/) || url.match(/\/video\/([A-Za-z0-9]+)/);
-    const id = m ? m[1] : '';
-    if (!id) return res.status(400).json({ error: '链接中未找到笔记 / 视频 ID，无法解析' });
+    // 4) 提取 ID（多种形式）；提取不到也不拒绝，标题用域名兜底，链接仍可保存
+    const id = extractMediaId(full);
     const platform = isXhs ? '小红书' : '抖音';
-    const title = `【${platform}】待补充标题（ID: ${id}）`;
-    res.json({ ok: true, source_type: isXhs ? 'xiaohongshu' : 'douyin', source_url: url, title, id });
+    const title = id ? `【${platform}】待补充标题（ID: ${id}）` : `【${platform}】待补充标题（${host}）`;
+    res.json({ ok: true, source_type: isXhs ? 'xiaohongshu' : 'douyin', source_url: full, title, id });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 

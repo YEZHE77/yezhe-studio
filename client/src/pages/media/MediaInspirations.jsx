@@ -198,9 +198,9 @@ export default function MediaInspirations() {
                 </div>
               </div>
               <div>
-                <div className="text-xs mb-1" style={{ color: '#666666' }}>来源链接（支持抖音 / 小红书）</div>
+                <div className="text-xs mb-1" style={{ color: '#666666' }}>来源链接（支持抖音 / 小红书各种形式）</div>
                 <div className="flex gap-2">
-                  <input value={field('source_url')} onChange={(e) => setForm((f) => ({ ...f, source_url: e.target.value }))} placeholder="https://v.douyin.com/… 或 https://www.xiaohongshu.com/…" style={{ flex: 1, height: 36, border: '1px solid #E0E0E0', borderRadius: 6, padding: '0 10px', fontSize: 12.5, outline: 'none' }} />
+                  <input value={field('source_url')} onChange={(e) => setForm((f) => ({ ...f, source_url: e.target.value }))} placeholder="粘贴链接或整段分享文案，如 v.douyin.com/xxx、xhslink.cn/o/xxx…" style={{ flex: 1, height: 36, border: '1px solid #E0E0E0', borderRadius: 6, padding: '0 10px', fontSize: 12.5, outline: 'none' }} />
                   <button type="button" onClick={doParse} disabled={parsing} style={{ height: 36, padding: '0 12px', borderRadius: 6, border: '1px solid #ABE2FB', background: '#F0F7FF', color: '#2DB7F6', fontSize: 12.5, cursor: parsing ? 'default' : 'pointer', whiteSpace: 'nowrap' }}>{parsing ? '解析中…' : '解析链接'}</button>
                 </div>
               </div>
