@@ -1,8 +1,9 @@
-/index.html
-  Cache-Control: no-cache, no-store, must-revalidate
+# SPA 入口 HTML：对所有路径（含 /media/board 等深链路由，经 /* /index.html 200 回退）禁用强缓存，
+# 保证每次都拿到最新 index.html，从而引用最新的带 hash chunk，杜绝「代码已更新但浏览器仍跑旧 bundle」的陈旧缓存崩溃。
+# 注意：CF Pages 的 _headers 按【请求路径】匹配，深链路由不会命中 / 或 /index.html 旧规则，故必须用 /* 兜底。
+/*
+  Cache-Control: no-cache
 
-/
-  Cache-Control: no-cache, no-store, must-revalidate
-
+# 带内容 hash 的静态资源：可长期强缓存（文件名随内容变化，安全 immutable）
 /assets/*
   Cache-Control: public, max-age=31536000, immutable

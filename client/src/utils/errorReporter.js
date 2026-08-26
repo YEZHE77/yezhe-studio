@@ -136,17 +136,47 @@ export function reportApiError(err, cfg = {}) {
   }
 }
 
+// 模块/动态 chunk 求值阶段的「未定义变量 / 加载失败 / 语法错误」属于模块级错误，
+// React ErrorBoundary 仅捕获渲染期错误（且 resetKeys 依赖 pathname），兜不住 import() 动态 chunk
+// 的求值异常——这正是「选题看板一打开就空白刷新」未被兜住的根因。
+// 此类错误几乎必然是陈旧/损坏 bundle（旧 chunk 仍被 immutable 强缓存）所致，主动一次性重载即可自愈。
+// 用 sessionStorage 计数防无限循环（单会话最多 2 次），并依赖 _headers 对 /* 禁用强缓存保证重载拿到最新 index.html。
+const RELOAD_KEY = '__wb_auto_reload_cnt__';
+const RELOADABLE = [
+  /Can't find variable/i,
+  /is not defined/i,
+  /Failed to fetch dynamically imported module/i,
+  /Importing a module script failed/i,
+  /Unexpected token/i,
+  /SyntaxError/i
+];
+function maybeAutoReload(message) {
+  try {
+    const m = String(message || '');
+    if (!RELOADABLE.some((re) => re.test(m))) return;
+    const n = parseInt(window.sessionStorage.getItem(RELOAD_KEY) || '0', 10) || 0;
+    if (n >= 2) return; // 防循环：已自愈失败则放弃，避免反复刷新
+    window.sessionStorage.setItem(RELOAD_KEY, String(n + 1));
+    setTimeout(() => window.location.reload(), 400);
+  } catch { /* 忽略 */ }
+}
+
 // 安装全局捕获（window.onerror + unhandledrejection），幂等
 export function installGlobalHandlers() {
   if (installed || typeof window === 'undefined') return;
   installed = true;
   window.addEventListener('error', (e) => {
     // 资源加载错误（img/script）没有 error.message，跳过
-    if (e && e.message) report(e.error || e, { type: 'js', context: { filename: e.filename, lineno: e.lineno, colno: e.colno } });
+    if (e && e.message) {
+      report(e.error || e, { type: 'js', context: { filename: e.filename, lineno: e.lineno, colno: e.colno } });
+      maybeAutoReload(e.message);
+    }
   });
   window.addEventListener('unhandledrejection', (e) => {
     const reason = e && e.reason;
+    const msg = (reason && reason.message) || (typeof reason === 'string' ? reason : '');
     report(reason || { message: 'Unhandled Promise Rejection' }, { type: 'unhandledrejection' });
+    if (msg) maybeAutoReload(msg);
   });
 }
 
