@@ -24,7 +24,7 @@ export default function Topbar({ onMenu }) {
 
   // 消息未读红点：轮询 biz_message（与手机端共用同一套数据），onFocus 切回强制拉取
   const pullUnread = () => {
-    http.get('/api/mobile/message/unread-count').then((r) => setUnread(r.data.count || 0)).catch(() => {});
+    http.get('/api/mobile/message/unread-count', { __skipReport: true }).then((r) => setUnread(r.data.count || 0)).catch(() => {});
   };
   useEffect(() => {
     pullUnread();

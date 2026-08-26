@@ -229,7 +229,7 @@ export default function MobileShell() {
   // 与 MobileMessage 三个宫格的 byCategory 口径一致；其他类型（customer_consult / select_photo / schedule）
   // 在 PC 端 Topbar / 专门页面消费，不计入移动端消息 Tab。
   const pullUnread = () => {
-    http.get('/api/mobile/message/unread-count').then((r) => {
+    http.get('/api/mobile/message/unread-count', { __skipReport: true }).then((r) => {
       const cat = (r.data && r.data.byCategory) || {};
       setUnread((cat.reserve || 0) + (cat.order || 0) + (cat.system || 0));
     }).catch(() => {});

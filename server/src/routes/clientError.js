@@ -106,8 +106,11 @@ router.post('/', async (req, res) => {
       [type, end, severity, message, stack, url, ua, appVersion, context, clientTs]
     );
 
-    // 异步分发告警（webhook + 内部消息）；E2E 探针不向消息中心发告警
-    const skipInternal = message.startsWith('E2E_PROBE:');
+    // 异步分发告警（webhook + 内部消息）
+    // E2E 探针不向消息中心发告警；api 类型的网络/超时错误（status 为空，通常是 Render 冷启动或用户网络抖动）
+    // 只入库 + webhook，不向 B 端消息中心发系统通知，避免非关键超时刷屏。
+    const isNetworkTimeout = type === 'api' && !b.status && /\b(timeout|network|ECONNABORTED|ERR_NETWORK)\b/i.test(message);
+    const skipInternal = message.startsWith('E2E_PROBE:') || isNetworkTimeout;
     dispatchAlert({ id, type, end, severity, message, stack, url, ua, appVersion, context, timestamp: clientTs }, { skipInternal }).catch(() => {});
 
     // 自动轮转：超过 5000 条保留最近 5000 条

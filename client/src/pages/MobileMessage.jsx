@@ -110,7 +110,7 @@ export default function MobileMessage() {
     // 工作室资料（客服二维码）
     http.get('/api/settings/studio').then((r) => setStudio(r.data)).catch(() => {});
     // 消息分类未读（reserve/order/system）—— 与 MobileShell 底部 Tab 共用同一个接口，读取 byCategory 字段叠加到 3 宫格
-    http.get('/api/mobile/message/unread-count').then((r) => {
+    http.get('/api/mobile/message/unread-count', { __skipReport: true }).then((r) => {
       if (r.data && r.data.byCategory) setByCategory(r.data.byCategory);
     }).catch(() => {});
   }, []);
