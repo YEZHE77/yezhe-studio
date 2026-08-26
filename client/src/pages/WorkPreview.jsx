@@ -459,7 +459,7 @@ export default function WorkPreview() {
                 const cols = [[], [], []];
                 albums.forEach((_, i) => cols[i % 3].push(i));
                 const renderThumb = (idx) => (
-                  <div key={albums[idx]?.id || idx} onClick={() => openPreview(idx)} style={{ marginBottom: 8, background: '#f5f5f5', borderRadius: 6, overflow: 'hidden', cursor: 'pointer' }}>
+                  <div key={albums[idx]?.id || idx} onClick={() => openPreview(idx)} style={{ marginBottom: 8, background: '#f5f5f5', borderRadius: 0, overflow: 'hidden', cursor: 'pointer' }}>
                     <img src={img(albums[idx].thumb_url || albums[idx].photo_url)} alt="" style={{ width: '100%', height: 'auto', objectFit: 'contain', display: 'block' }} loading="lazy" onError={(e) => { e.currentTarget.style.opacity = '0.3'; }} />
                   </div>
                 );

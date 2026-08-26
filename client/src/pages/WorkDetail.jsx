@@ -921,7 +921,7 @@ export default function WorkDetail() {
         onDrop={(e) => handleDrop(e, a.id)}
         onDragEnd={handleDragEnd}
         onClick={() => openPreview(idx)}
-        className={`group relative border rounded-xl2 overflow-hidden bg-ink cursor-grab active:cursor-grabbing select-none mb-3
+        className={`group relative border overflow-hidden bg-ink cursor-grab active:cursor-grabbing select-none mb-3
           ${selected.has(a.id) ? 'border-brand ring-1 ring-brand' : dragOverId === a.id ? 'border-brand ring-2 ring-brand' : 'border-line'}
           ${draggedId === a.id ? 'opacity-40' : ''}`}
       >
