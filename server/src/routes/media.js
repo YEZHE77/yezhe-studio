@@ -205,19 +205,24 @@ function decorInspiration(r) {
 
 // POST /api/media/inspirations/parse  { url } —— 抖音/小红书链接解析（标题 + 评论痛点）
 // 说明：为遵守「禁止爬虫抓取平台数据」，不做自动抓取；根据链接结构解析标题语义，解析失败返回错误。
+// 用户复制常不带 https:// 前缀（如微信分享 xhslink.cn/o/xxx），自动补协议后再次尝试。
 router.post('/inspirations/parse', async (req, res) => {
   try {
-    const url = String(req.body.url || '').trim();
-    if (!url) return res.status(400).json({ error: '请先粘贴链接' });
+    let url = String(req.body.url || '').trim();
+    if (!url) return res.status(400).json({ error: '请先粘贴抖音 / 小红书链接' });
     let host = '';
-    try { host = new URL(url).hostname; } catch { return res.status(400).json({ error: '链接格式无效，请检查后重试' }); }
+    try { host = new URL(url).hostname; } catch {
+        // 自动补 https:// 再试一次（兼容用户复制不带协议头的短链）
+        try { url = 'https://' + url.replace(/^\/+/, ''); host = new URL(url).hostname; }
+        catch { return res.status(400).json({ error: '链接格式无效，需以 http:// 或 https:// 开头的完整 URL' }); }
+      }
     const isDouyin = /douyin\.com/.test(host) || /iesdouyin\.com/.test(host);
     const isXhs = /xiaohongshu\.com/.test(host) || /xhslink\.com/.test(host);
-    if (!isDouyin && !isXhs) return res.status(400).json({ error: '仅支持抖音 / 小红书链接' });
+    if (!isDouyin && !isXhs) return res.status(400).json({ error: '仅支持抖音 / 小红书链接（当前域名：' + host + '）' });
     // 从 URL 中提取笔记/视频短 id 作为占位标题语义（不抓取正文）；兼容 explore/（小红书笔记直链）
     const m = url.match(/(?:note|video|discovery\/item|share\/video|explore)\/([A-Za-z0-9]+)/) || url.match(/\/video\/([A-Za-z0-9]+)/);
     const id = m ? m[1] : '';
-    if (!id) return res.status(400).json({ error: '链接中未找到笔记/视频 ID，无法解析' });
+    if (!id) return res.status(400).json({ error: '链接中未找到笔记 / 视频 ID，无法解析' });
     const platform = isXhs ? '小红书' : '抖音';
     const title = `【${platform}】待补充标题（ID: ${id}）`;
     res.json({ ok: true, source_type: isXhs ? 'xiaohongshu' : 'douyin', source_url: url, title, id });

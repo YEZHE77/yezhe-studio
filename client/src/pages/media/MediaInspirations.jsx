@@ -36,9 +36,12 @@ export default function MediaInspirations() {
   const openEdit = (it) => setForm({ id: it.id, title: it.title || '', content: it.content || '', source_type: it.source_type || 'manual', source_url: it.source_url || '', pain_strength: Number(it.pain_strength) || 3, tags: (it.tags || []).map(String), card_color: it.card_color || '#2DB7F5' });
 
   // 解析链接（抖音/小红书）：成功回填标题与来源；失败弹窗提示错误，不保存
+  // 用户复制常见不带 https:// 前缀（如微信分享的 xhslink.cn/o/xxx），本地先自动补协议再发
   const doParse = async () => {
-    const url = String(form.source_url || '').trim();
-    if (!url) { toast('请先粘贴链接', 'warn'); return; }
+    let url = String(form.source_url || '').trim();
+    if (!url) { toast('请先粘贴抖音 / 小红书链接', 'warn'); return; }
+    if (!/^https?:\/\//i.test(url)) url = 'https://' + url.replace(/^\/+/, '');
+    setForm((f) => ({ ...f, source_url: url }));
     setParsing(true);
     try {
       const r = await http.post('/api/media/inspirations/parse', { url });
@@ -47,7 +50,7 @@ export default function MediaInspirations() {
       toast('链接解析成功，请补充标题与评论痛点');
     } catch (e) {
       const msg = (e.data && e.data.error) || e.message || '解析失败';
-      window.alert('解析失败：' + msg);
+      window.alert('解析失败：' + msg + '\n\n小提示：\n1. 仅支持抖音 / 小红书链接\n2. 链接需以 http:// 或 https:// 开头');
     } finally {
       setParsing(false);
     }
