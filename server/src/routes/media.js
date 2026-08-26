@@ -233,10 +233,18 @@ router.post('/inspirations/parse', async (req, res) => {
   try {
     const raw = String(req.body.url || '').trim();
     if (!raw) return res.status(400).json({ error: '请先粘贴抖音 / 小红书链接' });
-    // 1) 从整段文字中提取第一个 URL（兼容"7.43 复制打开抖音，看看… https://v.douyin.com/xxx/"这种分享文案）
+    // 1) 提取 URL：先按 https?:// 匹配；匹配不到则按平台域名定位（兼容抖音 App 分享文本里 URL
+    //    被零宽字符或换行截断、以及 "4.30 复制打开抖音...v.douyin.com/xxx/ 复制此链接" 这种格式）。
+    //    关键坑：若整个 raw 没有平台域名，new URL(raw) 可能把开头数字（如 "4.0.30" 抖音 App 版本号）
+    //    解析为 IPv4 风格 hostname 导致误判，所以必须在 URL 提取失败时给出明确错误。
     let url = raw;
-    const urlMatch = raw.match(/https?:\/\/[^\s"'<>()]+/i);
-    if (urlMatch) url = urlMatch[0].replace(/[，。；、,.;:!！?？)）】\]>]+$/, '');
+    let m = raw.match(/https?:\/\/[^\s"'<>()]+/i);
+    if (m) {
+      url = m[0].replace(/[，。；、,.;:!！?？)）】\]>]+$/, '');
+    } else {
+      m = raw.match(/(?:^|[^\w@/])((?:[a-z0-9-]+\.)*(?:douyin|iesdouyin|xiaohongshu|xhslink)\.(?:com|cn)(?::\d+)?(?:\/[^\s"'<>()]*)?)/i);
+      if (m) url = 'https://' + m[1];
+    }
     // 2) 自动补协议（兼容不带 https:// 的裸域名/短链）
     let full = /^https?:\/\//i.test(url) ? url : 'https://' + url.replace(/^\/+/, '');
     let host = '';
