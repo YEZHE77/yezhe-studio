@@ -472,9 +472,14 @@ router.delete('/drafts/:id', async (req, res) => {
 router.get('/publish-records', async (req, res) => {
   try {
     const topicId = req.query.topic_id ? num(req.query.topic_id) : null;
+    // publish_time(TEXT) 与 created_at(TIMESTAMPTZ) 不能直接 COALESCE（PG 报
+    // "COALESCE types text and timestamp with time zone cannot be matched"）。
+    // 拆成两段：先按"是否为空"分组（NULL 排后），再按 publish_time 字典序，
+    // 最后 created_at DESC —— 类型清晰，跨 PG/SQLite 都安全。
+    const orderBy = 'ORDER BY (publish_time IS NULL) ASC, COALESCE(publish_time, \'9999-12-31\') DESC, created_at DESC, id DESC';
     const rows = topicId
-      ? await query('SELECT * FROM media_publish_record WHERE topic_id = ? ORDER BY COALESCE(publish_time, created_at) DESC, id DESC', [topicId])
-      : await query('SELECT * FROM media_publish_record ORDER BY COALESCE(publish_time, created_at) DESC, id DESC');
+      ? await query('SELECT * FROM media_publish_record WHERE topic_id = ? ' + orderBy, [topicId])
+      : await query('SELECT * FROM media_publish_record ' + orderBy);
     res.json(rows);
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
