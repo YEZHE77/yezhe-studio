@@ -12,12 +12,21 @@ import Icon from '../components/Icon.jsx';
    ========================================================================== */
 
 // 有 to 的可点击跳转；无 to 的为占位项（暂未开放）。expandable 为可折叠项（右侧箭头）。
-// sep: 该项后插入分组分隔线
+// sep: 该项后插入分组分隔线；children: 一级菜单展开的子菜单列表（自媒体的 7 个入口）
 const ITEMS = [
   { label: '工作台', to: '/', icon: 'dashboard', sep: true },
   { label: '手机模拟器', to: '/phone-simulator', icon: 'monitor' },
   { label: '小程序', icon: 'miniapp', to: '/mini-program-preview' },
   { label: '网站', icon: 'website', expandable: true },
+  { label: '自媒体', icon: 'ai', children: [
+    { label: '主页概览', to: '/media', icon: 'dashboard' },
+    { label: '灵感库', to: '/media/inspirations', icon: 'message' },
+    { label: '选题看板', to: '/media/board', icon: 'select' },
+    { label: '内容生产', to: '/media/production', icon: 'appointment' },
+    { label: '分发记录', to: '/media/publish', icon: 'marketing' },
+    { label: '复盘报告', to: '/media/review', icon: 'review' },
+    { label: '标签管理', to: '/media/tags', icon: 'tag' }
+  ] },
   { label: '资料设置', to: '/settings', icon: 'settings', expandable: true, sep: true },
   { label: '套系', to: '/packages', icon: 'package' },
   { label: '作品', to: '/works', icon: 'photo' },
@@ -55,6 +64,13 @@ function Caret() {
 function SidebarContent({ mobile = false }) {
   const [studio, setStudio] = useState(null);
   const fileRef = useRef(null);
+  // 可展开一级菜单（自媒体默认展开）
+  const [openMenus, setOpenMenus] = useState(() => {
+    const init = {};
+    ITEMS.forEach((m) => { if (m.children) init[m.label] = true; });
+    return init;
+  });
+  const toggleMenu = (label) => setOpenMenus((s) => ({ ...s, [label]: !s[label] }));
   useEffect(() => {
     http.get('/api/settings/studio').then((r) => setStudio(r.data || null)).catch(() => {});
   }, []);
@@ -108,6 +124,52 @@ function SidebarContent({ mobile = false }) {
       {/* 菜单 */}
       <nav className="flex-1">
         {ITEMS.map((m) => {
+          if (m.children) {
+            const open = !!openMenus[m.label];
+            return (
+              <div key={m.label}>
+                <div
+                  className="flex items-center cursor-pointer select-none"
+                  style={{ height: 40, marginBottom: 2 }}
+                  onClick={() => toggleMenu(m.label)}
+                >
+                  <span
+                    className="inline-flex items-center max-w-full text-[rgba(0,0,0,0.65)] hover:bg-[#EDF0F3] transition-colors"
+                    style={{ gap: 10, padding: '0 12px', height: 32, borderRadius: 100, marginLeft: menuMargin, marginRight: 14 }}
+                  >
+                    <span className="w-6 shrink-0 flex items-center justify-center" style={{ color: '#AAAAAA' }}>
+                      <Icon name={m.icon} className="w-[14px] h-[14px]" />
+                    </span>
+                    <span className="truncate">{m.label}</span>
+                    <span className="ml-auto shrink-0 transition-transform" style={{ display: 'flex', transform: open ? 'rotate(90deg)' : 'none' }}>
+                      <Caret />
+                    </span>
+                  </span>
+                </div>
+                {open && m.children.map((sub) => (
+                  <NavLink
+                    key={sub.label}
+                    to={sub.to}
+                    className="flex items-center"
+                    style={{ height: 34, marginBottom: 1 }}
+                  >
+                    {({ isActive }) => (
+                      <span
+                        className={'inline-flex items-center max-w-full transition-colors ' + (isActive ? 'bg-[#F0FDFF] text-[#2DB7F5]' : 'text-[rgba(0,0,0,0.65)] hover:bg-[#EDF0F3]')}
+                        style={{ gap: 8, padding: '0 10px', height: 30, borderRadius: 100, marginLeft: menuMargin + 24, marginRight: 14, fontSize: 12.5 }}
+                      >
+                        <span className="w-4 shrink-0 flex items-center justify-center" style={{ color: isActive ? '#2DB7F5' : '#BBBBBB' }}>
+                          <Icon name={sub.icon} className="w-[12px] h-[12px]" />
+                        </span>
+                        <span className="truncate">{sub.label}</span>
+                      </span>
+                    )}
+                  </NavLink>
+                ))}
+                {m.sep && <div style={{ height: 1, background: '#E8E8E8', margin: '6px 15px 6px ' + sepMargin + 'px' }} />}
+              </div>
+            );
+          }
           if (m.to) {
             return (
               <div key={m.label}>

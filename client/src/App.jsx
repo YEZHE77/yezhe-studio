@@ -77,6 +77,15 @@ const Home = React.lazy(() => import('./pages/Home.jsx'));
 const My = React.lazy(() => import('./pages/My.jsx'));
 const WorkPublic = React.lazy(() => import('./pages/WorkPublic.jsx'));
 
+// 自媒体工作台（B 端后台增量模块：灵感库 / 选题看板 / 内容生产 / 分发记录 / 复盘 / 标签）
+const MediaOverview = React.lazy(() => import('./pages/media/MediaOverview.jsx'));
+const MediaInspirations = React.lazy(() => import('./pages/media/MediaInspirations.jsx'));
+const MediaBoard = React.lazy(() => import('./pages/media/MediaBoard.jsx'));
+const MediaProduction = React.lazy(() => import('./pages/media/MediaProduction.jsx'));
+const MediaPublish = React.lazy(() => import('./pages/media/MediaPublish.jsx'));
+const MediaReview = React.lazy(() => import('./pages/media/MediaReview.jsx'));
+const MediaTags = React.lazy(() => import('./pages/media/MediaTags.jsx'));
+
 // 通用加载占位
 function PageLoader() {
   return <div className="p-10 text-muted text-sm flex items-center gap-2">
@@ -141,6 +150,14 @@ function AppShell() {
                 <Route path="/capacity" element={<CapacityManagement />} />
                 <Route path="/mini-program-preview" element={<MiniProgramPreview />} />
                 <Route path="/team" element={<Team />} />
+                <Route path="/media" element={<MediaOverview />} />
+                <Route path="/media/inspirations" element={<MediaInspirations />} />
+                <Route path="/media/board" element={<MediaBoard />} />
+                <Route path="/media/production" element={<MediaProduction />} />
+                <Route path="/media/production/:topicId" element={<MediaProduction />} />
+                <Route path="/media/publish" element={<MediaPublish />} />
+                <Route path="/media/review" element={<MediaReview />} />
+                <Route path="/media/tags" element={<MediaTags />} />
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
             </Suspense>

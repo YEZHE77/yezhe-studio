@@ -4,7 +4,7 @@ import { dialect, run, query, get, insert } from './db.js';
 
 // 表结构版本号：已初始化的库启动时跳过全量 DDL/ensureColumn（Render 冷启动加速，130+ 次 DB 往返 → 1 次 SELECT）。
 // 约定：新增表/列/约束时同步 +1，下次启动自动全量幂等重跑并回写新版本号。
-const SCHEMA_VERSION = 1;
+const SCHEMA_VERSION = 2;
 
 const PG_DDL = `
 CREATE TABLE IF NOT EXISTS users (
@@ -593,6 +593,89 @@ CREATE TABLE IF NOT EXISTS work_comments (
   created_at TEXT DEFAULT CURRENT_TIMESTAMP
 );`;
 
+// ===== 自媒体工作台 7 表（灵感库/状态列/选题/草稿/分发记录/复盘/标签）=====
+// media_inspiration.pain_points / tags 存 JSON 数组字符串；media_topic.tags 同上；
+// media_topic.material_ref 存 JSON { type:'album'|'upload', album_ids:[], urls:[] }；
+// media_draft.alt_titles / hashtags / image_ideas 存 JSON；media_review.record_ids / pain_points 存 JSON。
+const PG_MEDIA_WORKBENCH = `
+CREATE TABLE IF NOT EXISTS media_tag (
+  id SERIAL PRIMARY KEY, name TEXT NOT NULL, color TEXT DEFAULT '#2DB7F5', created_at TIMESTAMPTZ DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS media_status_column (
+  id SERIAL PRIMARY KEY, name TEXT NOT NULL, sort INTEGER NOT NULL DEFAULT 0,
+  is_default INTEGER NOT NULL DEFAULT 0, created_at TIMESTAMPTZ DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS media_inspiration (
+  id SERIAL PRIMARY KEY, title TEXT NOT NULL DEFAULT '', content TEXT,
+  source_type TEXT NOT NULL DEFAULT 'manual', source_url TEXT,
+  pain_points TEXT, pain_strength INTEGER NOT NULL DEFAULT 3,
+  tags TEXT, card_color TEXT DEFAULT '#2DB7F5',
+  deleted INTEGER NOT NULL DEFAULT 0, created_at TIMESTAMPTZ DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS media_topic (
+  id SERIAL PRIMARY KEY, title TEXT NOT NULL DEFAULT '', core_pain TEXT,
+  target_platform TEXT, content_form TEXT, priority TEXT NOT NULL DEFAULT 'medium',
+  expect_publish_time TEXT, reference_url TEXT,
+  status_id INTEGER, sort INTEGER NOT NULL DEFAULT 0,
+  card_color TEXT DEFAULT '#2DB7F5', material_ref TEXT,
+  inspiration_id INTEGER, tags TEXT,
+  deleted INTEGER NOT NULL DEFAULT 0, created_at TIMESTAMPTZ DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS media_draft (
+  id SERIAL PRIMARY KEY, topic_id INTEGER NOT NULL, version INTEGER NOT NULL DEFAULT 1,
+  content TEXT, alt_titles TEXT, hashtags TEXT, image_ideas TEXT,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS media_publish_record (
+  id SERIAL PRIMARY KEY, topic_id INTEGER, platform TEXT, publish_url TEXT,
+  publish_time TEXT, likes INTEGER NOT NULL DEFAULT 0, favorites INTEGER NOT NULL DEFAULT 0,
+  comments INTEGER NOT NULL DEFAULT 0, inquiries INTEGER NOT NULL DEFAULT 0, note TEXT,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS media_review (
+  id SERIAL PRIMARY KEY, record_ids TEXT, content TEXT, pain_points TEXT,
+  created_at TIMESTAMPTZ DEFAULT now()
+);`;
+const SQLITE_MEDIA_WORKBENCH = `
+CREATE TABLE IF NOT EXISTS media_tag (
+  id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, color TEXT DEFAULT '#2DB7F5', created_at TEXT DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS media_status_column (
+  id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, sort INTEGER NOT NULL DEFAULT 0,
+  is_default INTEGER NOT NULL DEFAULT 0, created_at TEXT DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS media_inspiration (
+  id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NOT NULL DEFAULT '', content TEXT,
+  source_type TEXT NOT NULL DEFAULT 'manual', source_url TEXT,
+  pain_points TEXT, pain_strength INTEGER NOT NULL DEFAULT 3,
+  tags TEXT, card_color TEXT DEFAULT '#2DB7F5',
+  deleted INTEGER NOT NULL DEFAULT 0, created_at TEXT DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS media_topic (
+  id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NOT NULL DEFAULT '', core_pain TEXT,
+  target_platform TEXT, content_form TEXT, priority TEXT NOT NULL DEFAULT 'medium',
+  expect_publish_time TEXT, reference_url TEXT,
+  status_id INTEGER, sort INTEGER NOT NULL DEFAULT 0,
+  card_color TEXT DEFAULT '#2DB7F5', material_ref TEXT,
+  inspiration_id INTEGER, tags TEXT,
+  deleted INTEGER NOT NULL DEFAULT 0, created_at TEXT DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS media_draft (
+  id INTEGER PRIMARY KEY AUTOINCREMENT, topic_id INTEGER NOT NULL, version INTEGER NOT NULL DEFAULT 1,
+  content TEXT, alt_titles TEXT, hashtags TEXT, image_ideas TEXT,
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS media_publish_record (
+  id INTEGER PRIMARY KEY AUTOINCREMENT, topic_id INTEGER, platform TEXT, publish_url TEXT,
+  publish_time TEXT, likes INTEGER NOT NULL DEFAULT 0, favorites INTEGER NOT NULL DEFAULT 0,
+  comments INTEGER NOT NULL DEFAULT 0, inquiries INTEGER NOT NULL DEFAULT 0, note TEXT,
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS media_review (
+  id INTEGER PRIMARY KEY AUTOINCREMENT, record_ids TEXT, content TEXT, pain_points TEXT,
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP
+);`;
+
 async function colsOf(table) {
   if (dialect === 'pg') {
     const r = await query(`SELECT column_name FROM information_schema.columns WHERE table_name = $1`, [table]);
@@ -847,6 +930,18 @@ export async function initSchema() {
   // 作品访问记录 + 评论
   for (const s of (dialect === 'pg' ? PG_WORK_VISITS : SQLITE_WORK_VISITS).split(';').map((x) => x.trim()).filter(Boolean)) await run(s);
   for (const s of (dialect === 'pg' ? PG_WORK_COMMENTS : SQLITE_WORK_COMMENTS).split(';').map((x) => x.trim()).filter(Boolean)) await run(s);
+
+  // 自媒体工作台 7 表（灵感库/状态列/选题/草稿/分发记录/复盘/标签）
+  for (const s of (dialect === 'pg' ? PG_MEDIA_WORKBENCH : SQLITE_MEDIA_WORKBENCH).split(';').map((x) => x.trim()).filter(Boolean)) await run(s);
+  // 默认选题状态列种子（幂等：表空才插 5 列，与需求「默认状态列：待构思、撰写中、待发布、已发布、归档」一致）
+  try {
+    const c = await get('SELECT COUNT(*) AS c FROM media_status_column');
+    if (!Number(c.c)) {
+      const DEFS = ['待构思', '撰写中', '待发布', '已发布', '归档'];
+      for (let i = 0; i < DEFS.length; i++) await insert('INSERT INTO media_status_column (name, sort, is_default) VALUES (?,?,?)', [DEFS[i], i, 1]);
+      console.log('[schema] 自媒体默认状态列已种入 5 列');
+    }
+  } catch (e) { console.error('[schema] media_status_column 默认列种子失败', e.message); }
 
   // orders 增量补列
   for (const [col, def] of ORDERS_NEW_COLUMNS) await ensureColumn('orders', col, def);

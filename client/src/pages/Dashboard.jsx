@@ -115,6 +115,10 @@ export default function Dashboard() {
   const [showAlert, setShowAlert] = useState(false);
   const [loading, setLoading] = useState(true);
   const [hiddenMoney, setHiddenMoney] = useState(false); // 账户概览：眼睛图标切换金额显隐
+  // 自媒体 · 待处理选题概览（仅替换原顶部模块，不影响下方原有模块）
+  const [mediaCards, setMediaCards] = useState([]);
+  const [mediaStatusMap, setMediaStatusMap] = useState({});
+  const [mediaTagMap, setMediaTagMap] = useState({});
   const nav = useNavigate();
 
   useEffect(() => {
@@ -125,6 +129,21 @@ export default function Dashboard() {
         .then((r) => { setStorage(r.data); setShowAlert(!r.data.cloudEnabled); })
         .catch(() => { setStorage(null); setShowAlert(false); })
     ]).finally(() => setLoading(false));
+  }, []);
+
+  // 自媒体概览数据：待处理选题（最多 8 张）+ 状态列名 + 标签名映射
+  useEffect(() => {
+    http.get('/api/media/topics/overview').then((r) => setMediaCards(r.data || [])).catch(() => {});
+    http.get('/api/media/status-columns').then((r) => {
+      const m = {};
+      (r.data || []).forEach((c) => { m[String(c.id)] = c.name; });
+      setMediaStatusMap(m);
+    }).catch(() => {});
+    http.get('/api/media/tags').then((r) => {
+      const m = {};
+      (r.data || []).forEach((t) => { m[String(t.id)] = t; });
+      setMediaTagMap(m);
+    }).catch(() => {});
   }, []);
 
   // 存储容量告警等级：≥90% 严重 / 70-90% 警示 / <70% 正常
@@ -142,55 +161,99 @@ export default function Dashboard() {
 
   return (
     <div style={{ maxWidth: 1050, background: '#F8F8F8' }}>
-      {/* ===== 顶部：品牌 + 快捷链接（左） + 信息列（右） ===== */}
-      <div className="flex flex-col lg:flex-row lg:items-start gap-6 lg:gap-[61px]">
-        <div className="flex-1 min-w-0">
-          <div className="pl-4 lg:pl-[90px]">
-            <div className="text-[20px]" style={{ color: '#222222', lineHeight: 1.4 }}>叶哲 STUDIO</div>
-            <div className="flex flex-wrap gap-[10px] lg:gap-[15px] mt-6">
-              {QUICK.map((q) => (
-                <button
-                  key={q.label}
-                  type="button"
-                  onClick={() => nav(q.to)}
-                  className="text-xs text-white leading-none"
-                  style={{ background: q.bg, padding: '0 20px', height: 24, borderRadius: 2 }}
-                >{q.label} &gt;</button>
-              ))}
-            </div>
+      {/* ===== 自媒体 · 待处理选题概览（替换原顶部品牌/快捷链接/信息列整块） ===== */}
+      <div className="bg-white border" style={{ borderRadius: 4, borderColor: '#F0F0F0', padding: '20px 16px 22px' }}>
+        <div className="flex items-center justify-between flex-wrap gap-3">
+          <div className="flex items-center gap-2">
+            <span className="text-[16px]" style={{ color: '#333333', fontWeight: 400 }}>自媒体 · 待处理选题概览</span>
+            <span className="text-xs" style={{ color: '#999999' }}>{mediaCards.length} 个有效选题</span>
           </div>
-
-          {/* 告警横幅（参考图 VIP 横幅样式：浅粉底 + 灰字 + 彩色操作） */}
-          {storageCritical && (
-            <div className="flex items-center gap-2 px-[15px] mt-5 text-xs" style={alertStyle}>
-              <div className="flex-1">存储容量告警：已用 {storagePct}%（{formatBytes(storage.totalUsedBytes)} / {formatBytes(storage.limitBytes)}），请尽快清理避免超限。</div>
-              <button type="button" className="shrink-0" style={{ color: '#F47175' }} onClick={() => nav('/capacity')}>去清理 &gt;</button>
-            </div>
-          )}
-          {showAlert && !storageCritical && (
-            <div className="flex items-center gap-2 px-[15px] mt-5 text-xs" style={alertStyle}>
-              <div className="flex-1">图片存储提示：当前后端未配置永久云存储（R2），建议尽快配置，避免重启后图片丢失。</div>
-              <button type="button" className="shrink-0" style={{ color: '#F47175' }} onClick={() => setShowAlert(false)}>知道了</button>
-            </div>
-          )}
-        </div>
-
-        {/* 右侧信息列 */}
-        <div className="w-full lg:w-[205px] shrink-0 space-y-[11px]">
-          {INFO_CARDS.map((c) => (
+          <div className="flex gap-2">
             <button
-              key={c.title}
               type="button"
-              onClick={() => c.to && nav(c.to)}
-              className="w-full text-left bg-white border transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-[0_8px_20px_rgba(31,35,41,0.10)]"
-              style={{ borderRadius: 4, borderColor: '#F0F0F0', padding: '20px 15px 20px 20px', height: 'auto', minHeight: 80 }}
-            >
-              <div className="text-[14px]" style={{ color: '#333333' }}>{c.title}</div>
-              <div className="text-xs mt-2" style={{ color: '#999999' }}>{c.desc}</div>
-            </button>
-          ))}
+              onClick={() => nav('/media/board')}
+              className="text-xs"
+              style={{ color: '#2DB7F6', background: '#fff', border: '1px solid #ABE2FB', padding: '0 14px', height: 30, borderRadius: 100, cursor: 'pointer' }}
+            >前往选题看板</button>
+            <button
+              type="button"
+              onClick={() => nav('/media/board?new=1')}
+              className="text-xs"
+              style={{ color: '#fff', background: '#2DB7F5', border: '1px solid #2DB7F5', padding: '0 14px', height: 30, borderRadius: 100, cursor: 'pointer' }}
+            >新建选题</button>
+          </div>
         </div>
+
+        {mediaCards.length ? (
+          <div className="mt-4 flex gap-3" style={{ overflowX: 'auto', paddingBottom: 4 }}>
+            {mediaCards.map((c) => {
+              const tagObjs = (c.tags || []).map((id) => mediaTagMap[String(id)]).filter(Boolean);
+              const shownTags = tagObjs.slice(0, 3);
+              const restTags = tagObjs.length - shownTags.length;
+              const prio = c.priority || 'medium';
+              const prioStyle = prio === 'high' ? { color: '#F47175', bg: '#FDECEC' } : prio === 'low' ? { color: '#999999', bg: '#F4F4F4' } : { color: '#E6A23C', bg: '#FDF6EC' };
+              return (
+                <div
+                  key={c.id}
+                  onClick={() => nav('/media/production/' + c.id)}
+                  className="shrink-0 cursor-pointer bg-white border transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_8px_20px_rgba(31,35,41,0.10)]"
+                  style={{ width: 256, borderRadius: 6, borderColor: '#EEEEEE', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}
+                  title="点击进入内容生产"
+                >
+                  <div style={{ height: 4, background: c.card_color || '#2DB7F5' }} />
+                  <div className="p-3 flex flex-col gap-2" style={{ minWidth: 0 }}>
+                    <div className="flex items-start justify-between gap-2">
+                      <span className="text-[13px] font-medium truncate" style={{ color: '#333333' }} title={c.title || '未命名选题'}>{c.title || '未命名选题'}</span>
+                    </div>
+                    <div className="flex items-center gap-1 flex-wrap">
+                      <span className="text-[11px] px-1.5 py-0.5 rounded" style={{ background: '#F0F7FF', color: '#2DB7F6' }}>{mediaStatusMap[String(c.status_id)] || '未设置'}</span>
+                      <span className="text-[11px] px-1.5 py-0.5 rounded" style={{ background: prioStyle.bg, color: prioStyle.color }}>
+                        {prio === 'high' ? '高' : prio === 'low' ? '低' : '中'}优先级
+                      </span>
+                    </div>
+                    {c.core_pain ? (
+                      <div className="text-xs leading-[18px] line-clamp-2" style={{ color: '#888888' }}>{c.core_pain}</div>
+                    ) : null}
+                    <div className="flex items-center gap-1 flex-wrap text-[11px]">
+                      {c.target_platform ? <span className="px-1.5 py-0.5 rounded" style={{ background: '#F0F7FF', color: '#2DB7F6' }}>{c.target_platform}</span> : null}
+                      {c.content_form ? <span className="px-1.5 py-0.5 rounded" style={{ background: '#F6F6F6', color: '#666666' }}>{c.content_form}</span> : null}
+                    </div>
+                    <div className="text-[11px]" style={{ color: '#999999' }}>
+                      {c.expect_publish_time ? '预计发布：' + (c.expect_publish_time || '').slice(0, 10) : '预计发布：待定'}
+                    </div>
+                    {shownTags.length ? (
+                      <div className="flex items-center gap-1 flex-wrap">
+                        {shownTags.map((t) => (
+                          <span key={t.id} className="text-[11px] px-1.5 py-0.5 rounded" style={{ background: '#F0F0F0', color: '#666666' }}>{t.name}</span>
+                        ))}
+                        {restTags > 0 && <span className="text-[11px] px-1.5 py-0.5 rounded" style={{ background: '#F0F0F0', color: '#999999' }}>+{restTags}</span>}
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="mt-4 py-8 text-center text-sm" style={{ color: '#999999', background: '#FAFAFA', borderRadius: 6 }}>
+            暂无待处理选题
+          </div>
+        )}
       </div>
+
+      {/* 告警横幅（原顶部模块内保留：存储容量告警 / R2 未配置提示） */}
+      {storageCritical && (
+        <div className="flex items-center gap-2 px-[15px] mt-5 text-xs" style={alertStyle}>
+          <div className="flex-1">存储容量告警：已用 {storagePct}%（{formatBytes(storage.totalUsedBytes)} / {formatBytes(storage.limitBytes)}），请尽快清理避免超限。</div>
+          <button type="button" className="shrink-0" style={{ color: '#F47175' }} onClick={() => nav('/capacity')}>去清理 &gt;</button>
+        </div>
+      )}
+      {showAlert && !storageCritical && (
+        <div className="flex items-center gap-2 px-[15px] mt-5 text-xs" style={alertStyle}>
+          <div className="flex-1">图片存储提示：当前后端未配置永久云存储（R2），建议尽快配置，避免重启后图片丢失。</div>
+          <button type="button" className="shrink-0" style={{ color: '#F47175' }} onClick={() => setShowAlert(false)}>知道了</button>
+        </div>
+      )}
 
       {/* 加载中占位 */}
       {loading && (

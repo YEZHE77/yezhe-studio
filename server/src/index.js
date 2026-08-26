@@ -53,6 +53,7 @@ import visitorRoutes from './routes/visitor.js';
 import clientErrorRoutes from './routes/clientError.js';
 import systemConfigRoutes from './routes/systemConfig.js';
 import iconRoutes from './routes/icon.js';
+import mediaRoutes from './routes/media.js';
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -169,6 +170,8 @@ app.use('/api/client-error', clientErrorRoutes);
 app.use('/api/system-config', systemConfigRoutes);
 // PWA 主屏图标（公开，代理 studio.logo；绝对 URL 见 client/index.html 与 manifest.json）
 app.use('/api/icon', iconRoutes);
+// 自媒体工作台（灵感库 / 选题看板 / 草稿 / 分发 / 复盘 / 标签）
+app.use('/api/media', mediaRoutes);
 
 // multer / 通用错误
 app.use((err, req, res, next) => {

@@ -54,6 +54,14 @@ const CustomerAgreementEdit = React.lazy(() => import('../pages/CustomerAgreemen
 const RefundPolicyEdit = React.lazy(() => import('../pages/RefundPolicyEdit.jsx'));
 // C 端微官网（H5 客户首页，与小程序 pages/index 结构一致）——工作台「小程序」入口预览
 const Home = React.lazy(() => import('../pages/Home.jsx'));
+// 自媒体工作台（双壳注册：移动端复用同一批组件，保证不 404）
+const MediaOverview = React.lazy(() => import('../pages/media/MediaOverview.jsx'));
+const MediaInspirations = React.lazy(() => import('../pages/media/MediaInspirations.jsx'));
+const MediaBoard = React.lazy(() => import('../pages/media/MediaBoard.jsx'));
+const MediaProduction = React.lazy(() => import('../pages/media/MediaProduction.jsx'));
+const MediaPublish = React.lazy(() => import('../pages/media/MediaPublish.jsx'));
+const MediaReview = React.lazy(() => import('../pages/media/MediaReview.jsx'));
+const MediaTags = React.lazy(() => import('../pages/media/MediaTags.jsx'));
 
 const GREEN = '#7ECDBB';
 const GREEN_DARK = '#5FBBA6';
@@ -319,6 +327,14 @@ export default function MobileShell() {
                 <Route path="/contract-templates" element={<ContractTemplates />} />
                 <Route path="/contract-audit" element={<ContractAudit />} />
                 <Route path="/consistency-check" element={<ConsistencyCheck />} />
+                <Route path="/media" element={<MediaOverview />} />
+                <Route path="/media/inspirations" element={<MediaInspirations />} />
+                <Route path="/media/board" element={<MediaBoard />} />
+                <Route path="/media/production" element={<MediaProduction />} />
+                <Route path="/media/production/:topicId" element={<MediaProduction />} />
+                <Route path="/media/publish" element={<MediaPublish />} />
+                <Route path="/media/review" element={<MediaReview />} />
+                <Route path="/media/tags" element={<MediaTags />} />
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
             </Suspense>
