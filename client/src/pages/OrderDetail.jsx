@@ -737,16 +737,9 @@ export default function OrderDetail() {
   function printOrder() {
     if (!detail) return;
     setMoreMenu(false);
-    // PC / 普通浏览器优先走 window.print() 弹原生打印对话框（含打印机选择 + 预览），与 8/16(6.0) 行为一致；
-    // 微信 / PWA / 手机浏览器环境 window.print 无效或体验差，fallback 到 PDF 生成后新标签页预览/分享/下载。
-    const ua = navigator.userAgent || '';
-    const isWechat = ua.toLowerCase().includes('micromessenger');
-    const isStandalone = typeof window.matchMedia === 'function' && window.matchMedia('(display-mode: standalone)').matches;
-    const isMobileAgent = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(ua);
-    if (!isWechat && !isStandalone && !isMobileAgent && typeof window.print === 'function') {
-      window.print();
-      return;
-    }
+    // 全平台统一走 downloadPrintPdf()：与 6.0 参考 PDF 同源（html2canvas+jsPDF 拼页，A4 170mm 版心居中、每页带页眉页脚），
+    // 避免 window.print() 走浏览器打印引擎在不同浏览器分页不一致、sheet 离屏渲染导致大片空白页的问题。
+    // 用户在 PDF 预览/分享的文件里点打印即可（任何 PDF 阅读器均支持）。
     toast('正在生成 PDF…');
     downloadPrintPdf();
   }
