@@ -618,15 +618,28 @@ export default function OrderDetail() {
       contentClone.style.width = '700px';
       contentClone.style.margin = '0 auto';
       const wrap = document.createElement('div');
-      wrap.style.position = 'absolute';
-      wrap.style.left = '-9999px';
+      // iOS Safari 对 left:-9999 离屏的 html2canvas 渲染经常拿到 0 高度：改为屏幕内 fixed + opacity:0，
+      // 保证参与布局、有实际尺寸，且不可见不阻塞用户操作。
+      wrap.style.position = 'fixed';
+      wrap.style.left = '0';
       wrap.style.top = '0';
       wrap.style.width = '700px';
       wrap.style.background = '#fff';
+      wrap.style.opacity = '0';
+      wrap.style.pointerEvents = 'none';
+      wrap.style.zIndex = '-1';
       wrap.appendChild(contentClone);
       document.body.appendChild(wrap);
+      // 等一帧让浏览器完成布局（iOS Safari 需要）
+      await new Promise((r) => requestAnimationFrame(() => r()));
 
-      const contentCanvas = await html2canvas(contentClone, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
+      // iOS Safari 大尺寸 canvas 易 OOM/超时：scale 降到 1.5（桌面/安卓保持 2）
+      const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent || '');
+      const htmlScale = isIOS ? 1.5 : 2;
+      const contentCanvas = await html2canvas(contentClone, { scale: htmlScale, useCORS: true, backgroundColor: '#ffffff' });
+      if (!contentCanvas || contentCanvas.width === 0 || contentCanvas.height === 0) {
+        throw new Error('渲染失败：内容画布为空');
+      }
 
       // 页眉 / 页脚 HTML（宽 700px，与正文同宽）
       const created = detail.created_at ? new Date(detail.created_at).toLocaleString('zh-CN') : '—';
@@ -643,12 +656,16 @@ export default function OrderDetail() {
       const renderHtml = async (html) => {
         const el = document.createElement('div');
         el.innerHTML = html;
-        el.style.position = 'absolute';
-        el.style.left = '-9999px';
+        el.style.position = 'fixed';
+        el.style.left = '0';
         el.style.top = '0';
         el.style.background = '#fff';
+        el.style.opacity = '0';
+        el.style.pointerEvents = 'none';
+        el.style.zIndex = '-1';
         document.body.appendChild(el);
-        const canvas = await html2canvas(el.firstElementChild, { scale: 2, backgroundColor: '#ffffff' });
+        await new Promise((r) => requestAnimationFrame(() => r()));
+        const canvas = await html2canvas(el.firstElementChild, { scale: htmlScale, backgroundColor: '#ffffff' });
         document.body.removeChild(el);
         return canvas;
       };
@@ -693,41 +710,70 @@ export default function OrderDetail() {
 
       const pdfBlob = pdf.output('blob');
       const filename = '拍摄服务合同-' + (detail.order_no || detail.id) + '.pdf';
+      const file = new File([pdfBlob], filename, { type: 'application/pdf' });
       const url = URL.createObjectURL(pdfBlob);
+      // 标记输出状态，确保至少给用户一个明确反馈
+      let delivered = false;
 
-      // 优先用新标签页打开 PDF 预览（PC/手机浏览器均能看到内容并触发打印/保存）
-      let opened = false;
-      try {
-        const preview = window.open(url, '_blank');
-        opened = !!preview;
-      } catch (_) {}
+      // 输出优先级（按平台可靠性排序）：
+      // 1) 移动端（iOS/Android）：navigator.share({files}) 弹系统分享面板（保存到文件/隔空投送/打印）—— 最可靠
+      // 2) 桌面端：window.open 新标签页预览 + 用户在 PDF 阅读器里打印/保存
+      // 3) 兜底：<a download> 直接下载
+      const isMobile = /iphone|ipad|ipod|android/i.test(navigator.userAgent || '');
 
-      if (!opened) {
-        const file = new File([pdfBlob], filename, { type: 'application/pdf' });
+      if (isMobile) {
+        // 移动端优先系统分享
         if (navigator.canShare && navigator.canShare({ files: [file] })) {
           try {
             await navigator.share({ files: [file], title: filename });
+            delivered = true;
           } catch (shareErr) {
-            if (shareErr && shareErr.name !== 'AbortError') {
-              // share 失败兜底下载
-              const a = document.createElement('a');
-              a.href = url;
-              a.download = filename;
-              document.body.appendChild(a);
-              a.click();
-              document.body.removeChild(a);
+            if (shareErr && shareErr.name === 'AbortError') {
+              delivered = true; // 用户主动取消也算"已交付"
             }
           }
-        } else {
+        }
+        if (!delivered) {
+          // 移动端 fallback：用 location.href 跳转触发 Safari 下载行为
+          try {
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            a.rel = 'noopener';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            delivered = true;
+          } catch (_) {}
+        }
+        if (!delivered) {
+          // 终极 fallback：location 直接下载（iOS Safari 会弹"下载文件"确认）
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = filename;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          delivered = true;
+        }
+      } else {
+        // 桌面端：先尝试新标签页预览
+        try {
+          const preview = window.open(url, '_blank');
+          if (preview) delivered = true;
+        } catch (_) {}
+        if (!delivered) {
           const a = document.createElement('a');
           a.href = url;
           a.download = filename;
           document.body.appendChild(a);
           a.click();
           document.body.removeChild(a);
+          delivered = true;
         }
       }
-      setTimeout(() => URL.revokeObjectURL(url), 5000);
+      if (delivered) toast('PDF 已就绪');
+      setTimeout(() => URL.revokeObjectURL(url), 30000);
     } catch (e) {
       if (e && e.name === 'AbortError') return;
       console.error(e);
