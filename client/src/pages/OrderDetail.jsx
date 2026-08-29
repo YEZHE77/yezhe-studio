@@ -715,10 +715,13 @@ export default function OrderDetail() {
   function printOrder() {
     if (!detail) return;
     setMoreMenu(false);
-    // PC / 普通浏览器优先走 window.print() 弹原生打印对话框（含打印机选择 + 预览）；微信 / PWA 环境 window.print 无效，fallback 到 PDF 下载
-    const isWechat = /MicroMessenger/i.test(navigator.userAgent);
+    // 桌面 PC 浏览器走原生 window.print()（可选打印机 + 预览）；其余环境（微信 / PWA / 手机普通浏览器 / 平板）
+    // 的 window.print 静默无效，统一 fallback 到 html2pdf 直接生成 PDF 下载/分享（移动端刚需）。
+    const ua = navigator.userAgent || '';
+    const isWechat = /MicroMessenger/i.test(ua);
     const isStandalone = typeof window.matchMedia === 'function' && window.matchMedia('(display-mode: standalone)').matches;
-    if (!isWechat && !isStandalone && typeof window.print === 'function') {
+    const isMobile = /Mobi|Android|iPhone|iPad|iPod/i.test(ua);
+    if (!isWechat && !isStandalone && !isMobile && typeof window.print === 'function') {
       window.print();
       return;
     }
