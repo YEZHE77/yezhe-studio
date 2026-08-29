@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import http from '../api.js';
 import { useViewState } from '../tabMemory.js';
 import { PERIOD_LABEL } from '../constants/timeSlots.js';
+import { toast, confirm } from '../utils/toast.js';
 
 // 档期预约模块状态语义：pending(待确认) / confirmed(已确认生成订单) / rejected(已拒绝) / cancelled(已取消)
 const STATUS_LABEL = {
@@ -46,15 +47,15 @@ export default function Appointments() {
   }
   async function doConfirm() {
     const { a, date, period, photographer, deposit, deposit_method } = confirming;
-    if (!date) return alert('请指定拍摄日期');
-    if (!(parseFloat(deposit) > 0)) return alert('请填写已收取的定金金额（必须大于 0，未收定金不能建立订单）');
+    if (!date) return toast('请指定拍摄日期');
+    if (!(parseFloat(deposit) > 0)) return toast('请填写已收取的定金金额（必须大于 0，未收定金不能建立订单）');
     try {
       const r = await http.post('/api/admin/appointments/' + a.id + '/confirm', { date, period, photographer, deposit: parseFloat(deposit) || 0, deposit_method });
       setConv({ name: a.name, ...r.data });
       setConfirming(null);
       load();
     } catch (e) {
-      alert((e.response && e.response.data && e.response.data.error) || '接受失败');
+      toast((e.response && e.response.data && e.response.data.error) || '接受失败');
     }
   }
   // 拒绝预约 → 填原因
@@ -68,7 +69,7 @@ export default function Appointments() {
       setRejecting(null);
       load();
     } catch (e) {
-      alert((e.response && e.response.data && e.response.data.error) || '拒绝失败');
+      toast((e.response && e.response.data && e.response.data.error) || '拒绝失败');
     }
   }
 
@@ -89,18 +90,18 @@ export default function Appointments() {
       setEditing(null);
       load();
     } catch (e2) {
-      alert((e2.response && e2.response.data && e2.response.data.error) || '保存失败');
+      toast((e2.response && e2.response.data && e2.response.data.error) || '保存失败');
     }
   }
 
   async function remove(a) {
-    if (!confirm(`确认删除预约「${a.name}」？此操作不可恢复。`)) return;
+    if (!await confirm(`确认删除预约「${a.name}」？此操作不可恢复。`)) return;
     try {
       await http.delete('/api/admin/appointments/' + a.id);
       setDetail(null);
       load();
     } catch (e2) {
-      alert((e2.response && e2.response.data && e2.response.data.error) || '删除失败');
+      toast((e2.response && e2.response.data && e2.response.data.error) || '删除失败');
     }
   }
 

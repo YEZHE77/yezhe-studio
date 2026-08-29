@@ -2,9 +2,10 @@
 // system_message 表：customer_consult 顾客咨询 / order_msg 订单消息 / todo_alert 待办提醒 / system 系统通知
 // 规则：business_event+rel_id 5 分钟内去重；点击单条已读；归档隐藏；永久保存；按 receiver_uid 统计未读红点；H5 仅预埋 can_wechat_push 不调推送。
 import { Router } from 'express';
-import { query, get, insert, run } from '../db.js';
+import { query, get, insert, run, dialect } from '../db.js';
 import { authRequired } from '../auth.js';
 import { serverError } from '../httpError.js';
+import { getConfig } from '../configStore.js';
 
 const router = Router();
 const DEDUP_WINDOW_MS = 5 * 60 * 1000;
@@ -68,6 +69,32 @@ export async function emitMessage({ receiver_uid = null, message_type, business_
 // 广播给全体 staff 的便捷封装
 export async function emitToStaff(opts) {
   return emitMessage({ ...opts, receiver_uid: null });
+}
+
+// 消息保留周期策略（P1 #11）：已读且未归档的消息超过 N 天自动清理，避免无限堆积。
+// 归档（用户主动保留）与未读（待处理）消息永不自动删除。默认 180 天，可在 system_config 配置。
+export async function getRetentionDays() {
+  const v = await getConfig('msg_retention_days', '180');
+  const n = parseInt(v, 10);
+  return Number.isFinite(n) && n > 0 ? n : 180;
+}
+
+export async function cleanupOldMessages(days) {
+  const n = Number.isFinite(days) ? days : await getRetentionDays();
+  if (!n || n <= 0) return { enabled: false, days: 0, system: 0, biz: 0 };
+  const cutSys = dialect === 'pg'
+    ? `create_time < now() - interval '${n} days'`
+    : `create_time < datetime('now', '-${n} days')`;
+  const cutBiz = dialect === 'pg'
+    ? `created_at < now() - interval '${n} days'`
+    : `created_at < datetime('now', '-${n} days')`;
+  const delSys = await query(
+    `DELETE FROM system_message WHERE is_read = 1 AND is_archived = 0 AND ${cutSys} RETURNING id`
+  );
+  const delBiz = await query(
+    `DELETE FROM biz_message WHERE is_read = 1 AND is_archived = 0 AND ${cutBiz} RETURNING id`
+  );
+  return { enabled: true, days: n, system: delSys.length, biz: delBiz.length };
 }
 
 // B 端：消息列表（当前用户，可按 type 筛选、含归档开关）

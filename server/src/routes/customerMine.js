@@ -218,7 +218,7 @@ router.post('/login', async (req, res) => {
       [phone, phone]
     );
     if (!rsv && !ord) {
-      return res.status(403).json({ error: '未找到该手机号对应的预约或订单，请确认手机号或联系摄影师' });
+      return res.status(403).json({ error: '该手机号无对应订单权限' });
     }
 
     const now = nowISO();

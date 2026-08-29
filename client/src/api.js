@@ -25,6 +25,7 @@ http.interceptors.request.use((cfg) => {
   if (cfg.signal) cfg.cancelToken = new axios.CancelToken((c) => {
     cfg.signal.addEventListener('abort', () => c('aborted'));
   });
+  trackReqStart(); // 弱网看门狗：请求发起即开始计时（清单 10.4）
   return cfg;
 });
 
@@ -80,12 +81,44 @@ function hideRetryBar() {
     if (el) el.style.display = 'none';
   } catch {}
 }
-export { hideRetryBar };
+export { hideRetryBar, trackReqStart, trackReqEnd };
+
+// ===== 弱网反馈（验收清单 10.4）=====
+// 需求：连接正常但明显变慢（请求超过 SLOW_MS 仍在进行）时，给出明确的「网络较慢」轻提示，
+//       与 netStatus 的「断网」提示互补；全部请求完成/失败后自动消失，避免长期遮挡。
+const SLOW_MS = 4000;
+let pendingCount = 0;
+let slowTimer = null;
+function showSlowBar() {
+  try {
+    let el = document.getElementById('__api_slow_bar__');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = '__api_slow_bar__';
+      el.style.cssText = 'position:fixed;left:50%;bottom:28px;transform:translateX(-50%);z-index:99997;display:flex;align-items:center;gap:8px;background:rgba(250,173,20,0.97);color:#3d2c00;font-size:12.5px;padding:8px 14px;border-radius:10px;box-shadow:0 6px 22px rgba(0,0,0,.22);max-width:92vw;font-family:inherit;';
+      el.innerHTML = '<span style="font-size:14px">🐢</span><span>网络较慢，请稍候…</span>';
+      document.body.appendChild(el);
+    }
+    el.style.display = 'flex';
+  } catch { /* 忽略 */ }
+}
+function hideSlowBar() {
+  try { const el = document.getElementById('__api_slow_bar__'); if (el) el.style.display = 'none'; } catch { /* 忽略 */ }
+}
+function trackReqStart() {
+  pendingCount++;
+  if (!slowTimer) slowTimer = setTimeout(() => { if (pendingCount > 0) showSlowBar(); }, SLOW_MS);
+}
+function trackReqEnd() {
+  pendingCount = Math.max(0, pendingCount - 1);
+  if (pendingCount === 0) { clearTimeout(slowTimer); slowTimer = null; hideSlowBar(); }
+}
 
 http.interceptors.response.use(
-  (r) => r,
+  (r) => { trackReqEnd(); return r; },
   async (err) => {
     const cfg = err.config;
+    trackReqEnd();
     if (axios.isCancel(err)) return Promise.reject({ type: 'cancel', message: '请求已取消' });
 
     // 自动重试：GET 请求在超时/网关错误/无响应时最多重试 2 次（缓解 Render Free 冷启动首访慢）

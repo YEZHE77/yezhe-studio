@@ -70,6 +70,11 @@ export default function Settings() {
   const [osnLoaded, setOsnLoaded] = useState(false);
   const [osnSaving, setOsnSaving] = useState(false);
   const [osnTip, setOsnTip] = useState('');
+  // 消息保留周期（天）：已读且未归档的消息超过该天数后自动清理，避免无限堆积
+  const [msgRetentionDays, setMsgRetentionDays] = useState('180');
+  const [mrLoaded, setMrLoaded] = useState(false);
+  const [mrSaving, setMrSaving] = useState(false);
+  const [mrTip, setMrTip] = useState('');
   async function doBackup() {
     if (backupBusy) return;
     setBackupBusy(true);
@@ -119,8 +124,10 @@ export default function Settings() {
     http.get('/api/system-config').then((r) => {
       const d = r.data || {};
       setOrderShareNote(d.customer_order_share_default_note || '');
+      setMsgRetentionDays(d.msg_retention_days != null ? String(d.msg_retention_days) : '180');
       setOsnLoaded(true);
-    }).catch(() => setOsnLoaded(true));
+      setMrLoaded(true);
+    }).catch(() => { setOsnLoaded(true); setMrLoaded(true); });
   }, []);
 
   function set(path, val) {
@@ -278,6 +285,19 @@ export default function Settings() {
     setTimeout(() => setOsnTip(''), 4000);
   }
 
+  // 消息保留周期（天）：已读且未归档的消息超过该天数自动清理
+  async function saveMsgRetention() {
+    setMrSaving(true); setMrTip('');
+    const n = parseInt(msgRetentionDays, 10);
+    if (!Number.isFinite(n) || n < 0) { setMrTip('请输入非负整数（天）'); setMrSaving(false); return; }
+    try {
+      await http.put('/api/system-config', { msg_retention_days: String(n) });
+      setMrTip('已保存，保留周期 ' + n + ' 天（下次自动清理生效；归档与未读消息永不自动删除）');
+    } catch (e) { setMrTip('保存失败：' + (e.response?.data?.error || e.message)); }
+    setMrSaving(false);
+    setTimeout(() => setMrTip(''), 5000);
+  }
+
   async function changePassword() {
     setPwTip('');
     if (pwNew.length < 8) { setPwTip('新密码至少 8 位'); return; }
@@ -351,6 +371,17 @@ export default function Settings() {
               {osnTip && <span className="text-xs text-emerald-600">{osnTip}</span>}
             </div>
             <p className="text-xs text-muted mt-1.5 max-md:text-[11px] max-md:leading-relaxed">该备注展示在 C 端免登录订单详情页顶部灰色卡片，客户仅可读不可编辑；修改后立即对新订单生效，不回溯历史订单；可在订单详情后台按单条单独覆盖。</p>
+          </Field>
+          <Field label="消息保留周期（天）— 后台 / 移动端消息中心已读且未归档的消息，超过该天数自动清理">
+            <input type="number" min="0" className={inputCls + ' max-md:py-2.5 w-32'} value={msgRetentionDays} onChange={(e) => setMsgRetentionDays(e.target.value)} placeholder="180" />
+            <div className="flex items-center gap-3 mt-3 max-md:mt-2">
+              <button onClick={saveMsgRetention} disabled={mrSaving || !mrLoaded}
+                className="px-4 py-1.5 rounded-lg bg-brand text-white text-sm hover:opacity-90 disabled:opacity-50 max-md:text-xs max-md:px-3 max-md:py-1.5">
+                {mrSaving ? '保存中…' : '保存保留周期'}
+              </button>
+              {mrTip && <span className="text-xs text-emerald-600">{mrTip}</span>}
+            </div>
+            <p className="text-xs text-muted mt-1.5 max-md:text-[11px] max-md:leading-relaxed">填 0 表示永久保留（不自动清理）。仅自动清理「已读且未归档」的消息；归档（主动保留）与未读（待处理）消息不受影响。系统每日启动及每 24 小时自动执行一次。</p>
           </Field>
           <Field label="团队分享备注词（C 端右上角菜单「分享该团队」展示；留空则隐藏备注行）">
             <input className={inputCls + ' max-md:py-2.5'} value={form.shareNote} onChange={(e) => set('shareNote', e.target.value)} placeholder="海口婚礼 / 人像摄影 · YEZHE WORKSHOP，记录平凡生活中的美好。" />

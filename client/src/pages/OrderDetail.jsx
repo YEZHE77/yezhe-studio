@@ -12,6 +12,7 @@ import { getRefundText, getRefundParagraphs, normalizePolicy } from '../utils/re
 import { getServiceAgreement, getPhotoAuthAgreement, toParagraphs } from '../utils/customerAgreement.js';
 import { DEFAULT_CONTRACT_TEMPLATE } from '../utils/contractDefault.js';
 import { DEFAULT_SERVICE_DETAIL } from '../utils/serviceDetail.js';
+import { toast, confirm } from '../utils/toast.js';
 
 const STATUS_LABEL = {
   deposit: '已付定金', shot: '已拍摄', selecting: '选片中',
@@ -287,8 +288,8 @@ export default function OrderDetail() {
     try {
       await http.put('/api/orders/' + detail.id, { share_note: shareNoteDraft });
       setDetail((d) => (d ? { ...d, share_note: shareNoteDraft } : d));
-      alert('订单分享备注已保存，客户刷新页面立即生效');
-    } catch (e) { alert((e.response?.data?.error) || '保存失败'); }
+      toast('订单分享备注已保存，客户刷新页面立即生效');
+    } catch (e) { toast((e.response?.data?.error) || '保存失败'); }
     setShareNoteSaving(false);
   }
 
@@ -358,9 +359,9 @@ export default function OrderDetail() {
       // 自动选中新建的（或默认的）
       const target = newId || (list.find((t) => t.is_default) || list[0])?.id;
       if (target) setContractTemplateId(target);
-      alert('已创建默认合同模板并自动选中');
+      toast('已创建默认合同模板并自动选中');
     } catch (e) {
-      alert('创建失败：' + (e.response?.data?.error || e.message));
+      toast('创建失败：' + (e.response?.data?.error || e.message));
     } finally {
       setCreatingDefault(false);
     }
@@ -372,7 +373,7 @@ export default function OrderDetail() {
       await http.post(`/api/orders/${detail.id}/requests/${reqId}/handle`, { status });
       const r = await http.get('/api/orders/' + detail.id + '/requests').catch(() => ({ data: [] }));
       setOrderRequests(r.data || []);
-    } catch (e) { alert('操作失败：' + (e.message || '')); }
+    } catch (e) { toast('操作失败：' + (e.message || '')); }
   };
 
   useEffect(() => {
@@ -429,7 +430,7 @@ export default function OrderDetail() {
     try {
       await http.post('/api/admin/photo-select/' + detail.id, { marks: sel.selection.marks });
       loadSel(detail.id);
-    } catch (e) { alert((e.response && e.response.data && e.response.data.error) || '保存失败'); }
+    } catch (e) { toast((e.response && e.response.data && e.response.data.error) || '保存失败'); }
     finally { setSelSaving(false); }
   };
 
@@ -510,7 +511,7 @@ export default function OrderDetail() {
     } catch (e2) {
       const cf = conflictOf(e2);
       if (cf && cf.forcible && !force) { setDateConflict(cf.message); return; }
-      alert((e2 && e2.message) || (e2.response && e2.response.data && e2.response.data.error) || '保存失败');
+      toast((e2 && e2.message) || (e2.response && e2.response.data && e2.response.data.error) || '保存失败');
     }
   }
 
@@ -522,19 +523,19 @@ export default function OrderDetail() {
       setEditingRemark(false);
       reload();
     } catch (e2) {
-      alert((e2 && e2.message) || (e2.response && e2.response.data && e2.response.data.error) || '备注保存失败');
+      toast((e2 && e2.message) || (e2.response && e2.response.data && e2.response.data.error) || '备注保存失败');
     }
   }
 
   // 移除执行人（芯片标签 × 按钮）：二次确认后过滤并提交
   async function removeExecutor(index) {
-    if (!window.confirm('确认移除此执行人？')) return;
+    if (!await confirm('确认移除此执行人？')) return;
     const nextExecs = execs.filter((_, i) => i !== index);
     try {
       await http.put('/api/orders/' + detail.id, { executors: nextExecs });
       reload();
     } catch (e) {
-      alert('移除执行人失败：' + (e?.message || '未知错误'));
+      toast('移除执行人失败：' + (e?.message || '未知错误'));
     }
   }
 
@@ -545,25 +546,25 @@ export default function OrderDetail() {
       setExecPickerOpen(false);
       reload();
     } catch (e) {
-      alert('保存执行人失败：' + (e?.message || '未知错误'));
+      toast('保存执行人失败：' + (e?.message || '未知错误'));
     }
   }
 
   // —— 更换套系（验收⑥）：弹窗确认，仅重写当前订单快照 ——
   function openPkgSwitch() {
     if (!detail) return;
-    if (detail.cancelled) { alert('订单已作废，无法更换套系'); return; }
+    if (detail.cancelled) { toast('订单已作废，无法更换套系'); return; }
     setPkgSwitch({ package_id: String(detail.package_id || ''), spec_id: '', package_price: '', reason: '', step: 'pick' });
   }
   async function confirmPkgSwitch() {
-    if (!pkgSwitch || !pkgSwitch.package_id) { alert('请选择要更换的套系'); return; }
+    if (!pkgSwitch || !pkgSwitch.package_id) { toast('请选择要更换的套系'); return; }
     const targetPkg = pkgs.find((p) => String(p.id) === String(pkgSwitch.package_id));
     const targetAgreementOff = targetPkg ? !(targetPkg.details && targetPkg.details.customer_agreement_enabled) : false;
     const hasContractData = !!(detail.contract_pdf_url || detail.contract_template_id || detail.contract_extra_text);
     // 新套系关闭协议 + 当前订单已有协议数据 → 二次确认清空（PRD 三.2）
     let clearContract = false;
     if (targetAgreementOff && hasContractData) {
-      if (!window.confirm('新套系已关闭协议。\n\n更换后将清空本订单所有协议数据（签署记录、合同 PDF、附加条款），且不可恢复。\n\n确定继续更换？')) {
+      if (!await confirm('新套系已关闭协议。\n\n更换后将清空本订单所有协议数据（签署记录、合同 PDF、附加条款），且不可恢复。\n\n确定继续更换？')) {
         return;
       }
       clearContract = true;
@@ -583,7 +584,7 @@ export default function OrderDetail() {
         setContractDirty(true);
       }
       reload();
-    } catch (e2) { alert((e2 && e2.message) || '更换失败'); }
+    } catch (e2) { toast((e2 && e2.message) || '更换失败'); }
     finally { setPkgSwitching(false); }
   }
 
@@ -605,7 +606,7 @@ export default function OrderDetail() {
   async function submitAddon() {
     if (!addonBox) return;
     const r = calcExtraFee(addonBox.count, addonBox.unit);
-    if (r.fee <= 0) { alert('加片张数为 0，无需登记加片费'); return; }
+    if (r.fee <= 0) { toast('加片张数为 0，无需登记加片费'); return; }
     try {
       await http.post('/api/orders/' + detail.id + '/payments', {
         type: 'extra', amount: r.fee, method: addonBox.method, channel: addonBox.channel,
@@ -613,12 +614,12 @@ export default function OrderDetail() {
       });
       setAddonBox(null);
       reload();
-    } catch (e2) { alert((e2 && e2.message) || '登记失败'); }
+    } catch (e2) { toast((e2 && e2.message) || '登记失败'); }
   }
   async function removeOrder() {
-    if (!confirm('确认删除该订单？\n将移入回收站，可在回收站恢复（不破坏收款流水与选片记录）。\n删除后该订单占用的档期会自动释放。')) return;
+    if (!(await confirm('确认删除该订单？\n将移入回收站，可在回收站恢复（不破坏收款流水与选片记录）。\n删除后该订单占用的档期会自动释放。'))) return;
     try { await http.delete('/api/orders/' + detail.id); nav('/orders'); }
-    catch (e2) { alert((e2.response && e2.response.data && e2.response.data.error) || '删除失败'); }
+    catch (e2) { toast((e2.response && e2.response.data && e2.response.data.error) || '删除失败'); }
   }
   // 独立模式/微信环境：用 html2pdf 直接生成 PDF 文件（绕过 window.print）
   // 生成带页眉页脚的多页 PDF（html2canvas 渲染 + jsPDF 逐页拼页眉/正文切片/页脚）
@@ -626,7 +627,7 @@ export default function OrderDetail() {
     try {
       const sheet = document.querySelector('.print-order-sheet');
       const contentEl = sheet && sheet.querySelector('div');
-      if (!contentEl) return alert('未找到打印内容');
+      if (!contentEl) return toast('未找到打印内容');
 
       // 固定正文渲染宽度为 700px（A4 版心），克隆避免污染原节点
       const contentClone = contentEl.cloneNode(true);
@@ -725,7 +726,7 @@ export default function OrderDetail() {
     } catch (e) {
       if (e && e.name === 'AbortError') return;
       console.error(e);
-      alert('PDF 生成失败：' + (e && e.message ? e.message : e));
+      toast('PDF 生成失败：' + (e && e.message ? e.message : e));
     }
   }
   function printOrder() {
@@ -741,14 +742,14 @@ export default function OrderDetail() {
     downloadPrintPdf();
   }
   async function restoreOrder() {
-    if (!confirm('确认恢复该订单？')) return;
+    if (!(await confirm('确认恢复该订单？'))) return;
     try { await http.post('/api/orders/' + detail.id + '/restore'); reload(); }
-    catch (e2) { alert((e2.response && e2.response.data && e2.response.data.error) || '恢复失败'); }
+    catch (e2) { toast((e2.response && e2.response.data && e2.response.data.error) || '恢复失败'); }
   }
   async function purgeOrder() {
-    if (!confirm('确认后将永久删除，建议先做好本地备份，确定继续？')) return;
+    if (!(await confirm('确认后将永久删除，建议先做好本地备份，确定继续？'))) return;
     try { await http.post('/api/orders/' + detail.id + '/purge'); nav('/orders'); }
-    catch (e2) { alert((e2.response && e2.response.data && e2.response.data.error) || '彻底删除失败'); }
+    catch (e2) { toast((e2.response && e2.response.data && e2.response.data.error) || '彻底删除失败'); }
   }
   async function advance() {
     if (!detail) return;
@@ -760,9 +761,9 @@ export default function OrderDetail() {
   // 完成拍摄：直接置为「已拍摄」
   async function finishShoot() {
     if (!detail) return;
-    if (detail.status !== 'deposit' && !confirm('当前阶段非「已付定金」，确认直接标记为已拍摄？')) return;
+    if (detail.status !== 'deposit' && !(await confirm('当前阶段非「已付定金」，确认直接标记为已拍摄？'))) return;
     try { await http.put('/api/orders/' + detail.id, { status: 'shot' }); reload(); }
-    catch (e2) { alert((e2.response && e2.response.data && e2.response.data.error) || '操作失败'); }
+    catch (e2) { toast((e2.response && e2.response.data && e2.response.data.error) || '操作失败'); }
   }
   // 进度条：下一步（逐 Tab 推进：状态步 PUT status；日志步 POST 日志）
   // 乐观更新：点击瞬间先本地更新 detail（节点秒动），再后台发请求；失败回滚 + 提示
@@ -785,7 +786,7 @@ export default function OrderDetail() {
       // 通知 Todo 页等监听者刷新计数
       try { window.dispatchEvent(new Event('order-status-changed')); } catch {}
     } catch (e2) {
-      alert((e2.response && e2.response.data && e2.response.data.error) || '操作失败');
+      toast((e2.response && e2.response.data && e2.response.data.error) || '操作失败');
     } finally {
       reload(); // 静默同步真实数据（成功兜底 / 失败回滚）
     }
@@ -809,7 +810,7 @@ export default function OrderDetail() {
       else if (act.logUndo) await http.post('/api/orders/' + detail.id + '/logs/undo');
       try { window.dispatchEvent(new Event('order-status-changed')); } catch {}
     } catch (e2) {
-      alert((e2.response && e2.response.data && e2.response.data.error) || '操作失败');
+      toast((e2.response && e2.response.data && e2.response.data.error) || '操作失败');
     } finally {
       reload();
     }
@@ -837,7 +838,7 @@ export default function OrderDetail() {
     try {
       await http.post('/api/orders/' + detail.id + '/cancel', { reason });
       reload();
-    } catch (e2) { alert((e2 && e2.message) || '作废失败'); }
+    } catch (e2) { toast((e2 && e2.message) || '作废失败'); }
   }
   function refund() {
     if (!detail) return;
@@ -847,11 +848,11 @@ export default function OrderDetail() {
     if (!refundDlg) return;
     const amt = parseFloat(refundDlg.amount);
     setRefundDlg(null);
-    if (!amt || amt <= 0) { alert('请输入有效的退款金额'); return; }
+    if (!amt || amt <= 0) { toast('请输入有效的退款金额'); return; }
     try {
       await http.post('/api/orders/' + detail.id + '/refund', { amount: amt, note: '手动退款' });
       reload();
-    } catch (e2) { alert((e2 && e2.message) || '退款失败'); }
+    } catch (e2) { toast((e2 && e2.message) || '退款失败'); }
   }
   // 复制订单：以当前订单的套系/客户信息新建一条副本（日期置为待定，避免档期冲突），跳转到新订单
   async function copyOrder() {
@@ -871,7 +872,7 @@ export default function OrderDetail() {
         order_name: (detail.order_name || '复制订单') + '（副本）'
       });
       nav('/orders/' + r.data.id);
-    } catch (e) { alert((e.response && e.response.data && e.response.data.error) || '复制失败'); }
+    } catch (e) { toast((e.response && e.response.data && e.response.data.error) || '复制失败'); }
   }
   async function savePay() {
     setErr('');
@@ -886,20 +887,24 @@ export default function OrderDetail() {
     try {
       const r = await http.post('/api/orders/' + detail.id + '/share');
       setShare(r.data); setShareModal(true); reload();
-    } catch (e) { alert((e.response && e.response.data && e.response.data.error) || '生成失败'); }
+    } catch (e) { toast((e.response && e.response.data && e.response.data.error) || '生成失败'); }
     finally { setShareBusy(false); }
   }
   async function unshare() {
-    if (!confirm('确认关闭该订单的分享？\n已生成的二维码将失效，客户无法再访问。')) return;
+    if (!(await confirm('确认关闭该订单的分享？\n已生成的二维码将失效，客户无法再访问。'))) return;
     try {
       await http.post('/api/orders/' + detail.id + '/unshare');
       setShare(null); setShareModal(false); reload();
-    } catch (e) { alert((e.response && e.response.data && e.response.data.error) || '操作失败'); }
+    } catch (e) { toast((e.response && e.response.data && e.response.data.error) || '操作失败'); }
   }
   function copyShare() {
     if (!share) return;
-    navigator.clipboard?.writeText(share.share_url);
-    alert('分享链接已复制：\n' + share.share_url);
+    const note = share.share_note ? '\n\n备注：' + share.share_note : '';
+    const text = share.share_url + note;
+    if (navigator.clipboard?.writeText) {
+      navigator.clipboard.writeText(text).catch(() => {});
+    }
+    toast('分享链接已复制' + (share.share_note ? '（含备注）' : '') + '：\n' + text);
   }
   // 分享订单给客户：生成随机 customer_token 链接 + 二维码（客户 /customer-order?token= 只读查看自己订单）
   async function openMiniQr(reset) {
@@ -908,7 +913,7 @@ export default function OrderDetail() {
     try {
       const r = await http.post('/api/orders/' + detail.id + '/customer-share', { reset: !!reset });
       setMiniQr({ url: r.data.url, qr_url: r.data.qr_url });
-    } catch (e) { alert((e.response && e.response.data && e.response.data.error) || '生成失败'); }
+    } catch (e) { toast((e.response && e.response.data && e.response.data.error) || '生成失败'); }
     finally { setMiniQrLoading(false); }
   }
   function closeMiniQr() { setMiniQr(null); }
@@ -923,17 +928,17 @@ export default function OrderDetail() {
         contract_extra_text: contractExtraText
       });
       reload();
-      alert('合同配置已保存');
-    } catch (e) { alert((e.response && e.response.data && e.response.data.error) || '保存失败'); }
+      toast('合同配置已保存');
+    } catch (e) { toast((e.response && e.response.data && e.response.data.error) || '保存失败'); }
     finally { setContractSaving(false); }
   }
 
   // ===== 合同：生成 / 重新生成 PDF（数据一致性：先保存配置 → 实时拉取最新订单 → 生成前校验 → 本地生成）=====
   async function generateContractPdf() {
     if (!detail) return;
-    if (!contractTemplateId) { alert('请先选择合同模板'); return; }
+    if (!contractTemplateId) { toast('请先选择合同模板'); return; }
     const tpl = contractTemplates.find((t) => t.id === contractTemplateId);
-    if (!tpl || !tpl.template_content) { alert('所选模板无合同正文，请先在「合同模板管理」填写'); return; }
+    if (!tpl || !tpl.template_content) { toast('所选模板无合同正文，请先在「合同模板管理」填写'); return; }
     setContractGenerating(true);
     try {
       // ① 先保存合同配置（模板 + 附加条款），确保后端持有最新配置
@@ -947,7 +952,7 @@ export default function OrderDetail() {
       // ③ 生成前校验：核心字段（新人/日期/机位/价格）为空则阻断
       const pre = await http.get('/api/contract/orders/' + detail.id + '/contract-precheck');
       if (!pre.data.ok) {
-        alert('订单核心信息不完整，无法生成合同：\n' + pre.data.missing.join('、') + '\n\n请先完善订单信息后再生成。');
+        toast('订单核心信息不完整，无法生成合同：\n' + pre.data.missing.join('、') + '\n\n请先完善订单信息后再生成。');
         return;
       }
       // ④ 用最新订单字段替换占位符（只读订单字段，不读套系兜底）
@@ -997,17 +1002,17 @@ export default function OrderDetail() {
       fd.append('file', pdfBlob, 'contract_' + detail.id + '.pdf');
       const r = await http.post('/api/contract/orders/' + detail.id + '/contract-pdf', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
       setContractPdfUrl(r.data.contract_pdf_url);
-      alert('合同 PDF 已生成并保存');
+      toast('合同 PDF 已生成并保存');
       reload(); // 刷新后 contractDirty 重新比对（应为 false）
     } catch (e) {
       console.error(e);
-      alert('合同生成失败：' + ((e.response && e.response.data && e.response.data.error) || e.message));
+      toast('合同生成失败：' + ((e.response && e.response.data && e.response.data.error) || e.message));
     } finally { setContractGenerating(false); }
   }
   function copyCustomerUrl() {
     if (!miniQr || !miniQr.url) return;
     navigator.clipboard?.writeText(miniQr.url);
-    alert('客户订单链接已复制：\n' + miniQr.url);
+    toast('客户订单链接已复制：\n' + miniQr.url);
   }
 
   // ===== 合同：查看/下载走后端鉴权中转（管理员带 token，blob 流式） =====
@@ -1017,7 +1022,7 @@ export default function OrderDetail() {
       const r = await http.get('/api/contract/download/' + detail.id, { responseType: 'blob' });
       const url = URL.createObjectURL(r.data);
       window.open(url, '_blank');
-    } catch (e) { alert('合同打开失败，请重试'); }
+    } catch (e) { toast('合同打开失败，请重试'); }
   }
   async function downloadContract() {
     if (!detail) return;
@@ -1028,18 +1033,18 @@ export default function OrderDetail() {
       a.href = url; a.download = '合同-' + (detail.customer_name || detail.order_no || detail.id) + '.pdf';
       document.body.appendChild(a); a.click(); a.remove();
       URL.revokeObjectURL(url);
-    } catch (e) { alert('合同下载失败，请重试'); }
+    } catch (e) { toast('合同下载失败，请重试'); }
   }
   async function invalidateContract() {
     if (!detail) return;
-    if (!window.confirm('确认作废该合同？作废后客户将无法下载。')) return;
+    if (!await confirm('确认作废该合同？作废后客户将无法下载。')) return;
     try { await http.post('/api/contract/orders/' + detail.id + '/invalidate'); reload(); }
-    catch (e) { alert((e.response && e.response.data && e.response.data.error) || '作废失败'); }
+    catch (e) { toast((e.response && e.response.data && e.response.data.error) || '作废失败'); }
   }
   async function restoreContract() {
     if (!detail) return;
     try { await http.post('/api/contract/orders/' + detail.id + '/restore'); reload(); }
-    catch (e) { alert((e.response && e.response.data && e.response.data.error) || '恢复失败'); }
+    catch (e) { toast((e.response && e.response.data && e.response.data.error) || '恢复失败'); }
   }
 
   // —— 图片管理：原片 / 精修片 真实上传（复用现有分片上传，不新建接口） ——
@@ -1051,7 +1056,7 @@ export default function OrderDetail() {
       if (limit > 0) {
         const current = (photos.retouched || []).length;
         if (current + fileList.length > limit) {
-          alert(`精修片数量已达上限 ${limit} 张（当前 ${current} 张），最多还可上传 ${Math.max(0, limit - current)} 张。`);
+          toast(`精修片数量已达上限 ${limit} 张（当前 ${current} 张），最多还可上传 ${Math.max(0, limit - current)} 张。`);
           return;
         }
       }
@@ -1061,18 +1066,18 @@ export default function OrderDetail() {
       const category = kind === 'raw' ? 'raw-negative' : 'retouched';
       const res = await uploadBatch(Array.from(fileList), { category, isPublic: false, concurrency: 3 });
       const urls = (res.urls || []).filter(Boolean);
-      if (!urls.length) { if ((res.failed || []).some(Boolean)) alert('上传失败：' + (res.failed || []).filter(Boolean).join('；')); return; }
+      if (!urls.length) { if ((res.failed || []).some(Boolean)) toast('上传失败：' + (res.failed || []).filter(Boolean).join('；')); return; }
       const next = { ...photos, [kind]: [...photos[kind], ...urls] };
       setPhotos(next);
       await http.put('/api/orders/' + detail.id, { order_photos: JSON.stringify(next) });
-    } catch (e) { alert((e && e.message) || '上传失败'); }
+    } catch (e) { toast((e && e.message) || '上传失败'); }
     finally { setUploading((u) => ({ ...u, [kind]: false })); }
   }
   async function removePhoto(kind, url) {
     const next = { ...photos, [kind]: photos[kind].filter((u) => u !== url) };
     setPhotos(next);
     try { await http.put('/api/orders/' + detail.id, { order_photos: JSON.stringify(next) }); }
-    catch (e) { alert('保存失败'); }
+    catch (e) { toast('保存失败'); }
   }
   function downloadFile(url) {
     if (!url) return;

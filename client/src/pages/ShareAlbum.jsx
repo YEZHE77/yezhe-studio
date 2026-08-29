@@ -15,17 +15,37 @@ export default function ShareAlbum() {
   const [pwBusy, setPwBusy] = useState(false);
   const [err, setErr] = useState('');
   const [loading, setLoading] = useState(true);
+  const [cached, setCached] = useState(false); // 是否正在展示本地离线缓存（API 异常降级，清单 5.4/5.5）
 
+  // 本地缓存键：按 token 隔离，保存最近一次成功拉取的相册数据（图片走 CDN，独立于 API）
+  const cacheKey = 'yezhe_share_cache_' + token;
   const load = () => {
     setLoading(true);
     http.get('/api/share/' + token)
       .then((r) => {
         const d = r.data;
+        // 5.4/5.5 异常降级：成功拉取后缓存到本地，服务端异常时可回退保看图
+        try { localStorage.setItem(cacheKey, JSON.stringify({ payload: d.data ?? null, meta: d.meta ?? null, locked: !!d.locked, ts: Date.now() })); } catch { /* 忽略缓存写入失败 */ }
         if (d.locked) { setLocked(true); setMeta(d.meta); }
         else { setPayload(d.data); setMeta(d.meta); }
+        setCached(false);
         setErr('');
       })
-      .catch((e) => setErr((e.response && e.response.data && e.response.data.error) || '加载失败'))
+      .catch((e) => {
+        const msg = (e.response && e.response.data && e.response.data.error) || '加载失败';
+        // 优先保看图：API 异常时回退到本地缓存的相册（图片走 CDN，不依赖 API 可用性）
+        let hit = null;
+        try {
+          const raw = localStorage.getItem(cacheKey);
+          if (raw) { const c = JSON.parse(raw); if (c && (c.payload || c.locked)) hit = c; }
+        } catch { /* 缓存解析失败不阻断 */ }
+        if (hit) {
+          setPayload(hit.payload); setMeta(hit.meta); setLocked(!!hit.locked);
+          setCached(true); setErr('');
+        } else {
+          setErr(msg);
+        }
+      })
       .finally(() => setLoading(false));
   };
 
@@ -82,9 +102,16 @@ export default function ShareAlbum() {
     );
   }
 
+  // 离线缓存提示条（仅在展示缓存内容时出现，固定顶部、避开返回按钮）
+  const cacheBanner = cached ? (
+    <div style={{ position: 'fixed', left: 0, right: 0, top: 52, zIndex: 56, background: 'rgba(250,173,20,0.96)', color: '#3d2c00', fontSize: 12, lineHeight: 1.4, padding: '6px 14px', textAlign: 'center', fontFamily: 'inherit' }}>
+      当前为离线缓存内容，可能不是最新；请检查网络后重新打开
+    </div>
+  ) : null;
+
   // 客片电子相册（album）类型：网格 / 流式大图 双视图（与小程序相册详情页一致）
   if (payload.gallery) {
-    return <AlbumGrid gallery={payload.gallery} />;
+    return (<><AlbumGrid gallery={payload.gallery} />{cacheBanner}</>);
   }
 
   // 订单影集（专属相册）类型
@@ -97,6 +124,7 @@ export default function ShareAlbum() {
 
     return (
       <div className="min-h-screen bg-black text-white px-4 py-6 max-w-md mx-auto">
+        {cacheBanner}
         <div className="text-center mb-5">
           <div className="text-lg font-medium">{order.customer_name} 的专属影集</div>
           <div className="text-xs text-white/50 mt-1">

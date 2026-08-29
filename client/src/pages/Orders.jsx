@@ -6,6 +6,7 @@ import { avatarColor, avatarText } from '../utils/avatar.js';
 import { channelColor, channelBadgeStyle } from '../utils/channel.js';
 import { stageLabel } from '../utils/orderStage.js';
 import OrderCreateModal from '../components/OrderCreateModal.jsx';
+import { confirm } from '../utils/toast.js';
 
 /* ==========================================================================
    订单中心（列表页）
@@ -241,7 +242,7 @@ export default function Orders() {
   const handleDelete = async (o, e) => {
     e.stopPropagation();
     e.preventDefault();
-    if (!window.confirm(`确定将订单「${o.order_name || '未命名订单'}」移入回收站？\n\n移入后可在回收站中恢复或彻底删除。`)) return;
+    if (!await confirm(`确定将订单「${o.order_name || '未命名订单'}」移入回收站？\n\n移入后可在回收站中恢复或彻底删除。`)) return;
     try {
       await http.delete('/api/orders/' + o.id);
       refreshOrderList({ reset: true });

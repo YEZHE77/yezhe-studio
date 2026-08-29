@@ -41,7 +41,7 @@ import galleriesRoutes from './routes/galleries.js';
 import uploadChunkRoutes from './routes/uploadChunk.js';
 import uploadFileRoutes from './routes/uploadFile.js';
 import adminThumbnailsRoutes from './routes/adminThumbnails.js';
-import messageRoutes from './routes/message.js';
+import messageRoutes, { cleanupOldMessages } from './routes/message.js';
 import mobileMessageRoutes from './routes/mobileMessage.js';
 import photoPackageRoutes from './routes/photoPackage.js';
 import publicRoutes from './routes/public.js';
@@ -209,6 +209,14 @@ const onListen = () => {
 // 后台初始化任务：建表/迁移（冷启动加速后 initSchema 仅 1 次 SELECT，毫秒级）→ 种子 → 每日调度
 const runBootTasks = () => initSchema().then(async () => {
   await seedIfNeeded();
+  // 消息保留周期策略（P1 #11）：启动时清理一次超期已读消息，并每 24h 再清一次。
+  try {
+    const r = await cleanupOldMessages();
+    if (r.enabled) console.log(`[message] 启动清理超期消息：system=${r.system} 条, biz=${r.biz} 条（保留 ${r.days} 天）`);
+  } catch (e) { console.error('[message] 启动清理失败', e.message); }
+  setInterval(async () => {
+    try { await cleanupOldMessages(); } catch (e) { console.error('[message] 定时清理失败', e.message); }
+  }, 24 * 60 * 60 * 1000);
   // 每日 03:10 自动全量备份：业务 JSON 写入对象存储 /backup/ 目录（COS 优先 / R2 兜底）。
   // 数据安全网：Neon 免费 PITR 仅 6h，超过该窗口的历史数据只能靠这份每日 JSON 恢复。
   try { scheduleDailyBackup(); } catch (e) { console.error('[backup] 调度失败', e.message); }

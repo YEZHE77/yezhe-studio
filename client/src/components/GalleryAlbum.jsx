@@ -1,21 +1,39 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { img } from '../api.js';
 
-// 客片电子相册沉浸式页面（对应零屿 VISION 这类婚礼电子相册 H5）
-// 全屏上下滑动浏览照片 + 新人名字/分类/专属文案 + 底部品牌工具栏（播放[带BGM] / 更多）
-// 幻灯片自动轮播与 BGM 同步：开启播放时一并启动音频，暂停/退出停止音频（iOS 需用户手势内解锁音频）
+// 客片电子相册沉浸式全屏查看（灯箱）
+// 验收清单 6.4：手机端【左右滑动】切换 + 【双指捏合缩放】；电脑端【方向键 ←/→】翻页 + 滚轮/双击缩放 + ESC 关闭。
+// 保留：顶部导航、进度指示点、底部品牌工具栏（播放[带BGM]/更多）、分享；首屏叠加新人名字/分类/文案。
 export default function GalleryAlbum({ gallery, startIndex = 0, onClose }) {
   const { title, subtitle, category, blessing, albumCopy, photos = [], brand_name, brand_slogan, brand_intro, brand_logo } = gallery;
   // 自定义相册文案（albumCopy）优先级高于旧 blessing，作为相册正文文案模块
   const copy = albumCopy || blessing || '';
   const [playing, setPlaying] = useState(false);
-  const [current, setCurrent] = useState(0);
+  const [current, setCurrent] = useState(startIndex || 0);
   const [toast, setToast] = useState('');
   const [showShare, setShowShare] = useState(false);
-  const scrollRef = useRef(null);
+  // 缩放 / 平移（仅作用于当前张）
+  const [scale, setScale] = useState(1);
+  const [tx, setTx] = useState(0);
+  const [ty, setTy] = useState(0);
+  const [animating, setAnimating] = useState(false); // 切换张时的滑动过渡
+  const trackRef = useRef(null);
   const timerRef = useRef(null);
   const audioRef = useRef(null);
-  const winH = typeof window !== 'undefined' ? window.innerHeight : 800;
+  // 手势状态机
+  const g = useRef({ mode: null, startX: 0, startY: 0, startTx: 0, startTy: 0, dragOffset: 0, pinchStartDist: 0, startScale: 1, lastTapTime: 0, lastTapX: 0, lastTapY: 0, mouseDown: false });
+
+  const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+  const dist = (a, b) => Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
+  const clampPan = (s, x, y) => {
+    const maxX = (typeof window !== 'undefined' ? window.innerWidth : 800) * (s - 1) / 2;
+    const maxY = (typeof window !== 'undefined' ? window.innerHeight : 800) * (s - 1) / 2;
+    return [clamp(x, -maxX, maxX), clamp(y, -maxY, maxY)];
+  };
+  // 将轨道平移到指定索引（extra 为像素级实时偏移，用于拖拽跟手）
+  const applyTrack = (idx, extra = 0) => {
+    if (trackRef.current) trackRef.current.style.transform = `translateX(calc(${-idx * 100}% + ${extra}px))`;
+  };
 
   // BGM：与 AlbumGrid 幻灯片同一来源（/bgm/bgm.mp3），保持品牌统一
   const BGM_SRC = '/bgm/bgm.mp3';
@@ -25,17 +43,14 @@ export default function GalleryAlbum({ gallery, startIndex = 0, onClose }) {
     return audioRef.current;
   };
 
-  // 自动播放（幻灯片模式）：每隔 3.5s 滚动到下一张
+  // 自动播放（幻灯片模式）：每隔 3.5s 切到下一张
   useEffect(() => {
     if (!playing || !photos.length) return;
     timerRef.current = setInterval(() => {
-      const el = scrollRef.current;
-      if (!el) return;
-      const next = (Math.round(el.scrollTop / winH) + 1) % photos.length;
-      el.scrollTo({ top: winH * next, behavior: 'smooth' });
+      setCurrent((i) => { const ni = (i + 1) % photos.length; resetView(ni); return ni; });
     }, 3500);
     return () => clearInterval(timerRef.current);
-  }, [playing, photos.length, winH]);
+  }, [playing, photos.length]);
 
   // 组件卸载：清理 BGM（关闭全屏预览/切到其它页时停止音乐）
   useEffect(() => {
@@ -48,23 +63,58 @@ export default function GalleryAlbum({ gallery, startIndex = 0, onClose }) {
     };
   }, []);
 
+  // 键盘：←/→ 翻页（未缩放时）、+/- 缩放、ESC 关闭
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.key === 'Escape') { if (onClose) onClose(); return; }
+      if (e.key === 'ArrowLeft') { if (scale === 1) goTo(current - 1); }
+      else if (e.key === 'ArrowRight') { if (scale === 1) goTo(current + 1); }
+      else if (e.key === '+' || e.key === '=') { setScale((s) => clamp(s * 1.3, 1, 5)); setTx(0); setTy(0); }
+      else if (e.key === '-' || e.key === '_') { setScale((s) => clamp(s / 1.3, 1, 5)); setTx(0); setTy(0); }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [current, scale, onClose]);
+
+  // 进入指定张：重置缩放/平移，带滑动过渡
+  const resetView = (idx) => {
+    setScale(1); setTx(0); setTy(0);
+    setAnimating(true);
+    applyTrack(idx, 0);
+    setTimeout(() => setAnimating(false), 320);
+  };
+  const goTo = (i) => {
+    const ni = clamp(i, 0, photos.length - 1);
+    setCurrent(ni);
+    resetView(ni);
+  };
+
+  // 双击/双指点击切换 2x 缩放（以点击位置为中心，简化：居中放大）
+  const toggleZoom = (cx, cy) => {
+    if (scale > 1) { setScale(1); setTx(0); setTy(0); }
+    else {
+      setScale(2);
+      // 以点击点为中心调整平移（让点击处大致保持在原位）
+      const w = typeof window !== 'undefined' ? window.innerWidth : 800;
+      const h = typeof window !== 'undefined' ? window.innerHeight : 800;
+      const ox = cx != null ? (cx - w / 2) * (2 - 1) : 0;
+      const oy = cy != null ? (cy - h / 2) * (2 - 1) : 0;
+      const [nx, ny] = clampPan(2, -ox, -oy);
+      setTx(nx); setTy(ny);
+    }
+  };
+
   useEffect(() => {
     const t = setTimeout(() => setToast(''), 2200);
     return () => clearTimeout(t);
   }, [toast]);
 
-  const onScroll = () => {
-    const el = scrollRef.current;
-    if (el) setCurrent(Math.round(el.scrollTop / winH));
-  };
-
-  // 作为全屏查看 overlay 时，从指定张数开始
+  // 首屏定位到 startIndex
   useEffect(() => {
-    if (startIndex > 0 && scrollRef.current) {
-      scrollRef.current.scrollTop = winH * startIndex;
-      setCurrent(startIndex);
-    }
-  }, [startIndex, winH]);
+    applyTrack(startIndex || 0, 0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const showToast = (msg) => setToast(msg);
 
@@ -113,8 +163,92 @@ export default function GalleryAlbum({ gallery, startIndex = 0, onClose }) {
     }
   };
 
+  // ===== 触摸手势（手机端：左右滑动切换 / 双指捏合缩放 / 单指拖动平移）=====
+  const onTouchStart = (e) => {
+    const t = e.touches;
+    if (t.length === 2) {
+      g.current.mode = 'pinch';
+      g.current.pinchStartDist = dist(t[0], t[1]);
+      g.current.startScale = scale;
+    } else if (t.length === 1) {
+      const x = t[0].clientX, y = t[0].clientY;
+      // 双击放大检测
+      const now = Date.now();
+      if (g.current.lastTapTime && now - g.current.lastTapTime < 300 && Math.abs(x - g.current.lastTapX) < 30 && Math.abs(y - g.current.lastTapY) < 30) {
+        g.current.mode = 'none';
+        toggleZoom(x, y);
+        g.current.lastTapTime = 0;
+        return;
+      }
+      g.current.lastTapTime = now; g.current.lastTapX = x; g.current.lastTapY = y;
+      if (scale > 1) {
+        g.current.mode = 'pan';
+        g.current.startTx = tx; g.current.startTy = ty; g.current.startX = x; g.current.startY = y;
+      } else {
+        g.current.mode = 'swipe';
+        g.current.startX = x; g.current.dragOffset = 0;
+        setAnimating(false);
+      }
+    }
+  };
+  const onTouchMove = (e) => {
+    const t = e.touches;
+    if (g.current.mode === 'pinch' && t.length === 2) {
+      const d = dist(t[0], t[1]);
+      const ns = clamp(g.current.startScale * (d / (g.current.pinchStartDist || d)), 1, 5);
+      setScale(ns);
+      if (ns === 1) { setTx(0); setTy(0); }
+    } else if (g.current.mode === 'pan' && t.length === 1) {
+      const x = t[0].clientX, y = t[0].clientY;
+      const [nx, ny] = clampPan(scale, g.current.startTx + (x - g.current.startX), g.current.startTy + (y - g.current.startY));
+      setTx(nx); setTy(ny);
+    } else if (g.current.mode === 'swipe' && t.length === 1) {
+      const dx = t[0].clientX - g.current.startX;
+      g.current.dragOffset = dx;
+      applyTrack(current, dx); // 直接操作 DOM，跟手更顺滑
+    }
+  };
+  const onTouchEnd = () => {
+    if (g.current.mode === 'swipe') {
+      const dx = g.current.dragOffset || 0;
+      const w = typeof window !== 'undefined' ? window.innerWidth : 800;
+      setAnimating(true);
+      if (dx <= -w * 0.22 && current < photos.length - 1) goTo(current + 1);
+      else if (dx >= w * 0.22 && current > 0) goTo(current - 1);
+      else applyTrack(current, 0); // 回弹
+    } else if (g.current.mode === 'pan') {
+      const [nx, ny] = clampPan(scale, tx, ty);
+      setTx(nx); setTy(ny);
+    }
+    g.current.mode = null;
+  };
+
+  // ===== 鼠标（电脑端：双击缩放 / 滚轮缩放 / 拖拽平移）=====
+  const onWheel = (e) => {
+    const ns = clamp(scale * (e.deltaY < 0 ? 1.12 : 0.89), 1, 5);
+    setScale(ns);
+    if (ns === 1) { setTx(0); setTy(0); }
+    else { const [nx, ny] = clampPan(ns, tx, ty); setTx(nx); setTy(ny); }
+  };
+  const onMouseDown = (e) => {
+    if (scale > 1) {
+      g.current.mouseDown = true;
+      g.current.startX = e.clientX; g.current.startY = e.clientY;
+      g.current.startTx = tx; g.current.startTy = ty;
+    }
+  };
+  const onMouseMove = (e) => {
+    if (g.current.mouseDown && scale > 1) {
+      const [nx, ny] = clampPan(scale, g.current.startTx + (e.clientX - g.current.startX), g.current.startTy + (e.clientY - g.current.startY));
+      setTx(nx); setTy(ny);
+    }
+  };
+  const onMouseUp = () => { g.current.mouseDown = false; };
+
+  const activeTransform = `translate(${tx}px, ${ty}px) scale(${scale})`;
+
   return (
-    <div className="min-h-screen bg-black text-white relative overflow-hidden">
+    <div className="min-h-screen bg-black text-white relative overflow-hidden" style={{ touchAction: 'none' }}>
       {/* 顶部导航 */}
       <div className="fixed top-0 left-0 right-0 z-30 flex items-center justify-between px-4 pt-3 pb-6 bg-gradient-to-b from-black/70 to-transparent">
         {onClose ? (
@@ -126,6 +260,7 @@ export default function GalleryAlbum({ gallery, startIndex = 0, onClose }) {
         )}
         <div className="text-center flex-1">
           <div className="text-sm font-medium truncate">{subtitle || title}</div>
+          <div className="text-[10px] text-white/50 mt-0.5">{photos.length ? `${current + 1} / ${photos.length}` : ''}</div>
         </div>
         {!onClose && (
           <button onClick={share}
@@ -133,19 +268,42 @@ export default function GalleryAlbum({ gallery, startIndex = 0, onClose }) {
         )}
       </div>
 
-      {/* 沉浸式上下滑动照片 */}
-      <div ref={scrollRef} onScroll={onScroll}
-        className="h-screen overflow-y-scroll snap-y snap-mandatory"
-        style={{ scrollBehavior: 'smooth' }}>
+      {/* 横向滑动灯箱：轨道 = photos.length 屏宽，每张 100% */}
+      <div
+        ref={trackRef}
+        onTouchStart={onTouchStart}
+        onTouchMove={onTouchMove}
+        onTouchEnd={onTouchEnd}
+        onWheel={onWheel}
+        onMouseDown={onMouseDown}
+        onMouseMove={onMouseMove}
+        onMouseUp={onMouseUp}
+        onMouseLeave={onMouseUp}
+        onDoubleClick={(e) => toggleZoom(e.clientX, e.clientY)}
+        className="h-screen w-full flex"
+        style={{ transform: `translateX(-${current * 100}%)`, transition: animating ? 'transform 0.32s cubic-bezier(0.22,0.61,0.36,1)' : 'none', willChange: 'transform' }}
+      >
         {photos.length === 0 && (
-          <div className="h-screen flex items-center justify-center text-white/50">该相册暂未添加照片</div>
+          <div className="h-screen w-screen flex items-center justify-center text-white/50">该相册暂未添加照片</div>
         )}
         {photos.map((p, i) => (
-          <div key={i} className="h-screen w-full snap-start flex items-center justify-center bg-black relative">
-            <img src={img(p, 'preview')} alt="" className="max-w-full max-h-full object-contain" loading={i <= 1 ? 'eager' : 'lazy'} />
+          <div key={i} className="h-screen w-screen flex-shrink-0 flex items-center justify-center bg-black relative" style={{ overflow: 'hidden' }}>
+            <img
+              src={img(p, 'preview')}
+              alt=""
+              draggable={false}
+              loading={i <= 1 ? 'eager' : 'lazy'}
+              style={{
+                maxWidth: '100%', maxHeight: '100%', objectFit: 'contain',
+                transform: i === current ? activeTransform : 'none',
+                transition: (g.current.mode === 'swipe' || g.current.mode === 'pinch' || g.current.mode === 'pan' || g.current.mouseDown) ? 'none' : 'transform 0.2s ease-out',
+                cursor: scale > 1 ? 'grab' : 'default',
+                userSelect: 'none', WebkitUserSelect: 'none'
+              }}
+            />
             {/* 首屏叠加：新人名字 + 分类 + 自定义文案模块 */}
             {i === 0 && (title || category || copy) && (
-              <div className="absolute inset-x-0 bottom-0 px-6 pb-28 pt-24 bg-gradient-to-t from-black/80 via-black/20 to-transparent text-center">
+              <div className="absolute inset-x-0 bottom-0 px-6 pb-28 pt-24 bg-gradient-to-t from-black/80 via-black/20 to-transparent text-center pointer-events-none">
                 {category && (
                   <span className="inline-block px-3 py-1 rounded-full border border-white/40 text-[11px] text-white/90 mb-3">
                     {category}
@@ -194,6 +352,13 @@ export default function GalleryAlbum({ gallery, startIndex = 0, onClose }) {
           </div>
         </div>
       </div>
+
+      {/* 缩放提示（仅未缩放时） */}
+      {scale === 1 && photos.length > 0 && (
+        <div className="fixed left-1/2 -translate-x-1/2 bottom-24 z-20 text-[11px] text-white/40 pointer-events-none">
+          左右滑动浏览 · 双指/双击放大
+        </div>
+      )}
 
       {/* 右下角常驻悬浮分享按钮（H5 点击弹窗，复制相册链接兜底）；overlay 模式已在外层提供分享入口，故隐藏 */}
       {!onClose && (

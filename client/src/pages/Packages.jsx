@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import http, { img } from '../api.js';
 import { useViewState } from '../tabMemory.js';
+import { toast, confirm } from '../utils/toast.js';
 
 /* ==========================================================================
    套系页面（后台管理 → 套系）
@@ -154,12 +155,12 @@ export default function Packages() {
   const batchStatus = async (next) => {
     const ids = [...checked];
     if (!ids.length) return;
-    if (!confirm(`确认批量${next === 'on' ? '上架' : '下架'}选中的 ${ids.length} 个套系？`)) return;
+    if (!await confirm(`确认批量${next === 'on' ? '上架' : '下架'}选中的 ${ids.length} 个套系？`)) return;
     try {
       await http.post('/api/packages/batch-status', { ids, status: next });
       setChecked(new Set());
       load();
-    } catch (e) { alert((e.response && e.response.data && e.response.data.error) || '批量操作失败'); }
+    } catch (e) { toast((e.response && e.response.data && e.response.data.error) || '批量操作失败'); }
   };
 
     const loadCategories = () => http.get('/api/categories').then((r) => setCategories(r.data || [])).catch(() => {});
@@ -207,7 +208,7 @@ export default function Packages() {
   const del = async (pkg) => {
     const id = typeof pkg === 'object' ? pkg.id : pkg;
     const cur = typeof pkg === 'object' ? pkg : list.find((x) => x.id === id);
-    if (!confirm('确认后将永久删除，建议先做好本地备份，确定继续？')) return;
+    if (!await confirm('确认后将永久删除，建议先做好本地备份，确定继续？')) return;
     try {
       await http.delete('/api/packages/' + id);
       load();
@@ -215,12 +216,12 @@ export default function Packages() {
       if (e && e.code === 'PACKAGE_IN_USE') {
         const n = (e.data && e.data.count) || 0;
         const goOff = cur && cur.status === 'on'
-          ? confirm(`该套系已关联 ${n} 个订单，为保护历史订单数据不可删除。\n是否改为「下架」隐藏？（下架后 C 端不可见，后台手动录单仍可选）`)
-          : (alert(`该套系已关联 ${n} 个订单，为保护历史订单数据不可删除，当前已处于下架状态。`), false);
+          ? await confirm(`该套系已关联 ${n} 个订单，为保护历史订单数据不可删除。\n是否改为「下架」隐藏？（下架后 C 端不可见，后台手动录单仍可选）`)
+          : (toast(`该套系已关联 ${n} 个订单，为保护历史订单数据不可删除，当前已处于下架状态。`), false);
         if (goOff) { await http.put('/api/packages/' + id, { status: 'off' }); load(); }
         return;
       }
-      alert((e && e.message) || '删除失败');
+      toast((e && e.message) || '删除失败');
     }
   };
 
@@ -233,7 +234,7 @@ export default function Packages() {
 
   // 复制套系快速新建（默认下架，避免误发）
   const duplicate = async (id) => {
-    if (!confirm('复制该套系为副本（默认下架）？')) return;
+    if (!await confirm('复制该套系为副本（默认下架）？')) return;
     await http.post('/api/packages/' + id + '/duplicate');
     load();
   };
@@ -661,7 +662,7 @@ function PackageSortModal({ list, onClose, onSaved }) {
       await http.post('/api/packages/reorder', { orders: items.map((p) => p.id) });
       onSaved();
     } catch (e) {
-      alert((e.response && e.response.data && e.response.data.error) || '保存排序失败');
+      toast((e.response && e.response.data && e.response.data.error) || '保存排序失败');
     } finally { setSaving(false); }
   };
 

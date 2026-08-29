@@ -12,6 +12,7 @@ import {
   Plus,
   Image as ImageIcon
 } from 'lucide-react';
+import { toast, confirm } from '../utils/toast.js';
 
 const CORAL = '#FF7A8A';
 
@@ -75,13 +76,13 @@ export default function Works() {
     } catch (e) {
       const msg = (e.response && e.response.data && e.response.data.error) || '生成失败';
       setWorkShare({ ...ws, busy: false });
-      alert(msg);
+      toast(msg);
     }
   }
   function copyWorkShare() {
     if (!workShare || !workShare.result) return;
     navigator.clipboard?.writeText(workShare.result.share_url);
-    alert('相册链接已复制：\n' + workShare.result.share_url);
+    toast('相册链接已复制：\n' + workShare.result.share_url);
   }
 
   // 搜索防抖 300ms
@@ -142,7 +143,7 @@ export default function Works() {
       });
       reload();
     } catch (e) {
-      alert((e.response && e.response.data && e.response.data.error) || '操作失败');
+      toast((e.response && e.response.data && e.response.data.error) || '操作失败');
     }
   }
 
@@ -155,7 +156,7 @@ export default function Works() {
       await http.patch('/api/works/' + w.id + '/public', { is_public: next });
     } catch (err) {
       setData((d) => ({ ...d, items: (d.items || []).map((it) => it.id === w.id ? { ...it, is_public: w.is_public } : it) }));
-      alert((err.response && err.response.data && err.response.data.error) || '切换失败');
+      toast((err.response && err.response.data && err.response.data.error) || '切换失败');
     }
   }
 
@@ -167,7 +168,7 @@ export default function Works() {
 
   async function remove(w, e) {
     e.stopPropagation();
-    if (!confirm(`确认删除作品「${w.title}」？\n该作品下的相册与选片记录也会一并删除，不可恢复。`)) return;
+    if (!await confirm(`确认删除作品「${w.title}」？\n该作品下的相册与选片记录也会一并删除，不可恢复。`)) return;
     try {
       await http.delete('/api/works/' + w.id);
       // 删除后若当前页可能变空，回到第一页重新加载，避免空白
@@ -177,7 +178,7 @@ export default function Works() {
         reload();
       }
     } catch (e) {
-      alert((e.response && e.response.data && e.response.data.error) || '删除失败');
+      toast((e.response && e.response.data && e.response.data.error) || '删除失败');
     }
   }
 
@@ -209,7 +210,7 @@ export default function Works() {
       setBusyText(null);
     } catch (e) {
       setBusyText(null);
-      alert('加载作品失败，无法进入排序模式');
+      toast('加载作品失败，无法进入排序模式');
     }
   }
 
@@ -220,7 +221,7 @@ export default function Works() {
       setSortMode(false);
       reload();
     } catch (e) {
-      alert((e.response && e.response.data && e.response.data.error) || '排序保存失败');
+      toast((e.response && e.response.data && e.response.data.error) || '排序保存失败');
     } finally {
       setSavingSort(false);
     }
