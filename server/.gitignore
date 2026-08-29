@@ -1,0 +1,10 @@
+# Puppeteer 下载的 Chromium 浏览器（npm install 时生成，体积大，不入库）
+.cache/
+
+# 本地开发数据库 / 上传目录（已在根 .gitignore 覆盖，这里再兜底）
+data/
+uploads/
+
+# 环境变量（含密钥，绝不提交）
+.env
+.env.local

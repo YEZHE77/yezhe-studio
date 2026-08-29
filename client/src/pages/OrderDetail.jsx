@@ -606,173 +606,43 @@ export default function OrderDetail() {
   }
   // 独立模式/微信/移动端环境：用 html2pdf 直接生成 PDF 文件（绕过 window.print）
   // 生成带页眉页脚的多页 PDF（html2canvas 渲染 + jsPDF 逐页拼页眉/正文切片/页脚）
+  // 打印单据：后端 puppeteer 生成「拍摄服务合同」PDF（数据源唯一=order_id，1:1 复刻 sheet 版式，秒级返回）
+  // 前端只带鉴权请求后端接口拿 blob：桌面新标签页预览、移动端系统分享/下载
   async function downloadPrintPdf() {
     try {
-      const sheet = document.querySelector('.print-order-sheet');
-      const contentEl = sheet && sheet.querySelector('.print-sheet-body');
-      if (!contentEl) return toast('未找到打印内容');
-
-      // 固定正文渲染宽度为 700px（A4 版心），克隆避免污染原节点
-      const contentClone = contentEl.cloneNode(true);
-      contentClone.style.maxWidth = '700px';
-      contentClone.style.width = '700px';
-      contentClone.style.margin = '0 auto';
-      const wrap = document.createElement('div');
-      // 关键：容器 opacity 必须保持 1（html2canvas 按真实计算样式绘制，opacity:0 会让画布内容整体透明、PDF 空白）。
-      // 用 z-index:-1000 把容器压到页面背景之下——用户不可见，但参与布局、可正常渲染（iOS Safari 兼容）。
-      wrap.style.position = 'fixed';
-      wrap.style.left = '0';
-      wrap.style.top = '0';
-      wrap.style.width = '700px';
-      wrap.style.background = '#fff';
-      wrap.style.opacity = '1';
-      wrap.style.pointerEvents = 'none';
-      wrap.style.zIndex = '-1000';
-      wrap.appendChild(contentClone);
-      document.body.appendChild(wrap);
-      // 等一帧让浏览器完成布局（iOS Safari 需要）
-      await new Promise((r) => requestAnimationFrame(() => r()));
-
-      // 动态 scale：iOS Safari 大画布易 OOM/慢（降到 1.2 约 115dpi，打印够用）；安卓 1.5；桌面 2 保清晰
-      const uaLow = (navigator.userAgent || '').toLowerCase();
-      const isIOS = /iphone|ipad|ipod/.test(uaLow);
-      const isAndroid = /android/.test(uaLow);
-      const htmlScale = isIOS ? 1.2 : (isAndroid ? 1.5 : 2);
-      // 页眉/页脚只是简单文字条，用低 scale 渲染即可（速度快，清晰度足够）
-      const headerScale = isIOS ? 1 : 1.2;
-      // 超时保护：html2canvas 卡住时给用户明确提示，而不是只停在"正在生成 PDF…"
-      const withTimeout = (p, ms, tag) => Promise.race([
-        p,
-        new Promise((_, rej) => setTimeout(() => rej(new Error(tag + ' 渲染超时')), ms))
-      ]);
-      const contentCanvas = await withTimeout(
-        html2canvas(contentClone, { scale: htmlScale, useCORS: true, backgroundColor: '#ffffff' }),
-        90000, '正文'
-      );
-      if (!contentCanvas || contentCanvas.width === 0 || contentCanvas.height === 0) {
-        throw new Error('渲染失败：内容画布为空');
-      }
-
-      // 页眉 / 页脚 HTML（宽 700px，与正文同宽）
-      const created = detail.created_at ? new Date(detail.created_at).toLocaleString('zh-CN') : '—';
-      const headerHTML = `<div style="width:700px; background:#fff; text-align:center; font-family:SimSun,STSong,serif; padding:8mm 0 4mm; border-bottom:1px solid #555;">
-        <div style="font-size:22px; letter-spacing:4px; color:#000;">拍摄服务合同</div>
-        <div style="font-size:13px; margin-top:8px; color:#555;">订单编号：${detail.order_no}</div>
-        <div style="font-size:12px; margin-top:4px; color:#555;">创建时间：${created}　·　订单状态：${statusText || '—'}</div>
-      </div>`;
-      const footerHTML = `<div style="width:700px; background:#fff; display:flex; justify-content:space-between; align-items:center; font-family:SimSun,STSong,serif; padding:4mm 0 6mm; border-top:1px solid #ccc; font-size:12px; color:#999;">
-        <span>叶哲 STUDIO · 摄影工作室管理系统</span>
-        <span>打印时间：${new Date().toLocaleString('zh-CN')}</span>
-      </div>`;
-
-      const renderHtml = async (html) => {
-        const el = document.createElement('div');
-        el.innerHTML = html;
-        el.style.position = 'fixed';
-        el.style.left = '0';
-        el.style.top = '0';
-        el.style.background = '#fff';
-        el.style.opacity = '1';
-        el.style.pointerEvents = 'none';
-        el.style.zIndex = '-1000';
-        document.body.appendChild(el);
-        await new Promise((r) => requestAnimationFrame(() => r()));
-        const canvas = await withTimeout(
-          html2canvas(el.firstElementChild, { scale: headerScale, backgroundColor: '#ffffff' }),
-          60000, '页眉/页脚'
-        );
-        document.body.removeChild(el);
-        return canvas;
-      };
-      const headerCanvas = await renderHtml(headerHTML);
-      const footerCanvas = await renderHtml(footerHTML);
-
-      // PDF 版式（A4，mm）
-      const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-      const pageW = 210, pageH = 297;
-      const margin = 20;                 // 左右边距 20mm
-      const contentW = pageW - margin * 2; // 170mm 版心宽
-      const headerH = headerCanvas.height / headerCanvas.width * contentW;
-      const footerH = footerCanvas.height / footerCanvas.width * contentW;
-      const contentAreaH = pageH - headerH - footerH;
-
-      const pxPerMm = contentCanvas.width / contentW;
-      const pageContentPx = contentAreaH * pxPerMm;
-      const totalPages = Math.max(1, Math.ceil(contentCanvas.height / pageContentPx));
-
-      for (let i = 0; i < totalPages; i++) {
-        if (i > 0) pdf.addPage();
-        // 页眉（JPEG 质量降到 0.9：文字内容 0.9 与 0.95 视觉无差，编码快很多）
-        pdf.addImage(headerCanvas.toDataURL('image/jpeg', 0.9), 'JPEG', margin, 0, contentW, headerH);
-        // 正文切片
-        const sy = i * pageContentPx;
-        const sH = Math.min(pageContentPx, contentCanvas.height - sy);
-        if (sH > 0) {
-          const slice = document.createElement('canvas');
-          slice.width = contentCanvas.width;
-          slice.height = sH;
-          const ctx = slice.getContext('2d');
-          ctx.fillStyle = '#ffffff';
-          ctx.fillRect(0, 0, slice.width, slice.height);
-          ctx.drawImage(contentCanvas, 0, sy, contentCanvas.width, sH, 0, 0, contentCanvas.width, sH);
-          pdf.addImage(slice.toDataURL('image/jpeg', 0.92), 'JPEG', margin, headerH, contentW, sH / pxPerMm);
-        }
-        // 页脚
-        pdf.addImage(footerCanvas.toDataURL('image/jpeg', 0.9), 'JPEG', margin, pageH - footerH, contentW, footerH);
-      }
-
-      document.body.removeChild(wrap);
-
-      const pdfBlob = pdf.output('blob');
+      const resp = await http.get('/api/orders/' + detail.id + '/print-pdf', {
+        params: { internal: printInternal ? 1 : 0 },
+        responseType: 'blob',
+        timeout: 120000
+      });
+      const blob = resp.data;
+      if (!blob || blob.size < 500) throw new Error('生成的 PDF 为空');
       const filename = '拍摄服务合同-' + (detail.order_no || detail.id) + '.pdf';
-      const file = new File([pdfBlob], filename, { type: 'application/pdf' });
-      const url = URL.createObjectURL(pdfBlob);
-      // 标记输出状态，确保至少给用户一个明确反馈
-      let delivered = false;
-
-      // 输出优先级（按平台可靠性排序）：
-      // 1) 移动端（iOS/Android）：navigator.share({files}) 弹系统分享面板（保存到文件/隔空投送/打印）—— 最可靠
-      // 2) 桌面端：window.open 新标签页预览 + 用户在 PDF 阅读器里打印/保存
-      // 3) 兜底：<a download> 直接下载
+      const file = new File([blob], filename, { type: 'application/pdf' });
+      const url = URL.createObjectURL(blob);
       const isMobile = /iphone|ipad|ipod|android/i.test(navigator.userAgent || '');
-
+      let delivered = false;
       if (isMobile) {
-        // 移动端优先系统分享
+        // 移动端：优先系统分享（保存到文件/隔空投送/打印）
         if (navigator.canShare && navigator.canShare({ files: [file] })) {
           try {
             await navigator.share({ files: [file], title: filename });
             delivered = true;
           } catch (shareErr) {
-            if (shareErr && shareErr.name === 'AbortError') {
-              delivered = true; // 用户主动取消也算"已交付"
-            }
+            if (shareErr && shareErr.name === 'AbortError') delivered = true;
           }
         }
         if (!delivered) {
-          // 移动端 fallback：用 location.href 跳转触发 Safari 下载行为
-          try {
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = filename;
-            a.rel = 'noopener';
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            delivered = true;
-          } catch (_) {}
-        }
-        if (!delivered) {
-          // 终极 fallback：location 直接下载（iOS Safari 会弹"下载文件"确认）
-          const link = document.createElement('a');
-          link.href = url;
-          link.download = filename;
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = filename;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
           delivered = true;
         }
       } else {
-        // 桌面端：先尝试新标签页预览
+        // 桌面端：新标签页 PDF 预览（用户可在阅读器里打印/保存）
         try {
           const preview = window.open(url, '_blank');
           if (preview) delivered = true;
@@ -792,16 +662,27 @@ export default function OrderDetail() {
     } catch (e) {
       if (e && e.name === 'AbortError') return;
       console.error(e);
-      toast('PDF 生成失败：' + (e && e.message ? e.message : e));
+      // responseType=blob 时，错误响应也会被包成 Blob；这里还原成可读的中文错误文案
+      let msg = (e && e.message) || String(e);
+      try {
+        const rd = e && e.response && e.response.data;
+        if (rd && typeof Blob !== 'undefined' && rd instanceof Blob && rd.size) {
+          const txt = await rd.text();
+          const j = JSON.parse(txt);
+          if (j && j.error) msg = j.error;
+        } else if (e && e.response && e.response.data && e.response.data.error) {
+          msg = e.response.data.error;
+        }
+      } catch (_) {}
+      toast('PDF 生成失败：' + msg);
     }
   }
   function printOrder() {
     if (!detail) return;
     setMoreMenu(false);
-    // 全平台统一走 downloadPrintPdf()：与 6.0 参考 PDF 同源（html2canvas+jsPDF 拼页，A4 170mm 版心居中、每页带页眉页脚），
-    // 避免 window.print() 走浏览器打印引擎在不同浏览器分页不一致、sheet 离屏渲染导致大片空白页的问题。
-    // 用户在 PDF 预览/分享的文件里点打印即可（任何 PDF 阅读器均支持）。
-    toast('正在生成 PDF…（内容较长约需 5~20 秒）');
+    // 全平台统一走后端生成 PDF：服务端 puppeteer 渲染「拍摄服务合同」（1:1 复刻 sheet 版式，数据源唯一=order_id），
+    // 手机端不再依赖 html2canvas 慢渲染，秒级出 PDF；桌面/移动端在 PDF 文件里点打印即可。
+    toast('正在生成 PDF…（约需几秒）');
     downloadPrintPdf();
   }
   async function restoreOrder() {
