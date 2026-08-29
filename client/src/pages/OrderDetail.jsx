@@ -617,12 +617,14 @@ export default function OrderDetail() {
       contentClone.style.maxWidth = '700px';
       contentClone.style.width = '700px';
       contentClone.style.margin = '0 auto';
+      contentClone.style.textAlign = 'left';
       const wrap = document.createElement('div');
       wrap.style.position = 'absolute';
       wrap.style.left = '-9999px';
       wrap.style.top = '0';
       wrap.style.width = '700px';
       wrap.style.background = '#fff';
+      wrap.style.textAlign = 'left';
       wrap.appendChild(contentClone);
       document.body.appendChild(wrap);
 
@@ -2732,7 +2734,7 @@ export default function OrderDetail() {
             创建时间：{detail.created_at ? new Date(detail.created_at).toLocaleString('zh-CN') : '—'}　·　订单状态：{statusText || '—'}
           </div>
         </div>
-        <div className="print-sheet-body" style={{ maxWidth: 700, margin: '0 auto', fontFamily: 'SimSun, STSong, serif', fontSize: 14, lineHeight: 1.8, color: '#222', background: '#fff', padding: '4mm 0' }}>
+        <div className="print-sheet-body" style={{ maxWidth: 700, margin: '0 auto', textAlign: 'left', fontFamily: 'SimSun, STSong, serif', fontSize: 14, lineHeight: 1.8, color: '#222', background: '#fff', padding: '4mm 0' }}>
 
           {/* 客户信息 */}
           <div style={{ marginBottom: 12 }}>
