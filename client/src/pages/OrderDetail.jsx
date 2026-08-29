@@ -715,16 +715,8 @@ export default function OrderDetail() {
   function printOrder() {
     if (!detail) return;
     setMoreMenu(false);
-    // 桌面 PC 浏览器走原生 window.print()（可选打印机 + 预览）；其余环境（微信 / PWA / 手机普通浏览器 / 平板）
-    // 的 window.print 静默无效，统一 fallback 到 html2pdf 直接生成 PDF 下载/分享（移动端刚需）。
-    const ua = navigator.userAgent || '';
-    const isWechat = /MicroMessenger/i.test(ua);
-    const isStandalone = typeof window.matchMedia === 'function' && window.matchMedia('(display-mode: standalone)').matches;
-    const isMobile = /Mobi|Android|iPhone|iPad|iPod/i.test(ua);
-    if (!isWechat && !isStandalone && !isMobile && typeof window.print === 'function') {
-      window.print();
-      return;
-    }
+    // 统一走 html2pdf 生成 PDF：确保 PC/手机/微信/PWA 的打印版式完全一致（自定义页眉/页脚、A4 分页），
+    // 避免桌面端 window.print() 使用浏览器默认页眉页脚（网页标题、URL、日期、页码）破坏设计版式。
     downloadPrintPdf();
   }
   async function restoreOrder() {
