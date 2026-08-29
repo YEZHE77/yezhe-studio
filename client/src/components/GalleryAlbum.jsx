@@ -32,7 +32,7 @@ export default function GalleryAlbum({ gallery, startIndex = 0, onClose }) {
   };
   // 将轨道平移到指定索引（extra 为像素级实时偏移，用于拖拽跟手）
   const applyTrack = (idx, extra = 0) => {
-    if (trackRef.current) trackRef.current.style.transform = `translateX(calc(${-idx * 100}% + ${extra}px))`;
+    if (trackRef.current) trackRef.current.style.transform = `translateX(calc(${-idx * 100}vw + ${extra}px))`;
   };
 
   // BGM：与 AlbumGrid 幻灯片同一来源（/bgm/bgm.mp3），保持品牌统一
@@ -281,7 +281,7 @@ export default function GalleryAlbum({ gallery, startIndex = 0, onClose }) {
         onMouseLeave={onMouseUp}
         onDoubleClick={(e) => toggleZoom(e.clientX, e.clientY)}
         className="h-screen w-full flex"
-        style={{ transform: `translateX(-${current * 100}%)`, transition: animating ? 'transform 0.32s cubic-bezier(0.22,0.61,0.36,1)' : 'none', willChange: 'transform' }}
+        style={{ transform: `translateX(-${current * 100}vw)`, transition: animating ? 'transform 0.32s cubic-bezier(0.22,0.61,0.36,1)' : 'none', willChange: 'transform' }}
       >
         {photos.length === 0 && (
           <div className="h-screen w-screen flex items-center justify-center text-white/50">该相册暂未添加照片</div>
