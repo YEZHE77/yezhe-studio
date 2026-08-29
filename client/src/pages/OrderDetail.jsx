@@ -633,9 +633,13 @@ export default function OrderDetail() {
       // 等一帧让浏览器完成布局（iOS Safari 需要）
       await new Promise((r) => requestAnimationFrame(() => r()));
 
-      // iOS Safari 大尺寸 canvas 易 OOM/超时：scale 降到 1.5（桌面/安卓保持 2）
-      const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent || '');
-      const htmlScale = isIOS ? 1.5 : 2;
+      // 动态 scale：iOS Safari 大画布易 OOM/慢（降到 1.2 约 115dpi，打印够用）；安卓 1.5；桌面 2 保清晰
+      const uaLow = (navigator.userAgent || '').toLowerCase();
+      const isIOS = /iphone|ipad|ipod/.test(uaLow);
+      const isAndroid = /android/.test(uaLow);
+      const htmlScale = isIOS ? 1.2 : (isAndroid ? 1.5 : 2);
+      // 页眉/页脚只是简单文字条，用低 scale 渲染即可（速度快，清晰度足够）
+      const headerScale = isIOS ? 1 : 1.2;
       // 超时保护：html2canvas 卡住时给用户明确提示，而不是只停在"正在生成 PDF…"
       const withTimeout = (p, ms, tag) => Promise.race([
         p,
@@ -674,7 +678,7 @@ export default function OrderDetail() {
         document.body.appendChild(el);
         await new Promise((r) => requestAnimationFrame(() => r()));
         const canvas = await withTimeout(
-          html2canvas(el.firstElementChild, { scale: htmlScale, backgroundColor: '#ffffff' }),
+          html2canvas(el.firstElementChild, { scale: headerScale, backgroundColor: '#ffffff' }),
           60000, '页眉/页脚'
         );
         document.body.removeChild(el);
@@ -698,8 +702,8 @@ export default function OrderDetail() {
 
       for (let i = 0; i < totalPages; i++) {
         if (i > 0) pdf.addPage();
-        // 页眉
-        pdf.addImage(headerCanvas.toDataURL('image/jpeg', 0.95), 'JPEG', margin, 0, contentW, headerH);
+        // 页眉（JPEG 质量降到 0.9：文字内容 0.9 与 0.95 视觉无差，编码快很多）
+        pdf.addImage(headerCanvas.toDataURL('image/jpeg', 0.9), 'JPEG', margin, 0, contentW, headerH);
         // 正文切片
         const sy = i * pageContentPx;
         const sH = Math.min(pageContentPx, contentCanvas.height - sy);
@@ -711,10 +715,10 @@ export default function OrderDetail() {
           ctx.fillStyle = '#ffffff';
           ctx.fillRect(0, 0, slice.width, slice.height);
           ctx.drawImage(contentCanvas, 0, sy, contentCanvas.width, sH, 0, 0, contentCanvas.width, sH);
-          pdf.addImage(slice.toDataURL('image/jpeg', 0.98), 'JPEG', margin, headerH, contentW, sH / pxPerMm);
+          pdf.addImage(slice.toDataURL('image/jpeg', 0.92), 'JPEG', margin, headerH, contentW, sH / pxPerMm);
         }
         // 页脚
-        pdf.addImage(footerCanvas.toDataURL('image/jpeg', 0.95), 'JPEG', margin, pageH - footerH, contentW, footerH);
+        pdf.addImage(footerCanvas.toDataURL('image/jpeg', 0.9), 'JPEG', margin, pageH - footerH, contentW, footerH);
       }
 
       document.body.removeChild(wrap);
@@ -797,7 +801,7 @@ export default function OrderDetail() {
     // 全平台统一走 downloadPrintPdf()：与 6.0 参考 PDF 同源（html2canvas+jsPDF 拼页，A4 170mm 版心居中、每页带页眉页脚），
     // 避免 window.print() 走浏览器打印引擎在不同浏览器分页不一致、sheet 离屏渲染导致大片空白页的问题。
     // 用户在 PDF 预览/分享的文件里点打印即可（任何 PDF 阅读器均支持）。
-    toast('正在生成 PDF…');
+    toast('正在生成 PDF…（内容较长约需 5~20 秒）');
     downloadPrintPdf();
   }
   async function restoreOrder() {
