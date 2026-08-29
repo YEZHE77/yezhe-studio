@@ -5,6 +5,7 @@ import { Router } from 'express';
 import { get, insert, run } from '../db.js';
 import { authRequired } from '../auth.js';
 import QRCode from 'qrcode';
+import { serverError } from '../httpError.js';
 
 const router = Router();
 
@@ -61,7 +62,7 @@ router.get('/studio', async (req, res) => {
     const r = await get("SELECT value FROM settings WHERE key = 'studio'");
     const data = { ...DEFAULT_STUDIO, ...(safeParse(r && r.value) || {}) };
     res.json(data);
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 生成分享二维码（公开）：GET /api/qrcode?text=URL 或 ?albumId=ID  → 返回 PNG dataURL
@@ -76,7 +77,7 @@ router.get('/qrcode', async (req, res) => {
     if (!text) return res.status(400).json({ error: 'missing text or albumId' });
     const dataUrl = await QRCode.toDataURL(text, { width: 480, margin: 2, color: { dark: '#1a1a1a', light: '#ffffff' } });
     res.json({ dataUrl });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 router.put('/studio', authRequired, async (req, res) => {
@@ -102,7 +103,7 @@ router.put('/studio', authRequired, async (req, res) => {
     if (exists) await run("UPDATE settings SET value = ? WHERE key = 'studio'", [value]);
     else await insert("INSERT INTO settings (key, value) VALUES (?, ?)", ['studio', value]);
     res.json({ ok: true, studio: merged });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // ===== 预约全局设置（对外预约开关 + 每周开放日）=====
@@ -118,7 +119,7 @@ router.get('/booking', async (req, res) => {
     const r = await get("SELECT value FROM settings WHERE key = 'booking'");
     const data = safeParse(r && r.value) || DEFAULT_BOOKING;
     res.json(data);
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 router.put('/booking', authRequired, async (req, res) => {
@@ -133,7 +134,7 @@ router.put('/booking', authRequired, async (req, res) => {
     if (exists) await run("UPDATE settings SET value = ? WHERE key = 'booking'", [value]);
     else await insert("INSERT INTO settings (key, value) VALUES (?, ?)", ['booking', value]);
     res.json({ ok: true, booking: { open, openDays } });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 export default router;

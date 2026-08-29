@@ -2,6 +2,7 @@
 import { Router } from 'express';
 import { query, get, insert, run } from '../db.js';
 import { authRequired, requireRole, hashPassword, validatePasswordStrength, parsePermissions, PERMISSION_LABELS } from '../auth.js';
+import { serverError } from '../httpError.js';
 
 const router = Router();
 const PRESET_ROLES = ['admin', 'photographer', 'selector', 'finance'];
@@ -27,7 +28,7 @@ router.get('/', authRequired, requireRole('admin'), async (req, res) => {
       me: { id: req.user.uid, username: req.user.username, role: req.user.role, name: req.user.name || '', permissions: req.user.permissions || [], disabled: false },
       preset_roles: PRESET_ROLES, permission_labels: PERMISSION_LABELS
     });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 创建子账号（admin only；密码强度校验）
@@ -51,7 +52,7 @@ router.post('/', authRequired, requireRole('admin'), async (req, res) => {
     );
     const u = await get('SELECT id, username, role, name, permissions, disabled, created_at FROM users WHERE id = ?', [id]);
     res.json({ ok: true, user: sanitize(u) });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 更新子账号（admin only；角色/权限集合/禁用/改名/重置密码）
@@ -92,7 +93,7 @@ router.put('/:id', authRequired, requireRole('admin'), async (req, res) => {
     await run('UPDATE users SET ' + sets.join(', ') + ' WHERE id = ?', vals);
     const fresh = await get('SELECT id, username, role, name, permissions, disabled, created_at FROM users WHERE id = ?', [id]);
     res.json({ ok: true, user: sanitize(fresh) });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 删除子账号（admin only；admin 主账号不可删）
@@ -105,7 +106,7 @@ router.delete('/:id', authRequired, requireRole('admin'), async (req, res) => {
     if (Number(id) === Number(req.user.uid)) return res.status(400).json({ error: '不能删除自己' });
     await run('DELETE FROM users WHERE id = ?', [id]);
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 export default router;

@@ -55,6 +55,7 @@ import systemConfigRoutes from './routes/systemConfig.js';
 import iconRoutes from './routes/icon.js';
 import mediaRoutes from './routes/media.js';
 import aiRoutes from './routes/ai.js';
+import { serverError } from './httpError.js';
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -86,7 +87,7 @@ app.post('/api/upload', authRequired, upload.single('file'), async (req, res) =>
     const { url, r2Key } = await saveImage(req.file, 'biz-works', meta);
     // 同步模式：saveImage 内部已同步完成「存储 + hash + 媒资登记」，接口直接返回 url
     res.json({ url });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 批量上传（作品相册等场景，3 张并发一组，避免压垮服务器）
@@ -115,7 +116,7 @@ app.post('/api/upload-multiple', authRequired, upload.array('files', 500), async
     }
     // 同步模式：saveImage 内部已逐张完成「存储 + hash + 媒资登记」，接口直接返回所有 url
     res.json({ urls });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 生成分享二维码（公开）：GET /api/qrcode?text=URL 或 ?albumId=ID → 返回 PNG dataURL
@@ -129,7 +130,7 @@ app.get('/api/qrcode', async (req, res) => {
     if (!text) return res.status(400).json({ error: 'missing text or albumId' });
     const dataUrl = await QRCode.toDataURL(text, { width: 480, margin: 2, color: { dark: '#1a1a1a', light: '#ffffff' } });
     res.json({ dataUrl });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 app.use('/api/auth', authRoutes);

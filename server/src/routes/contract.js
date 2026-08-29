@@ -7,6 +7,7 @@ import { query, get, insert, run } from '../db.js';
 import { authRequired, requireRole, peekUser, verifyQueryToken } from '../auth.js';
 import { saveBuffer, getObjectBuffer, deleteObjectByKey } from '../storage.js';
 import { emitMessage } from './message.js';
+import { serverError } from '../httpError.js';
 
 const router = Router();
 const STAFF_ROLES = ['admin', 'photographer', 'finance'];
@@ -48,7 +49,7 @@ router.get('/templates', authRequired, async (req, res) => {
   try {
     const rows = await query('SELECT * FROM contract_template ORDER BY is_default DESC, id DESC');
     res.json(rows);
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 新增模板（is_default=true 时清空其它默认）
@@ -66,7 +67,7 @@ router.post('/templates', authRequired, requireRole(...STAFF_ROLES), async (req,
       [b.template_name.trim(), content, b.backup_word_url || '', b.is_default ? 1 : 0, nowISO(), nowISO()]
     );
     res.json({ ok: true, id });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 编辑模板
@@ -87,7 +88,7 @@ router.put('/templates/:id', authRequired, requireRole(...STAFF_ROLES), async (r
         b.is_default ? 1 : 0, nowISO(), req.params.id]
     );
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 删除模板（有订单绑定时拦截）
@@ -97,7 +98,7 @@ router.delete('/templates/:id', authRequired, requireRole(...STAFF_ROLES), async
     if (bound) return res.status(400).json({ error: '该模板已被订单绑定，无法删除' });
     await run('DELETE FROM contract_template WHERE id = ?', [req.params.id]);
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // ===================== 订单合同 PDF 上传回写 =====================
@@ -108,7 +109,7 @@ router.get('/orders/:id/contract-precheck', authRequired, requireRole(...STAFF_R
     const o = await get('SELECT * FROM orders WHERE id = ?', [req.params.id]);
     if (!o) return res.status(404).json({ error: '订单不存在' });
     res.json(contractPrecheck(o));
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 前端本地生成 PDF 后上传（私有存储）：存 contract_file_key + md5 + 操作人 + 快照；重新生成时旧文件归档
@@ -143,7 +144,7 @@ router.post('/orders/:id/contract-pdf', authRequired, requireRole(...STAFF_ROLES
       rel_id: String(o.id), rel_model: 'order'
     });
     res.json({ ok: true, contract_pdf_url: '/api/contract/download/' + o.id });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // ===================== 合同下载鉴权中转 + 作废/恢复 =====================
@@ -178,7 +179,7 @@ router.get('/download/:orderId', async (req, res) => {
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', (dl ? 'attachment' : 'inline') + '; filename="contract-' + o.id + '.pdf"');
     res.send(buf);
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 作废合同：标记 contract_invalid=1，客户无法下载
@@ -194,7 +195,7 @@ router.post('/orders/:id/invalidate', authRequired, requireRole(...STAFF_ROLES),
       rel_id: String(o.id), rel_model: 'order'
     });
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 恢复作废合同：contract_invalid=0，客户恢复下载权限
@@ -205,7 +206,7 @@ router.post('/orders/:id/restore', authRequired, requireRole(...STAFF_ROLES), as
     await run('UPDATE orders SET contract_invalid = 0 WHERE id = ?', [o.id]);
     await audit(o.id, req, 'restore', '恢复合同');
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 上传模板备份 PDF（backup_word_url 存 R2，仅后台备份下载）
@@ -214,7 +215,7 @@ router.post('/upload-backup', authRequired, requireRole(...STAFF_ROLES), upload.
     if (!req.file || !req.file.buffer) return res.status(400).json({ error: '未收到文件' });
     const { url } = await saveBuffer(req.file.buffer, '.pdf', 'biz-contract', { contentType: 'application/pdf', isPublic: false, category: 'contract' });
     res.json({ ok: true, url });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 订单保存合同配置（模板 id + 附加条款）
@@ -224,7 +225,7 @@ router.post('/orders/:id/contract', authRequired, requireRole(...STAFF_ROLES), a
     await run('UPDATE orders SET contract_template_id = ?, contract_extra_text = ? WHERE id = ?',
       [b.contract_template_id != null ? b.contract_template_id : null, b.contract_extra_text || '', req.params.id]);
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // ===== 合同操作审计日志（B端，筛选 order_id / action / 时间范围，分页） =====
@@ -250,7 +251,7 @@ router.get('/audit', authRequired, requireRole(...STAFF_ROLES), async (req, res)
     );
     const totalRow = await get(`SELECT COUNT(*) AS c FROM contract_audit a ${whereSql}`, params);
     res.json({ list: rows, total: totalRow ? Number(totalRow.c) : 0, page, page_size: pageSize });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 审计日志导出 CSV
@@ -278,7 +279,7 @@ router.get('/audit/export', authRequired, requireRole(...STAFF_ROLES), async (re
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', 'attachment; filename="contract-audit.csv"');
     res.send('\uFEFF' + lines.join('\n'));
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 export default router;

@@ -6,6 +6,7 @@ import { parseRow } from '../schema.js';
 import { authRequired, hashPassword, peekUser } from '../auth.js';
 import { buildWorkAlbum, albumLockState } from './share.js';
 import { deleteFromR2 } from '../storage.js';
+import { serverError } from '../httpError.js';
 
 const router = Router();
 
@@ -71,7 +72,7 @@ router.get('/', async (req, res) => {
     const items = rows.map((r) => safeWork(parseRow(r, ['tags'])));
     res.json({ items, total, page: parseInt(page), pageSize: parseInt(pageSize) });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    serverError(res, e);
   }
 });
 
@@ -96,7 +97,7 @@ router.get('/public', async (req, res) => {
     );
     res.json({ items: rows.map((r) => parseRow(r, ['tags'])), total, page: parseInt(page), pageSize: parseInt(pageSize) });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    serverError(res, e);
   }
 });
 
@@ -111,7 +112,7 @@ router.get('/public/:id', async (req, res) => {
     const albums = await query("SELECT * FROM albums WHERE work_id = ? AND zone != 'local' ORDER BY zone, sort", [w.id]);
     res.json({ work, albums });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    serverError(res, e);
   }
 });
 
@@ -131,7 +132,7 @@ router.get('/public/:id/album', async (req, res) => {
     if (!gallery) return res.status(404).json({ error: '作品相册不存在' });
     res.json({ gallery });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    serverError(res, e);
   }
 });
 
@@ -154,7 +155,7 @@ router.post('/public/:id/album/verify', async (req, res) => {
     if (!gallery) return res.status(404).json({ error: '作品相册不存在' });
     res.json({ gallery });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    serverError(res, e);
   }
 });
 
@@ -168,7 +169,7 @@ router.get('/:id', async (req, res) => {
     const sel = await get('SELECT * FROM selections WHERE work_id = ? ORDER BY id DESC LIMIT 1', [w.id]);
     res.json({ work, albums, selection: sel ? parseRow(sel, ['selected']) : null });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    serverError(res, e);
   }
 });
 
@@ -192,7 +193,7 @@ router.post('/', authRequired, async (req, res) => {
     );
     res.json({ id });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    serverError(res, e);
   }
 });
 
@@ -205,7 +206,7 @@ router.patch('/:id/public', authRequired, async (req, res) => {
     await run('UPDATE works SET is_public = ? WHERE id = ?', [next ? 1 : 0, cur.id]);
     res.json({ id: cur.id, is_public: next ? 1 : 0 });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    serverError(res, e);
   }
 });
 
@@ -229,7 +230,7 @@ router.put('/:id', authRequired, async (req, res) => {
     );
     res.json({ ok: true });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    serverError(res, e);
   }
 });
 
@@ -257,8 +258,7 @@ router.delete('/:id', authRequired, async (req, res) => {
 
     res.json({ ok: true });
   } catch (e) {
-    console.error('[works] 删除作品失败 id=' + workId, e);
-    res.status(500).json({ error: e.message || '删除失败' });
+    serverError(res, e, 'works.remove');
   }
 });
 
@@ -268,7 +268,7 @@ router.get('/:id/albums', authRequired, async (req, res) => {
   try {
     const albums = await query('SELECT * FROM albums WHERE work_id = ? ORDER BY zone, sort, id', [req.params.id]);
     res.json({ items: albums });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 批量添加照片到作品相册
@@ -306,7 +306,7 @@ router.post('/:id/albums', authRequired, async (req, res) => {
       inserted.push(id);
     }
     res.json({ ok: true, ids: inserted });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 更新单张照片排序
@@ -316,7 +316,7 @@ router.put('/albums/:id/sort', authRequired, async (req, res) => {
     if (typeof sort !== 'number') return res.status(400).json({ error: 'sort 必须为数字' });
     await run('UPDATE albums SET sort = ? WHERE id = ?', [sort, req.params.id]);
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 批量拖拽排序：接收当前分区照片 id 的有序数组，按顺序重写 sort
@@ -334,7 +334,7 @@ router.post('/:id/albums/reorder', authRequired, async (req, res) => {
       await run('UPDATE albums SET sort = ? WHERE id = ?', [i, orders[i]]);
     }
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 删除单张照片（联动删除 R2 对象）
@@ -344,7 +344,7 @@ router.delete('/albums/:id', authRequired, async (req, res) => {
     if (row && row.photo_url) deleteFromR2(row.photo_url);
     await run('DELETE FROM albums WHERE id = ?', [req.params.id]);
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 设置作品封面
@@ -353,7 +353,7 @@ router.put('/:id/cover', authRequired, async (req, res) => {
     const { cover_url } = req.body;
     await run('UPDATE works SET cover_url = ? WHERE id = ?', [cover_url || '', req.params.id]);
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 作品列表自定义排序：接收作品 id 的有序数组，按顺序重写 sort
@@ -367,7 +367,7 @@ router.post('/reorder', authRequired, async (req, res) => {
       await run('UPDATE works SET sort = ? WHERE id = ?', [i, orders[i]]);
     }
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 作品访问记录（C 端公开写入 / B 端管理读）
@@ -380,7 +380,7 @@ router.post('/:id/visits', async (req, res) => {
       [workId, visitor_name || null, visitor_phone || null, source || 'share']
     );
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 router.get('/:id/visits', authRequired, async (req, res) => {
@@ -391,7 +391,7 @@ router.get('/:id/visits', authRequired, async (req, res) => {
       [workId]
     );
     res.json({ list: rows });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 作品评论（C 端公开写入 / B 端管理读）
@@ -407,7 +407,7 @@ router.post('/:id/comments', async (req, res) => {
       [workId, author_name || null, String(content).trim()]
     );
     res.json({ ok: true, id });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 router.get('/:id/comments', authRequired, async (req, res) => {
@@ -418,7 +418,7 @@ router.get('/:id/comments', authRequired, async (req, res) => {
       [workId]
     );
     res.json({ list: rows });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 export default router;

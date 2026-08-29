@@ -12,6 +12,7 @@ import { Router } from 'express';
 import { query, get, insert, run } from '../db.js';
 import { authRequired } from '../auth.js';
 import { emitBizToStaff, BIZ_TYPE } from './mobileMessage.js';
+import { serverError } from '../httpError.js';
 
 const router = Router();
 
@@ -123,7 +124,7 @@ router.post('/', async (req, res) => {
 
     res.json({ ok: true, id });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    serverError(res, e);
   }
 });
 
@@ -148,7 +149,7 @@ router.get('/', authRequired, async (req, res) => {
     );
     res.json({ total, page, pageSize, list: rows });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    serverError(res, e);
   }
 });
 

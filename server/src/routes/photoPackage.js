@@ -5,6 +5,7 @@ import crypto from 'node:crypto';
 import { query, get, insert, run } from '../db.js';
 import { authRequired, requireRole } from '../auth.js';
 import { emitMessage } from './message.js';
+import { serverError } from '../httpError.js';
 
 const router = Router();
 const STAFF_ROLES = ['admin', 'photographer', 'finance'];
@@ -19,7 +20,7 @@ router.get('/', authRequired, async (req, res) => {
   try {
     const rows = await query('SELECT * FROM photo_package ORDER BY id DESC');
     res.json(rows);
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 新增
@@ -38,7 +39,7 @@ router.post('/', authRequired, requireRole(...STAFF_ROLES), async (req, res) => 
         token, nowISO(), nowISO()]
     );
     res.json({ ok: true, id, share_token: token });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 编辑
@@ -55,7 +56,7 @@ router.put('/:id', authRequired, requireRole(...STAFF_ROLES), async (req, res) =
         nowISO(), req.params.id]
     );
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 启用 / 禁用
@@ -66,7 +67,7 @@ router.post('/:id/toggle', authRequired, requireRole(...STAFF_ROLES), async (req
     const next = r.is_enable ? 0 : 1;
     await run('UPDATE photo_package SET is_enable = ?, update_time = ? WHERE id = ?', [next, nowISO(), req.params.id]);
     res.json({ ok: true, is_enable: !!next });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 删除（物理删除；外部访问将提示「该套系不存在」）
@@ -74,7 +75,7 @@ router.delete('/:id', authRequired, requireRole(...STAFF_ROLES), async (req, res
   try {
     await run('DELETE FROM photo_package WHERE id = ?', [req.params.id]);
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 重新生成分享链接（重置 share_token）
@@ -85,7 +86,7 @@ router.post('/:id/share', authRequired, requireRole(...STAFF_ROLES), async (req,
     const token = newToken();
     await run('UPDATE photo_package SET share_token = ?, update_time = ? WHERE id = ?', [token, nowISO(), req.params.id]);
     res.json({ ok: true, share_token: token });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // ===================== C 端公开预览 =====================
@@ -96,7 +97,7 @@ router.get('/public-list', async (req, res) => {
   try {
     const rows = await query('SELECT id, package_name, cover_image, package_desc, shoot_duration, shoot_scope, photo_total, retouch_count, original_file, price, additional_price, other_service, notice, share_token FROM photo_package WHERE is_enable = 1 ORDER BY id ASC');
     res.json({ list: rows });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 router.get('/public/:token', async (req, res) => {
@@ -115,7 +116,7 @@ router.get('/public/:token', async (req, res) => {
       retouch_count: r.retouch_count, original_file: r.original_file, price: r.price,
       additional_price: r.additional_price, other_service: r.other_service, notice: r.notice
     });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 export default router;

@@ -4,6 +4,7 @@
 import { Router } from 'express';
 import { authRequired } from '../auth.js';
 import { getConfig, setConfig } from '../configStore.js';
+import { serverError } from '../httpError.js';
 
 const router = Router();
 
@@ -14,7 +15,7 @@ router.get('/', async (req, res) => {
   try {
     const note = await getConfig('customer_order_share_default_note', '');
     res.json({ customer_order_share_default_note: note || '' });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 router.put('/', authRequired, async (req, res) => {
@@ -30,7 +31,7 @@ router.put('/', authRequired, async (req, res) => {
     if (!Object.keys(patch).length) return res.status(400).json({ error: '无有效配置项' });
     for (const [k, v] of Object.entries(patch)) await setConfig(k, v);
     res.json({ ok: true, ...patch });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 export default router;

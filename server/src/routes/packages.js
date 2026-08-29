@@ -3,6 +3,7 @@ import { Router } from 'express';
 import { query, get, insert, run } from '../db.js';
 import { authRequired, requireRole } from '../auth.js';
 import { parseRow } from '../schema.js';
+import { serverError } from '../httpError.js';
 
 const router = Router();
 const JSON_COLS = ['addons', 'marketing', 'questionnaire', 'specs', 'details', 'quick_tags', 'detail_images'];
@@ -19,7 +20,7 @@ router.get('/', authRequired, async (req, res) => {
     const w = where.length ? 'WHERE ' + where.join(' AND ') : '';
     const rows = await query('SELECT * FROM packages ' + w + ' ORDER BY sort ASC, id DESC', params);
     res.json(rows.map((r) => parseRow(r, JSON_COLS)));
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // ===== 公开接口（C 端小程序，无需登录）=====
@@ -34,7 +35,7 @@ router.get('/public', async (req, res) => {
     const w = 'WHERE ' + where.join(' AND ');
     const rows = await query('SELECT * FROM packages ' + w + ' ORDER BY sort ASC, id DESC', params);
     res.json(rows.map((r) => parseRow(r, JSON_COLS)));
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 公开套系详情
@@ -43,7 +44,7 @@ router.get('/public/:id', async (req, res) => {
     const r = await get("SELECT * FROM packages WHERE id = ? AND status = 'on'", [req.params.id]);
     if (!r) return res.status(404).json({ error: '套系不存在或未上架' });
     res.json(parseRow(r, JSON_COLS));
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 导出 Excel 备份（CSV，UTF-8 BOM，Excel 原生可开）—— 须置于 /:id 之前避免被拦截
@@ -71,7 +72,7 @@ router.get('/export', authRequired, requireRole(['admin', 'photographer']), asyn
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', 'attachment; filename="packages-backup.csv"');
     res.send(csv);
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 详情
@@ -80,7 +81,7 @@ router.get('/:id', authRequired, async (req, res) => {
     const r = await get('SELECT * FROM packages WHERE id = ?', [req.params.id]);
     if (!r) return res.status(404).json({ error: '套系不存在' });
     res.json(parseRow(r, JSON_COLS));
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 订单溯源：引用该套系的订单
@@ -92,7 +93,7 @@ router.get('/:id/orders', authRequired, async (req, res) => {
       [req.params.id]
     );
     res.json(rows);
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 创建
@@ -119,7 +120,7 @@ router.post('/', authRequired, requireRole(['admin', 'photographer']), async (re
       ]
     );
     res.json({ id });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 更新
@@ -155,7 +156,7 @@ router.put('/:id', authRequired, requireRole(['admin', 'photographer']), async (
       ]
     );
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 多规格清洗：过滤无效项，补齐字段与 id
@@ -194,7 +195,7 @@ router.post('/:id/duplicate', authRequired, requireRole(['admin', 'photographer'
       ]
     );
     res.json({ id });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 排序上下移动（dir: up=提前 / down=置后）
@@ -212,7 +213,7 @@ router.post('/:id/move', authRequired, requireRole(['admin', 'photographer']), a
     await run('UPDATE packages SET sort = ? WHERE id = ?', [b.sort, a.id]);
     await run('UPDATE packages SET sort = ? WHERE id = ?', [a.sort, b.id]);
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 套系列表自定义排序：接收套系 id 的有序数组，按顺序重写 sort
@@ -237,7 +238,7 @@ router.post('/reorder', authRequired, requireRole(['admin', 'photographer']), as
       await run('UPDATE packages SET sort = ? WHERE id = ?', [i, orders[i]]);
     }
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 统计该套系被多少订单引用（package_id 关联 或 历史快照 package_snapshot 内含该 id）
@@ -255,7 +256,7 @@ router.get('/:id/usage', authRequired, async (req, res) => {
   try {
     const count = await usedByOrders(req.params.id);
     res.json({ count, deletable: count === 0 });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 下架 / 上架（下架后 C 端不可见，后台手动录单仍可选 —— 底层强制规则 3）
@@ -266,7 +267,7 @@ router.post('/:id/status', authRequired, requireRole(['admin', 'photographer']),
     const status = (req.body && req.body.status) === 'on' ? 'on' : 'off';
     await run('UPDATE packages SET status = ? WHERE id = ?', [status, cur.id]);
     res.json({ ok: true, status });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 批量上架 / 下架（spec：支持批量上下架；下架不删除数据，C 端隐藏、后台录单仍可选）
@@ -280,7 +281,7 @@ router.post('/batch-status', authRequired, requireRole(['admin', 'photographer']
     const ph = ids.map(() => '?').join(',');
     await run(`UPDATE packages SET status = ? WHERE id IN (${ph})`, [status, ...ids]);
     res.json({ ok: true, updated: ids.length, status });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 删除（仅 admin）—— 已被订单关联的套系禁止物理删除，只能下架隐藏（底层强制规则 3 / 验收②）
@@ -297,7 +298,7 @@ router.delete('/:id', authRequired, requireRole(['admin']), async (req, res) => 
     }
     await run('DELETE FROM packages WHERE id = ?', [cur.id]);
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 export default router;

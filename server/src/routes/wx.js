@@ -3,6 +3,7 @@ import { Router } from 'express';
 import { codeToOpenid } from '../wx.js';
 import { get, insert, run } from '../db.js';
 import { signCustomerToken } from '../auth.js';
+import { serverError } from '../httpError.js';
 
 const router = Router();
 
@@ -30,7 +31,7 @@ router.post('/login', async (req, res) => {
     const token = signCustomerToken({ openid: c.openid, id: c.id });
     res.json({ openid: c.openid, customerId: c.id, token });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    serverError(res, e);
   }
 });
 
@@ -44,7 +45,7 @@ router.post('/subscribe-msg', async (req, res) => {
     // 此处仅做接收确认；实际下发请服务端定时任务用 access_token 调微信 subscribeMessage.send
     res.json({ ok: true, note: '已记录订阅意图，服务端可据此推送' });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    serverError(res, e);
   }
 });
 

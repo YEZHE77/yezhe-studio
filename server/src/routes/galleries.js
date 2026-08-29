@@ -6,6 +6,7 @@ import crypto from 'node:crypto';
 import { query, get, insert, run } from '../db.js';
 import { authRequired, requireRole } from '../auth.js';
 import { buildShareUrl, genQr } from '../shareUtil.js';
+import { serverError } from '../httpError.js';
 
 const router = Router();
 
@@ -20,7 +21,7 @@ router.get('/', authRequired, async (req, res) => {
   try {
     const rows = await query('SELECT * FROM galleries ORDER BY created_at DESC');
     res.json(rows.map((r) => ({ ...r, photos: parsePhotos(r.photos) })));
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 创建相册（同时生成 album 类型分享令牌 + 二维码）
@@ -63,7 +64,7 @@ router.post('/', authRequired, requireRole(['admin', 'photographer']), async (re
     const shareUrl = buildShareUrl(token, req);
     const qr_url = await genQr(shareUrl);
     res.json({ ok: true, id, token, share_url: shareUrl, qr_url });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 详情
@@ -72,7 +73,7 @@ router.get('/:id', authRequired, async (req, res) => {
     const r = await get('SELECT * FROM galleries WHERE id = ?', [req.params.id]);
     if (!r) return res.status(404).json({ error: '相册不存在' });
     res.json({ ...r, photos: parsePhotos(r.photos) });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 更新
@@ -94,7 +95,7 @@ router.put('/:id', authRequired, requireRole(['admin', 'photographer']), async (
     params.push(req.params.id);
     await run('UPDATE galleries SET ' + sets.join(', ') + ' WHERE id = ?', params);
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 删除（同时清理关联的 shares / share_logs）
@@ -108,7 +109,7 @@ router.delete('/:id', authRequired, requireRole(['admin', 'photographer']), asyn
     }
     await run('DELETE FROM galleries WHERE id = ?', [req.params.id]);
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 export default router;

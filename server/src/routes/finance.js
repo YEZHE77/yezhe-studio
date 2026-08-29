@@ -3,6 +3,7 @@ import { Router } from 'express';
 import { query, get } from '../db.js';
 import { authRequired } from '../auth.js';
 import { parseRow } from '../schema.js';
+import { serverError } from '../httpError.js';
 
 const router = Router();
 
@@ -42,7 +43,7 @@ router.get('/summary', authRequired, async (req, res) => {
         extra: Math.round(parseFloat(p.extra || 0) * 100) / 100
       }
     });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 周期报表：按月聚合实收/退款（?year=YYYY）
@@ -71,7 +72,7 @@ router.get('/by-month', authRequired, async (req, res) => {
       refunded: Math.round(parseFloat(r.refunded) * 100) / 100,
       net: Math.round((parseFloat(r.received) - parseFloat(r.refunded)) * 100) / 100
     })));
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 员工业绩：按执行人聚合订单数与实收
@@ -90,7 +91,7 @@ router.get('/staff', authRequired, async (req, res) => {
       totalAmount: Math.round(parseFloat(r.total_amount) * 100) / 100,
       paidAmount: Math.round(parseFloat(r.paid_amount) * 100) / 100
     })));
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 套系销量：按套系聚合订单数与营收
@@ -109,7 +110,7 @@ router.get('/packages', authRequired, async (req, res) => {
       sold: r.sold,
       revenue: Math.round(parseFloat(r.revenue) * 100) / 100
     })));
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 资金流水（明细）
@@ -124,7 +125,7 @@ router.get('/ledger', authRequired, async (req, res) => {
     const w = where.length ? 'WHERE ' + where.join(' AND ') : '';
     const rows = await query('SELECT * FROM payments ' + w + ' ORDER BY created_at DESC, id DESC', params);
     res.json(rows);
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 export default router;

@@ -10,6 +10,7 @@ import path from 'node:path';
 import { dataDir } from '../db.js';
 import { authRequired } from '../auth.js';
 import { putChunk, listChunks, mergeChunks } from '../storage.js';
+import { serverError } from '../httpError.js';
 
 const router = express.Router();
 
@@ -38,7 +39,7 @@ router.post('/chunk', authRequired, upload.single('file'), async (req, res) => {
     await putChunk(uploadId, partNo, buf);
     res.json({ ok: true, partNo });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    serverError(res, e);
   }
 });
 
@@ -50,7 +51,7 @@ router.get('/chunk/status', authRequired, async (req, res) => {
     const parts = await listChunks(uploadId);
     res.json({ parts });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    serverError(res, e);
   }
 });
 
@@ -79,7 +80,7 @@ router.post('/complete', authRequired, async (req, res) => {
     // 同步模式：mergeChunks 内部已同步完成「存储 + hash + 媒资登记」，接口直接返回 URL
     res.json({ url: result.url });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    serverError(res, e);
   }
 });
 

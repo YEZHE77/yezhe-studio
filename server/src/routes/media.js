@@ -5,6 +5,7 @@
 import { Router } from 'express';
 import { query, get, run, insert } from '../db.js';
 import { authRequired } from '../auth.js';
+import { serverError } from '../httpError.js';
 
 const router = Router();
 router.use(authRequired);
@@ -43,7 +44,7 @@ router.get('/status-columns', async (req, res) => {
     const cntMap = {};
     cnt.forEach((r) => { cntMap[String(r.status_id)] = Number(r.c); });
     res.json(rows.map((r) => ({ ...r, topicCount: cntMap[String(r.id)] || 0 })));
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // POST /api/media/status-columns  { name }
@@ -55,7 +56,7 @@ router.post('/status-columns', async (req, res) => {
     const sort = (last && Number(last.m)) != null ? Number(last.m) + 1 : 0;
     const id = await insert('INSERT INTO media_status_column (name, sort, is_default) VALUES (?,?,0)', [name, sort]);
     res.json({ ok: true, id });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // PUT /api/media/status-columns/order  { ids: [..] }  —— 拖拽调整列顺序
@@ -65,7 +66,7 @@ router.put('/status-columns/order', async (req, res) => {
     const ids = (req.body.ids || []).map((x) => Number(x)).filter((x) => Number.isFinite(x));
     for (let i = 0; i < ids.length; i++) await run('UPDATE media_status_column SET sort = ? WHERE id = ?', [i, ids[i]]);
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // PUT /api/media/status-columns/:id  { name }
@@ -75,7 +76,7 @@ router.put('/status-columns/:id', async (req, res) => {
     if (!name) return res.status(400).json({ error: '列名不能为空' });
     await run('UPDATE media_status_column SET name = ? WHERE id = ?', [name, num(req.params.id)]);
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // DELETE /api/media/status-columns/:id  —— 删除列，其下选题移动到第一个非归档列
@@ -87,7 +88,7 @@ router.delete('/status-columns/:id', async (req, res) => {
     await run('UPDATE media_topic SET status_id = ? WHERE status_id = ? AND deleted = 0', [fallback, id]);
     await run('DELETE FROM media_status_column WHERE id = ?', [id]);
     res.json({ ok: true, fallback });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // ---------- 标签 ----------
@@ -102,7 +103,7 @@ router.get('/tags', async (req, res) => {
     ins.forEach((r) => jarr(r.tags).forEach(inc));
     top.forEach((r) => jarr(r.tags).forEach(inc));
     res.json(rows.map((r) => ({ ...r, count: countOf[String(r.id)] || 0 })));
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // POST /api/media/tags  { name, color? }
@@ -114,7 +115,7 @@ router.post('/tags', async (req, res) => {
     if (ex) return res.json({ ok: true, id: ex.id, existed: true });
     const id = await insert('INSERT INTO media_tag (name, color) VALUES (?,?)', [name, str(req.body.color, '#2DB7F5')]);
     res.json({ ok: true, id });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // PUT /api/media/tags/:id  { name?, color? }
@@ -126,7 +127,7 @@ router.put('/tags/:id', async (req, res) => {
     if (name) await run('UPDATE media_tag SET name = ? WHERE id = ?', [name, id]);
     if (req.body.color != null) await run('UPDATE media_tag SET color = ? WHERE id = ?', [str(req.body.color), id]);
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // POST /api/media/tags/merge  { fromId, toId }  —— 合并：from 关联全部改指 to
@@ -150,7 +151,7 @@ router.post('/tags/merge', async (req, res) => {
     }
     await run('DELETE FROM media_tag WHERE id = ?', [num(fromId)]);
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // DELETE /api/media/tags/:id  —— 删除标签并清空关联
@@ -166,7 +167,7 @@ router.delete('/tags/:id', async (req, res) => {
     }
     await run('DELETE FROM media_tag WHERE id = ?', [num(id)]);
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // ---------- 灵感库 ----------
@@ -192,7 +193,7 @@ router.get('/inspirations', async (req, res) => {
       total = (await query(`SELECT * FROM media_inspiration ${whereSql}`, params)).filter((r) => jarr(r.tags).includes(tag)).length;
     }
     res.json({ total, page, pageSize, list: rows.map(decorInspiration) });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 function decorInspiration(r) {
@@ -259,7 +260,7 @@ router.post('/inspirations/parse', async (req, res) => {
     const platform = isXhs ? '小红书' : '抖音';
     const title = id ? `【${platform}】待补充标题（ID: ${id}）` : `【${platform}】待补充标题（${host}）`;
     res.json({ ok: true, source_type: isXhs ? 'xiaohongshu' : 'douyin', source_url: full, title, id });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // POST /api/media/inspirations —— 新增灵感（title/content 至少其一）
@@ -275,7 +276,7 @@ router.post('/inspirations', async (req, res) => {
       [title, content, str(b.source_type, 'manual'), str(b.source_url), jstr(b.painPoints || b.pain_points), num(b.pain_strength, 3), jstr(tagsOf(b)), str(b.card_color, '#2DB7F5')]
     );
     res.json({ ok: true, id });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // HTML 实体反转义
@@ -349,7 +350,7 @@ router.post('/inspirations/fetch', async (req, res) => {
     if (desc) parts.push('正文：' + desc);
     if (author.trim()) parts.push('发布账号：' + author.trim());
     res.json({ ok: true, source_type: isXhs ? 'xiaohongshu' : 'douyin', source_url: full, title, content: parts.join('\n'), author: author.trim() });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // PUT /api/media/inspirations/:id
@@ -364,13 +365,13 @@ router.put('/inspirations/:id', async (req, res) => {
       [title, content, str(b.source_type, 'manual'), str(b.source_url), jstr(b.painPoints || b.pain_points), num(b.pain_strength, 3), jstr(tagsOf(b)), str(b.card_color, '#2DB7F5'), num(req.params.id)]
     );
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // DELETE /api/media/inspirations/:id
 router.delete('/inspirations/:id', async (req, res) => {
   try { await run('UPDATE media_inspiration SET deleted = 1 WHERE id = ?', [num(req.params.id)]); res.json({ ok: true }); }
-  catch (e) { res.status(500).json({ error: e.message }); }
+  catch (e) { serverError(res, e); }
 });
 
 // POST /api/media/inspirations/:id/to-topic —— 一键复制生成选题（两份数据互相独立）
@@ -385,7 +386,7 @@ router.post('/inspirations/:id/to-topic', async (req, res) => {
       [ins.title || '未命名选题', ins.content || '', firstCol ? firstCol.id : null, ins.card_color || '#2DB7F5', ins.id, jstr(jarr(ins.tags))]
     );
     res.json({ ok: true, id: topicId });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // ---------- 选题 ----------
@@ -405,7 +406,7 @@ router.get('/topics', async (req, res) => {
       : `SELECT t.* FROM media_topic t JOIN media_status_column c ON t.status_id = c.id WHERE t.deleted = 0 AND c.name <> '归档' ORDER BY t.sort ASC, t.id ASC`;
     const rows = await query(sql);
     res.json(rows.map(decorTopic));
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // GET /api/media/topics/overview —— 首页待处理概览（过滤归档；高优先级优先，其次预计发布时间由近到远；最多 8 张）
@@ -428,7 +429,7 @@ router.get('/topics/overview', async (req, res) => {
       return (a.sort || 0) - (b.sort || 0);
     });
     res.json(sorted.slice(0, 8).map(decorTopic));
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // GET /api/media/topics/:id
@@ -437,7 +438,7 @@ router.get('/topics/:id', async (req, res) => {
     const r = await get('SELECT * FROM media_topic WHERE id = ? AND deleted = 0', [num(req.params.id)]);
     if (!r) return res.status(404).json({ error: '选题不存在' });
     res.json(decorTopic(r));
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // POST /api/media/topics —— 新建选题
@@ -464,7 +465,7 @@ router.post('/topics', async (req, res) => {
         b.inspiration_id != null ? num(b.inspiration_id) : null, jstr(tagsOf(b))]
     );
     res.json({ ok: true, id });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // PUT /api/media/topics/:id
@@ -481,7 +482,7 @@ router.put('/topics/:id', async (req, res) => {
         b.material_ref ? jstr(b.material_ref) : null, jstr(tagsOf(b)), num(req.params.id)]
     );
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // PUT /api/media/topics/:id/status —— 拖拽换列 { status_id, sort? }
@@ -498,7 +499,7 @@ router.put('/topics/:id/status', async (req, res) => {
     }
     await run('UPDATE media_topic SET status_id = ?, sort = ? WHERE id = ?', [statusId, sort, id]);
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // PUT /api/media/topics/:id/sort —— 同列内排序 { sort }
@@ -506,7 +507,7 @@ router.put('/topics/:id/sort', async (req, res) => {
   try {
     await run('UPDATE media_topic SET sort = ? WHERE id = ?', [num(req.body.sort), num(req.params.id)]);
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // DELETE /api/media/topics/:id
@@ -516,7 +517,7 @@ router.delete('/topics/:id', async (req, res) => {
     await run('UPDATE media_topic SET deleted = 1 WHERE id = ?', [id]);
     await run('DELETE FROM media_draft WHERE topic_id = ?', [id]);
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // ---------- 草稿（单选题最多 5 版，超出自动删最旧） ----------
@@ -531,7 +532,7 @@ router.get('/drafts', async (req, res) => {
       hashtags: jarr(r.hashtags),
       image_ideas: jarr(r.image_ideas)
     })));
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // POST /api/media/drafts —— 保存草稿 { topic_id, content, alt_titles?, hashtags?, image_ideas? }
@@ -555,7 +556,7 @@ router.post('/drafts', async (req, res) => {
       for (const d of del) await run('DELETE FROM media_draft WHERE id = ?', [d.id]);
     }
     res.json({ ok: true, id, version });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // PUT /api/media/drafts/:id —— 覆盖单版（编辑器回退后编辑）
@@ -565,13 +566,13 @@ router.put('/drafts/:id', async (req, res) => {
     await run('UPDATE media_draft SET content=?, alt_titles=?, hashtags=?, image_ideas=? WHERE id=?',
       [str(b.content), jstr(b.alt_titles), jstr(b.hashtags), jstr(b.image_ideas), num(req.params.id)]);
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // DELETE /api/media/drafts/:id
 router.delete('/drafts/:id', async (req, res) => {
   try { await run('DELETE FROM media_draft WHERE id = ?', [num(req.params.id)]); res.json({ ok: true }); }
-  catch (e) { res.status(500).json({ error: e.message }); }
+  catch (e) { serverError(res, e); }
 });
 
 // ---------- 分发记录 ----------
@@ -588,7 +589,7 @@ router.get('/publish-records', async (req, res) => {
       ? await query('SELECT * FROM media_publish_record WHERE topic_id = ? ' + orderBy, [topicId])
       : await query('SELECT * FROM media_publish_record ' + orderBy);
     res.json(rows);
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // POST /api/media/publish-records
@@ -603,7 +604,7 @@ router.post('/publish-records', async (req, res) => {
         num(b.likes), num(b.favorites), num(b.comments), num(b.inquiries), str(b.note)]
     );
     res.json({ ok: true, id });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // PUT /api/media/publish-records/:id
@@ -616,13 +617,13 @@ router.put('/publish-records/:id', async (req, res) => {
         num(b.likes), num(b.favorites), num(b.comments), num(b.inquiries), str(b.note), num(req.params.id)]
     );
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // DELETE /api/media/publish-records/:id
 router.delete('/publish-records/:id', async (req, res) => {
   try { await run('DELETE FROM media_publish_record WHERE id = ?', [num(req.params.id)]); res.json({ ok: true }); }
-  catch (e) { res.status(500).json({ error: e.message }); }
+  catch (e) { serverError(res, e); }
 });
 
 // ---------- 复盘报告 ----------
@@ -631,7 +632,7 @@ router.get('/reviews', async (req, res) => {
   try {
     const rows = await query('SELECT * FROM media_review ORDER BY id DESC');
     res.json(rows.map((r) => ({ ...r, record_ids: jarr(r.record_ids), pain_points: jarr(r.pain_points) })));
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // POST /api/media/reviews —— 生成复盘 { record_ids: [..], content }
@@ -644,13 +645,13 @@ router.post('/reviews', async (req, res) => {
     const id = await insert('INSERT INTO media_review (record_ids, content, pain_points) VALUES (?,?,?)',
       [jstr(ids), str(b.content), jstr(b.pain_points)]);
     res.json({ ok: true, id });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // DELETE /api/media/reviews/:id
 router.delete('/reviews/:id', async (req, res) => {
   try { await run('DELETE FROM media_review WHERE id = ?', [num(req.params.id)]); res.json({ ok: true }); }
-  catch (e) { res.status(500).json({ error: e.message }); }
+  catch (e) { serverError(res, e); }
 });
 
 // POST /api/media/reviews/:id/backflow —— 回流：复盘识别出的痛点生成新灵感 + 「高转化」标签
@@ -674,7 +675,7 @@ router.post('/reviews/:id/backflow', async (req, res) => {
       if (id) created++;
     }
     res.json({ ok: true, created, tagId });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // ---------- 对标账号库（media_competitor_account） ----------
@@ -685,7 +686,7 @@ router.get('/competitors', async (req, res) => {
   try {
     const rows = await query('SELECT * FROM media_competitor_account ORDER BY id DESC');
     res.json(rows);
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // POST /api/media/competitors —— 新增（前端解析回填后，用户手动点保存才调用）
@@ -699,7 +700,7 @@ router.post('/competitors', async (req, res) => {
       [name, String(b.home_url || '').trim(), str(b.platform), str(b.brief), str(b.manual_note), b.analyze_report ? String(b.analyze_report) : null]
     );
     res.json({ ok: true, id });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // PUT /api/media/competitors/:id —— 编辑（含 analyze_report 覆盖保存）
@@ -724,13 +725,13 @@ router.put('/competitors/:id', async (req, res) => {
     params.push(num(req.params.id));
     await run('UPDATE media_competitor_account SET ' + sets.join(', ') + ' WHERE id = ?', params);
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // DELETE /api/media/competitors/:id
 router.delete('/competitors/:id', async (req, res) => {
   try { await run('DELETE FROM media_competitor_account WHERE id = ?', [num(req.params.id)]); res.json({ ok: true }); }
-  catch (e) { res.status(500).json({ error: e.message }); }
+  catch (e) { serverError(res, e); }
 });
 
 // POST /api/media/competitors/fetch —— 单次读取账号主页公开信息（昵称/简介）；失败 422 不生成记录
@@ -783,7 +784,7 @@ router.post('/competitors/fetch', async (req, res) => {
       return res.status(422).json({ error: '账号主页解析失败，请手动填写账号基础信息' });
     }
     res.json({ ok: true, platform: isXhs ? 'xiaohongshu' : 'douyin', home_url: full, account_name: accountName, brief });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // POST /api/media/competitors/:id/analyze —— 保存 AI 深度分析报告（报告由前端 callAI 生成，此处仅入库）
@@ -795,7 +796,7 @@ router.post('/competitors/:id/analyze', async (req, res) => {
     if (!report) return res.status(400).json({ error: '分析报告不能为空' });
     await run('UPDATE media_competitor_account SET analyze_report = ? WHERE id = ?', [report, num(req.params.id)]);
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // POST /api/media/competitors/:id/pain-to-inspirations —— 报告痛点 → 灵感库
@@ -820,7 +821,7 @@ router.post('/competitors/:id/pain-to-inspirations', async (req, res) => {
       if (id) created++;
     }
     res.json({ ok: true, created, tagId });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 export default router;

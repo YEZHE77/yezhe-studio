@@ -2,6 +2,7 @@
 import { Router } from 'express';
 import { get, query } from '../db.js';
 import { authRequired } from '../auth.js';
+import { serverError } from '../httpError.js';
 
 const router = Router();
 
@@ -84,7 +85,7 @@ router.get('/', authRequired, async (req, res) => {
         albumIncome: 0
       }
     });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 export default router;

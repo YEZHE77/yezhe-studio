@@ -27,6 +27,18 @@ body {
 .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 .hide-scrollbar::-webkit-scrollbar { display: none; }
 
+/* 图片加载骨架扫光（SmartImg 组件用，验收清单 6.3） */
+@keyframes skel-sweep {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* 通用旋转（刷新按钮等） */
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
 /* 打印：仅显示 .print-order-sheet（订单/合同单据），隐藏侧边栏/顶栏/订单详情其他内容 */
 @media print {
   body * { visibility: hidden; }
@@ -67,4 +79,23 @@ body {
   .text-indigo-400 { color: #4f46e5 !important; }
   .text-purple-400 { color: #7c3aed !important; }
   .text-teal-400 { color: #0d9488 !important; }
+}
+
+/* ===== 断网全局置灰（验收清单 5.1）=====
+   断网时 utils/netStatus.js 会给 <body> 打上 data-offline="1"，
+   这里统一把可点击元素置灰并禁用交互，无需逐个页面改代码；
+   网络恢复后属性被移除，交互自动还原。 */
+body[data-offline='1'] button,
+body[data-offline='1'] a,
+body[data-offline='1'] input[type='submit'] {
+  opacity: 0.45 !important;
+  pointer-events: none !important;
+  filter: grayscale(1);
+}
+/* 例外：断网时仍需可点的元素（如"重试"、关闭弹窗），加 .allow-offline 显式放行 */
+body[data-offline='1'] button.allow-offline,
+body[data-offline='1'] a.allow-offline {
+  opacity: 1 !important;
+  pointer-events: auto !important;
+  filter: none;
 }

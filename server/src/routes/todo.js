@@ -6,6 +6,7 @@ import { Router } from 'express';
 import { query } from '../db.js';
 import { authRequired } from '../auth.js';
 import { listTodos, markTodoDone, syncOrderTodos, orderStage } from '../todo.js';
+import { serverError } from '../httpError.js';
 
 const router = Router();
 router.use(authRequired);
@@ -46,7 +47,7 @@ router.get('/', async (req, res) => {
       r.shoot_time = Array.isArray(slots) && slots.length ? slots.join(' / ') : null;
     }
     res.json({ list: rows, counts });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 router.post('/:id/done', async (req, res) => {
@@ -54,7 +55,7 @@ router.post('/:id/done', async (req, res) => {
     const ok = await markTodoDone(req.params.id);
     if (!ok) return res.status(404).json({ error: '待办不存在' });
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 export default router;

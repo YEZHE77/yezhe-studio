@@ -9,6 +9,7 @@ import path from 'node:path';
 import os from 'node:os';
 import { authRequired } from '../auth.js';
 import { saveBuffer } from '../storage.js';
+import { serverError } from '../httpError.js';
 
 const router = express.Router();
 
@@ -44,7 +45,7 @@ router.post('/upload', authRequired, upload.single('file'), async (req, res) => 
     res.json({ url: result.url });
   } catch (e) {
     if (req.file && req.file.path) { try { fs.unlinkSync(req.file.path); } catch {} }
-    res.status(500).json({ error: e.message });
+    serverError(res, e);
   }
 });
 

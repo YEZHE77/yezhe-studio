@@ -10,8 +10,12 @@ import { randomBytes } from 'node:crypto';
 import { query, get, insert, run } from '../db.js';
 import { buildCustomerOrderDetail } from './orderDetailHelper.js';
 import { emitBizToStaff, BIZ_TYPE } from './mobileMessage.js';
+import { serverError, forbiddenView } from '../httpError.js';
 
 const router = Router();
+
+// 客户专属相册链接缺失/被篡改时的提示（清单 4.1）：只引导登录，不透露订单是否存在
+const ALBUM_LINK_INVALID_MSG = '链接无效，请通过手机号登录查看您的专属相册';
 
 const COOKIE_NAME = 'c_session';
 // 会话有效期：30 天（H5 端登录态需跨站持久，刷新不丢；仅退出登录/切换账号才失效）
@@ -92,14 +96,24 @@ function extractSid(req) {
   try { return decodeURIComponent(m[1]); } catch { return m[1]; }
 }
 
-// 解析 session_id 并校验有效性，返回绑定的手机号；无效/过期返回 null
+// 解析 session_id 并校验有效性，返回绑定的手机号；无效/过期返回 null。
+// 多设备（清单 2.7）：会话查 customer_session（一对多），各设备 sid 独立，互不覆盖、互不踢下线。
+// 兼容：老库可能还没有 customer_session 表（建表在 initSchema 里，理论上必然存在），
+//       查询异常时回落到旧的 customer_user.session_id，保证升级过程中不掉登录。
 async function resolveSession(req) {
   const sid = extractSid(req);
   if (!sid) return null;
-  const row = await get('SELECT * FROM customer_user WHERE session_id = ?', [sid]);
-  if (!row) return null;
-  if (row.session_expire_at && new Date(row.session_expire_at).getTime() < Date.now()) return null;
-  return row.phone;
+  try {
+    const row = await get('SELECT phone, expire_at FROM customer_session WHERE sid = ?', [sid]);
+    if (row) {
+      if (row.expire_at && new Date(row.expire_at).getTime() < Date.now()) return null;
+      return row.phone;
+    }
+  } catch { /* 表不存在则走旧逻辑 */ }
+  const legacy = await get('SELECT phone, session_expire_at FROM customer_user WHERE session_id = ?', [sid]);
+  if (!legacy) return null;
+  if (legacy.session_expire_at && new Date(legacy.session_expire_at).getTime() < Date.now()) return null;
+  return legacy.phone;
 }
 
 function maskPhone(p) {
@@ -182,7 +196,7 @@ router.post('/reservation-submit', async (req, res) => {
 
     res.json({ ok: true, id, message: '提交成功，请等待摄影师确认' });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    serverError(res, e);
   }
 });
 
@@ -210,17 +224,22 @@ router.post('/login', async (req, res) => {
     const now = nowISO();
     const sid = randomBytes(32).toString('hex');
     const expireAt = new Date(Date.now() + COOKIE_TTL).toISOString();
+    // 客户主记录只更新「最近登录时间」，【不再覆盖 session_id】——否则新设备登录会把旧设备踢下线（清单 2.7）
     const existUser = await get('SELECT id FROM customer_user WHERE phone = ?', [phone]);
     if (existUser) {
-      await run('UPDATE customer_user SET last_login_at = ?, session_id = ?, session_expire_at = ? WHERE id = ?', [now, sid, expireAt, existUser.id]);
+      await run('UPDATE customer_user SET last_login_at = ? WHERE id = ?', [now, existUser.id]);
     } else {
-      await insert('INSERT INTO customer_user (phone, last_login_at, session_id, session_expire_at) VALUES (?,?,?,?)', [phone, now, sid, expireAt]);
+      await insert('INSERT INTO customer_user (phone, last_login_at) VALUES (?,?)', [phone, now]);
     }
+    // 本次登录生成一条独立会话：多设备可并存，各自 30 天有效期
+    await insert('INSERT INTO customer_session (sid, phone, created_at, expire_at) VALUES (?,?,?,?)', [sid, phone, now, expireAt]);
+    // 顺带清理该手机号的过期会话，避免表无限增长
+    try { await run('DELETE FROM customer_session WHERE phone = ? AND expire_at IS NOT NULL AND expire_at < ?', [phone, now]); } catch { /* 清理失败不影响登录 */ }
     setSessionCookie(res, sid);
     // 返回 sid：前端存入 localStorage 并以 Authorization: Bearer 随请求发送，刷新后登录态持久（第三方 cookie 被拦也不丢）
     res.json({ ok: true, phone: maskPhone(phone), sid });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    serverError(res, e);
   }
 });
 
@@ -230,12 +249,15 @@ router.post('/logout', async (req, res) => {
     // 优先用 Bearer token（跨站场景 cookie 可能被拦，无法随请求到达）；cookie 兜底
     const sid = extractSid(req);
     if (sid) {
-      await run('UPDATE customer_user SET session_id = NULL, session_expire_at = NULL WHERE session_id = ?', [sid]);
+      // 只销毁【当前设备】这一条会话，其它设备的登录态保持不变（清单 2.7）
+      try { await run('DELETE FROM customer_session WHERE sid = ?', [sid]); } catch { /* 忽略 */ }
+      // 兼容旧数据：老会话写在 customer_user 上时也要清掉
+      try { await run('UPDATE customer_user SET session_id = NULL, session_expire_at = NULL WHERE session_id = ?', [sid]); } catch { /* 忽略 */ }
     }
     clearSessionCookie(res);
     res.json({ ok: true });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    serverError(res, e);
   }
 });
 
@@ -247,7 +269,7 @@ router.get('/me', async (req, res) => {
     // phone 用于展示脱敏；rawPhone 用于预约页回填（仅本人可见，非敏感）
     res.json({ isLogin: true, phone: maskPhone(phone), rawPhone: phone });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    serverError(res, e);
   }
 });
 
@@ -288,6 +310,7 @@ router.get('/my-business', async (req, res) => {
         expect_time: displayExpectTime(r.expect_time),
         shoot_location: r.shoot_location || '',
         remark: r.remark || '',
+        reject_remark: r.reject_remark || '', // 拒绝原因（C 端展示）
         status: r.status,
         status_label: RESERVATION_STATUS[r.status] || r.status,
         order_id: r.order_id || null,
@@ -309,7 +332,7 @@ router.get('/my-business', async (req, res) => {
       })
     });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    serverError(res, e);
   }
 });
 
@@ -317,17 +340,22 @@ router.get('/my-business', async (req, res) => {
 router.get('/order-detail', async (req, res) => {
   try {
     const token = String(req.query.accessToken || '').trim();
-    if (!token) return res.status(400).json({ error: '缺少 accessToken' });
+    // 参数缺失 / 被篡改 / 乱码 → 引导手机号登录（清单 4.1）
+    if (!token || token === 'undefined' || token === 'null') {
+      return res.status(400).json({ error: ALBUM_LINK_INVALID_MSG });
+    }
     const o = await get('SELECT * FROM orders WHERE customer_token = ?', [token]);
-    if (!o) return res.status(404).json({ error: '订单不存在' });
-    if (o.cancelled || o.is_deleted) return res.status(404).json({ error: '订单不存在或已关闭' });
+    // 查不到 / 已取消 / 已归档：一律「您无权查看该内容」，
+    // 绝不区分「订单不存在」与「存在但不归你」，防止遍历探测（清单 2.4 / 黑名单）
+    if (!o) return forbiddenView(res);
+    if (o.cancelled || o.is_deleted) return forbiddenView(res);
     if (o.customer_token_expire_at) {
       const exp = new Date(o.customer_token_expire_at).getTime();
       if (!Number.isNaN(exp) && exp < Date.now()) return res.status(403).json({ error: '访问链接已过期，请联系商家' });
     }
     res.json(await buildCustomerOrderDetail(o));
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    serverError(res, e);
   }
 });
 

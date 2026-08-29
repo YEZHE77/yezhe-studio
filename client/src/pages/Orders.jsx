@@ -132,6 +132,11 @@ export default function Orders() {
   const [shareModal, setShareModal] = useState(false);
   const [shareBusy, setShareBusy] = useState(false);
   const [shareKind, setShareKind] = useState('album'); // album=分享订单 / survey=问卷邀请
+  const [shareOrderId, setShareOrderId] = useState(null); // 当前分享弹窗对应的订单 id（重置密钥用）
+  const [shareTip, setShareTip] = useState('');           // 分享弹窗内轻提示（替代 alert）
+  const [shareResetBusy, setShareResetBusy] = useState(false);
+  let shareTipTimer;
+  const showShareTip = (m) => { setShareTip(m); clearTimeout(shareTipTimer); shareTipTimer = setTimeout(() => setShareTip(''), 2400); };
 
   // 订单二维码悬浮弹窗（点击卡片右下角「分享订单」唤起）
   const [qrPopover, setQrPopover] = useState(null); // { orderId, qrUrl, loading, error, rect }
@@ -229,7 +234,7 @@ export default function Orders() {
     try {
       await http.put('/api/orders/' + id, { order_name: name });
       refreshOrderList({ reset: true });
-    } catch (e) { alert((e.response && e.response.data && e.response.data.error) || '重命名失败'); }
+    } catch (e) { /* 错误已由全局拦截器 toast，无需 alert */ }
   };
 
   // 软删除订单（移入回收站）
@@ -241,19 +246,19 @@ export default function Orders() {
       await http.delete('/api/orders/' + o.id);
       refreshOrderList({ reset: true });
     } catch (err) {
-      alert((err.response && err.response.data && err.response.data.error) || '删除失败');
+      /* 错误已由全局拦截器 toast，无需 alert */
     }
   };
 
   // 分享订单 / 问卷邀请：复用同一个订单分享接口，仅弹窗文案不同
   const openShareFor = async (o, kind) => {
-    setShareBusy(true); setShareKind(kind); setShare(null); setShareModal(true);
+    setShareBusy(true); setShareKind(kind); setShare(null); setShareModal(true); setShareOrderId(o.id);
     try {
       const r = await http.post('/api/orders/' + o.id + '/share');
       setShare(r.data);
     } catch (e) {
       setShareModal(false);
-      alert((e.response && e.response.data && e.response.data.error) || '生成失败');
+      /* 错误已由全局拦截器 toast，无需 alert */
     } finally { setShareBusy(false); }
   };
 
@@ -277,8 +282,23 @@ export default function Orders() {
 
   const copyShare = () => {
     if (!share) return;
-    navigator.clipboard?.writeText(share.share_url);
-    alert('链接已复制：\n' + share.share_url);
+    // 复制时拼接备注文本（清单 3.6），替代 alert
+    const text = share.share_url + (share.share_note ? '\n' + share.share_note : '');
+    navigator.clipboard?.writeText(text);
+    showShareTip('链接已复制' + (share.share_note ? '（含备注）' : ''));
+  };
+
+  // 重置分享密钥：旧链接立即失效，生成全新链接（清单 3.4 / 黑名单 6）
+  const resetShareKey = async () => {
+    if (!shareOrderId) return;
+    setShareResetBusy(true);
+    try {
+      const r = await http.post('/api/orders/' + shareOrderId + '/share-reset');
+      setShare((s) => ({ ...s, share_token: r.data.share_token, share_url: r.data.share_url, qr_url: r.data.qr_url, share_note: r.data.share_note || '' }));
+      showShareTip('密钥已重置，旧链接已失效');
+    } catch (e) {
+      showShareTip((e.response && e.response.data && e.response.data.error) || '重置失败');
+    } finally { setShareResetBusy(false); }
   };
 
   // 导出 Excel（携带当前筛选条件；后端 /api/orders/export 输出 UTF-8 BOM CSV）
@@ -619,12 +639,21 @@ export default function Orders() {
               <>
                 <img src={share.qr_url} alt="二维码" className="w-56 h-56 mx-auto rounded-lg bg-white p-2 border border-line" />
                 <div className="text-xs text-muted mt-3 break-all">{share.share_url}</div>
-                <div className="flex gap-2 justify-center mt-4">
+                {share.share_note && (
+                  <div className="text-xs text-muted mt-2 px-2 py-2 rounded bg-panel2 border border-line text-left whitespace-pre-wrap">{share.share_note}</div>
+                )}
+                <div className="flex gap-2 justify-center mt-4 flex-wrap">
                   <button onClick={copyShare} className="px-4 py-1.5 rounded text-xs" style={{ background: '#2f7cf6', color: '#fff' }}>复制链接</button>
+                  <button onClick={resetShareKey} disabled={shareResetBusy}
+                    className="px-4 py-1.5 rounded text-xs border disabled:opacity-50"
+                    style={{ background: '#ffffff', borderColor: '#e0e0e0', color: '#666666' }}>
+                    {shareResetBusy ? '重置中…' : '重置密钥'}
+                  </button>
                   <button onClick={() => setShareModal(false)}
                     className="px-4 py-1.5 rounded text-xs border"
                     style={{ background: '#ffffff', borderColor: '#e0e0e0', color: '#666666' }}>关闭</button>
                 </div>
+                {shareTip && <div className="text-xs text-emerald-500 mt-3">{shareTip}</div>}
               </>
             ) : (<div className="text-muted text-sm py-10">生成中…</div>)}
           </div>
@@ -1190,7 +1219,7 @@ function OrderCard({ order, studioLogo, onClick, onCancel }) {
       // 父组件成功后会刷新列表；失败抛错则弹窗保持，由用户决定重试或关闭
     } catch (err) {
       setBusy(false);
-      alert((err && err.message) || '作废失败');
+      /* 错误已由全局拦截器 toast，无需 alert */
     }
   };
 

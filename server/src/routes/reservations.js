@@ -5,6 +5,7 @@ import crypto from 'node:crypto';
 import { query, get, insert, run } from '../db.js';
 import { authRequired, requireRole } from '../auth.js';
 import { getConfig } from '../configStore.js';
+import { serverError } from '../httpError.js';
 
 const router = Router();
 
@@ -45,6 +46,7 @@ router.get('/', authRequired, async (req, res) => {
       expect_date: r.expect_date || '',
       shoot_location: r.shoot_location || '',
       remark: r.remark || '',
+      reject_remark: r.reject_remark || '',
       status: r.status,
       status_label: RESERVATION_STATUS[r.status] || r.status,
       order_id: r.order_id || null,
@@ -52,25 +54,32 @@ router.get('/', authRequired, async (req, res) => {
       create_time: r.create_time || ''
     })));
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    serverError(res, e);
   }
 });
 
 // ===== 修改状态（待确认 / 已沟通 / 已拒绝）=====
+// 拒绝（rejected）时可附带 reject_remark（拒绝原因），会回传 C 端客户可见。
 router.patch('/:id/status', authRequired, async (req, res) => {
   try {
     const id = parseInt(req.params.id, 10);
     const status = String((req.body && req.body.status) || '').trim();
+    const rejectRemark = String((req.body && req.body.remark) || '').trim();
     if (!['pending', 'contacted', 'rejected'].includes(status)) {
       return res.status(400).json({ error: '无效的状态' });
     }
     const r = await get('SELECT id, status FROM reservations WHERE id = ?', [id]);
     if (!r) return res.status(404).json({ error: '预约不存在' });
     if (r.status === 'converted') return res.status(400).json({ error: '该预约已转订单，无法修改状态' });
-    await run('UPDATE reservations SET status = ? WHERE id = ?', [status, id]);
+    // 拒绝时写入原因；非拒绝清空历史拒绝原因，避免 C 端展示过期原因
+    if (status === 'rejected') {
+      await run('UPDATE reservations SET status = ?, reject_remark = ? WHERE id = ?', [status, rejectRemark, id]);
+    } else {
+      await run('UPDATE reservations SET status = ?, reject_remark = ? WHERE id = ?', [status, '', id]);
+    }
     res.json({ ok: true });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    serverError(res, e);
   }
 });
 
@@ -81,7 +90,7 @@ router.post('/:id/read', authRequired, async (req, res) => {
     await run('UPDATE reservations SET is_read = 1 WHERE id = ?', [id]);
     res.json({ ok: true });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    serverError(res, e);
   }
 });
 
@@ -117,6 +126,7 @@ router.post('/:id/convert', authRequired, requireRole(['admin', 'photographer', 
 
     if (!phone) return res.status(400).json({ error: '请填写主联系手机号' });
     if (!executorName) return res.status(400).json({ error: '请选择执行人' });
+    if (!packageId) return res.status(400).json({ error: '请选择套系' }); // 套系必填（清单 1.3）
     if (!(deposit >= 0) || b.deposit === undefined || b.deposit === null || b.deposit === '') {
       return res.status(400).json({ error: '请填写定金金额' });
     }
@@ -164,7 +174,7 @@ router.post('/:id/convert', authRequired, requireRole(['admin', 'photographer', 
 
     res.json({ ok: true, order_id: orderId, order_no, access_token: customer_token });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    serverError(res, e);
   }
 });
 

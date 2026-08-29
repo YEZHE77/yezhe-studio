@@ -6,6 +6,17 @@ import Topbar from './layout/Topbar.jsx';
 import ErrorBoundary from './components/ErrorBoundary.jsx';
 import Breadcrumb from './components/Breadcrumb.jsx';
 import MobileShell from './layout/MobileShell.jsx';
+import CustomerChrome from './components/CustomerChrome.jsx';
+
+// C 端（顾客可见的公开页）路径前缀集合：微信提示条 / 断网提示条只在这些页面出现，
+// 不污染 B 端后台（避免管理员在微信里打开后台也弹出"专属访问地址"误导提示）。
+const C_END_PREFIXES = [
+  '/share/', '/s/', '/customer', '/customer-order', '/customer/query-order',
+  '/package', '/appointment', '/phone-simulator', '/home', '/my', '/w/', '/package-center',
+];
+function isCustomerPath(pathname) {
+  return C_END_PREFIXES.some((p) => pathname.startsWith(p));
+}
 
 // 移动端判定：视口宽度 < 768 视为手机；监听 resize 实时切换，不改动桌面端任何逻辑
 function useIsMobile() {
@@ -256,6 +267,7 @@ export default function App() {
         </>
       )}
     </Routes>
+    <CustomerChrome cEnd={isCustomerPath(location.pathname)} />
     </ErrorBoundary>
   );
 }

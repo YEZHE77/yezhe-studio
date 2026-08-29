@@ -2,6 +2,7 @@
 import { Router } from 'express';
 import { query, insert, run } from '../db.js';
 import { authRequired } from '../auth.js';
+import { serverError } from '../httpError.js';
 
 const router = Router();
 
@@ -10,7 +11,7 @@ router.get('/work/:workId', async (req, res) => {
   try {
     const rows = await query('SELECT * FROM albums WHERE work_id = ? ORDER BY zone, sort', [req.params.workId]);
     res.json(rows);
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 新增一张（zone: local=仅存本地路径文本；sample/final=存网络图片URL）
@@ -25,14 +26,14 @@ router.post('/work/:workId', authRequired, async (req, res) => {
       [req.params.workId, zone, b.photo_url || '', b.local_path || '', b.sort || 0]
     );
     res.json({ id });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 router.delete('/:id', authRequired, async (req, res) => {
   try {
     await run('DELETE FROM albums WHERE id=?', [req.params.id]);
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 export default router;

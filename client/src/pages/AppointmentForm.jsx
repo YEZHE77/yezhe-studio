@@ -26,10 +26,17 @@ export default function AppointmentForm() {
   const [done, setDone] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
+  const [uncertain, setUncertain] = useState(false); // 提交状态不确定（网络异常/5xx，可能服务端已落库也可能没落）
+  const [fieldErr, setFieldErr] = useState({}); // 字段级就近错误（清单 7.2）
   // 防连点：用 ref（同步可读）而非 state（异步闭包），真正挡住重渲染前的第二次点击/回车
   const submittingRef = useRef(false);
 
   const set = (k) => (v) => setForm((f) => ({ ...f, [k]: v }));
+  // 用户输入时同步清掉该字段的错误提示（就近提示，不弹全局弹窗）
+  const update = (k) => (v) => {
+    setForm((f) => ({ ...f, [k]: v }));
+    setFieldErr((fe) => (fe[k] ? { ...fe, [k]: '' } : fe));
+  };
 
   // 套系列表 + 登录态回填 + ?packageId 预选
   useEffect(() => {
@@ -55,14 +62,18 @@ export default function AppointmentForm() {
   const submit = async (e) => {
     e.preventDefault();
     if (submittingRef.current) return; // 防连点/双击重复提交（ref 同步生效，state 未及时更新前也挡住）
-    if (!form.groom_name.trim()) { setErr('请填写新郎姓名'); return; }
-    if (!form.bride_name.trim()) { setErr('请填写新娘姓名'); return; }
-    if (!form.phone.trim()) { setErr('请填写主联系手机号'); return; }
-    if (!/^1\d{10}$/.test(form.phone.trim())) { setErr('请输入正确的 11 位手机号'); return; }
-    if (form.phone_two.trim() && !/^1\d{10}$/.test(form.phone_two.trim())) { setErr('第二联系手机号格式不正确'); return; }
-    if (!form.expect_date) { setErr('请选择意向拍摄日期'); return; }
+    // 字段级就近校验（清单 7.2）：错误挂在对应字段下方，而非统一弹窗
+    const fe = {};
+    if (!form.groom_name.trim()) fe.groom_name = '请填写新郎姓名';
+    if (!form.bride_name.trim()) fe.bride_name = '请填写新娘姓名';
+    if (!form.phone.trim()) fe.phone = '请填写主联系手机号';
+    else if (!/^1\d{10}$/.test(form.phone.trim())) fe.phone = '请输入正确的 11 位手机号';
+    if (form.phone_two.trim() && !/^1\d{10}$/.test(form.phone_two.trim())) fe.phone_two = '第二联系手机号格式不正确';
+    if (!form.expect_date) fe.expect_date = '请选择意向拍摄日期';
+    setFieldErr(fe);
+    if (Object.keys(fe).length) return;
     submittingRef.current = true;
-    setBusy(true); setErr('');
+    setBusy(true); setErr(''); setUncertain(false);
     try {
       await customerHttp.post('/api/customer/reservation-submit', {
         groom_name: form.groom_name.trim(),
@@ -76,7 +87,17 @@ export default function AppointmentForm() {
         remark: form.remark.trim()
       });
       setDone(true);
-    } catch (e2) { setErr((e2.response && e2.response.data && e2.response.data.error) || '提交失败'); }
+    } catch (e2) {
+      const status = e2.response && e2.response.status;
+      // 提交状态不确定（清单 7.3）：网络异常（无响应）或服务端 5xx，可能已落库也可能未落库，
+      // 不武断报成功/失败，引导用户稍后查记录，可安全重提（后端手机号 60s 去重兜底）。
+      if (!e2.response || (status >= 500)) {
+        setUncertain(true);
+        setErr('提交状态不确定，请稍后查看预约记录；若未看到记录，可重新提交。');
+      } else {
+        setErr((e2.response && e2.response.data && e2.response.data.error) || '提交失败，请重试');
+      }
+    }
     finally { submittingRef.current = false; setBusy(false); }
   };
 
@@ -104,16 +125,24 @@ export default function AppointmentForm() {
           <div style={{ fontSize: 13, color: SUB, marginBottom: 20 }}>填写信息，摄影师将尽快与您确认</div>
           <form onSubmit={submit}>
             <div style={{ display: 'flex', gap: 12, marginBottom: 14 }}>
-              <div style={{ flex: 1 }}>
-                <input required style={inputStyle} value={form.groom_name} onChange={(e) => set('groom_name')(e.target.value)} placeholder="新郎姓名（必填）" />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <input required style={inputStyle} value={form.groom_name} onChange={(e) => update('groom_name')(e.target.value)} placeholder="新郎姓名（必填）" />
+                {fieldErr.groom_name && <div style={{ color: '#FF5A5F', fontSize: 12, marginTop: 6 }}>{fieldErr.groom_name}</div>}
               </div>
-              <div style={{ flex: 1 }}>
-                <input required style={inputStyle} value={form.bride_name} onChange={(e) => set('bride_name')(e.target.value)} placeholder="新娘姓名（必填）" />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <input required style={inputStyle} value={form.bride_name} onChange={(e) => update('bride_name')(e.target.value)} placeholder="新娘姓名（必填）" />
+                {fieldErr.bride_name && <div style={{ color: '#FF5A5F', fontSize: 12, marginTop: 6 }}>{fieldErr.bride_name}</div>}
               </div>
             </div>
 
-            <input style={{ ...inputStyle, marginBottom: 14 }} type="tel" inputMode="numeric" maxLength={11} value={form.phone} onChange={(e) => set('phone')(e.target.value.replace(/\D/g, ''))} placeholder="主联系手机号（必填）" />
-            <input style={{ ...inputStyle, marginBottom: 14 }} type="tel" inputMode="numeric" maxLength={11} value={form.phone_two} onChange={(e) => set('phone_two')(e.target.value.replace(/\D/g, ''))} placeholder="第二联系手机号（选填）" />
+            <div style={{ marginBottom: 14 }}>
+              <input style={inputStyle} type="tel" inputMode="numeric" maxLength={11} value={form.phone} onChange={(e) => update('phone')(e.target.value.replace(/\D/g, ''))} placeholder="主联系手机号（必填）" />
+              {fieldErr.phone && <div style={{ color: '#FF5A5F', fontSize: 12, marginTop: 6 }}>{fieldErr.phone}</div>}
+            </div>
+            <div style={{ marginBottom: 14 }}>
+              <input style={inputStyle} type="tel" inputMode="numeric" maxLength={11} value={form.phone_two} onChange={(e) => update('phone_two')(e.target.value.replace(/\D/g, ''))} placeholder="第二联系手机号（选填）" />
+              {fieldErr.phone_two && <div style={{ color: '#FF5A5F', fontSize: 12, marginTop: 6 }}>{fieldErr.phone_two}</div>}
+            </div>
 
             <div style={{ marginBottom: 14 }}>
               <span style={labelStyle}>意向套系</span>
@@ -127,7 +156,8 @@ export default function AppointmentForm() {
 
             <div style={{ marginBottom: 14 }}>
               <span style={labelStyle}>意向拍摄日期</span>
-              <input style={{ ...inputStyle, minWidth: 0, maxWidth: '100%' }} type="date" value={form.expect_date} onChange={(e) => set('expect_date')(e.target.value)} />
+              <input style={{ ...inputStyle, minWidth: 0, maxWidth: '100%' }} type="date" value={form.expect_date} onChange={(e) => update('expect_date')(e.target.value)} />
+              {fieldErr.expect_date && <div style={{ color: '#FF5A5F', fontSize: 12, marginTop: 6 }}>{fieldErr.expect_date}</div>}
             </div>
 
             <div style={{ marginBottom: 14 }}>
@@ -154,6 +184,12 @@ export default function AppointmentForm() {
             </div>
 
             {err && <div style={{ color: '#FF5A5F', fontSize: 12, marginBottom: 10 }}>{err}</div>}
+            {uncertain && (
+              <button type="button" onClick={() => nav('/customer/mine')}
+                style={{ width: '100%', padding: '13px 0', borderRadius: 14, background: '#fff', color: SUB, fontSize: 14, border: '1px solid #E4E4E7', cursor: 'pointer', marginBottom: 10 }}>
+                去查看预约进度
+              </button>
+            )}
             <button type="submit" disabled={busy}
               style={{ width: '100%', padding: '14px 0', borderRadius: 14, background: BRAND, color: '#fff', fontSize: 15, border: 'none', cursor: 'pointer', opacity: busy ? 0.5 : 1, boxShadow: '0 8px 20px rgba(126,205,187,0.35)' }}>
               {busy ? '提交中…' : '提交预约'}

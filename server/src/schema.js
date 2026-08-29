@@ -874,6 +874,20 @@ export async function initSchema() {
       )`;
   for (const s of CUSTOMER_USER_DDL.split(';').map((x) => x.trim()).filter(Boolean)) await run(s);
 
+  // C 端【多设备会话】表（验收清单 2.7：同一手机号在电脑 / H5 多设备同时登录，不强制踢下线）。
+  // 旧实现把 session_id 直接存在 customer_user 单列上，新设备登录会覆盖旧 session → 把旧设备踢下线。
+  // 改为一对多：每次登录生成一条独立会话记录，各设备互不影响，退出登录只销毁自己的那一条。
+  const CUSTOMER_SESSION_DDL = dialect === 'pg'
+    ? `CREATE TABLE IF NOT EXISTS customer_session (
+        sid TEXT PRIMARY KEY, phone TEXT NOT NULL,
+        created_at TIMESTAMPTZ DEFAULT now(), expire_at TEXT
+      )`
+    : `CREATE TABLE IF NOT EXISTS customer_session (
+        sid TEXT PRIMARY KEY, phone TEXT NOT NULL,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP, expire_at TEXT
+      )`;
+  for (const s of CUSTOMER_SESSION_DDL.split(';').map((x) => x.trim()).filter(Boolean)) await run(s);
+
   // C 端预约表（预约转订单体系，2026-08-17）：双手机号（phone 主 / phone_two 副）+ 意向套系 + 状态机 + 转订单绑定
   const RESERVATIONS_DDL = dialect === 'pg'
     ? `CREATE TABLE IF NOT EXISTS reservations (
@@ -893,6 +907,7 @@ export async function initSchema() {
   for (const s of RESERVATIONS_DDL.split(';').map((x) => x.trim()).filter(Boolean)) await run(s);
   await ensureColumn('reservations', 'is_read', 'INTEGER NOT NULL DEFAULT 0'); // 进入详情自动标记已读
   await ensureColumn('reservations', 'expect_time', 'TEXT'); // 意向拍摄时间 HH:MM
+  await ensureColumn('reservations', 'reject_remark', 'TEXT'); // 拒绝预约时填写的原因（C 端可见）
 
   // 合同模板表（contract_template）
   for (const s of (dialect === 'pg' ? PG_CONTRACT_TEMPLATE : SQLITE_CONTRACT_TEMPLATE).split(';').map((x) => x.trim()).filter(Boolean)) await run(s);

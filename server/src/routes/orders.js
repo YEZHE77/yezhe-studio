@@ -12,6 +12,7 @@ import { emitMessage } from './message.js';
 import { emitBizToStaff, BIZ_TYPE } from './mobileMessage.js';
 import { syncOrderTodos, generateEventTodo, archiveOrderTodos } from '../todo.js';
 import { getConfig } from '../configStore.js';
+import { serverError } from '../httpError.js';
 
 const router = Router();
 const JSON_COLS = ['package_snapshot', 'addons_snapshot', 'logs', 'phones', 'time_slots', 'extra_items', 'executors', 'order_photos'];
@@ -187,7 +188,7 @@ router.get('/', authRequired, async (req, res) => {
       total, page, pageSize,
       pages: Math.max(1, Math.ceil(total / pageSize))
     });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 到期 / 选片超时统计（顶部预警栏）
@@ -234,7 +235,7 @@ router.get('/stats', authRequired, async (req, res) => {
         toDeliver: Number(toDeliverRow.c) || 0
       }
     });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 回收站列表（仅管理员可见）
@@ -242,7 +243,7 @@ router.get('/recycle', authRequired, requireRole(['admin']), async (req, res) =>
   try {
     const rows = await query('SELECT * FROM orders WHERE is_deleted = 1 ORDER BY deleted_at DESC');
     res.json(rows.map((r) => parseRow(r, JSON_COLS)));
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 导出 Excel 兼容 CSV（UTF-8 BOM，Excel 中文正常；字段对齐 spec 订单列表列）
@@ -318,7 +319,7 @@ router.get('/export', authRequired, async (req, res) => {
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', 'attachment; filename="orders.csv"');
     res.send('\ufeff' + lines.join('\r\n'));
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 详情（含收款流水）
@@ -345,7 +346,7 @@ router.get('/:id', authRequired, async (req, res) => {
       } catch {}
     }
     res.json({ ...out, payments, packageName: pkgName, agreement_signs: agreementSigns });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 创建（自动套系快照 + 计算应收）
@@ -471,14 +472,16 @@ router.post('/', authRequired, requireRole(['admin', 'photographer', 'finance'])
     // 订单分享默认备注：建单时从系统配置默认值带入（管理员清空则不带）；单订单可后续单独覆盖
     const shareNote = await getConfig('customer_order_share_default_note', '');
     const id = await insert(
-      `INSERT INTO orders (order_no, customer_name, customer_phone, package_id, package_snapshot, addons_snapshot, status,
+      `INSERT INTO orders (order_no, customer_name, customer_phone, phone_two, package_id, package_snapshot, addons_snapshot, status,
         deposit, balance, deposit_method, balance_method, shoot_date, executor, total_amount, paid_amount, remark, logs,
         groom_name, bride_name, address,
         order_name, phones, time_slots, extra_items, executors, channel, channel_id, date_tbd, period, payment_status, customer_token,
         groom_phone, bride_phone, shoot_position, total_negatives, retouch_count, album_electronic_num, album_price, shoot_cost, quick_repair_cost, pay_cash, pay_wechat, pay_alipay, pay_account_info, contract_template_id)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
       [
-        order_no, customer_name, phones[0] || '', b.package_id || null,
+        // phone_two = 第二联系手机号：C 端登录按 customer_phone OR phone_two 匹配，
+        // 此前建单只落 phones JSON 不落该列，导致第二个号在 C 端登不进来（后台 2.1 / C端 1.2）
+        order_no, customer_name, phones[0] || '', phones[1] || '', b.package_id || null,
         JSON.stringify(package_snapshot), JSON.stringify(addons), 'deposit',
         deposit, balance, b.deposit_method || 'offline', b.balance_method || 'offline',
         shoot_date, executors.map((x) => x.name).filter(Boolean).join('、'), total, paid, b.remark || '', logs,
@@ -535,7 +538,7 @@ router.post('/', authRequired, requireRole(['admin', 'photographer', 'finance'])
     });
     // 待办：新建订单生成当前阶段待办（deposit / 已付定金）
     try { await syncOrderTodos(id); } catch (e) { console.error('[todo] 新建订单待办同步失败', e.message); }
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // —— 进度条控制：追加订单操作日志（下一步·日志步；日志文本与 11 步关键词对应） ——
@@ -550,7 +553,7 @@ router.post('/:id/logs', authRequired, requireRole(['admin', 'photographer', 'fi
     let logs = [];
     if (updated && updated.logs) { try { logs = JSON.parse(updated.logs); } catch { logs = []; } }
     res.json({ logs });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // —— 进度条控制：撤销最后一条日志（上一步·日志步） ——
@@ -563,7 +566,7 @@ router.post('/:id/logs/undo', authRequired, requireRole(['admin', 'photographer'
     logs.pop();
     await run('UPDATE orders SET logs = ? WHERE id = ?', [JSON.stringify(logs), req.params.id]);
     res.json({ logs });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 更新字段（推进阶段 / 改派 / 备注）
@@ -584,6 +587,11 @@ router.put('/:id', authRequired, requireRole(['admin', 'photographer', 'finance'
     const extrasText = keepJSON(b.extra_items, normExtras, cur.extra_items);
     const execsText = keepJSON(b.executors, normExecutors, cur.executors);
     const firstPhone = b.phones !== undefined ? (normPhones(b.phones)[0] || '') : (b.customer_phone ?? cur.customer_phone);
+    // 第二联系手机号：与 phones JSON 同步落库，保证 C 端「手机号 OR 第二手机号」登录权限实时生效
+    // （后台 2.1 / 2.2 / 七.4；此前 PUT 完全不处理该列，导致改绑/解绑第二手机号不生效）
+    const secondPhone = b.phones !== undefined
+      ? (normPhones(b.phones)[1] || '')
+      : (b.phone_two !== undefined ? (b.phone_two || '') : (cur.phone_two ?? ''));
     const execText = b.executors !== undefined
       ? normExecutors(b.executors).map((x) => x.name).filter(Boolean).join('、')
       : (b.executor ?? cur.executor);
@@ -653,14 +661,14 @@ router.put('/:id', authRequired, requireRole(['admin', 'photographer', 'finance'
       }
     }
     await run(
-      `UPDATE orders SET customer_name=?, customer_phone=?, shoot_date=?, executor=?, remark=?, status=?,
+      `UPDATE orders SET customer_name=?, customer_phone=?, phone_two=?, shoot_date=?, executor=?, remark=?, status=?,
         groom_name=?, bride_name=?, address=?, period=?,
         order_name=?, phones=?, time_slots=?, extra_items=?, executors=?, channel=?, channel_id=?, date_tbd=?, payment_status=?,
         order_photos=?, birthday=?, appointment_remark=?, internal_remark=?, external_remark=?, questionnaire_answers=?,
         groom_phone=?, bride_phone=?, shoot_position=?, total_negatives=?, retouch_count=?, album_electronic_num=?, album_price=?, shoot_cost=?, quick_repair_cost=?, pay_cash=?, pay_wechat=?, pay_alipay=?, pay_account_info=?,
         force_agreement=?, share_note=?
        WHERE id=?`,
-      [customer_name, firstPhone,
+      [customer_name, firstPhone, secondPhone,
        shoot_date, execText, b.remark ?? cur.remark, status,
        groom, bride, b.address ?? cur.address, period,
        b.order_name ?? cur.order_name, phonesText, slotsText, extrasText, execsText,
@@ -709,7 +717,7 @@ router.put('/:id', authRequired, requireRole(['admin', 'photographer', 'finance'
       }
     }
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 更换套系（仅更新当前订单的套系快照，不影响其它订单；验收⑥）
@@ -772,7 +780,7 @@ router.post('/:id/change-package', authRequired, requireRole(['admin', 'photogra
       try { await generateEventTodo(o.id, 'regen_contract', '重新生成合同', `已更换套系为「${p.name}」，原合同已失效，请重新生成合同 PDF`, 'switch'); } catch (e) { console.error('[todo] 生成待办失败', e.message); }
     }
     res.json({ ok: true, package_snapshot: snapshot, total_amount: total, balance });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 加收款（写入 payments 流水，更新 paid_amount）
@@ -807,7 +815,7 @@ router.post('/:id/payments', authRequired, requireRole(['admin', 'photographer',
       await run("UPDATE orders SET status = 'deposit' WHERE id = ?", [o.id]);
     }
     res.json({ ok: true, paymentId: pid, paid });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 软删除订单（进入回收站，可恢复；保留收款流水与选片记录，不破坏数据）
@@ -821,7 +829,7 @@ router.delete('/:id', authRequired, requireRole(['admin']), requirePerm(PERMISSI
     await releaseSchedule(o.order_no);
     if (o.shoot_date) await appendLog(o.id, `订单删除，已释放档期 ${o.shoot_date}`);
     res.json({ ok: true, scheduleReleased: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 恢复订单（移出回收站）
@@ -848,7 +856,7 @@ router.post('/:id/restore', authRequired, requireRole(['admin']), async (req, re
       }
     }
     res.json({ ok: true, scheduleOccupied, scheduleWarn });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 彻底删除（管理员，物理删除并级联收款流水与选片记录）
@@ -861,7 +869,7 @@ router.post('/:id/purge', authRequired, requireRole(['admin']), requirePerm(PERM
     await releaseSchedule(o.order_no); // 彻底删除同步释放档期
     await run('DELETE FROM orders WHERE id = ?', [o.id]);
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 作废（仅标记 cancelled，禁止物理删除）
@@ -877,7 +885,7 @@ router.post('/:id/cancel', authRequired, requireRole(['admin']), async (req, res
     // 待办：作废订单 → 归档该订单所有 pending 待办
     try { await archiveOrderTodos(o.id); } catch (e) { console.error('[todo] 归档待办失败', e.message); }
     res.json({ ok: true, scheduleReleased: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 退款（登记退款流水 + 记录退款额）
@@ -899,7 +907,7 @@ router.post('/:id/refund', authRequired, requireRole(['admin', 'finance']), requ
     await run('UPDATE orders SET refund_amount = ? WHERE id = ?', [parseFloat(agg.refunded), o.id]);
     await appendLog(o.id, `退款 ¥${amount}` + (b.note ? '：' + b.note : ''));
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 设置存储期限（原片/精修保存天数）并自动计算到期时间
@@ -918,7 +926,7 @@ router.post('/:id/storage', authRequired, requireRole(['admin', 'photographer', 
     );
     await appendLog(o.id, `设置存储期限：原片 ${raw} 天 / 精修 ${retouch} 天`);
     res.json({ ok: true, raw_expire_at: rawExp, retouch_expire_at: retouchExp });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 生成 / 刷新「客户订单查看」分享（customer_token 随机令牌，/customer-order?token= 只读查看；支持有效期 + 手动关闭）
@@ -939,7 +947,7 @@ router.post('/:id/customer-share', authRequired, requireRole(['admin', 'photogra
     if (reset) await appendLog(o.id, '重置客户订单查看链接', (req.user && req.user.username) || '');
     else await appendLog(o.id, '生成客户订单查看链接' + (expireAt ? `（有效期至 ${expireAt}）` : ''), (req.user && req.user.username) || '');
     res.json({ ok: true, customer_token: token, url, qr_url: qrUrl, expire_at: expireAt });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 关闭「客户订单查看」链接（清空 customer_token + 有效期，公开链接立即失效）
@@ -950,7 +958,7 @@ router.post('/:id/customer-share/close', authRequired, requireRole(['admin', 'ph
     await run('UPDATE orders SET customer_token = NULL, customer_token_expire_at = NULL WHERE id = ?', [o.id]);
     await appendLog(o.id, '关闭客户订单查看链接（链接已失效）', (req.user && req.user.username) || '');
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 生成 / 刷新客户影集分享二维码（公开访问，无需登录）
@@ -967,8 +975,8 @@ router.post('/:id/share', authRequired, requireRole(['admin', 'photographer', 'f
     const qrUrl = await QRCode.toDataURL(shareUrl, { width: 480, margin: 1 });
     await run('UPDATE orders SET share_token = ?, qr_url = ? WHERE id = ?', [token, qrUrl, o.id]);
     await appendLog(o.id, '生成客户影集分享二维码');
-    res.json({ ok: true, share_token: token, share_url: shareUrl, qr_url: qrUrl });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+    res.json({ ok: true, share_token: token, share_url: shareUrl, qr_url: qrUrl, share_note: o.share_note || '' });
+  } catch (e) { serverError(res, e); }
 });
 
 // 生成微信小程序风格订单二维码（用于后台「分享订单」悬浮弹窗）
@@ -987,7 +995,7 @@ router.post('/:id/mini-qr', authRequired, requireRole(['admin', 'photographer', 
     }
     const miniQrUrl = await generateMiniProgramQr(shareUrl);
     res.json({ ok: true, order_id: o.id, qr_url: miniQrUrl });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 关闭分享（清空令牌，使公开链接失效）
@@ -998,7 +1006,23 @@ router.post('/:id/unshare', authRequired, requireRole(['admin', 'photographer', 
     await run('UPDATE orders SET share_token = NULL, qr_url = NULL WHERE id = ?', [o.id]);
     await appendLog(o.id, '关闭客户影集分享');
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
+});
+
+// 重置分享密钥（验收清单 3.4 / 黑名单 6）：旧 /share/:token 链接立即失效（404），生成并写入全新 token + 二维码
+// 与「关闭分享」语义独立：关闭=链接仍在但提示已关闭；重置=旧链接作废、换出新链接。
+router.post('/:id/share-reset', authRequired, requireRole(['admin', 'photographer', 'finance']), async (req, res) => {
+  try {
+    const o = await get('SELECT * FROM orders WHERE id = ?', [req.params.id]);
+    if (!o) return res.status(404).json({ error: '订单不存在' });
+    const token = crypto.randomBytes(16).toString('hex');
+    const base = shareBaseUrl(req);
+    const shareUrl = `${base}/share/${token}`;
+    const qrUrl = await QRCode.toDataURL(shareUrl, { width: 480, margin: 1 });
+    await run('UPDATE orders SET share_token = ?, qr_url = ? WHERE id = ?', [token, qrUrl, o.id]);
+    await appendLog(o.id, '重置客户影集分享密钥');
+    res.json({ ok: true, share_token: token, share_url: shareUrl, qr_url: qrUrl, share_note: o.share_note || '' });
+  } catch (e) { serverError(res, e); }
 });
 
 // 订单改期/取消申请列表（B 端查看）
@@ -1006,7 +1030,7 @@ router.get('/:id/requests', authRequired, requireRole(['admin', 'photographer', 
   try {
     const rows = await query('SELECT * FROM order_requests WHERE order_id = ? ORDER BY id DESC', [req.params.id]);
     res.json(rows);
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 审核申请（通过/拒绝；通过后仅标记状态，实际改期/取消仍由商家在订单页手动操作）
@@ -1021,7 +1045,7 @@ router.post('/:id/requests/:reqId/handle', authRequired, requireRole(['admin', '
     const typeLabel = rq.type === 'reschedule' ? '改期申请' : '取消申请';
     await appendLog(o.id, `${typeLabel}${status === 'approved' ? '已通过' : '已拒绝'}${req.body.note ? '：' + req.body.note : ''}`);
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 订单下载记录（B 端查看：合同/作品下载留痕）
@@ -1029,7 +1053,7 @@ router.get('/:id/downloads', authRequired, requireRole(['admin', 'photographer',
   try {
     const rows = await query('SELECT * FROM download_logs WHERE order_id = ? ORDER BY created_at DESC, id DESC', [req.params.id]);
     res.json({ list: rows });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 export default router;

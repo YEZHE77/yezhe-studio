@@ -27,6 +27,34 @@ customerHttp.interceptors.request.use((config) => {
   return config;
 });
 
+// ===== 登录回跳（验收清单 2.1 / 黑名单第 2 条）=====
+// 需求：未登录直接访问需鉴权的页面时，要记住原 URL，登录成功后回到【原页面】，
+//       而不是一律跳到「我的」首页。
+// 用法：受保护页面在跳转登录前调用 goLogin(nav)，会把当前 pathname+search 存到 ?redirect=；
+//       CustomerLogin 登录成功后读该参数回跳（默认 /customer/mine）。
+export const CUSTOMER_HOME = '/customer/mine';
+
+export function goLogin(nav, currentPath) {
+  let target = currentPath;
+  if (!target && typeof window !== 'undefined' && window.location) {
+    target = window.location.pathname + (window.location.search || '');
+  }
+  // 安全：只接受站内路径，避免 ?redirect= 被构造成外部钓鱼地址（开放重定向）
+  const safe = target && /^\/[^/]/.test(target) && !/^\/\//.test(target) ? target : CUSTOMER_HOME;
+  nav('/customer/login?redirect=' + encodeURIComponent(safe));
+}
+
+// 解析 redirect 参数（同样做站内校验）
+export function resolveRedirect(raw) {
+  try {
+    const v = String(raw || '').trim();
+    if (!v) return CUSTOMER_HOME;
+    const decoded = decodeURIComponent(v);
+    if (/^\/[^/]/.test(decoded) && !/^\/\//.test(decoded)) return decoded;
+  } catch { /* 解码失败回落默认 */ }
+  return CUSTOMER_HOME;
+}
+
 export function maskPhone(p) {
   const s = String(p || '').trim();
   if (/^1\d{10}$/.test(s)) return s.slice(0, 3) + '****' + s.slice(7);

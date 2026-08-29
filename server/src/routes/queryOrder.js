@@ -8,6 +8,7 @@
 import { Router } from 'express';
 import { query, get } from '../db.js';
 import { signQueryToken, verifyQueryToken } from '../auth.js';
+import { serverError, forbiddenView } from '../httpError.js';
 
 const router = Router();
 
@@ -145,7 +146,7 @@ router.post('/search', async (req, res) => {
     const orders = rows.map((o) => buildSummary(o, showPrice));
     res.json({ token, phone, showPrice, portfolioUrl: studio.portfolioUrl || '', orders, count: orders.length });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    serverError(res, e);
   }
 });
 
@@ -166,9 +167,10 @@ router.get('/order/:orderId', async (req, res) => {
        WHERE o.id = ? AND o.cancelled = 0 AND o.is_deleted = 0`,
       [req.params.orderId]
     );
-    if (!o) return res.status(404).json({ error: '订单不存在' });
-    // 行级隔离：订单手机号必须与查询会话绑定手机号完全一致，防遍历
-    if (String(o.customer_phone || '') !== phone) return res.status(403).json({ error: '无权查看该订单' });
+    // 查不到 与 非本人：返回完全相同的文案与状态码，避免「订单是否存在」被探测（清单 2.4 / 黑名单）
+    // 行级隔离仍然生效：订单手机号必须与查询会话绑定手机号完全一致
+    if (!o) return forbiddenView(res);
+    if (String(o.customer_phone || '') !== phone) return forbiddenView(res);
 
     const studio = await readStudioSetting();
     const showPrice = !!studio.showPriceToCustomer;
@@ -176,7 +178,7 @@ router.get('/order/:orderId', async (req, res) => {
     summary.contract_available = !!(o.contract_file_key && !Number(o.contract_invalid));
     res.json(summary);
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    serverError(res, e);
   }
 });
 

@@ -5,8 +5,18 @@ import { Router } from 'express';
 import bcrypt from 'bcryptjs';
 import { query, get, insert } from '../db.js';
 import { peekUser } from '../auth.js';
+import { serverError } from '../httpError.js';
 
 const router = Router();
+
+// ===== 分享链接错误文案（严格对齐验收清单三.2 / 三.3 / 三.4 / 三.5）=====
+// 这三个语义必须分开，不能混用：
+//   SHARE_INVALID_MSG     链接失效：token 被篡改 / 已重置 / 合集已删除 / 已过期
+//   SHARE_CLOSED_MSG      合集已关闭对外分享（链接仍然存在，只是被商家关掉了）
+//   SHARE_BAD_FORMAT_MSG  链接格式不正确：参数丢失、被截断、乱码
+export const SHARE_INVALID_MSG = '该分享链接已失效，请向摄影师获取最新链接';
+export const SHARE_CLOSED_MSG = '该合集已关闭对外分享';
+export const SHARE_BAD_FORMAT_MSG = '链接格式不正确，请复制完整链接打开';
 
 // 访问留痕
 async function logAccess(token, action, detail, req) {
@@ -248,9 +258,18 @@ async function buildAlbumPayload(galleryId) {
   };
 }
 
+// ===== 安全约束（验收清单 C端 1.9 / 4.2，后台 2.3，两端黑名单第 3 条）=====
+// 客户专属相册【禁止】通过 share-key 访问，只能手机号登录进入。
+// 原因：share-key 是随机公开密钥，一旦客户影集可被 share-key 直开，
+// 等于把客户底片/成片暴露给任何拿到链接的人（转发、泄露、爬虫皆可直接查看）。
+// 因此：
+//   1) buildPayload 不再支持 'order' 类型（返回 null → 走统一的「链接失效」提示）；
+//   2) 旧版 orders.share_token 兜底（legacyOrderShare）一并移除；
+//   3) 客户查看自己的订单与影集，请走 /customer/login 手机号登录，或 /customer-order?token=customer_token。
+// 注：orders.customer_token 是订单专属令牌（与 share-key 不同体系），由商家主动发给该客户，
+//     仍按原逻辑在 customerMine.js /order-detail 中校验，不受此处影响。
 async function buildPayload(type, refId) {
   switch (type) {
-    case 'order': return buildOrderPayload(refId);
     case 'work': return buildWorkPayload(refId);
     case 'package': return buildPackagePayload(refId);
     case 'schedule': return buildSchedulePayload(refId);
@@ -258,18 +277,6 @@ async function buildPayload(type, refId) {
     case 'album': return buildAlbumPayload(refId);
     default: return null;
   }
-}
-
-// 兜底：旧订单分享（orders.share_token 字段仍存在的旧链接）仍可用
-async function legacyOrderShare(token) {
-  const o = await get(
-    'SELECT * FROM orders WHERE share_token = ? AND is_deleted = 0 AND cancelled = 0',
-    [token]
-  );
-  if (!o) return null;
-  const data = await buildOrderPayload(o.id);
-  if (!data) return null;
-  return { type: 'order', title: `${data.order.customer_name} 的专属影集`, expire_at: null, locked: false, data };
 }
 
 // 统一信封
@@ -291,19 +298,20 @@ function envelope(share, data, locked) {
 // GET /api/share/:token —— 公开访问（无密码或已前置校验）
 router.get('/:token', async (req, res) => {
   try {
-    const token = req.params.token;
-    let share = await get('SELECT * FROM shares WHERE token = ?', [token]);
-
-    // 兜底旧订单分享链接
-    if (!share) {
-      const legacy = await legacyOrderShare(token);
-      if (!legacy) return res.status(404).json({ error: '分享链接无效或已失效' });
-      await logAccess(token, 'view', 'legacy-order', req);
-      return res.json(envelope({ token, type: legacy.type, title: legacy.title, expire_at: null }, legacy.data, false));
+    const token = String(req.params.token || '').trim();
+    // 参数缺失 / 乱码 / 被截断：统一提示「链接格式不正确，请复制完整链接打开」（清单 3.5）
+    if (!token || token === 'undefined' || token === 'null' || !/^[A-Za-z0-9_-]{6,64}$/.test(token)) {
+      return res.status(400).json({ error: SHARE_BAD_FORMAT_MSG });
     }
 
-    if (share.disabled) return res.status(403).json({ error: '该分享已被关闭' });
-    if (isExpired(share.expire_at)) return res.status(403).json({ error: '该分享已过期' });
+    const share = await get('SELECT * FROM shares WHERE token = ?', [token]);
+    // 查不到（链接被篡改 / 已重置 / 合集已删除）→ 统一「链接失效」文案（清单 3.2 / 3.4 / 3.5）
+    // 注：旧版 orders.share_token 兜底已移除（客户相册禁止 share-key 访问）
+    if (!share) return res.status(404).json({ error: SHARE_INVALID_MSG });
+
+    // 关闭分享（后台 is_share_open=false 语义，底层存 shares.disabled）
+    if (share.disabled) return res.status(403).json({ error: SHARE_CLOSED_MSG });
+    if (isExpired(share.expire_at)) return res.status(403).json({ error: SHARE_INVALID_MSG });
 
     const isStaff = !!peekUser(req); // 商家后台进入 → 跳过相册密码锁
 
@@ -346,18 +354,21 @@ router.get('/:token', async (req, res) => {
     await logAccess(token, 'view', null, req);
     res.json(envelope(share, data, false));
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    serverError(res, e);
   }
 });
 
 // POST /api/share/:token/verify —— 密码校验（无登录）
 router.post('/:token/verify', async (req, res) => {
   try {
-    const token = req.params.token;
+    const token = String(req.params.token || '').trim();
+    if (!token || token === 'undefined' || token === 'null' || !/^[A-Za-z0-9_-]{6,64}$/.test(token)) {
+      return res.status(400).json({ error: SHARE_BAD_FORMAT_MSG });
+    }
     const share = await get('SELECT * FROM shares WHERE token = ?', [token]);
-    if (!share) return res.status(404).json({ error: '分享链接无效或已失效' });
-    if (share.disabled) return res.status(403).json({ error: '该分享已被关闭' });
-    if (isExpired(share.expire_at)) return res.status(403).json({ error: '该分享已过期' });
+    if (!share) return res.status(404).json({ error: SHARE_INVALID_MSG });
+    if (share.disabled) return res.status(403).json({ error: SHARE_CLOSED_MSG });
+    if (isExpired(share.expire_at)) return res.status(403).json({ error: SHARE_INVALID_MSG });
 
     const password = (req.body && req.body.password) || '';
     // 优先 share 级密码；否则若 type=work 且开启相册锁，则校验相册密码
@@ -380,11 +391,11 @@ router.post('/:token/verify', async (req, res) => {
     }
 
     const data = await buildPayload(share.type, share.ref_id);
-    if (!data) return res.status(404).json({ error: '分享内容不存在或已失效' });
+    if (!data) return res.status(404).json({ error: SHARE_INVALID_MSG });
     await logAccess(token, 'view', 'password', req);
     res.json(envelope(share, data, false));
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    serverError(res, e);
   }
 });
 

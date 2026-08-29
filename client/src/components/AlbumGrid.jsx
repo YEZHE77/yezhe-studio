@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { img } from '../api.js';
 import GalleryAlbum from './GalleryAlbum.jsx';
+import SmartImg from './SmartImg.jsx';
 
 const TEAL = 'var(--brand-green)';
 const MRED = '#FA5151';
@@ -23,9 +24,13 @@ export default function AlbumGrid({ gallery, onBack, albumId }) {
   const { title, subtitle, category, albumCopy, cover_url, photos = [], brand_name, brand_slogan, brand_intro, brand_logo, views } = gallery;
   const [view, setView] = useState('single'); // single 单列大图纵向滑动（默认） | grid 网格总览
   const [gridLayout, setGridLayout] = useState(null); // 宫格瀑布流布局：{ left:[原始索引], right:[原始索引] }，null 时用奇偶双列兜底
+  const [ratios, setRatios] = useState([]); // 每张照片实测宽高比（宽/高），加载前预留高度，避免骨架塌陷/跳动
   const [full, setFull] = useState(-1);     // >=0 打开全屏查看的起始索引
   const [toast, setToast] = useState('');
   const [shareOpen, setShareOpen] = useState(false);
+  // 多图加载失败计数（清单 6.2）：>=2 张失败时顶部提示「部分图片加载异常」
+  const [failCount, setFailCount] = useState(0);
+  const handleFail = () => setFailCount((c) => c + 1);
   // 幻灯片：独立黑底播放 + BGM
   const [slideOpen, setSlideOpen] = useState(false);
   const [slideIdx, setSlideIdx] = useState(0);
@@ -148,37 +153,42 @@ export default function AlbumGrid({ gallery, onBack, albumId }) {
     window.location.href = window.location.origin + '/customer/book';
   };
 
-  // 宫格瀑布流：预加载极小缩略图（?w=40）测量每张真实宽高比 → 贪心分配两列（每张放入当前较矮的列），
-  // 两列底部尽量齐平、消除"右侧大量空白"；第 1 张强制左列，之后按高度平衡分配（顺序大致 1左2右 交替，高度平衡时偶尔连续同列）。
-  // 测量完成前 gridLayout 为 null → 渲染兜底的奇偶双列，避免等待期空白。
+  // 测量每张照片真实宽高比（?w=40 极小缩略图），用于加载前预留高度（清单 6.3 骨架不塌陷）；
+  // 同时重置失败计数。photos 变化时才重新测量。
   useEffect(() => {
-    if (view !== 'grid' || !photos.length) { setGridLayout(null); return; }
+    setFailCount(0);
+    if (!photos.length) { setRatios([]); return; }
     let cancelled = false;
-    const ratios = new Array(photos.length).fill(1.4); // 默认按 3:4 竖图比例兜底
+    const r = new Array(photos.length).fill(0.75); // 默认 3:4 竖图兜底
     let done = 0;
     const finish = () => {
       done += 1;
-      if (done >= photos.length && !cancelled) {
-        const left = [], right = [];
-        let lh = 0, rh = 0;
-        photos.forEach((_, i) => {
-          const h = ratios[i] || 1.4;
-          if (left.length === 0 || lh <= rh) { left.push(i); lh += h; }
-          else { right.push(i); rh += h; }
-        });
-        setGridLayout({ left, right });
-      }
+      if (done >= photos.length && !cancelled) setRatios(r.slice());
     };
     photos.forEach((p, i) => {
       const base = img(p);
       if (!base) { finish(); return; }
       const im = new Image();
-      im.onload = () => { if (!cancelled && im.naturalWidth > 0) ratios[i] = im.naturalHeight / im.naturalWidth; finish(); };
+      im.onload = () => { if (!cancelled && im.naturalWidth > 0) r[i] = im.naturalWidth / im.naturalHeight; finish(); };
       im.onerror = finish;
       im.src = base + (base.includes('?') ? '&w=40' : '?w=40');
     });
     return () => { cancelled = true; };
-  }, [view, photos]);
+  }, [photos]);
+
+  // 宫格瀑布流：用实测宽高比贪心分配两列（每张放入当前较矮的列），两列底部尽量齐平。
+  // 测量未完成时（gridLayout=null）用奇偶双列兜底；仅 grid 视图需要。
+  useEffect(() => {
+    if (view !== 'grid' || !photos.length) { setGridLayout(null); return; }
+    const left = [], right = [];
+    let lh = 0, rh = 0;
+    photos.forEach((_, i) => {
+      const h = (ratios[i] ? 1 / ratios[i] : 4 / 3); // 高度占比 = 1/ratio
+      if (left.length === 0 || lh <= rh) { left.push(i); lh += h; }
+      else { right.push(i); rh += h; }
+    });
+    setGridLayout({ left, right });
+  }, [view, photos, ratios]);
 
   // 切换视图并尽量保留滚动位置（整页滚动，用 window.scrollY）
   const switchView = (v) => {
@@ -204,6 +214,21 @@ export default function AlbumGrid({ gallery, onBack, albumId }) {
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
         </button>
       </div>
+
+      {/* 多图加载失败顶部提示（清单 6.2）：>=2 张照片加载异常时悬浮提示，引导检查网络/刷新 */}
+      {failCount >= 2 && photos.length > 1 && (
+        <div
+          role="alert"
+          style={{
+            position: 'fixed', top: 'calc(8px + env(safe-area-inset-top))', left: '50%', transform: 'translateX(-50%)',
+            zIndex: 55, background: 'rgba(229,72,77,0.96)', color: '#fff', fontSize: 13,
+            padding: '8px 16px', borderRadius: 20, boxShadow: '0 4px 16px rgba(0,0,0,0.18)',
+            whiteSpace: 'nowrap', maxWidth: '92vw', overflow: 'hidden', textOverflow: 'ellipsis',
+          }}
+        >
+          部分图片加载异常，请检查网络或稍后刷新
+        </div>
+      )}
 
       {/* 封面：原比例适配显示（横版/竖版/方版均按图本身比例，宽 100%、高 auto；极端长竖图以 85vh 兜底，contain 居中不裁切） */}
       <div className="w-full" style={{ background: '#1a1a1a', display: 'flex', alignItems: 'center', justifyContent: 'center', maxHeight: '85vh', overflow: 'hidden' }}>
@@ -251,9 +276,20 @@ export default function AlbumGrid({ gallery, onBack, albumId }) {
               right: photos.map((_, i) => i).filter((i) => i % 2 === 1),
             };
             const renderThumb = (idx) => (
-              <div key={idx} role="button" tabIndex={0} onClick={() => setFull(idx)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setFull(idx); } }} style={{ width: '100%', overflow: 'hidden', background: '#f5f5f5', cursor: 'pointer' }}>
-                <img src={img(photos[idx], 'thumb')} alt="" style={{ width: '100%', height: 'auto', display: 'block' }} loading="lazy" onError={(e) => { e.currentTarget.style.opacity = '0.3'; }} />
-              </div>
+              <SmartImg
+                key={idx}
+                src={img(photos[idx], 'thumb')}
+                alt=""
+                ratio={ratios[idx] || 0.75}
+                loading="lazy"
+                onClick={() => setFull(idx)}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setFull(idx); } }}
+                role="button"
+                tabIndex={0}
+                onFail={handleFail}
+                style={{ cursor: 'pointer' }}
+                imgStyle={{ objectFit: 'cover' }}
+              />
             );
             return (
               <div style={{ display: 'flex', gap: 2, alignItems: 'flex-start' }}>
@@ -270,9 +306,20 @@ export default function AlbumGrid({ gallery, onBack, albumId }) {
           // 单列大图纵向滑动（默认）：整张铺满屏宽、原图直角、照片间距 2px、横竖版自适应；div 容器避免 button UA 灰底
           <div>
             {photos.map((p, i) => (
-              <div key={i} role="button" tabIndex={0} onClick={() => setFull(i)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setFull(i); } }} style={{ display: 'block', width: '100%', padding: 0, border: 'none', borderRadius: 0, overflow: 'hidden', marginBottom: 2, background: '#f5f5f5', cursor: 'pointer' }}>
-                <img src={img(p, 'preview')} alt="" style={{ width: '100%', height: 'auto', display: 'block' }} loading="lazy" />
-              </div>
+              <SmartImg
+                key={i}
+                src={img(p, 'preview')}
+                alt=""
+                ratio={ratios[i] || 0.75}
+                loading="lazy"
+                onClick={() => setFull(i)}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setFull(i); } }}
+                role="button"
+                tabIndex={0}
+                onFail={handleFail}
+                style={{ marginBottom: 2, cursor: 'pointer' }}
+                imgStyle={{ objectFit: 'contain' }}
+              />
             ))}
           </div>
         )}

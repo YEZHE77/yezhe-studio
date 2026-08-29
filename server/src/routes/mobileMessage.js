@@ -7,6 +7,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { query, get, insert, run, dataDir } from '../db.js';
 import { authRequired } from '../auth.js';
+import { serverError } from '../httpError.js';
 
 const router = Router();
 
@@ -72,7 +73,7 @@ router.get('/list', authRequired, async (req, res) => {
       [...params, pageSize, (page - 1) * pageSize]
     );
     res.json({ list: rows, total: Number(total) || 0, page, pageSize });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 未读数量（底部 Tab 角标：count = 全部未读；移动端消息分类角标：byCategory = reserve/order/system）
@@ -92,7 +93,7 @@ router.get('/unread-count', authRequired, async (req, res) => {
         system: Number(system) || 0
       }
     });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 全部标为已读（可选 biz_type / sub_type / sub_type_not 限定范围，供订单消息页「批量标记已读」）
@@ -109,7 +110,7 @@ router.put('/read-all', authRequired, async (req, res) => {
     if (subTypeNot) { where.push('(sub_type IS NULL OR sub_type != ?)'); params.push(subTypeNot); }
     await run(`UPDATE biz_message SET is_read = 1 WHERE ${where.join(' AND ')}`, params);
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 单条标记已读（订单消息页点击跳转前调用）
@@ -120,7 +121,7 @@ router.put('/:messageId/read', authRequired, async (req, res) => {
     if (!m) return res.status(404).json({ error: '消息不存在' });
     await run('UPDATE biz_message SET is_read = 1 WHERE id = ?', [m.id]);
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 清空消息（可选 biz_type / sub_type / sub_type_not 限定范围，供订单消息页「清空消息」）
@@ -137,7 +138,7 @@ router.delete('/clear', authRequired, async (req, res) => {
     if (subTypeNot) { where.push('(sub_type IS NULL OR sub_type != ?)'); params.push(subTypeNot); }
     await run(`DELETE FROM biz_message WHERE ${where.join(' AND ')}`, params);
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 归档 / 取消归档（PC 端消息中心）
@@ -149,7 +150,7 @@ router.post('/:messageId/archive', authRequired, async (req, res) => {
     const next = m.is_archived ? 0 : 1;
     await run('UPDATE biz_message SET is_archived = ? WHERE id = ?', [next, req.params.messageId]);
     res.json({ ok: true, archived: !!next });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 下载备份文件（system 类型消息 biz_id 存文件名；安全校验防路径穿越）
@@ -163,7 +164,7 @@ router.get('/backup/:filename', authRequired, async (req, res) => {
     res.setHeader('Content-Type', 'application/json; charset=utf-8');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
     res.send(fs.readFileSync(filePath));
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 单条消息详情（进入即标记已读）
@@ -209,7 +210,7 @@ router.get('/:messageId', authRequired, async (req, res) => {
         result.biz_exist = true;
     }
     res.json(result);
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 删除单条消息
@@ -220,7 +221,7 @@ router.delete('/:messageId', authRequired, async (req, res) => {
     if (!m) return res.status(404).json({ error: '消息不存在' });
     await run('DELETE FROM biz_message WHERE id = ?', [m.id]);
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 export default router;

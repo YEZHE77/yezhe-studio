@@ -6,6 +6,7 @@ import bcrypt from 'bcryptjs';
 import { query, get, insert, run } from '../db.js';
 import { authRequired, requireRole } from '../auth.js';
 import { buildShareUrl, genQr } from '../shareUtil.js';
+import { serverError } from '../httpError.js';
 
 const router = Router();
 
@@ -90,7 +91,7 @@ router.post('/', authRequired, requireRole(['admin', 'photographer', 'finance'])
       disabled: 0
     });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    serverError(res, e);
   }
 });
 
@@ -112,7 +113,7 @@ router.get('/', authRequired, async (req, res) => {
       password_hash: undefined
     })));
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    serverError(res, e);
   }
 });
 
@@ -125,7 +126,36 @@ router.post('/:token/toggle', authRequired, requireRole(['admin', 'photographer'
     await run('UPDATE shares SET disabled = ? WHERE token = ?', [disabled, req.params.token]);
     res.json({ ok: true, disabled });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    serverError(res, e);
+  }
+});
+
+// 重置 share-key（验收清单 3.4 / 七.3，黑名单第 6 条）
+// ⚠️ 与「关闭分享」是两个完全独立的语义，不可混淆：
+//   关闭分享（toggle） = 链接仍然存在，访客打开提示「该合集已关闭对外分享」，商家可随时再打开；
+//   重置密钥（reset）  = 旧链接【立即失效】（再打开提示「该分享链接已失效，请向摄影师获取最新链接」），
+//                        并返回一条全新链接；适用于链接已外泄、需要作废旧地址的场景。
+router.post('/:token/reset', authRequired, requireRole(['admin', 'photographer', 'finance']), async (req, res) => {
+  try {
+    const oldToken = req.params.token;
+    const s = await get('SELECT * FROM shares WHERE token = ?', [oldToken]);
+    if (!s) return res.status(404).json({ error: '分享不存在' });
+
+    const newToken = crypto.randomBytes(16).toString('hex');
+    await run('UPDATE shares SET token = ? WHERE token = ?', [newToken, oldToken]);
+    // 访问留痕随分享记录迁移到新 token：后台仍能翻看该分享的历史访问记录（清单 3.7）
+    try { await run('UPDATE share_logs SET token = ? WHERE token = ?', [newToken, oldToken]); } catch { /* 留痕迁移失败不阻断重置 */ }
+    // 旧版订单分享字段同步（历史数据兼容）
+    if (s.type === 'order' && s.ref_id) {
+      try { await run('UPDATE orders SET share_token = ? WHERE id = ?', [newToken, s.ref_id]); } catch { /* 老字段不存在则忽略 */ }
+    }
+
+    const shareUrl = buildShareUrl(newToken, req);
+    let qr_url = '';
+    try { qr_url = await genQr(shareUrl); } catch { /* 二维码失败不影响返回链接 */ }
+    res.json({ ok: true, token: newToken, share_url: shareUrl, qr_url, title: s.title || '' });
+  } catch (e) {
+    serverError(res, e);
   }
 });
 
@@ -142,7 +172,7 @@ router.delete('/:token', authRequired, requireRole(['admin', 'photographer', 'fi
     }
     res.json({ ok: true });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    serverError(res, e);
   }
 });
 
@@ -155,7 +185,7 @@ router.get('/:token/logs', authRequired, async (req, res) => {
     );
     res.json(rows);
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    serverError(res, e);
   }
 });
 

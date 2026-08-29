@@ -2,6 +2,7 @@
 import { Router } from 'express';
 import { query, get, insert, run } from '../db.js';
 import { authRequired, requireRole } from '../auth.js';
+import { serverError } from '../httpError.js';
 
 const router = Router();
 
@@ -12,7 +13,7 @@ router.get('/', async (req, res) => {
       `SELECT id, name, kind, sort, preset FROM categories WHERE deleted=0 AND is_active=1 ORDER BY sort, id`
     );
     res.json(rows);
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 管理列表：登录商户可见「全部未删除」分类（含被禁用的，便于重新启用），预设分类带 preset 标记
@@ -22,7 +23,7 @@ router.get('/manage', authRequired, requireRole('admin'), async (req, res) => {
       `SELECT id, name, kind, sort, is_active, preset FROM categories WHERE deleted=0 ORDER BY sort, id`
     );
     res.json(rows);
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 新增自定义分类：默认启用、非预设
@@ -37,7 +38,7 @@ router.post('/', authRequired, requireRole('admin'), async (req, res) => {
       [name, kind, sort]
     );
     res.json({ id });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 编辑分类：可改名 / 调整排序 / 启停；预设分类允许改名与禁用，但不在此处被删除
@@ -53,7 +54,7 @@ router.put('/:id', authRequired, requireRole('admin'), async (req, res) => {
     params.push(id);
     await run(`UPDATE categories SET ${fields.join(', ')} WHERE id=?`, params);
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 删除分类：预设分类禁止删除；自定义分类软删（deleted=1），已绑定作品不删除，可重新分配
@@ -65,7 +66,7 @@ router.delete('/:id', authRequired, requireRole('admin'), async (req, res) => {
     if (cat.preset === 1) return res.status(400).json({ error: '预设分类不可删除，可禁用代替删除' });
     await run('UPDATE categories SET deleted=1 WHERE id=?', [id]);
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 export default router;

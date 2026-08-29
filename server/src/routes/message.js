@@ -4,6 +4,7 @@
 import { Router } from 'express';
 import { query, get, insert, run } from '../db.js';
 import { authRequired } from '../auth.js';
+import { serverError } from '../httpError.js';
 
 const router = Router();
 const DEDUP_WINDOW_MS = 5 * 60 * 1000;
@@ -84,7 +85,7 @@ router.get('/', authRequired, async (req, res) => {
       params
     );
     res.json(rows);
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // B 端：未读统计（红点角标，多设备同步）
@@ -96,7 +97,7 @@ router.get('/unread-count', authRequired, async (req, res) => {
       [uid]
     );
     res.json({ count: Number(r.c) || 0 });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 标记单条已读
@@ -104,7 +105,7 @@ router.post('/:id/read', authRequired, async (req, res) => {
   try {
     await run('UPDATE system_message SET is_read = 1, read_time = ? WHERE id = ?', [new Date().toISOString(), req.params.id]);
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 归档 / 取消归档
@@ -115,7 +116,7 @@ router.post('/:id/archive', authRequired, async (req, res) => {
     const next = r.is_archived ? 0 : 1;
     await run('UPDATE system_message SET is_archived = ? WHERE id = ?', [next, req.params.id]);
     res.json({ ok: true, archived: !!next });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 export default router;

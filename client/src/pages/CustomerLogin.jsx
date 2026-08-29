@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { customerHttp, setCustomerToken } from '../utils/customerAuth.js';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { customerHttp, setCustomerToken, resolveRedirect, CUSTOMER_HOME } from '../utils/customerAuth.js';
 
 // ===== C 端免验证码手机号登录（/customer/login）=====
 // 完整登录流程（修复「点击无反应」）：
@@ -35,6 +35,9 @@ function loginErrorText(ex) {
 
 export default function CustomerLogin() {
   const nav = useNavigate();
+  const [params] = useSearchParams();
+  // 登录成功回跳：优先回到用户原本想访问的页面，而不是固定跳「我的」（清单 2.1 / 黑名单 2）
+  const redirect = resolveRedirect(params.get('redirect'));
   const [phone, setPhone] = useState('');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
@@ -50,7 +53,7 @@ export default function CustomerLogin() {
       const r = await customerHttp.post('/api/customer/login', { phone: p }, { timeout: 15000 });
       if (r.data && r.data.ok) {
         if (r.data.sid) setCustomerToken(r.data.sid); // 持久化登录态：刷新不丢（localStorage Bearer）
-        nav('/customer/mine', { replace: true });
+        nav(redirect || CUSTOMER_HOME, { replace: true });
         return;
       }
       setErr('登录失败，请稍后重试');

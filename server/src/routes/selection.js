@@ -21,6 +21,7 @@ import { authRequired, requireRole } from '../auth.js';
 import { emitMessage } from './message.js';
 import { generateEventTodo } from '../todo.js';
 import { emitBizToStaff, BIZ_TYPE } from './mobileMessage.js';
+import { serverError, SERVER_ERROR_MSG } from '../httpError.js';
 import {
   TASK_STATUS, MARK_STATUS,
   calcExtra, calcStats, summarizeMarks, selectionSummary, parsePrice
@@ -167,7 +168,7 @@ router.get('/c/:token', async (req, res) => {
     const marks = await loadMarks(task.id);
     const total = await totalPhotos(order.id);
     res.json({ ...base, data: clientPayload(order, task, photos, marks, total) });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 密码校验：通过返回完整数据 + select_token（写接口凭证）
@@ -190,7 +191,7 @@ router.post('/c/:token/verify', async (req, res) => {
       writable_reason: ac.reason,
       data: clientPayload(order, task, photos, marks, total)
     });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 底片列表（缩略图分页）+ 标记 + 实时统计
@@ -225,7 +226,7 @@ router.get('/c/:token/photos', async (req, res) => {
       status: task.status,
       writable: ac.writable
     });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 单张标记回写（keep/reject；status=null 取消标记回未标记；仅保留可带备注）
@@ -265,7 +266,7 @@ router.post('/c/:token/mark', async (req, res) => {
     await run('UPDATE order_select_task SET like_count = ?, exclude_count = ?, extra_count = ?, extra_fee = ?, updated_at = ? WHERE id = ?',
       [summary.stats.keep, summary.stats.reject, summary.extra.extraCount, summary.extra.extraFee, nowISO(), task.id]);
     res.json({ ok: true, stats: summary.stats, extra: summary.extra });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 批量清空全部标记（轻确认在前端）
@@ -285,7 +286,7 @@ router.post('/c/:token/clear', async (req, res) => {
     await run('UPDATE order_select_task SET like_count = 0, exclude_count = 0, extra_count = 0, extra_fee = 0, updated_at = ? WHERE id = ?', [nowISO(), task.id]);
     const total = await totalPhotos(order.id);
     res.json({ ok: true, stats: calcStats(0, 0, total), extra: calcExtra(0, task.min_retouch, task.extra_price) });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 提交选片（原版核心逻辑）：
@@ -348,7 +349,7 @@ router.post('/c/:token/submit', async (req, res) => {
     } catch (e) { console.error('[selection] 选片消息生成失败', e.message); }
 
     res.json({ ok: true, status: nextStatus, stats: summary.stats, extra: summary.extra, pending_fee: hasFee ? summary.extra.extraFee : 0 });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 实时轮询（多人同 token 状态同步）
@@ -374,7 +375,7 @@ router.get('/c/:token/state', async (req, res) => {
       extra: summary.extra,
       expire_at: task.expire_at || null
     });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // ===================== B 端管理接口（需登录） =====================
@@ -425,7 +426,7 @@ router.get('/orders/:orderId/task', authRequired, requireRole(...STAFF_ROLES), a
       customer_token: token,
       share_url: clientUrl(req, o.id, token)
     });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // C 端「/customer/select-photo」前置校验：验证 orderId 与 token 匹配（防遍历 orderId 访问他人订单）+ 90 天有效期
@@ -441,7 +442,7 @@ router.get('/customer-select/validate', async (req, res) => {
     if (o.cancelled || o.is_deleted) return res.status(403).json({ valid: false, reason: '订单不存在或已关闭' });
     if (isExpired(o.customer_token_expire_at)) return res.status(403).json({ valid: false, reason: '链接已过期，请联系商家重新发送' });
     res.json({ valid: true, order_no: o.order_no || '', customer_name: o.customer_name || '' });
-  } catch (e) { res.status(500).json({ valid: false, reason: e.message }); }
+  } catch (e) { console.error('[selection] token 校验异常', e && e.stack ? e.stack : e); res.status(500).json({ valid: false, reason: SERVER_ERROR_MSG }); }
 });
 
 // B 端「重新生成链接」：重置 customer_token（旧 token 立即失效）+ 重新 90 天有效期
@@ -454,7 +455,7 @@ router.post('/orders/:orderId/share/reset', authRequired, requireRole(...STAFF_R
     await run('UPDATE orders SET customer_token = ?, customer_token_expire_at = ? WHERE id = ?', [token, expireAt, o.id]);
     await appendOrderLog(o.id, '重新生成客户选片链接（旧链接已失效）', (req.user && req.user.username) || '');
     res.json({ ok: true, share_url: clientUrl(req, o.id, token), expire_at: expireAt });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 开启 / 更新选片任务配置（密码/有效期/打乱/水印/免费张数/加片单价）；不存在则创建
@@ -498,7 +499,7 @@ router.post('/orders/:orderId/config', authRequired, requireRole(...STAFF_ROLES)
     if (orderSets.length) { orderVals.push(o.id); await run('UPDATE orders SET ' + orderSets.join(', ') + ' WHERE id = ?', orderVals); }
     const freshOrder = await get('SELECT screenshot_guard, thumb_only FROM orders WHERE id = ?', [o.id]);
     res.json({ ok: true, task: { id: task.id, status: task.status, min_retouch: minRetouch, extra_price: extraPrice, watermark_enabled: !!watermark, shuffle_enabled: !!shuffle, has_password: !!passwordHash, expire_at: expireAt, screenshot_guard: !!(freshOrder && freshOrder.screenshot_guard), thumb_only: !!(freshOrder && freshOrder.thumb_only) } });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 批量上传底片（原版：商家 PC/手机均可，无设备拦截）；上传即开启选片（not_started→selecting）
@@ -538,7 +539,7 @@ router.post('/orders/:orderId/photos', authRequired, requireRole(...SELECTION_AD
     }
     const total = await totalPhotos(o.id);
     res.json({ ok: true, added, total });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 删除底片（原版：商家全设备，前端二次强确认）；自动清除该照片全部 mark + 后台重算统计
@@ -564,7 +565,7 @@ router.delete('/orders/:orderId/photos/:photoId', authRequired, requireRole(...S
     // 写入订单变更记录（删除底片）
     await appendOrderLog(o.id, `删除底片（photo_id=${photoId}）`, (req.user && req.user.username) || '');
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 实时监控（B 端）：客户 mark + 备注 + 筛选 + 实时统计
@@ -589,7 +590,7 @@ router.get('/orders/:orderId/monitor', authRequired, requireRole(...STAFF_ROLES)
     else if (filter === 'reject') list = list.filter((x) => x.status === MARK_STATUS.REJECT);
     else if (filter === 'unmarked') list = list.filter((x) => !x.status);
     res.json({ ok: true, photos: list, stats: summary.stats, extra: summary.extra, task: { status: task.status, pending_fee: Number(task.pending_fee) || 0 } });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 重置选片（原版：商家执行，二次强确认在前端）；清空全部 mark、丢弃历史草稿、回到选片中（事务）
@@ -614,7 +615,7 @@ router.post('/orders/:orderId/reset', authRequired, requireRole(...SELECTION_ADM
       await emitMessage({ message_type: 'order_msg', business_event: 'select_reset', title: '选片已重置', content: `订单 ${o.order_no || o.id} 选片已重置，客户需重新选片`, rel_id: String(o.id), rel_model: 'order' });
     } catch (e) { console.error('[selection] 重置后通知失败', e.message); }
     res.json({ ok: true, version, status: TASK_STATUS.SELECTING });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 标记支付成功（线下收款录入 / 线上回调统一入口）：pending_payment → completed，锁定标记 + 更新订单尾款（事务）
@@ -719,7 +720,7 @@ router.get('/orders/:orderId/export', authRequired, requireRole(...STAFF_ROLES),
     res.setHeader('Content-Type', 'text/plain; charset=utf-8');
     res.setHeader('Content-Disposition', `attachment; filename="selection_${orderNo}_${paidAt.replace(/[: ]/g, '')}.txt"`);
     res.send('\ufeff' + lines.join('\r\n'));
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // ===== 工具 =====

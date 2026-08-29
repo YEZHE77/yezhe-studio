@@ -7,6 +7,7 @@
 import { Router } from 'express';
 import { query, get, insert, run } from '../db.js';
 import { authRequired } from '../auth.js';
+import { serverError } from '../httpError.js';
 
 const router = Router();
 router.use(authRequired);
@@ -89,7 +90,7 @@ router.get('/skills', async (req, res) => {
   try {
     const rows = await query('SELECT id, key, name, description FROM ai_skill ORDER BY id ASC');
     res.json(rows);
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // GET /api/ai/skills/:key —— 单条（含模板，供编辑）
@@ -98,7 +99,7 @@ router.get('/skills/:key', async (req, res) => {
     const r = await get('SELECT * FROM ai_skill WHERE key = ?', [req.params.key]);
     if (!r) return res.status(404).json({ error: 'Skill 不存在' });
     res.json(r);
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // PUT /api/ai/skills/:key —— 更新模板（保存后端配置）
@@ -119,7 +120,7 @@ router.put('/skills/:key', async (req, res) => {
     params.push(req.params.key);
     await run('UPDATE ai_skill SET ' + sets.join(', ') + ' WHERE key = ?', params);
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // POST /api/ai/render —— 后端取业务数据填占位符，返回完整 prompt（不调用大模型）
@@ -135,7 +136,7 @@ router.post('/render', async (req, res) => {
       system: fill(r.system_prompt, data),
       user: fill(r.user_template, data)
     });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 export default router;

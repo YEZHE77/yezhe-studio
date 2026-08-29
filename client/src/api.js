@@ -35,6 +35,53 @@ export function setSilent(v) { silentMode = v; }
 // 弱网友好：离线时弹一次提示
 let offlineWarned = false;
 
+// ===== 异常兜底：5xx / 超时 的「重试」出口（验收清单 5.2 / 5.3）=====
+// 需求：请求超时或服务端异常时要给出「重试按钮」，不能只弹个 toast 就卡死。
+// 实现：全局单例悬浮条，文案固定 + 一个「重试」按钮；
+//       onRetry 允许页面注册自己的重试逻辑（如重新拉数据），未注册则整页重载。
+export const SERVER_BUSY_MSG = '服务暂时繁忙，请稍后再尝试';
+export const NETWORK_TIMEOUT_MSG = '网络请求超时，请检查网络后重试';
+export const NETWORK_OFFLINE_MSG = '当前网络不可用，请检查网络连接';
+
+let retryHandler = null;
+export function setRetryHandler(fn) { retryHandler = typeof fn === 'function' ? fn : null; }
+
+function showRetryBar(msg) {
+  try {
+    let el = document.getElementById('__api_retry_bar__');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = '__api_retry_bar__';
+      el.style.cssText = 'position:fixed;left:50%;bottom:28px;transform:translateX(-50%);z-index:99998;display:flex;align-items:center;gap:12px;background:#1f2329;color:#fff;font-size:13px;padding:10px 14px 10px 18px;border-radius:12px;box-shadow:0 8px 28px rgba(0,0,0,.28);max-width:92vw;font-family:inherit;';
+      const span = document.createElement('span');
+      span.id = '__api_retry_text__';
+      el.appendChild(span);
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.textContent = '重试';
+      btn.style.cssText = 'flex:0 0 auto;background:#7ECDBB;color:#06342C;border:none;border-radius:8px;padding:6px 16px;font-size:13px;cursor:pointer;font-family:inherit;';
+      btn.onclick = () => {
+        try { if (retryHandler) retryHandler(); else window.location.reload(); } catch { window.location.reload(); }
+        hideRetryBar();
+      };
+      el.appendChild(btn);
+      document.body.appendChild(el);
+    }
+    const span = el.querySelector('#__api_retry_text__');
+    if (span) span.textContent = msg;
+    el.style.display = 'flex';
+    clearTimeout(showRetryBar._t);
+    showRetryBar._t = setTimeout(hideRetryBar, 12000); // 12s 自动收起，避免长期遮挡
+  } catch { /* 兜底失败不影响主流程 */ }
+}
+function hideRetryBar() {
+  try {
+    const el = document.getElementById('__api_retry_bar__');
+    if (el) el.style.display = 'none';
+  } catch {}
+}
+export { hideRetryBar };
+
 http.interceptors.response.use(
   (r) => r,
   async (err) => {
@@ -53,9 +100,12 @@ http.interceptors.response.use(
     }
 
     if (err.code === 'ECONNABORTED') {
-      if (!silentMode) toast('请求超时，请检查网络连接');
+      if (!silentMode) {
+        toast(NETWORK_TIMEOUT_MSG);
+        showRetryBar(NETWORK_TIMEOUT_MSG); // 提供「重试」出口，避免只提示不给出路（清单 5.2）
+      }
       if (!(cfg && cfg.__skipReport)) reportApiError(err, cfg);
-      return Promise.reject({ type: 'timeout', message: '请求超时' });
+      return Promise.reject({ type: 'timeout', message: NETWORK_TIMEOUT_MSG });
     }
     if (!err.response) {
       if (!silentMode && !offlineWarned) {
@@ -72,10 +122,19 @@ http.interceptors.response.use(
       return Promise.reject({ type: 'auth', message: '登录已过期' });
     }
     const data = err.response.data || {};
-    const msg = data.error || ('请求失败(' + err.response.status + ')');
+    const status = err.response.status;
+    // 服务端内部错误（5xx）：后端可能回 SQL 报错 / 堆栈片段，一律只展示通用文案，
+    // 绝不透传到客户或后台界面（验收清单 C端 5.3 / 后台 6.3 / 黑名单1）。
+    // 4xx 属业务性失败，保留后端给出的中文文案（如「验证码错误」「档期冲突」）。
+    const isServerError = status >= 500;
+    const msg = isServerError ? SERVER_BUSY_MSG : (data.error || ('请求失败(' + status + ')'));
     // 业务冲突（档期占用 / 套系被订单引用）由调用方自行弹窗处理，不走全局 toast
-    const quiet = (cfg && cfg.skipToast) || err.response.status === 409 || data.code === 'PACKAGE_IN_USE';
-    if (!silentMode && !quiet) toast(msg);
+    const quiet = (cfg && cfg.skipToast) || status === 409 || data.code === 'PACKAGE_IN_USE';
+    if (!silentMode && !quiet) {
+      toast(msg);
+      // 5xx / 超时：额外弹一个带「重试」按钮的悬浮条，避免页面卡死无出口（清单 5.2 / 5.3）
+      if (isServerError || err.code === 'ECONNABORTED') showRetryBar(msg);
+    }
     if (!(cfg && cfg.__skipReport)) reportApiError(err, cfg);
     return Promise.reject({ ...err, message: msg, type: 'server', status: err.response.status, code: data.code || '', data });
   }

@@ -8,6 +8,7 @@ import { buildCustomerOrderDetail } from './orderDetailHelper.js';
 import { emitMessage } from './message.js';
 import { emitBizToStaff, BIZ_TYPE } from './mobileMessage.js';
 import { generateEventTodo } from '../todo.js';
+import { serverError } from '../httpError.js';
 
 const router = Router();
 
@@ -78,7 +79,7 @@ router.post('/appointment', async (req, res) => {
     } catch (e) { console.error('[public] 生成预约待办失败：', e.message); }
 
     res.json({ ok: true, message: '提交完成，请等待摄影师确认' });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // ===== 2. customer_token 订单只读查看（与 B 端订单详情同口径，只读无编辑） =====
@@ -95,7 +96,7 @@ router.get('/order/:token', async (req, res) => {
     }
 
     res.json(await buildCustomerOrderDetail(o));
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // ===== C 端提交改期/取消申请（仅推送商家，不自动变更订单数据）=====
@@ -125,7 +126,7 @@ router.post('/order/:token/request', async (req, res) => {
     // 待办：客户提交改期/取消申请 → 生成「客户申请」待办（仅提醒，不改订单数据）
     try { await generateEventTodo(o.id, 'order_request', `客户${typeLabel}`, `${o.customer_name || '客户'}：${reason}${desiredDate ? '（期望日期 ' + desiredDate + '）' : ''}`, String(id)); } catch (e) { console.error('[todo] 生成申请待办失败', e.message); }
     res.json({ ok: true, id });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // ===== C 端下载作品记录（下载行为留痕，B 端订单详情可查下载记录）=====
@@ -138,7 +139,7 @@ router.post('/order/:token/download-log', async (req, res) => {
     await insert('INSERT INTO download_logs (order_id, item_type, item_name, operator_name, created_at) VALUES (?,?,?,?,?)',
       [o.id, itemType, itemName, '客户', nowISO()]);
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // ===== 3. 电子服务协议签署（C 端手写签名，绑定订单，签署记录不可篡改） =====
@@ -157,7 +158,7 @@ router.get('/order/:token/agreement', async (req, res) => {
       agreement_signed: !!Number(o.agreement_signed),
       history: history.map((h) => ({ id: h.id, customer_name: h.customer_name || '', signed_at: h.signed_at || h.created_at }))
     });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 客户签署协议（signature=手写签名图片 base64；content_snapshot=签署当时的协议全文，防篡改）
@@ -187,7 +188,7 @@ router.post('/order/:token/agreement/sign', async (req, res) => {
       await emitMessage({ message_type: 'order_msg', business_event: 'agreement_signed', title: '客户已签署服务协议', content: `订单 ${o.order_no || o.id} 客户已签署电子服务协议`, rel_id: String(o.id), rel_model: 'order' });
     } catch (e) { console.error('[agreement] 签署通知失败', e.message); }
     res.json({ ok: true, id });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // ===== 访客埋点模块（V2；C 端公开，无需登录） =====
@@ -199,7 +200,7 @@ router.get('/visitor/access', async (req, res) => {
     const bl = await get('SELECT visitor_id FROM visitor_blacklist WHERE visitor_id = ?', [vid]);
     const setting = await get('SELECT visitor_password FROM visitor_setting WHERE business_uid = 0');
     res.json({ blocked: !!bl, need_password: !!(setting && setting.visitor_password) });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 访客密码校验（bcrypt compare；未开启密码恒通过）
@@ -210,7 +211,7 @@ router.post('/visitor/verify-password', async (req, res) => {
     if (!setting || !setting.visitor_password) return res.json({ ok: true });
     const ok = await bcrypt.compare(password, setting.visitor_password);
     res.json({ ok });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 访客埋点上报：写访问日志（黑名单命中拦截不写；免打扰不影响日志写入，仅不产生消息通知）
@@ -226,7 +227,7 @@ router.post('/visitor/track', async (req, res) => {
       [vid, new Date().toISOString(), visit_page || '', source || 'h5', 0]
     );
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 export default router;

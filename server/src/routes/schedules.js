@@ -6,6 +6,7 @@ import { authRequired, requireRole } from '../auth.js';
 import { emitBizToStaff, BIZ_TYPE } from './mobileMessage.js';
 import { Solar } from 'lunar-javascript';
 import { buildShareUrl, genQr } from '../shareUtil.js';
+import { serverError } from '../httpError.js';
 
 // 解析 periods（JSON 数组容错）
 function parsePeriods(v) {
@@ -108,14 +109,14 @@ router.get('/availability', async (req, res) => {
       .map((p) => ({ date: p.hope_date, period: p.period || 'full' }));
 
     res.json({ month, booking: bookingCfg, occupied, closed, full, pending });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 单日接单上限：读取 / 保存（仅管理员可改；必须放在 GET / 与 /:id 之前避免被吞路由）
 router.get('/capacity', authRequired, requireRole(['admin', 'photographer']), async (req, res) => {
   try {
     res.json(await getCapacityCfg());
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 router.put('/capacity', authRequired, requireRole(['admin']), async (req, res) => {
   try {
@@ -126,7 +127,7 @@ router.put('/capacity', authRequired, requireRole(['admin']), async (req, res) =
     if (exists) await run("UPDATE settings SET value = ? WHERE key = 'schedule_capacity'", [value]);
     else await insert("INSERT INTO settings (key, value) VALUES (?, ?)", ['schedule_capacity', value]);
     res.json({ ok: true, capacity: { daily, perPhotographer } });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 列表：支持 ?month=YYYY-MM 或 ?from=&to= ；?executor= 按执行人( personel.id )过滤
@@ -173,7 +174,7 @@ router.get('/', authRequired, async (req, res) => {
       params
     );
     res.json(rows.map((r) => ({ ...r, periods: parsePeriods(r.periods) })));
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 农历映射：返回当月每日 公历->农历，前端日历统一取用（避免前端重复引入 lunar 库）
@@ -190,7 +191,7 @@ router.get('/lunar', authRequired, async (req, res) => {
       out[ds] = lunarOf(ds);
     }
     res.json(out);
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 导出当月档期 CSV（Excel 可直接打开）；?month=YYYY-MM 缺省导出全部
@@ -215,7 +216,7 @@ router.get('/export', authRequired, async (req, res) => {
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', `attachment; filename="schedules_${month || 'all'}.csv"`);
     res.send('﻿' + csv);
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 详情
@@ -224,7 +225,7 @@ router.get('/:id', authRequired, async (req, res) => {
     const r = await get('SELECT * FROM schedules WHERE id = ?', [req.params.id]);
     if (!r) return res.status(404).json({ error: '档期不存在' });
     res.json(r);
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 冲突检测：同一 date + period 已 booked/locked 视为冲突。
@@ -370,7 +371,7 @@ router.post('/', authRequired, requireRole(['admin', 'photographer']), async (re
     if (status === 'booked' || status === 'locked') {
       try { await emitBizToStaff({ title: '新增摄影日程', content: `新增摄影日程 ${b.date}（${(b.groom_name && b.bride_name) ? `${b.groom_name} & ${b.bride_name}` : (b.order_no || '客户')}）`, biz_type: BIZ_TYPE.SCHEDULE, biz_id: id }); } catch {}
     }
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 关闭 / 开放指定日期（仅限制 C 端预约；B 端仍可手动新增档期）
@@ -390,7 +391,7 @@ router.post('/close', authRequired, requireRole(['admin', 'photographer']), asyn
     await run('DELETE FROM schedules WHERE date = ? AND status = ?', [date, 'closed']);
     const id = await insert("INSERT INTO schedules (date, period, status, lunar_date, note) VALUES (?,?,?,?,?)", [date, 'full', 'closed', lunarOf(date), '档期已关闭']);
     res.json({ id, closed: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 router.post('/open', authRequired, requireRole(['admin', 'photographer']), async (req, res) => {
   try {
@@ -398,7 +399,7 @@ router.post('/open', authRequired, requireRole(['admin', 'photographer']), async
     if (!date) return res.status(400).json({ error: '日期必填' });
     await run('DELETE FROM schedules WHERE date = ? AND status = ?', [date, 'closed']);
     res.json({ ok: true, closed: false });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 生成公开档期分享链接（整库/整月可约档期，C 端小程序扫码查看）
@@ -411,7 +412,7 @@ router.post('/share', authRequired, requireRole(['admin', 'photographer', 'finan
     const shareUrl = buildShareUrl(token, req);
     const qr_url = await genQr(shareUrl);
     res.json({ ok: true, token, share_url: shareUrl, qr_url, title: '婚礼档期预约' });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 更新（支持 periods / date_tbd / 执行人）
@@ -441,7 +442,7 @@ router.put('/:id', authRequired, requireRole(['admin', 'photographer']), async (
        b.contact_phone ?? cur.contact_phone, b.address ?? cur.address, cur.id]
     );
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 删除
@@ -454,7 +455,7 @@ router.delete('/:id', authRequired, requireRole(['admin', 'photographer']), asyn
     if (s && (s.status === 'booked' || s.status === 'locked')) {
       try { await emitBizToStaff({ title: '日程删除', content: `摄影日程 ${s.date}（${(s.groom_name && s.bride_name) ? `${s.groom_name} & ${s.bride_name}` : (s.order_no || '客户')}）已删除`, biz_type: BIZ_TYPE.SCHEDULE, biz_id: req.params.id }); } catch {}
     }
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 一键档期校准：根据全部有效订单重建 booked 占用 + 清理孤儿 booked（兜底修复脏数据）
@@ -494,7 +495,7 @@ router.post('/reconcile', authRequired, requireRole(['admin']), async (req, res)
       catch { /* 单个失败不阻断整体校准 */ }
     }
     res.json({ ok: true, removed_orphans: orphans.length, rebuilt, total_orders: orders.length });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 export default router;

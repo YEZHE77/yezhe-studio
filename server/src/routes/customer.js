@@ -4,6 +4,7 @@ import { Router } from 'express';
 import { query, get, insert, run } from '../db.js';
 import { parseRow } from '../schema.js';
 import { customerRequired, signCustomerToken } from '../auth.js';
+import { serverError, FORBIDDEN_VIEW_MSG } from '../httpError.js';
 
 const router = Router();
 const JSON_COLS = ['package_snapshot', 'addons_snapshot', 'logs', 'questionnaire_answers'];
@@ -11,10 +12,13 @@ const JSON_COLS = ['package_snapshot', 'addons_snapshot', 'logs', 'questionnaire
 function nowISO() { return new Date().toISOString(); }
 
 // 取订单并校验归属：openid 不匹配或无绑定 → 403
+// 越权判定：查不到 与 非本人 返回【完全相同】的 403 文案，
+// 避免「订单是否存在」被遍历探测（验收清单 2.4 / 黑名单）。
+// ⚠️ 改动此处请同步 orderDetailHelper / customerMine 的同类判定。
 async function ownOrderOrFail(orderId, openid) {
   const o = await get('SELECT * FROM orders WHERE id = ?', [orderId]);
-  if (!o) return { status: 404, msg: '订单不存在' };
-  if (o.openid && o.openid !== openid) return { status: 403, msg: '无权访问该订单' };
+  if (!o) return { status: 403, msg: FORBIDDEN_VIEW_MSG };
+  if (o.openid && o.openid !== openid) return { status: 403, msg: FORBIDDEN_VIEW_MSG };
   return { order: o };
 }
 
@@ -46,7 +50,7 @@ router.post('/phone-login', async (req, res) => {
     const token = signCustomerToken({ openid: c.openid, id: c.id });
     res.json({ token, openid: c.openid, customerId: c.id, phone });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    serverError(res, e);
   }
 });
 
@@ -73,7 +77,7 @@ router.post('/appointment/submit', customerRequired, async (req, res) => {
     );
     res.json({ ok: true, appointmentId: id, packageName: pkgName });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    serverError(res, e);
   }
 });
 
@@ -93,7 +97,7 @@ router.post('/appointment/cancel', customerRequired, async (req, res) => {
     // 注意：已确认（含关联档期/订单）的取消不直接释放档期，需商户端处理
     res.json({ ok: true });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    serverError(res, e);
   }
 });
 
@@ -119,7 +123,7 @@ router.get('/appointment/list', customerRequired, async (req, res) => {
     });
     res.json(out);
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    serverError(res, e);
   }
 });
 
@@ -140,7 +144,7 @@ router.get('/order/list', customerRequired, async (req, res) => {
     }
     res.json(out);
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    serverError(res, e);
   }
 });
 
@@ -163,7 +167,7 @@ router.get('/order/:orderId', customerRequired, async (req, res) => {
       evaluated: !!ev, evaluateStatus: ev ? ev.status : null
     });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    serverError(res, e);
   }
 });
 
@@ -177,7 +181,7 @@ router.post('/orders/:orderId/questionnaire', customerRequired, async (req, res)
     await run('UPDATE orders SET questionnaire_answers = ? WHERE id = ?', [JSON.stringify(answers), r.order.id]);
     res.json({ ok: true });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    serverError(res, e);
   }
 });
 
@@ -196,7 +200,7 @@ router.get('/album/:orderId', customerRequired, async (req, res) => {
     }
     res.json({ photos, allowDownload, works });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    serverError(res, e);
   }
 });
 
@@ -220,7 +224,7 @@ router.post('/photo-select/save', customerRequired, async (req, res) => {
     }
     res.json({ ok: true, count: marks.length, submitted: false });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    serverError(res, e);
   }
 });
 
@@ -242,7 +246,7 @@ router.post('/photo-select/submit', customerRequired, async (req, res) => {
     }
     res.json({ ok: true, count: marks.length, submitted: true });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    serverError(res, e);
   }
 });
 
@@ -264,7 +268,7 @@ router.get('/photo-select/:orderId', customerRequired, async (req, res) => {
       photos
     });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    serverError(res, e);
   }
 });
 
@@ -284,7 +288,7 @@ router.post('/evaluate/submit', customerRequired, async (req, res) => {
     );
     res.json({ ok: true, evaluateId: id });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    serverError(res, e);
   }
 });
 
@@ -299,7 +303,7 @@ router.get('/evaluate/list', customerRequired, async (req, res) => {
     const rows = await query(sql, params);
     res.json(rows.map((r) => ({ ...r, images: r.images ? JSON.parse(r.images) : [] })));
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    serverError(res, e);
   }
 });
 
@@ -314,7 +318,7 @@ router.get('/evaluate/public', async (req, res) => {
     );
     res.json(rows.map((r) => ({ ...r, images: r.images ? JSON.parse(r.images) : [] })));
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    serverError(res, e);
   }
 });
 

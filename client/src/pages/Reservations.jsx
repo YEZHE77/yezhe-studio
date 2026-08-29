@@ -17,7 +17,21 @@ export default function Reservations() {
   const [conv, setConv] = useState(null); // 转订单弹窗：当前预约
   const [convForm, setConvForm] = useState({});
   const [convResult, setConvResult] = useState(null); // 转订单结果 {order_no, access_token, order_id, name}
+  const [convBusy, setConvBusy] = useState(false);   // 确认生成订单 loading（防连点，清单 6.1）
+  const [convErr, setConvErr] = useState('');        // 转订单弹窗内就近错误提示（替代 alert）
+  const [toastMsg, setToastMsg] = useState('');      // 页面级轻提示（替代全局 alert）
+  const [rejectOpen, setRejectOpen] = useState(false); // 拒绝预约弹窗
+  const [rejectId, setRejectId] = useState(null);
+  const [rejectRemark, setRejectRemark] = useState('');
   const nav = useNavigate();
+
+  // 轻提示：2.4s 自动消失
+  let toastTimer;
+  const showToast = (m) => {
+    setToastMsg(m);
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => setToastMsg(''), 2400);
+  };
 
   const load = () => {
     http.get('/api/reservations').then((r) => setList(r.data)).catch(() => {});
@@ -26,13 +40,13 @@ export default function Reservations() {
   useEffect(() => { http.get('/api/packages?status=all').then((r) => setPkgs(r.data || [])).catch(() => {}); }, []);
   useEffect(() => { http.get('/api/admin/personnel').then((r) => setPersonnel(Array.isArray(r.data) ? r.data : [])).catch(() => {}); }, []);
 
-  async function changeStatus(id, status) {
+  async function changeStatus(id, status, remark) {
     try {
-      await http.patch('/api/reservations/' + id + '/status', { status });
+      await http.patch('/api/reservations/' + id + '/status', { status, remark: remark || '' });
       setDetail(null);
       load();
     } catch (e) {
-      alert((e.response && e.response.data && e.response.data.error) || '操作失败');
+      showToast((e.response && e.response.data && e.response.data.error) || '操作失败');
     }
   }
 
@@ -80,9 +94,12 @@ export default function Reservations() {
   }
 
   async function submitConvert() {
-    if (!convForm.executor_id) { alert('请选择执行人'); return; }
-    if (convForm.deposit === '' || convForm.deposit === null || convForm.deposit === undefined) { alert('请填写定金金额'); return; }
+    setConvErr('');
+    if (!convForm.executor_id) { setConvErr('请选择执行人'); return; }
+    if (!convForm.package_id) { setConvErr('请选择套系'); return; } // 套系必填（清单 1.3）
+    if (convForm.deposit === '' || convForm.deposit === null || convForm.deposit === undefined) { setConvErr('请填写定金金额'); return; }
     const executor = personnel.find((p) => String(p.id) === String(convForm.executor_id));
+    setConvBusy(true);
     try {
       const res = await http.post('/api/reservations/' + conv.id + '/convert', {
         groom_name: convForm.groom_name,
@@ -102,14 +119,33 @@ export default function Reservations() {
       });
       setConvResult({ name: convForm.groom_name || convForm.bride_name || '客户', ...res.data });
       setConv(null);
+      setConvBusy(false);
       load();
     } catch (e) {
-      alert((e.response && e.response.data && e.response.data.error) || '转订单失败');
+      setConvBusy(false);
+      setConvErr((e.response && e.response.data && e.response.data.error) || '转订单失败');
     }
   }
 
   async function copyText(t) {
-    try { await navigator.clipboard.writeText(t); alert('已复制链接'); } catch { alert('复制失败，请手动复制：' + t); }
+    try { await navigator.clipboard.writeText(t); showToast('已复制链接'); } catch { showToast('复制失败，请手动复制：' + t); }
+  }
+
+  // 拒绝预约：打开弹窗填写原因（可选）后确认（清单 1.6 / 拒绝备注回传 C 端）
+  function openReject(r) {
+    setRejectId(r.id);
+    setRejectRemark('');
+    setRejectOpen(true);
+  }
+  async function confirmReject() {
+    if (rejectId == null) return;
+    try {
+      await changeStatus(rejectId, 'rejected', rejectRemark.trim());
+      setRejectOpen(false);
+      setRejectId(null);
+    } catch (e) {
+      showToast((e.response && e.response.data && e.response.data.error) || '操作失败');
+    }
   }
 
   const shown = filter ? list.filter((r) => r.status === filter) : list;
@@ -198,7 +234,7 @@ export default function Reservations() {
               ) : (
                 <>
                   {detail.status !== 'contacted' && <button onClick={() => changeStatus(detail.id, 'contacted')} className="px-3 py-1.5 rounded border border-line text-white text-xs">标记已沟通</button>}
-                  {detail.status !== 'rejected' && <button onClick={() => changeStatus(detail.id, 'rejected')} className="px-3 py-1.5 rounded border border-line text-red-400 text-xs">拒绝</button>}
+                  {detail.status !== 'rejected' && <button onClick={() => openReject(detail)} className="px-3 py-1.5 rounded border border-line text-red-400 text-xs">拒绝</button>}
                   {detail.status !== 'pending' && <button onClick={() => changeStatus(detail.id, 'pending')} className="px-3 py-1.5 rounded border border-line text-white text-xs">恢复待确认</button>}
                   <button onClick={() => openConvert(detail)} disabled={detail.status === 'rejected'} className={'px-3 py-1.5 rounded text-xs ' + (detail.status === 'rejected' ? 'bg-line text-muted cursor-not-allowed' : 'bg-brand text-white')}>转为订单</button>
                 </>
@@ -286,9 +322,14 @@ export default function Reservations() {
               </div>
             </div>
 
+            {convErr && (
+              <div className="mb-3 rounded border border-red-500/40 bg-red-500/10 px-3 py-2 text-xs text-red-400">{convErr}</div>
+            )}
             <div className="flex gap-2 justify-end">
-              <button onClick={() => setConv(null)} className="px-4 py-2 rounded border border-line text-white text-sm">取消</button>
-              <button onClick={submitConvert} className="px-4 py-2 rounded bg-brand text-white text-sm">确认生成订单</button>
+              <button onClick={() => setConv(null)} disabled={convBusy} className="px-4 py-2 rounded border border-line text-white text-sm disabled:opacity-50">取消</button>
+              <button onClick={submitConvert} disabled={convBusy} className="px-4 py-2 rounded bg-brand text-white text-sm disabled:opacity-60">
+                {convBusy ? '生成中…' : '确认生成订单'}
+              </button>
             </div>
           </div>
         </div>
@@ -315,6 +356,28 @@ export default function Reservations() {
               <button onClick={() => setConvResult(null)} className="px-4 py-2 rounded border border-line text-white text-sm">知道了</button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* 拒绝预约弹窗（可填拒绝原因，回传 C 端客户可见，清单 1.6） */}
+      {rejectOpen && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[60] p-4" onClick={() => setRejectOpen(false)}>
+          <div onClick={(e) => e.stopPropagation()} className="w-full max-w-sm bg-panel border border-line rounded-xl2 p-6">
+            <div className="text-white mb-1">拒绝预约</div>
+            <div className="text-xs text-muted mb-4">拒绝原因将展示给客户，可留空</div>
+            <textarea className={inputCls + ' h-24 mb-4'} value={rejectRemark} onChange={(e) => setRejectRemark(e.target.value)} placeholder="请填写拒绝原因（选填）" />
+            <div className="flex gap-2 justify-end">
+              <button onClick={() => setRejectOpen(false)} className="px-4 py-2 rounded border border-line text-white text-sm">取消</button>
+              <button onClick={confirmReject} className="px-4 py-2 rounded bg-red-500 text-white text-sm">确认拒绝</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 页面级轻提示（替代全局 alert） */}
+      {toastMsg && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[80] bg-panel2 border border-line text-white text-sm px-4 py-2 rounded-lg shadow-lg">
+          {toastMsg}
         </div>
       )}
     </div>

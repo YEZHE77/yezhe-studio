@@ -11,6 +11,7 @@ import { cfConfigured, getR2Egress } from '../cf.js';
 import { getStorageUsage } from '../r2Metrics.js';
 import { buildFullBackup, writeBackupToCloud } from '../backup.js';
 import { runConsistencyCheck } from '../consistencyCheck.js';
+import { serverError, SERVER_ERROR_MSG } from '../httpError.js';
 
 const router = Router();
 router.use(authRequired);
@@ -30,7 +31,7 @@ router.get('/personnel', async (req, res) => {
       role: u.role || 'photographer',
       avatar: u.avatar || ''
     })));
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // ===== 1. 预约管理 =====
@@ -45,7 +46,7 @@ router.get('/appointments', async (req, res) => {
       []
     );
     res.json(rows);
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 接受预约 → 生成订单并锁定档期（双向绑定 schedule_id / order_id）
@@ -152,7 +153,7 @@ async function doConfirm(req, res) {
     // 归档该预约的「待确认」待办（预约已转订单处理完毕）
     try { await run("UPDATE todo_items SET status='done', done_at=? WHERE biz_key=? AND status='pending'", [nowISO(), `appointment_${a.id}`]); } catch (e) { console.error('[admin] 归档预约待办失败', e.message); }
     res.json({ ok: true, orderId, order_no, scheduleId });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 }
 
 // 接受（兼容旧调用命名 convert）
@@ -172,7 +173,7 @@ router.post('/appointments/:id/reject', async (req, res) => {
     // 归档该预约的「待确认」待办
     try { await run("UPDATE todo_items SET status='done', done_at=? WHERE biz_key=? AND status='pending'", [nowISO(), `appointment_${a.id}`]); } catch (e) { console.error('[admin] 归档预约待办失败', e.message); }
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 编辑预约（修改称呼/电话/意向套系/期望日期/时段/备注/状态）
@@ -187,7 +188,7 @@ router.put('/appointments/:id', async (req, res) => {
        b.hope_date ?? a.hope_date, b.period ?? a.period, b.remark ?? a.remark, b.status ?? a.status, req.params.id]
     );
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 删除预约
@@ -195,7 +196,7 @@ router.delete('/appointments/:id', async (req, res) => {
   try {
     await run('DELETE FROM appointments WHERE id = ?', [req.params.id]);
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // ===== 2. 选片结果（管理端查看 / 修改）=====
@@ -222,7 +223,7 @@ router.get('/photo-select/:orderId', async (req, res) => {
         : null,
       photos
     });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 修改选片结果（保留原 openid，submitted 置 1）
@@ -237,7 +238,7 @@ router.post('/photo-select/:orderId', async (req, res) => {
     await run('UPDATE photo_select SET marks = ?, submitted = 1, updated_at = ? WHERE id = ?',
       [JSON.stringify(marks), nowISO(), existing.id]);
     res.json({ ok: true, count: marks.length });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // ===== 3. 评价审核 =====
@@ -257,7 +258,7 @@ router.get('/evaluates', async (req, res) => {
       params
     );
     res.json(rows.map((r) => ({ ...r, images: r.images ? JSON.parse(r.images) : [] })));
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 审核：approve → approved（进好评墙）/ reject → rejected
@@ -270,7 +271,7 @@ router.post('/evaluates/:id/review', async (req, res) => {
     const status = action === 'approve' ? 'approved' : 'rejected';
     await run('UPDATE evaluates SET status = ? WHERE id = ?', [status, req.params.id]);
     res.json({ ok: true, status });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 删除评价
@@ -278,7 +279,7 @@ router.delete('/evaluates/:id', async (req, res) => {
   try {
     await run('DELETE FROM evaluates WHERE id = ?', [req.params.id]);
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // ===== 4. 客户管理（按 openid 聚合，贯穿订单/预约）=====
@@ -328,7 +329,7 @@ router.get('/customers', requirePerm(PERMISSIONS.EXPORT_CUSTOMERS), async (req, 
     }
     out.sort((a, b) => String(b.lastActive || '').localeCompare(String(a.lastActive || '')));
     res.json(out);
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 router.get('/customers/:openid', async (req, res) => {
@@ -343,7 +344,7 @@ router.get('/customers/:openid', async (req, res) => {
       o.logs = o.logs ? JSON.parse(o.logs) : [];
     }
     res.json({ customer: c || { openid }, orders, appointments });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // ===== 5. 在线选片管理（列出 selecting 状态订单及其选片摘要）=====
@@ -356,7 +357,7 @@ router.get('/selections', async (req, res) => {
        FROM orders o WHERE o.status = 'selecting' AND o.cancelled = 0 ORDER BY o.id DESC`
     );
     res.json(rows.map((r) => ({ ...r, selCount: Number(r.sel_count), submitted: !!r.submitted })));
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // ===== 6. 数据导出（CSV，Excel 可直接打开，零依赖）=====
@@ -397,7 +398,7 @@ router.get('/orders/export', async (req, res) => {
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', 'attachment; filename="orders.csv"');
     res.send('﻿' + csv);
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 router.get('/schedules/export', async (req, res) => {
@@ -420,7 +421,7 @@ router.get('/schedules/export', async (req, res) => {
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', 'attachment; filename="schedules.csv"');
     res.send('﻿' + csv);
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 存储状态（Dashboard 告警横幅依据）
@@ -431,7 +432,7 @@ router.get('/storage', async (req, res) => {
       provider: getActiveProviderName() || 'local',
       r2Enabled: isR2Enabled()
     });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // ===== 7. 容量管理 =====
@@ -546,7 +547,7 @@ router.get('/storage/stats', async (req, res) => {
       alertThreshold: await getStorageThreshold(), // 自定义告警阈值（字节，后台可配）
       exceeded: totalUsedBytes > (await getStorageThreshold()) // 是否已超阈值（驱动告警红点）
     });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 存储告警阈值配置（后台「容量管理」页读写；存 settings 表 key=storage_threshold，单位字节）
@@ -558,7 +559,7 @@ router.put('/storage/threshold', async (req, res) => {
     if (exists) await run("UPDATE settings SET value = ? WHERE key = 'storage_threshold'", [String(v)]);
     else await insert("INSERT INTO settings (key, value) VALUES (?, ?)", ['storage_threshold', String(v)]);
     res.json({ ok: true, threshold: v });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 图片流量（Tab2）—— CDN 出流量（近似，需 CF analytics 令牌）
@@ -586,7 +587,7 @@ router.get('/storage/traffic', async (req, res) => {
         : '当前存储后端非 Cloudflare R2，出流量请在对应云厂商（如腾讯云 COS）控制台查看。'),
       updatedAt: fetchedAt
     });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 废弃图片清单（未被任何作品/套系封面或相册引用）—— 供「快速清理空间」勾选
@@ -618,7 +619,7 @@ router.get('/storage/orphans', async (req, res) => {
       totalBytes: list.reduce((s, x) => s + x.bytes, 0),
       note: '以下图片未被任何封面/相册引用，可安全清理；删除前请确认无业务依赖（公开图片尤其谨慎）。'
     });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 显式删除（容量清理用）：仅接受管理员勾选的 URL 列表，绝不自动后台删除
@@ -637,14 +638,14 @@ router.post('/storage/delete', async (req, res) => {
       failed: results.filter((r) => !r.ok).length,
       results
     });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 上传令牌下发（管理员登录后）；仅用于直传 Worker 闸门，不等于 R2 凭证。未配置则返回 null。
 router.get('/upload-token', async (req, res) => {
   try {
     res.json({ token: process.env.UPLOAD_TOKEN || null });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 媒资元数据登记（Worker 直传路径绕过了 /api/upload，需前端回调登记；唯一索引保证幂等）
@@ -674,7 +675,7 @@ router.get('/backup/export', async (req, res) => {
     res.setHeader('Content-Type', 'application/json; charset=utf-8');
     res.setHeader('Content-Disposition', `attachment; filename="${fname}"`);
     res.send(json);
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 17.2 立即触发一次云端 /backup 目录写入（定时任务之外的手动兜底）
@@ -683,8 +684,8 @@ router.post('/backup/run', async (req, res) => {
     if (!isCloudStorageEnabled()) return res.status(400).json({ error: '未配置云端存储（COS / R2），无法写入云端备份' });
     const r = await writeBackupToCloud();
     if (r.ok) res.json(r);
-    else res.status(500).json({ error: r.reason });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+    else { console.error('[admin] 云端备份写入失败', r && r.reason); res.status(500).json({ error: SERVER_ERROR_MSG }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 18. 数据一致性巡检：手动触发一次（与每日凌晨定时任务同一套逻辑）
@@ -692,7 +693,7 @@ router.post('/consistency-check', async (req, res) => {
   try {
     const r = await runConsistencyCheck();
     res.json(r);
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 一键把 packages 表的"订单套系"导入到 photo_package（对外报价套系，套系中心展示）
@@ -712,7 +713,7 @@ router.post('/photo-package/import-from-packages', async (req, res) => {
       added++;
     }
     res.json({ ok: true, added, skipped, total_in_packages: pkgs.length });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 18.1 查询最近一次巡检异常清单（consistency_issues 只存最近一次，故直接全量返回）
@@ -721,7 +722,7 @@ router.get('/consistency-check/issues', async (req, res) => {
     const rows = await query('SELECT * FROM consistency_issues ORDER BY id ASC');
     const lastRun = rows.length ? rows[0].check_run : null;
     res.json({ check_run: lastRun, total: rows.length, issues: rows });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 export default router;

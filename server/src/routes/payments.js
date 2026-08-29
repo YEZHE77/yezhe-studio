@@ -2,6 +2,7 @@
 import { Router } from 'express';
 import { query } from '../db.js';
 import { authRequired } from '../auth.js';
+import { serverError } from '../httpError.js';
 
 const router = Router();
 
@@ -17,7 +18,7 @@ router.get('/', authRequired, async (req, res) => {
     const w = where.length ? 'WHERE ' + where.join(' AND ') : '';
     const rows = await query('SELECT * FROM payments ' + w + ' ORDER BY created_at DESC, id DESC', params);
     res.json(rows);
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 export default router;

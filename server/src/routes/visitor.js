@@ -5,6 +5,7 @@ import { Router } from 'express';
 import bcrypt from 'bcryptjs';
 import { query, get, insert, run } from '../db.js';
 import { authRequired } from '../auth.js';
+import { serverError } from '../httpError.js';
 
 const router = Router();
 router.use(authRequired);
@@ -38,7 +39,7 @@ router.get('/list', async (req, res) => {
       [...params, pageSize, (page - 1) * pageSize]
     );
     res.json({ list: rows, total: Number(total) || 0, page, pageSize });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 导出全部访客记录（CSV，无条数限制）
@@ -55,7 +56,7 @@ router.get('/export', async (req, res) => {
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', 'attachment; filename="visitors.csv"');
     res.send('\uFEFF' + csv);
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 黑名单列表
@@ -66,7 +67,7 @@ router.get('/blacklist', async (req, res) => {
        FROM visitor_blacklist b ORDER BY b.created_at DESC`
     );
     res.json({ list: rows, count: rows.length });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 加入黑名单
@@ -77,7 +78,7 @@ router.post('/blacklist', async (req, res) => {
     const exists = await get('SELECT visitor_id FROM visitor_blacklist WHERE visitor_id = ?', [vid]);
     if (!exists) await insert('INSERT INTO visitor_blacklist (visitor_id) VALUES (?)', [vid]);
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 移除黑名单
@@ -85,7 +86,7 @@ router.delete('/blacklist/:visitorId', async (req, res) => {
   try {
     await run('DELETE FROM visitor_blacklist WHERE visitor_id = ?', [req.params.visitorId]);
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 免打扰列表
@@ -96,7 +97,7 @@ router.get('/no-disturb', async (req, res) => {
        FROM visitor_no_disturb n ORDER BY n.created_at DESC`
     );
     res.json({ list: rows, count: rows.length });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 加入免打扰
@@ -107,7 +108,7 @@ router.post('/no-disturb', async (req, res) => {
     const exists = await get('SELECT visitor_id FROM visitor_no_disturb WHERE visitor_id = ?', [vid]);
     if (!exists) await insert('INSERT INTO visitor_no_disturb (visitor_id) VALUES (?)', [vid]);
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 移除免打扰
@@ -115,7 +116,7 @@ router.delete('/no-disturb/:visitorId', async (req, res) => {
   try {
     await run('DELETE FROM visitor_no_disturb WHERE visitor_id = ?', [req.params.visitorId]);
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 访客密码状态
@@ -123,7 +124,7 @@ router.get('/password', async (req, res) => {
   try {
     const setting = await get('SELECT visitor_password FROM visitor_setting WHERE business_uid = 0');
     res.json({ enabled: !!(setting && setting.visitor_password) });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 设置 / 清除访客密码（传空密码 = 关闭）
@@ -135,7 +136,7 @@ router.put('/password', async (req, res) => {
     if (exists) await run('UPDATE visitor_setting SET visitor_password = ? WHERE business_uid = 0', [hash]);
     else await insert('INSERT INTO visitor_setting (business_uid, visitor_password) VALUES (0, ?)', [hash]);
     res.json({ ok: true, enabled: !!hash });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 访客详情（完整访问轨迹 + 黑名单/免打扰状态）
@@ -146,7 +147,7 @@ router.get('/:visitorId', async (req, res) => {
     const bl = await get('SELECT visitor_id FROM visitor_blacklist WHERE visitor_id = ?', [vid]);
     const nd = await get('SELECT visitor_id FROM visitor_no_disturb WHERE visitor_id = ?', [vid]);
     res.json({ visitor_id: vid, is_blacklist: !!bl, is_no_disturb: !!nd, count: logs.length, logs });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 export default router;

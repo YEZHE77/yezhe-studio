@@ -4,6 +4,7 @@ import http, { img, BASE } from '../api.js';
 import { getRefundParagraphs, normalizePolicy } from '../utils/refundPolicy.js';
 import { getServiceAgreement, toParagraphs } from '../utils/customerAgreement.js';
 import { DEFAULT_SERVICE_DETAIL } from '../utils/serviceDetail.js';
+import { goLogin } from '../utils/customerAuth.js';
 
 // ===== C 端客户订单查看页（/customer-order?token=customer_token）=====
 // customer_token 鉴权，与 B 端订单详情同口径：套系详细内容 + 拍摄档期/时间/地点 + 执行人 + 消费明细 + 选片入口
@@ -18,6 +19,8 @@ const MRED = '#FA5151';
 const MGRAY = '#999999';
 const MBORDER = '#F0F0F0';
 const MGREEN = '#07C160';
+// 专属相册链接缺失/被篡改时的兜底文案（与后端 customerMine.js 保持一致，清单 4.1）
+const ALBUM_LINK_INVALID_MSG = '链接无效，请通过手机号登录查看您的专属相册';
 
 function Card({ children, style }) {
   return <div style={{ background: '#fff', borderRadius: 16, padding: 16, boxShadow: '0 1px 6px rgba(0,0,0,0.04)', ...style }}>{children}</div>;
@@ -102,7 +105,16 @@ export default function CustomerOrder() {
   const [refundDetailOpen, setRefundDetailOpen] = useState(false);
 
   useEffect(() => {
-    if (!token) { setErr('无权限访问'); setLoading(false); return; }
+    // 清单 4.2：客户专属相册【不接受】share-key 参数。
+    // 若链接里混入了 share_key / shareKey / share（公开样片体系的参数），
+    // 一律不按分享密钥解析，直接引导走手机号登录流程。
+    if (params.get('share_key') || params.get('shareKey') || params.get('share')) {
+      setErr(ALBUM_LINK_INVALID_MSG);
+      setLoading(false);
+      return;
+    }
+    // 清单 4.1：参数缺失 / 被删除 / 被篡改 → 同一文案 + 引导登录，不发起任何请求
+    if (!token) { setErr(ALBUM_LINK_INVALID_MSG); setLoading(false); return; }
     http.get('/api/customer/order-detail', { params: { accessToken: token } })
       .then((r) => setData(r.data))
       .catch((e) => setErr((e.response && e.response.data && e.response.data.error) || '加载失败'))
@@ -169,11 +181,20 @@ export default function CustomerOrder() {
   if (loading) return <div style={{ minHeight: '100vh', background: '#F5F5F7', display: 'flex', alignItems: 'center', justifyContent: 'center', color: FAINT, fontSize: 14 }}>加载中…</div>;
 
   if (err || !data) {
+    // 文案由后端统一给出（customerMine.js /order-detail）：
+    //   参数缺失/篡改 → 「链接无效，请通过手机号登录查看您的专属相册」（清单 4.1）
+    //   查不到/非本人 → 「您无权查看该内容」（清单 2.4，不泄露订单是否存在）
+    // 这里只负责展示 + 给出「去登录」出口，绝不自行拼装可能泄露信息的文案。
     return (
       <div style={{ minHeight: '100vh', background: '#F5F5F7', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 24, textAlign: 'center' }}>
         <div style={{ fontSize: 40, marginBottom: 12 }}>🔒</div>
-        <div style={{ fontSize: 16, color: TEXT, marginBottom: 6 }}>{err || '无权限访问该订单'}</div>
-        <div style={{ fontSize: 13, color: FAINT }}>该链接无效或已失效，请联系摄影师。</div>
+        <div style={{ fontSize: 16, color: TEXT, marginBottom: 6, lineHeight: 1.6, maxWidth: 320 }}>{err || ALBUM_LINK_INVALID_MSG}</div>
+        <button
+          type="button"
+          onClick={() => goLogin(nav)}
+          style={{ marginTop: 18, padding: '12px 28px', borderRadius: 14, background: BRAND, color: '#fff', fontSize: 14, border: 'none', cursor: 'pointer' }}
+        >手机号登录查看</button>
+        <div style={{ fontSize: 12, color: FAINT, marginTop: 12 }}>如有疑问，请联系摄影师</div>
       </div>
     );
   }

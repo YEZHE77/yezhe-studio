@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { customerHttp, setCustomerToken, clearCustomerToken } from '../utils/customerAuth.js';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { customerHttp, setCustomerToken, clearCustomerToken, resolveRedirect } from '../utils/customerAuth.js';
 import http, { img } from '../api.js';
 
 // ===== C 端【我的】页面（/customer/mine）=====
@@ -49,6 +49,9 @@ const fmtTime = (t) => {
 
 export default function CustomerMine() {
   const nav = useNavigate();
+  const [params] = useSearchParams();
+  // 若带 ?redirect=xxx（从受保护页面跳来登录），登录成功后回跳原页面（清单 2.1）
+  const redirect = params.get('redirect') ? resolveRedirect(params.get('redirect')) : '';
   const [studio, setStudio] = useState({ name: '', logo: '', contact: {} });
   const [auth, setAuth] = useState(null);        // null=校验中 / {isLogin:false} / {isLogin:true,phone}
   const [biz, setBiz] = useState({ reservations: [], orders: [] });
@@ -58,7 +61,18 @@ export default function CustomerMine() {
   const [loginErr, setLoginErr] = useState('');
   const [sheet, setSheet] = useState('');
   const [toast, setToast] = useState('');
+  const [refreshing, setRefreshing] = useState(false); // 手动刷新（清单 8.1）
   const flashToast = (m) => { setToast(m); setTimeout(() => setToast(''), 1600); };
+
+  // 手动刷新：仅重拉业务数据（预约/订单），不闪 loading，避免「后台状态变更 C 端不同步」
+  const manualRefresh = () => {
+    if (refreshing) return;
+    setRefreshing(true);
+    customerHttp.get('/api/customer/my-business')
+      .then((b) => { if (b && b.data) setBiz(b.data || {}); })
+      .catch(() => {})
+      .finally(() => setRefreshing(false));
+  };
 
   // 商家资料
   useEffect(() => {
@@ -107,6 +121,7 @@ export default function CustomerMine() {
         setAuth({ isLogin: true, phone: r.data.phone || '' });
         // 后台静默刷新业务数据；失败不影响已登录态
         softLoadAuth();
+        if (redirect) nav(redirect, { replace: true });
         return;
       }
       setLoginErr('登录失败，请稍后重试');
@@ -142,7 +157,8 @@ export default function CustomerMine() {
   };
 
   const onMenu = (tag) => {
-    if (!auth || !auth.isLogin) return; // 未登录菜单置灰不可点
+    // 未登录：不静默无响应，改为唤起登录弹窗（登录成功后菜单即可正常打开）
+    if (!auth || !auth.isLogin) { setLoginOpen(true); return; }
     if (tag === 'contact') { copyWechat(); return; }
     setSheet(tag);
   };
@@ -155,11 +171,20 @@ export default function CustomerMine() {
 
   return (
     <div style={{ minHeight: '100vh', background: '#F2F2F5', color: TEXT, paddingBottom: 40 }}>
-      {/* 顶部深色导航栏（返回键白色） */}
-      <div style={{ background: '#1f1f1f', position: 'sticky', top: 0, zIndex: 20, display: 'flex', alignItems: 'center', padding: '14px 18px' }}>
+      {/* 顶部深色导航栏（返回键白色 + 已登录态右侧手动刷新，清单 8.1） */}
+      <div style={{ background: '#1f1f1f', position: 'sticky', top: 0, zIndex: 20, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 18px' }}>
         <button onClick={() => nav('/home')} style={{ background: 'none', border: 'none', fontSize: 16, color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 2 }}>
           <span style={{ fontSize: 20, lineHeight: 1 }}>‹</span>我的
         </button>
+        {logged && (
+          <button onClick={manualRefresh} aria-label="刷新" disabled={refreshing}
+            style={{ background: 'none', border: 'none', color: '#fff', fontSize: 18, cursor: refreshing ? 'default' : 'pointer', opacity: refreshing ? 0.5 : 1, display: 'flex', alignItems: 'center', padding: 4 }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ animation: refreshing ? 'spin 0.8s linear infinite' : 'none' }}>
+              <path d="M21 12a9 9 0 1 1-2.64-6.36" />
+              <polyline points="21 3 21 9 15 9" />
+            </svg>
+          </button>
+        )}
       </div>
 
       {/* 档案头：未登录点击唤起登录弹窗；已登录展示头像+脱敏手机号 */}
@@ -242,7 +267,7 @@ export default function CustomerMine() {
       {sheet === 'reservations' && (
         <Sheet title="我的预约" onClose={() => setSheet('')}>
           {biz.reservations.length === 0 ? (
-            <div style={{ textAlign: 'center', color: FAINT, padding: '30px 0', fontSize: 14 }}>暂无预约</div>
+            <div style={{ textAlign: 'center', color: FAINT, padding: '30px 0', fontSize: 14 }}>暂无预约记录</div>
           ) : biz.reservations.map((r) => {
             const rejected = r.status === 'rejected';
             const converted = r.status === 'converted';
@@ -256,6 +281,9 @@ export default function CustomerMine() {
                 <div style={{ fontSize: 12, color: SUB, marginTop: 4 }}>主手机号 {r.phone}{r.phone_two ? ' · 副 ' + r.phone_two : ''}</div>
                 <div style={{ fontSize: 12, color: SUB, marginTop: 4 }}>套系 {r.package_name || '暂未确定套系'}</div>
                 <div style={{ fontSize: 12, color: SUB, marginTop: 4 }}>意向日期 {r.expect_date || '待定'}{r.expect_time ? ' ' + r.expect_time : ''}{r.shoot_location ? ' · ' + r.shoot_location : ''}</div>
+                {rejected && r.reject_remark && (
+                  <div style={{ fontSize: 12, color: '#E5484D', marginTop: 4 }}>拒绝原因：{r.reject_remark}</div>
+                )}
                 {converted && r.order_token && (
                   <button onClick={() => nav('/customer/order?accessToken=' + encodeURIComponent(r.order_token))}
                     style={{ marginTop: 10, padding: '7px 16px', borderRadius: 14, border: '1px solid ' + BRAND, background: '#fff', color: BRAND, fontSize: 12, cursor: 'pointer' }}>
@@ -272,7 +300,10 @@ export default function CustomerMine() {
       {sheet === 'orders' && (
         <Sheet title="我的订单" onClose={() => setSheet('')}>
           {biz.orders.length === 0 ? (
-            <div style={{ textAlign: 'center', color: FAINT, padding: '30px 0', fontSize: 14 }}>暂无订单</div>
+            <div>
+              <div style={{ textAlign: 'center', color: FAINT, padding: '30px 0 6px', fontSize: 14 }}>暂无订单记录</div>
+              <div style={{ textAlign: 'center', color: FAINT, fontSize: 12, paddingBottom: 20 }}>如有疑问，请联系摄影师</div>
+            </div>
           ) : biz.orders.map((o) => (
             <div key={o.id} onClick={() => { setSheet(''); nav('/customer/order?accessToken=' + encodeURIComponent(o.customer_token || '')); }} style={{ padding: '14px 0', borderBottom: '1px solid ' + LINE, cursor: 'pointer' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>

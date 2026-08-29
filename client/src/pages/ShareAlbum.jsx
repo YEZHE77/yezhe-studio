@@ -71,11 +71,13 @@ export default function ShareAlbum() {
   }
 
   if (err || !payload) {
+    // 文案由后端统一给出（share.js）：链接失效 / 合集已关闭 / 链接格式不正确，三种语义分开，
+    // 此处不再自行拼装，避免与验收清单要求文案不一致（清单 3.2 / 3.3 / 3.4 / 3.5）
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center text-white/70 px-6 text-center">
-        <div className="text-2xl mb-3">🔗</div>
-        <div className="text-lg">{err || '链接无效'}</div>
-        <div className="text-sm text-white/40 mt-2">该分享链接可能已失效、被关闭或已过期，请联系摄影师获取最新链接。</div>
+      <div style={{ minHeight: '100vh', background: '#111', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '24px', textAlign: 'center' }}>
+        <div style={{ fontSize: 32, marginBottom: 12 }}>🔗</div>
+        <div style={{ fontSize: 17, color: '#fff', lineHeight: 1.6 }}>{err || '链接无效'}</div>
+        <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.45)', marginTop: 10 }}>如有疑问，请联系摄影师</div>
       </div>
     );
   }

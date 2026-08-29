@@ -2,6 +2,7 @@
 import { Router } from 'express';
 import { get, run } from '../db.js';
 import { signToken, verifyPassword, hashPassword, authRequired, validatePasswordStrength } from '../auth.js';
+import { serverError } from '../httpError.js';
 
 const router = Router();
 
@@ -14,14 +15,14 @@ router.post('/login', async (req, res) => {
     }
     const token = signToken(u);
     res.json({ token, user: { id: u.id, username: u.username, role: u.role, name: u.name } });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 router.get('/me', authRequired, async (req, res) => {
   try {
     const u = await get('SELECT id, username, role, name, avatar FROM users WHERE id = ?', [req.user.uid]);
     res.json(u);
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 更新当前登录账号资料（头像 / 名称）
@@ -38,7 +39,7 @@ router.put('/me', authRequired, async (req, res) => {
     }
     const u = await get('SELECT id, username, role, name, avatar FROM users WHERE id = ?', [req.user.uid]);
     res.json(u);
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 修改当前登录账号的密码：需验证旧密码 → 写入新 bcrypt 哈希
@@ -57,7 +58,7 @@ router.put('/password', authRequired, async (req, res) => {
     const newHash = await hashPassword(newPassword);
     await run('UPDATE users SET password_hash = ? WHERE id = ?', [newHash, u.id]);
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 export default router;
