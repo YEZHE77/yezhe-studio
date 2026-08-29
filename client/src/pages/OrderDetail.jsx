@@ -276,23 +276,6 @@ export default function OrderDetail() {
     http.get('/api/admin/photo-select/' + oid).then((r) => setSel(r.data)).catch(() => setSel(null));
   }, []);
 
-  // 单订单分享备注（C 端订单详情顶部灰色卡片展示；仅作用本条订单，不改全局配置）
-  const [shareNoteDraft, setShareNoteDraft] = useState('');
-  const [shareNoteSaving, setShareNoteSaving] = useState(false);
-  useEffect(() => {
-    if (detail) setShareNoteDraft(detail.share_note || '');
-  }, [detail && detail.id]);
-  async function saveShareNote() {
-    if (!detail) return;
-    setShareNoteSaving(true);
-    try {
-      await http.put('/api/orders/' + detail.id, { share_note: shareNoteDraft });
-      setDetail((d) => (d ? { ...d, share_note: shareNoteDraft } : d));
-      toast('订单分享备注已保存，客户刷新页面立即生效');
-    } catch (e) { toast((e.response?.data?.error) || '保存失败'); }
-    setShareNoteSaving(false);
-  }
-
   // 请求序号：连点时只接受最后一次 reload 的响应，避免旧 GET 覆盖乐观更新后的新状态
   const reloadSeq = useRef(0);
   const reload = useCallback(async () => {
@@ -1459,18 +1442,6 @@ export default function OrderDetail() {
             })()}
             <div style={{ textAlign: 'center', padding: '10px 0' }}>
               <button type="button" onClick={() => nav('/orders/' + detail?.id + '/notes')} style={{ background: 'none', border: 'none', color: '#7ECDBB', fontSize: 13 }}>展开备注</button>
-            </div>
-          </div>
-
-          {/* 订单分享备注（仅作用本条订单，不改全局配置；展示在 C 端订单详情顶部灰色卡片） */}
-          <div style={{ margin: '12px 12px 0', background: '#fff', borderRadius: 8, padding: '14px 16px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
-            <div style={{ fontSize: 14, color: '#1f2329', marginBottom: 4 }}>订单分享备注</div>
-            <div style={{ fontSize: 12, color: '#999', marginBottom: 10, lineHeight: 1.6 }}>展示在 C 端免登录订单详情页顶部灰色卡片，客户仅可读不可编辑；仅作用本条订单，不改动全局默认配置。</div>
-            <textarea value={shareNoteDraft} onChange={(e) => setShareNoteDraft(e.target.value)} placeholder="留空则 C 端不显示备注卡片" style={{ width: '100%', minHeight: 72, border: '1px solid #E8E8E8', borderRadius: 8, padding: '10px 12px', fontSize: 14, color: '#333', outline: 'none', resize: 'vertical', lineHeight: 1.6, boxSizing: 'border-box' }} />
-            <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-              <button type="button" onClick={saveShareNote} disabled={shareNoteSaving}
-                style={{ padding: '6px 16px', borderRadius: 6, background: '#7ECDBB', color: '#fff', fontSize: 13, border: 'none', cursor: 'pointer', opacity: shareNoteSaving ? 0.5 : 1 }}>保存</button>
-              <span style={{ fontSize: 12, color: '#999' }}>修改后客户刷新页面立即生效，原有访问链接无需重新复制</span>
             </div>
           </div>
 
