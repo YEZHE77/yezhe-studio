@@ -618,16 +618,16 @@ export default function OrderDetail() {
       contentClone.style.width = '700px';
       contentClone.style.margin = '0 auto';
       const wrap = document.createElement('div');
-      // iOS Safari 对 left:-9999 离屏的 html2canvas 渲染经常拿到 0 高度：改为屏幕内 fixed + opacity:0，
-      // 保证参与布局、有实际尺寸，且不可见不阻塞用户操作。
+      // 关键：容器 opacity 必须保持 1（html2canvas 按真实计算样式绘制，opacity:0 会让画布内容整体透明、PDF 空白）。
+      // 用 z-index:-1000 把容器压到页面背景之下——用户不可见，但参与布局、可正常渲染（iOS Safari 兼容）。
       wrap.style.position = 'fixed';
       wrap.style.left = '0';
       wrap.style.top = '0';
       wrap.style.width = '700px';
       wrap.style.background = '#fff';
-      wrap.style.opacity = '0';
+      wrap.style.opacity = '1';
       wrap.style.pointerEvents = 'none';
-      wrap.style.zIndex = '-1';
+      wrap.style.zIndex = '-1000';
       wrap.appendChild(contentClone);
       document.body.appendChild(wrap);
       // 等一帧让浏览器完成布局（iOS Safari 需要）
@@ -636,7 +636,15 @@ export default function OrderDetail() {
       // iOS Safari 大尺寸 canvas 易 OOM/超时：scale 降到 1.5（桌面/安卓保持 2）
       const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent || '');
       const htmlScale = isIOS ? 1.5 : 2;
-      const contentCanvas = await html2canvas(contentClone, { scale: htmlScale, useCORS: true, backgroundColor: '#ffffff' });
+      // 超时保护：html2canvas 卡住时给用户明确提示，而不是只停在"正在生成 PDF…"
+      const withTimeout = (p, ms, tag) => Promise.race([
+        p,
+        new Promise((_, rej) => setTimeout(() => rej(new Error(tag + ' 渲染超时')), ms))
+      ]);
+      const contentCanvas = await withTimeout(
+        html2canvas(contentClone, { scale: htmlScale, useCORS: true, backgroundColor: '#ffffff' }),
+        90000, '正文'
+      );
       if (!contentCanvas || contentCanvas.width === 0 || contentCanvas.height === 0) {
         throw new Error('渲染失败：内容画布为空');
       }
@@ -660,12 +668,15 @@ export default function OrderDetail() {
         el.style.left = '0';
         el.style.top = '0';
         el.style.background = '#fff';
-        el.style.opacity = '0';
+        el.style.opacity = '1';
         el.style.pointerEvents = 'none';
-        el.style.zIndex = '-1';
+        el.style.zIndex = '-1000';
         document.body.appendChild(el);
         await new Promise((r) => requestAnimationFrame(() => r()));
-        const canvas = await html2canvas(el.firstElementChild, { scale: htmlScale, backgroundColor: '#ffffff' });
+        const canvas = await withTimeout(
+          html2canvas(el.firstElementChild, { scale: htmlScale, backgroundColor: '#ffffff' }),
+          60000, '页眉/页脚'
+        );
         document.body.removeChild(el);
         return canvas;
       };
