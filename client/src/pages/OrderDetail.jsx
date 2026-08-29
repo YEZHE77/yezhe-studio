@@ -609,22 +609,20 @@ export default function OrderDetail() {
   async function downloadPrintPdf() {
     try {
       const sheet = document.querySelector('.print-order-sheet');
-      const contentEl = sheet && sheet.querySelector('.print-sheet-body');
-      if (!contentEl) return toast('未找到打印内容');
+      const contentEl = sheet && sheet.querySelector('div');
+      if (!contentEl) return alert('未找到打印内容');
 
       // 固定正文渲染宽度为 700px（A4 版心），克隆避免污染原节点
       const contentClone = contentEl.cloneNode(true);
       contentClone.style.maxWidth = '700px';
       contentClone.style.width = '700px';
       contentClone.style.margin = '0 auto';
-      contentClone.style.textAlign = 'left';
       const wrap = document.createElement('div');
       wrap.style.position = 'absolute';
       wrap.style.left = '-9999px';
       wrap.style.top = '0';
       wrap.style.width = '700px';
       wrap.style.background = '#fff';
-      wrap.style.textAlign = 'left';
       wrap.appendChild(contentClone);
       document.body.appendChild(wrap);
 
@@ -695,61 +693,35 @@ export default function OrderDetail() {
 
       const pdfBlob = pdf.output('blob');
       const filename = '拍摄服务合同-' + (detail.order_no || detail.id) + '.pdf';
-      const url = URL.createObjectURL(pdfBlob);
-
-      // 优先用新标签页打开 PDF 预览（PC/手机浏览器均能看到内容并触发打印/保存）
-      let opened = false;
-      try {
-        const preview = window.open(url, '_blank');
-        opened = !!preview;
-      } catch (_) {}
-
-      if (!opened) {
-        const file = new File([pdfBlob], filename, { type: 'application/pdf' });
-        if (navigator.canShare && navigator.canShare({ files: [file] })) {
-          try {
-            await navigator.share({ files: [file], title: filename });
-          } catch (shareErr) {
-            if (shareErr && shareErr.name !== 'AbortError') {
-              // share 失败兜底下载
-              const a = document.createElement('a');
-              a.href = url;
-              a.download = filename;
-              document.body.appendChild(a);
-              a.click();
-              document.body.removeChild(a);
-            }
-          }
-        } else {
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = filename;
-          document.body.appendChild(a);
-          a.click();
-          document.body.removeChild(a);
-        }
+      const file = new File([pdfBlob], filename, { type: 'application/pdf' });
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({ files: [file], title: filename });
+      } else {
+        const url = URL.createObjectURL(pdfBlob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
       }
-      setTimeout(() => URL.revokeObjectURL(url), 5000);
     } catch (e) {
       if (e && e.name === 'AbortError') return;
       console.error(e);
-      toast('PDF 生成失败：' + (e && e.message ? e.message : e));
+      alert('PDF 生成失败：' + (e && e.message ? e.message : e));
     }
   }
   function printOrder() {
     if (!detail) return;
     setMoreMenu(false);
-    // PC / 普通浏览器优先走 window.print() 弹原生打印对话框（含打印机选择 + 预览），与 7.0 行为一致；
-    // 微信 / PWA / 移动端环境 window.print 无效或体验差，fallback 到 PDF 生成后新标签页预览/分享/下载。
-    const ua = navigator.userAgent || '';
-    const isWechat = ua.toLowerCase().includes('micromessenger');
+    // PC / 普通浏览器优先走 window.print() 弹原生打印对话框（含打印机选择 + 预览）；微信 / PWA 环境 window.print 无效，fallback 到 PDF 下载
+    const isWechat = /MicroMessenger/i.test(navigator.userAgent);
     const isStandalone = typeof window.matchMedia === 'function' && window.matchMedia('(display-mode: standalone)').matches;
-    const isMobileAgent = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(ua);
-    if (!isWechat && !isStandalone && !isMobileAgent && typeof window.print === 'function') {
+    if (!isWechat && !isStandalone && typeof window.print === 'function') {
       window.print();
       return;
     }
-    toast('正在生成 PDF…');
     downloadPrintPdf();
   }
   async function restoreOrder() {
@@ -2734,7 +2706,7 @@ export default function OrderDetail() {
             创建时间：{detail.created_at ? new Date(detail.created_at).toLocaleString('zh-CN') : '—'}　·　订单状态：{statusText || '—'}
           </div>
         </div>
-        <div className="print-sheet-body" style={{ maxWidth: 700, margin: '0 auto', textAlign: 'left', fontFamily: 'SimSun, STSong, serif', fontSize: 14, lineHeight: 1.8, color: '#222', background: '#fff', padding: '4mm 0' }}>
+        <div style={{ maxWidth: 700, margin: '0 auto', fontFamily: 'SimSun, STSong, serif', fontSize: 14, lineHeight: 1.8, color: '#222', background: '#fff', padding: '4mm 0' }}>
 
           {/* 客户信息 */}
           <div style={{ marginBottom: 12 }}>
