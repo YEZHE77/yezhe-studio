@@ -281,7 +281,7 @@ export default function AlbumGrid({ gallery, onBack, albumId }) {
                 src={img(photos[idx], 'thumb')}
                 alt=""
                 ratio={ratios[idx] || 0.75}
-                loading="lazy"
+                loading={idx < 12 ? 'eager' : 'lazy'}
                 onClick={() => setFull(idx)}
                 onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setFull(idx); } }}
                 role="button"

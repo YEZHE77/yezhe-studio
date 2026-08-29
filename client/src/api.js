@@ -244,6 +244,11 @@ function imageResized(src, width, quality = 75) {
 function workerThumb(src, width) {
   try {
     const u = new URL(src);
+    // R2/S3 预签名 URL 的签名覆盖整个 query string，追加 ?w= 会破坏签名导致 403；
+    // 此时直接返回原图，保证能显示（牺牲压缩，但避免整片灰色骨架）。
+    if (u.searchParams.has('X-Amz-Signature') || u.searchParams.has('X-Amz-Credential')) {
+      return src;
+    }
     u.searchParams.set('w', String(width));
     return u.toString();
   } catch (e) {

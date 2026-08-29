@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { img } from '../api.js';
 
 // 客片电子相册沉浸式全屏查看（灯箱）
-// 验收清单 6.4：手机端【左右滑动】切换 + 【双指捏合缩放】；电脑端【方向键 ←/→】翻页 + 滚轮/双击缩放 + ESC 关闭。
+// 手机端【上下滑动】切换 + 【双指捏合缩放】；电脑端【方向键 ↑/↓】翻页 + 滚轮切换/缩放 + ESC 关闭。
 // 保留：顶部导航、进度指示点、底部品牌工具栏（播放[带BGM]/更多）、分享；首屏叠加新人名字/分类/文案。
 export default function GalleryAlbum({ gallery, startIndex = 0, onClose }) {
   const { title, subtitle, category, blessing, albumCopy, photos = [], brand_name, brand_slogan, brand_intro, brand_logo } = gallery;
@@ -32,7 +32,7 @@ export default function GalleryAlbum({ gallery, startIndex = 0, onClose }) {
   };
   // 将轨道平移到指定索引（extra 为像素级实时偏移，用于拖拽跟手）
   const applyTrack = (idx, extra = 0) => {
-    if (trackRef.current) trackRef.current.style.transform = `translateX(calc(${-idx * 100}vw + ${extra}px))`;
+    if (trackRef.current) trackRef.current.style.transform = `translateY(calc(${-idx * 100}vh + ${extra}px))`;
   };
 
   // BGM：与 AlbumGrid 幻灯片同一来源（/bgm/bgm.mp3），保持品牌统一
@@ -63,12 +63,12 @@ export default function GalleryAlbum({ gallery, startIndex = 0, onClose }) {
     };
   }, []);
 
-  // 键盘：←/→ 翻页（未缩放时）、+/- 缩放、ESC 关闭
+  // 键盘：↑/↓ 翻页（未缩放时）、+/- 缩放、ESC 关闭
   useEffect(() => {
     const onKey = (e) => {
       if (e.key === 'Escape') { if (onClose) onClose(); return; }
-      if (e.key === 'ArrowLeft') { if (scale === 1) goTo(current - 1); }
-      else if (e.key === 'ArrowRight') { if (scale === 1) goTo(current + 1); }
+      if (e.key === 'ArrowUp') { if (scale === 1) goTo(current - 1); }
+      else if (e.key === 'ArrowDown') { if (scale === 1) goTo(current + 1); }
       else if (e.key === '+' || e.key === '=') { setScale((s) => clamp(s * 1.3, 1, 5)); setTx(0); setTy(0); }
       else if (e.key === '-' || e.key === '_') { setScale((s) => clamp(s / 1.3, 1, 5)); setTx(0); setTy(0); }
     };
@@ -163,7 +163,7 @@ export default function GalleryAlbum({ gallery, startIndex = 0, onClose }) {
     }
   };
 
-  // ===== 触摸手势（手机端：左右滑动切换 / 双指捏合缩放 / 单指拖动平移）=====
+  // ===== 触摸手势（手机端：上下滑动切换 / 双指捏合缩放 / 单指拖动平移）=====
   const onTouchStart = (e) => {
     const t = e.touches;
     if (t.length === 2) {
@@ -186,7 +186,7 @@ export default function GalleryAlbum({ gallery, startIndex = 0, onClose }) {
         g.current.startTx = tx; g.current.startTy = ty; g.current.startX = x; g.current.startY = y;
       } else {
         g.current.mode = 'swipe';
-        g.current.startX = x; g.current.dragOffset = 0;
+        g.current.startY = y; g.current.dragOffset = 0;
         setAnimating(false);
       }
     }
@@ -203,18 +203,18 @@ export default function GalleryAlbum({ gallery, startIndex = 0, onClose }) {
       const [nx, ny] = clampPan(scale, g.current.startTx + (x - g.current.startX), g.current.startTy + (y - g.current.startY));
       setTx(nx); setTy(ny);
     } else if (g.current.mode === 'swipe' && t.length === 1) {
-      const dx = t[0].clientX - g.current.startX;
-      g.current.dragOffset = dx;
-      applyTrack(current, dx); // 直接操作 DOM，跟手更顺滑
+      const dy = t[0].clientY - g.current.startY;
+      g.current.dragOffset = dy;
+      applyTrack(current, dy); // 直接操作 DOM，跟手更顺滑
     }
   };
   const onTouchEnd = () => {
     if (g.current.mode === 'swipe') {
-      const dx = g.current.dragOffset || 0;
-      const w = typeof window !== 'undefined' ? window.innerWidth : 800;
+      const dy = g.current.dragOffset || 0;
+      const h = typeof window !== 'undefined' ? window.innerHeight : 800;
       setAnimating(true);
-      if (dx <= -w * 0.22 && current < photos.length - 1) goTo(current + 1);
-      else if (dx >= w * 0.22 && current > 0) goTo(current - 1);
+      if (dy <= -h * 0.22 && current < photos.length - 1) goTo(current + 1);
+      else if (dy >= h * 0.22 && current > 0) goTo(current - 1);
       else applyTrack(current, 0); // 回弹
     } else if (g.current.mode === 'pan') {
       const [nx, ny] = clampPan(scale, tx, ty);
@@ -223,8 +223,16 @@ export default function GalleryAlbum({ gallery, startIndex = 0, onClose }) {
     g.current.mode = null;
   };
 
-  // ===== 鼠标（电脑端：双击缩放 / 滚轮缩放 / 拖拽平移）=====
+  // ===== 鼠标（电脑端：双击缩放 / 滚轮切换或缩放 / 拖拽平移）=====
   const onWheel = (e) => {
+    // 未缩放时：滚轮上下切换照片（垂直浏览直觉）
+    if (scale === 1) {
+      e.preventDefault();
+      if (e.deltaY > 30 && current < photos.length - 1) goTo(current + 1);
+      else if (e.deltaY < -30 && current > 0) goTo(current - 1);
+      return;
+    }
+    // 缩放时：滚轮缩放
     const ns = clamp(scale * (e.deltaY < 0 ? 1.12 : 0.89), 1, 5);
     setScale(ns);
     if (ns === 1) { setTx(0); setTy(0); }
@@ -268,7 +276,7 @@ export default function GalleryAlbum({ gallery, startIndex = 0, onClose }) {
         )}
       </div>
 
-      {/* 横向滑动灯箱：轨道 = photos.length 屏宽，每张 100% */}
+      {/* 垂直滑动灯箱：轨道 = photos.length 屏高，每张 100% */}
       <div
         ref={trackRef}
         onTouchStart={onTouchStart}
@@ -280,8 +288,8 @@ export default function GalleryAlbum({ gallery, startIndex = 0, onClose }) {
         onMouseUp={onMouseUp}
         onMouseLeave={onMouseUp}
         onDoubleClick={(e) => toggleZoom(e.clientX, e.clientY)}
-        className="h-screen w-full flex"
-        style={{ transform: `translateX(-${current * 100}vw)`, transition: animating ? 'transform 0.32s cubic-bezier(0.22,0.61,0.36,1)' : 'none', willChange: 'transform' }}
+        className="h-screen w-screen flex flex-col"
+        style={{ transform: `translateY(-${current * 100}vh)`, transition: animating ? 'transform 0.32s cubic-bezier(0.22,0.61,0.36,1)' : 'none', willChange: 'transform' }}
       >
         {photos.length === 0 && (
           <div className="h-screen w-screen flex items-center justify-center text-white/50">该相册暂未添加照片</div>
@@ -317,9 +325,9 @@ export default function GalleryAlbum({ gallery, startIndex = 0, onClose }) {
         ))}
       </div>
 
-      {/* 进度指示（小圆点） */}
+      {/* 进度指示（底部横排，适配垂直浏览） */}
       {photos.length > 1 && (
-        <div className="fixed top-1/2 right-2 z-20 -translate-y-1/2 flex flex-col gap-1.5">
+        <div className="fixed bottom-24 left-0 right-0 z-20 flex justify-center gap-1.5 px-4">
           {photos.map((_, i) => (
             <span key={i} className={'block w-1.5 h-1.5 rounded-full ' + (i === current ? 'bg-white' : 'bg-white/30')} />
           ))}
@@ -356,7 +364,7 @@ export default function GalleryAlbum({ gallery, startIndex = 0, onClose }) {
       {/* 缩放提示（仅未缩放时） */}
       {scale === 1 && photos.length > 0 && (
         <div className="fixed left-1/2 -translate-x-1/2 bottom-24 z-20 text-[11px] text-white/40 pointer-events-none">
-          左右滑动浏览 · 双指/双击放大
+          上下滑动浏览 · 双指/双击放大
         </div>
       )}
 
