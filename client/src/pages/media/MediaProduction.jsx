@@ -6,7 +6,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import http, { img } from '../../api.js';
-import { toast, fmtDateTime, callAI, checkBanned, PRIORITY_OPTS } from './common.js';
+import { toast, fmtDateTime, runSkill, checkBanned, PRIORITY_OPTS } from './common.js';
 
 export default function MediaProduction() {
   const nav = useNavigate();
@@ -97,17 +97,30 @@ export default function MediaProduction() {
   };
 
   // AI 生成初稿（基于选题字段；只允许 AI 写文案，数据字段人工填写）
+  // 走后端 Skill 模板：runSkill('draft_generate') → /api/ai/render 用选题业务数据填占位符 → 前端直连大模型
   const aiGenerate = async () => {
     if (!topic) return;
     setAiBusy(true);
-    const sys = '你是一位资深自媒体内容策划与文案写作者。根据给定的选题信息，输出一条可直接发布的完整文案初稿。只输出文案正文，不要输出任何解释、标题或前后缀。';
-    const user = `选题标题：${topic.title || '未命名'}\n核心痛点：${topic.core_pain || '（未填）'}\n目标平台：${topic.target_platform || '（未填）'}\n内容形式：${topic.content_form || '图文'}\n参考链接：${topic.reference_url || '（无）'}\n请生成适合该平台的完整文案初稿（图文约 300-500 字；短视频为口播脚本格式）。`;
     const fallback = `【AI 初稿 · 本地模板 · 未配置 AI 接口，以下为示例】\n\n围绕「${topic.title || '本选题'}」的核心痛点「${topic.core_pain || '待补充'}」，这篇内容将面向${topic.target_platform || '目标平台'}的${topic.content_form || '图文'}用户展开：\n\n1. 开头抛出痛点：你是否也在备婚/拍摄中遇到同样的问题？\n2. 展开解决方案与实操建议。\n3. 结尾引导互动：评论区聊聊你的经历。\n\n（提示：在「主页概览」配置 AI 接口后，此处将调用真实模型生成初稿）`;
     try {
-      const r = await callAI(sys, user, fallback);
+      const r = await runSkill('draft_generate', { topicId: Number(topic.id) }, { fallback, temperature: 0.7 });
       setContent(r.text);
       toast(r.source === 'ai' ? 'AI 初稿已生成' : '已生成模板初稿（未配置 AI 接口）', r.source === 'ai' ? 'ok' : 'warn');
     } finally { setAiBusy(false); }
+  };
+
+  // AI 深度违禁词检测（skill: banned_check）。仅标记文本中实际存在的命中词，不自动改写。
+  const [bannedAi, setBannedAi] = useState(null);
+  const [bannedAiBusy, setBannedAiBusy] = useState(false);
+  const aiCheckBanned = async () => {
+    const text = (content || '') + '\n' + (altTitles || '');
+    if (!String(text).trim()) { toast('正文与备选标题均为空', 'warn'); return; }
+    setBannedAiBusy(true);
+    const fallback = '未发现明显违禁词（未配置 AI 接口，已用本地关键词列表做基础检测）。';
+    try {
+      const r = await runSkill('banned_check', { text }, { fallback, temperature: 0.2 });
+      setBannedAi({ text: r.text, source: r.source });
+    } finally { setBannedAiBusy(false); }
   };
 
   // 去分发记录（带 topic 预选）
@@ -216,7 +229,14 @@ export default function MediaProduction() {
               <span className="text-[14px]" style={{ color: '#333333' }}>正文编辑器</span>
               <div className="flex gap-2">
                 <button type="button" onClick={aiGenerate} disabled={aiBusy} className="text-xs" style={{ padding: '6px 14px', borderRadius: 100, border: '1px solid #ABE2FB', background: '#F0F7FF', color: '#2DB7F6', cursor: aiBusy ? 'default' : 'pointer' }}>{aiBusy ? '生成中…' : '✨ AI 生成初稿'}</button>
+                <button type="button" onClick={aiCheckBanned} disabled={bannedAiBusy} className="text-xs" style={{ padding: '6px 14px', borderRadius: 100, border: '1px solid #F3D6A8', background: '#FFF7EC', color: '#E6A23C', cursor: bannedAiBusy ? 'default' : 'pointer' }}>{bannedAiBusy ? '检测中…' : '🛡 AI 违禁词检测'}</button>
               </div>
+              {bannedAi && (
+                <div className="mt-2 text-[12px]" style={{ color: '#666666', background: '#FAFAFA', border: '1px solid #F0F0F0', borderRadius: 6, padding: '8px 10px' }}>
+                  <span style={{ color: '#E6A23C' }}>AI 违禁词检测{bannedAi.source === 'ai' ? '' : '（本地模板）'}：</span>
+                  <div className="whitespace-pre-wrap mt-1" style={{ color: '#444444' }}>{bannedAi.text}</div>
+                </div>
+              )}
             </div>
             <textarea
               value={content}

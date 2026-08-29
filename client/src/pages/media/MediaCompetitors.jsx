@@ -5,7 +5,7 @@
 // 约束：严禁爬虫、不批量抓取；所有作品样本链接人工手动粘贴
 import React, { useState, useEffect, useCallback } from 'react';
 import http from '../../api.js';
-import { toast, fmtDateTime, callAI, readAiConfig } from './common.js';
+import { toast, fmtDateTime, runSkill, readAiConfig } from './common.js';
 
 const REPORT_SECTIONS = ['账号定位人设', '高频选题方向', '爆款共性拆解', '评论区客户痛点', '适合本摄影工作室借鉴点', '需要避开点'];
 
@@ -92,11 +92,9 @@ export default function MediaCompetitors() {
     const acc = list.find((x) => x.id === anaForm.id);
     if (!acc) { toast('账号不存在，请刷新', 'err'); return; }
     setAnalyzing(true);
-    const sys = '你是一位资深婚礼/摄影垂直领域自媒体内容分析师。基于给定账号主页信息与用户手动提供的爆款作品链接，输出一份结构化的深度分析报告。只使用给定信息推理，禁止编造数据。必须严格按以下 6 个小标题输出，每个标题独占一行：\n【账号定位人设】\n【高频选题方向】\n【爆款共性拆解】\n【评论区客户痛点】\n【适合本摄影工作室借鉴点】\n【需要避开点】\n其中【评论区客户痛点】每条痛点一行，格式：痛点标题|痛点说明';
-    const user = `对标账号：${acc.account_name || '（未填）'}\n平台：${platformLabel(acc.platform)}\n主页：${acc.home_url || '（未填）'}\n账号简介：${acc.brief || '（未填）'}\n手动备注：${acc.manual_note || '（无）'}\n\n用户手动粘贴的爆款作品链接（1-${links.length}条）：\n${links.map((l, i) => (i + 1) + '. ' + l).join('\n')}\n\n请生成深度分析报告。`;
     const fallback = `【账号定位人设】\n${acc.account_name || '该账号'} 是${platformLabel(acc.platform)}上专注婚礼/摄影内容的账号，待结合主页信息完善。\n【高频选题方向】\n- 备婚攻略、婚礼当天记录、摄影幕后花絮（方向需结合粘贴的 ${links.length} 条爆款作品进一步确认）\n【爆款共性拆解】\n- 共性与标题钩子有关，建议逐个打开作品链接观察封面、标题与评论后补充\n【评论区客户痛点】\n预算不透明|新人普遍关心价格构成\n【适合本摄影工作室借鉴点】\n- 本地化内容（海口婚礼场景）可复用其选题框架\n【需要避开点】\n- 避免过度修图与夸大承诺的营销话术\n\n（本报告由本地模板生成：${hasAi ? 'AI 接口调用失败，已回退模板' : '未配置 AI 接口，可在主页概览配置'}）`;
     try {
-      const r = await callAI(sys, user, fallback);
+      const r = await runSkill('competitor_analyze', { competitorId: anaForm.id, links: links.join('\n') }, { fallback, temperature: 0.6 });
       setAnaForm((f) => ({ ...f, report: r.text, saved: false }));
       toast(r.source === 'ai' ? 'AI 深度分析完成，请核对后保存' : '已生成模板报告（未配置/调用 AI 失败）', r.source === 'ai' ? 'ok' : 'warn');
     } finally { setAnalyzing(false); }

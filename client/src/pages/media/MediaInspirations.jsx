@@ -4,7 +4,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import http from '../../api.js';
-import { toast, fmtDateTime, COLOR_PRESETS, SOURCE_OPTS } from './common.js';
+import { toast, fmtDateTime, COLOR_PRESETS, SOURCE_OPTS, runSkill } from './common.js';
 
 const EMPTY = { id: null, title: '', content: '', source_type: 'manual', source_url: '', pain_strength: 3, tags: [], card_color: '#2DB7F5' };
 
@@ -94,6 +94,73 @@ export default function MediaInspirations() {
     return { ...f, tags: f.tags.includes(s) ? f.tags.filter((t) => t !== s) : [...f.tags, s] };
   });
 
+  // AI 解析灵感（skill: inspiration_parse）：基于已粘贴链接 + 内容，提炼结构化灵感回填表单（不自动保存）
+  const [aiParsing, setAiParsing] = useState(false);
+  const aiParse = async () => {
+    const url = String(form.source_url || '').trim();
+    const rawText = String(form.title || '') + '\n' + String(form.content || '');
+    if (!url && !rawText.trim()) { toast('请先填写链接或内容', 'warn'); return; }
+    setAiParsing(true);
+    const fallback = `标题：${form.title || '（待命名）'}\n内容摘要：${form.content || '（待补充）'}\n用户痛点：${form.content ? '（从上述内容中提炼）' : '（待补充）'}`;
+    try {
+      const r = await runSkill('inspiration_parse', { url, rawText }, { fallback, temperature: 0.6 });
+      // 简单解析 AI 返回的「标题：/内容摘要：/用户痛点：」回填表单
+      const t = r.text.match(/标题[:：]\s*(.+)/);
+      const c = r.text.match(/内容摘要[:：]\s*([\s\S]*?)(?=\n用户痛点[:：]|$)/);
+      const p = r.text.match(/用户痛点[:：]\s*([\s\S]*)$/);
+      setForm((f) => ({
+        ...f,
+        title: (t && t[1].trim()) || f.title,
+        content: (c && c[1].trim()) || f.content,
+        pain_note: (p && p[1].trim()) || ''
+      }));
+      toast(r.source === 'ai' ? 'AI 已解析并回填灵感' : '已用本地模板解析（未配置 AI 接口）', r.source === 'ai' ? 'ok' : 'warn');
+    } finally { setAiParsing(false); }
+  };
+
+  // AI 生成选题（skill: topic_generate）：基于灵感生成选题建议，弹窗可编辑，手动保存才入库（规范第 3 条）
+  const [topicGen, setTopicGen] = useState(null); // { inspirationId, title, core_pain, target_platform, content_form, busy }
+  const openTopicGen = async (it) => {
+    setTopicGen({ inspirationId: it.id, title: '', core_pain: '', target_platform: '', content_form: '图文', busy: false });
+    const fallback = `标题：${it.title || '未命名选题'}\n核心痛点：${it.content || '（待补充）'}\n建议平台：小红书\n内容形式：图文`;
+    try {
+      const r = await runSkill('topic_generate', { inspirationId: it.id }, { fallback, temperature: 0.6 });
+      const title = r.text.match(/标题[:：]\s*(.+)/);
+      const pain = r.text.match(/核心痛点[:：]\s*([\s\S]*?)(?=\n建议平台[:：]|$)/);
+      const plat = r.text.match(/建议平台[:：]\s*(\S+)/);
+      const form = r.text.match(/内容形式[:：]\s*(\S+)/);
+      setTopicGen({
+        inspirationId: it.id,
+        title: (title && title[1].trim()) || it.title || '',
+        core_pain: (pain && pain[1].trim()) || '',
+        target_platform: (plat && plat[1].trim()) || '',
+        content_form: (form && form[1].trim()) || '图文',
+        busy: false
+      });
+    } catch { setTopicGen(null); }
+  };
+  const saveTopicGen = async () => {
+    if (!topicGen || !String(topicGen.title || '').trim()) { toast('选题标题不能为空', 'warn'); return; }
+    setTopicGen((g) => ({ ...g, busy: true }));
+    try {
+      const firstCol = await http.get('/api/media/status-columns');
+      const cols = (firstCol.data || []);
+      const statusId = cols.length ? cols[0].id : null;
+      const r = await http.post('/api/media/topics', {
+        title: String(topicGen.title || '').trim(),
+        core_pain: topicGen.core_pain || '',
+        target_platform: topicGen.target_platform || '',
+        content_form: topicGen.content_form || '图文',
+        status_id: statusId,
+        inspiration_id: topicGen.inspirationId
+      });
+      toast('选题已创建，可进入内容生产');
+      setTopicGen(null);
+      setTimeout(() => nav('/media/production/' + r.data.id), 400);
+    } catch (e) { toast('创建失败：' + ((e.data && e.data.error) || e.message), 'err'); }
+    finally { setTopicGen((g) => (g ? { ...g, busy: false } : null)); }
+  };
+
   const copyToTopic = async (it) => {
     try {
       const r = await http.post('/api/media/inspirations/' + it.id + '/to-topic');
@@ -170,6 +237,7 @@ export default function MediaInspirations() {
                   <div className="text-[11px] mt-auto pt-1" style={{ color: '#BBBBBB' }}>{fmtDateTime(it.created_at)}</div>
                   <div className="flex gap-2 pt-1">
                     <button type="button" className="text-[11px] flex-1" style={{ color: '#fff', background: '#2DB7F5', border: 'none', padding: '6px 0', borderRadius: 4, cursor: 'pointer' }} onClick={() => copyToTopic(it)}>复制生成选题</button>
+                    <button type="button" className="text-[11px]" style={{ color: '#2DB7F6', background: '#F0F7FF', border: '1px solid #ABE2FB', padding: '6px 12px', borderRadius: 4, cursor: 'pointer' }} onClick={() => openTopicGen(it)}>✨ AI 生成选题</button>
                     <button type="button" className="text-[11px]" style={{ color: '#666666', background: '#F5F5F5', border: 'none', padding: '6px 12px', borderRadius: 4, cursor: 'pointer' }} onClick={() => openEdit(it)}>编辑</button>
                     <button type="button" className="text-[11px]" style={{ color: '#F47175', background: '#FDECEC', border: 'none', padding: '6px 12px', borderRadius: 4, cursor: 'pointer' }} onClick={() => remove(it)}>删除</button>
                   </div>
@@ -217,6 +285,7 @@ export default function MediaInspirations() {
                 <div className="flex gap-2">
                   <input value={field('source_url')} onChange={(e) => setForm((f) => ({ ...f, source_url: e.target.value }))} placeholder="粘贴链接或整段分享文案，如 v.douyin.com/xxx、xhslink.cn/o/xxx…" style={{ flex: 1, height: 36, border: '1px solid #E0E0E0', borderRadius: 6, padding: '0 10px', fontSize: 12.5, outline: 'none' }} />
                   <button type="button" onClick={doParse} disabled={parsing} style={{ height: 36, padding: '0 12px', borderRadius: 6, border: '1px solid #ABE2FB', background: '#F0F7FF', color: '#2DB7F6', fontSize: 12.5, cursor: parsing ? 'default' : 'pointer', whiteSpace: 'nowrap' }}>{parsing ? '解析中…' : '解析链接'}</button>
+                  <button type="button" onClick={aiParse} disabled={aiParsing} style={{ height: 36, padding: '0 12px', borderRadius: 6, border: '1px solid #C9E4F7', background: '#fff', color: '#2DB7F6', fontSize: 12.5, cursor: aiParsing ? 'default' : 'pointer', whiteSpace: 'nowrap' }}>{aiParsing ? 'AI 解析中…' : '✨ AI 解析灵感'}</button>
                 </div>
               </div>
               <div>
@@ -243,6 +312,43 @@ export default function MediaInspirations() {
             <div className="flex justify-end gap-2 mt-5">
               <button type="button" onClick={() => setForm(null)} className="text-xs" style={{ padding: '8px 16px', borderRadius: 6, border: '1px solid #E0E0E0', background: '#fff', color: '#666666', cursor: 'pointer' }}>取消</button>
               <button type="button" onClick={save} disabled={busy} className="text-xs" style={{ padding: '8px 20px', borderRadius: 6, border: 'none', background: '#2DB7F5', color: '#fff', cursor: busy ? 'default' : 'pointer' }}>{busy ? '保存中…' : '保存'}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* AI 生成选题弹窗（回填建议，需手动确认保存才入库，规范第 3 条） */}
+      {topicGen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.4)' }} onClick={() => !topicGen.busy && setTopicGen(null)}>
+          <div className="bg-white w-full max-w-[520px] max-h-[90vh] overflow-auto" style={{ borderRadius: 10, padding: 20 }} onClick={(e) => e.stopPropagation()}>
+            <div className="text-[16px] mb-1" style={{ color: '#333333' }}>AI 生成选题建议</div>
+            <div className="text-xs mb-4" style={{ color: '#999999' }}>基于灵感由 AI 生成的选题草稿，可编辑后「保存选题」才入库（不会自动写入）</div>
+            <div className="space-y-3">
+              <div>
+                <div className="text-xs mb-1" style={{ color: '#666666' }}>选题标题 *</div>
+                <input value={topicGen.title || ''} onChange={(e) => setTopicGen((g) => ({ ...g, title: e.target.value }))} placeholder="选题标题" style={{ width: '100%', height: 36, border: '1px solid #E0E0E0', borderRadius: 6, padding: '0 10px', fontSize: 13, outline: 'none', boxSizing: 'border-box' }} />
+              </div>
+              <div>
+                <div className="text-xs mb-1" style={{ color: '#666666' }}>核心痛点</div>
+                <textarea value={topicGen.core_pain || ''} onChange={(e) => setTopicGen((g) => ({ ...g, core_pain: e.target.value }))} rows={2} placeholder="用户痛点…" style={{ width: '100%', border: '1px solid #E0E0E0', borderRadius: 6, padding: 8, fontSize: 13, outline: 'none', boxSizing: 'border-box', resize: 'vertical' }} />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <div className="text-xs mb-1" style={{ color: '#666666' }}>目标平台</div>
+                  <input value={topicGen.target_platform || ''} onChange={(e) => setTopicGen((g) => ({ ...g, target_platform: e.target.value }))} placeholder="小红书 / 抖音" style={{ width: '100%', height: 36, border: '1px solid #E0E0E0', borderRadius: 6, padding: '0 10px', fontSize: 13, outline: 'none', boxSizing: 'border-box' }} />
+                </div>
+                <div>
+                  <div className="text-xs mb-1" style={{ color: '#666666' }}>内容形式</div>
+                  <select value={topicGen.content_form || '图文'} onChange={(e) => setTopicGen((g) => ({ ...g, content_form: e.target.value }))} style={{ width: '100%', height: 36, border: '1px solid #E0E0E0', borderRadius: 6, fontSize: 13, background: '#fff' }}>
+                    <option value="图文">图文</option>
+                    <option value="短视频">短视频</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 mt-5">
+              <button type="button" onClick={() => setTopicGen(null)} className="text-xs" style={{ padding: '8px 16px', borderRadius: 6, border: '1px solid #E0E0E0', background: '#fff', color: '#666666', cursor: 'pointer' }}>取消</button>
+              <button type="button" onClick={saveTopicGen} disabled={topicGen.busy} className="text-xs" style={{ padding: '8px 20px', borderRadius: 6, border: 'none', background: '#2DB7F5', color: '#fff', cursor: topicGen.busy ? 'default' : 'pointer' }}>{topicGen.busy ? '保存中…' : '保存选题'}</button>
             </div>
           </div>
         </div>

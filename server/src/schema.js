@@ -693,6 +693,33 @@ CREATE TABLE IF NOT EXISTS media_competitor_account (
   create_time TEXT DEFAULT CURRENT_TIMESTAMP
 );`;
 
+// ===== 自媒体 · AI Skill 模板（后端内部 Prompt 模板，Web 运行时取模板填业务数据后直连大模型）=====
+// system_prompt / user_template 支持 {{占位符}}；后端 /api/ai/render 按 skill 取业务数据填充后返回完整 prompt。
+const PG_AI_SKILL = `
+CREATE TABLE IF NOT EXISTS ai_skill (
+  id SERIAL PRIMARY KEY,
+  key TEXT NOT NULL UNIQUE,
+  name TEXT NOT NULL DEFAULT '',
+  description TEXT,
+  system_prompt TEXT,
+  user_template TEXT,
+  placeholders TEXT,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()
+);`;
+const SQLITE_AI_SKILL = `
+CREATE TABLE IF NOT EXISTS ai_skill (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  key TEXT NOT NULL UNIQUE,
+  name TEXT NOT NULL DEFAULT '',
+  description TEXT,
+  system_prompt TEXT,
+  user_template TEXT,
+  placeholders TEXT,
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+  updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+);`;
+
 async function colsOf(table) {
   if (dialect === 'pg') {
     const r = await query(`SELECT column_name FROM information_schema.columns WHERE table_name = $1`, [table]);
@@ -952,6 +979,8 @@ export async function initSchema() {
   for (const s of (dialect === 'pg' ? PG_MEDIA_WORKBENCH : SQLITE_MEDIA_WORKBENCH).split(';').map((x) => x.trim()).filter(Boolean)) await run(s);
   // 自媒体 · 对标账号库
   for (const s of (dialect === 'pg' ? PG_MEDIA_COMPETITOR : SQLITE_MEDIA_COMPETITOR).split(';').map((x) => x.trim()).filter(Boolean)) await run(s);
+  // AI Skill 模板表（后端内部 Prompt 模板）
+  for (const s of (dialect === 'pg' ? PG_AI_SKILL : SQLITE_AI_SKILL).split(';').map((x) => x.trim()).filter(Boolean)) await run(s);
   // 默认选题状态列种子（幂等：表空才插 5 列，与需求「默认状态列：待构思、撰写中、待发布、已发布、归档」一致）
   try {
     const c = await get('SELECT COUNT(*) AS c FROM media_status_column');
@@ -961,6 +990,55 @@ export async function initSchema() {
       console.log('[schema] 自媒体默认状态列已种入 5 列');
     }
   } catch (e) { console.error('[schema] media_status_column 默认列种子失败', e.message); }
+  // AI Skill 模板种子（幂等：表空才种 6 套；后续可在「后端配置」中编辑，不覆盖已有）
+  try {
+    const sc = await get('SELECT COUNT(*) AS c FROM ai_skill');
+    if (!Number(sc.c)) {
+      const SKILLS = [
+        {
+          key: 'inspiration_parse', name: '灵感解析', description: '粘贴抖音/小红书链接或分享文案，提炼结构化灵感（标题/内容摘要/用户痛点）',
+          system_prompt: '你是一位自媒体灵感策展助手。用户会粘贴一条抖音/小红书作品链接或分享文案。请从中提炼结构化灵感：一个吸睛标题、一段内容摘要（含用户痛点洞察）、以及 1-3 个可深挖的用户痛点。只输出结构化内容，不要解释或前后缀。',
+          user_template: '链接：{{url}}\n用户粘贴内容：{{rawText}}\n请提炼：\n标题：\n内容摘要：\n用户痛点：',
+          placeholders: ['url', 'rawText']
+        },
+        {
+          key: 'topic_generate', name: '选题生成', description: '基于一条灵感，生成可执行的选题方案（标题/核心痛点/平台/形式）',
+          system_prompt: '你是一位婚礼/摄影垂类内容策划。基于给定灵感，生成一个可执行的短视频/图文选题方案，只输出方案要点，不要解释。',
+          user_template: '灵感标题：{{inspirationTitle}}\n灵感内容：{{inspirationContent}}\n关联痛点：{{painPoints}}\n来源：{{sourceType}}\n请生成选题建议：\n标题：\n核心痛点：\n建议平台（小红书/抖音）：\n内容形式（图文/短视频）：',
+          placeholders: ['inspirationTitle', 'inspirationContent', 'painPoints', 'sourceType']
+        },
+        {
+          key: 'draft_generate', name: '文案初稿生成', description: '根据选题信息输出可直接发布的完整文案初稿',
+          system_prompt: '你是一位资深自媒体文案写作者。根据选题信息输出一条可直接发布的完整文案初稿。只输出正文，不要输出任何解释、标题或前后缀。',
+          user_template: '选题标题：{{topicTitle}}\n核心痛点：{{corePain}}\n目标平台：{{targetPlatform}}\n内容形式：{{contentForm}}\n参考链接：{{referenceUrl}}\n请生成适合该平台的完整文案初稿（图文约 300-500 字；短视频为口播脚本格式）。',
+          placeholders: ['topicTitle', 'corePain', 'targetPlatform', 'contentForm', 'referenceUrl']
+        },
+        {
+          key: 'banned_check', name: '违禁词检测', description: '审核文案中的绝对化/夸大/违规宣传用语，仅标记文本中实际存在的命中词',
+          system_prompt: '你是广告合规审核员。只检查用户文本中是否含有绝对化、夸大或违规宣传用语。仅列出文本【实际存在】的命中词并给修改建议，严禁虚构文本中没有的内容。若无风险请明确说「未发现明显违禁词」。',
+          user_template: '待审核文本：{{text}}\n请逐条列出命中词（如「最」「第一」「绝对」等）及修改建议，格式：命中词|建议替换。',
+          placeholders: ['text']
+        },
+        {
+          key: 'competitor_analyze', name: '对标账号分析', description: '基于账号档案与人工粘贴的爆款链接，输出固定 6 段深度分析报告',
+          system_prompt: '你是婚礼/摄影垂类自媒体分析师。基于账号档案与用户手动粘贴的爆款链接，输出结构化深度分析。只基于给定信息推理，禁止编造。严格按 6 个小标题输出：账号定位人设 / 高频选题方向 / 爆款共性拆解 / 评论区客户痛点 / 适合本摄影工作室借鉴点 / 需要避开点。其中「评论区客户痛点」每条一行，格式：痛点标题|痛点说明。',
+          user_template: '对标账号：{{accountName}}\n平台：{{platform}}\n主页：{{homeUrl}}\n账号简介：{{brief}}\n手动备注：{{manualNote}}\n用户手动粘贴的爆款作品链接：\n{{links}}\n请生成深度分析报告。',
+          placeholders: ['accountName', 'platform', 'homeUrl', 'brief', 'manualNote', 'links']
+        },
+        {
+          key: 'review_report', name: '复盘报告', description: '基于真实发布数据生成复盘（数据概览/亮点/待改进/下期建议/用户痛点）',
+          system_prompt: '你是严谨的数据复盘分析师。只能基于用户提供的真实发布数据做归纳与洞察，禁止编造任何数据。输出格式：\n【数据概览】\n【表现亮点】\n【待改进】\n【下期建议】\n【识别出的用户痛点】（每条痛点一行，格式：痛点标题|痛点说明）',
+          user_template: '以下是本期发布记录的真实回填数据：\n{{recordsText}}\n请基于这些真实数据生成复盘报告。',
+          placeholders: ['recordsText']
+        }
+      ];
+      for (const s of SKILLS) {
+        await insert('INSERT INTO ai_skill (key, name, description, system_prompt, user_template, placeholders) VALUES (?,?,?,?,?,?)',
+          [s.key, s.name, s.description, s.system_prompt, s.user_template, JSON.stringify(s.placeholders)]);
+      }
+      console.log('[schema] AI Skill 模板已种入 6 套');
+    }
+  } catch (e) { console.error('[schema] ai_skill 种子失败', e.message); }
 
   // orders 增量补列
   for (const [col, def] of ORDERS_NEW_COLUMNS) await ensureColumn('orders', col, def);

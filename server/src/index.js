@@ -54,6 +54,7 @@ import clientErrorRoutes from './routes/clientError.js';
 import systemConfigRoutes from './routes/systemConfig.js';
 import iconRoutes from './routes/icon.js';
 import mediaRoutes from './routes/media.js';
+import aiRoutes from './routes/ai.js';
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -172,6 +173,8 @@ app.use('/api/system-config', systemConfigRoutes);
 app.use('/api/icon', iconRoutes);
 // 自媒体工作台（灵感库 / 选题看板 / 草稿 / 分发 / 复盘 / 标签）
 app.use('/api/media', mediaRoutes);
+// AI Skill 模板服务（后端存模板 + 渲染 prompt；大模型由前端直连，本路由不调用 LLM）
+app.use('/api/ai', aiRoutes);
 
 // multer / 通用错误
 app.use((err, req, res, next) => {

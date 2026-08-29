@@ -5,7 +5,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import http from '../../api.js';
 import Icon from '../../components/Icon.jsx';
-import { fmtDate, priorityOf, toast } from './common.js';
+import { fmtDate, priorityOf, toast, getAiConfig, saveAiConfig } from './common.js';
 
 export default function MediaOverviewContent() {
   const nav = useNavigate();
@@ -13,6 +13,19 @@ export default function MediaOverviewContent() {
   const [recentTopics, setRecentTopics] = useState([]);
   const [statusMap, setStatusMap] = useState({});
   const [loading, setLoading] = useState(true);
+  const [aiCfgOpen, setAiCfgOpen] = useState(false);
+  const [aiCfg, setAiCfg] = useState({ baseUrl: '', apiKey: '', model: '' });
+  const openAiCfg = () => {
+    const c = getAiConfig();
+    setAiCfg({ baseUrl: c.baseUrl || '', apiKey: c.apiKey || '', model: c.model || '' });
+    setAiCfgOpen(true);
+  };
+  const saveAiCfg = () => {
+    if (!aiCfg.baseUrl || !aiCfg.apiKey) { toast('baseUrl 与 apiKey 均需填写', 'warn'); return; }
+    saveAiConfig({ baseUrl: aiCfg.baseUrl.trim(), apiKey: aiCfg.apiKey.trim(), model: (aiCfg.model || 'gpt-4o-mini').trim() });
+    setAiCfgOpen(false);
+    toast('AI 接口已保存（本机生效；也可改用 VITE_AI_* 环境变量做默认值）');
+  };
 
   useEffect(() => {
     let alive = true;
@@ -120,14 +133,48 @@ export default function MediaOverviewContent() {
 
       {/* AI 配置提示 */}
       <div className="mt-4 text-xs" style={{ color: '#AAAAAA' }}>
-        提示：内容生产 / 复盘报告可接入 OpenAI 兼容接口生成初稿（设置存本机，未配置时用本地模板）。禁止自动发布、禁止爬取平台数据，流量与咨询数据请人工回填。
+        提示：内容生产 / 复盘报告 / 灵感解析 / 对标分析 等均可接入 OpenAI 兼容接口（前端直连大模型，Skill 模板存于后端）。未配置 AI 时用本地模板。禁止自动发布、禁止爬取平台数据，流量与咨询数据请人工回填。
       </div>
       <button
         type="button"
         className="mt-2 text-xs"
         style={{ color: '#2DB7F6', background: 'none', border: '1px solid #ABE2FB', padding: '4px 12px', borderRadius: 100, cursor: 'pointer' }}
-        onClick={() => { const cfg = window.prompt('AI 接口配置（JSON）：{"baseUrl":"https://api.openai.com/v1","apiKey":"sk-...","model":"gpt-4o-mini"}', JSON.stringify(JSON.parse(localStorage.getItem('media.aiConfig') || '{}'))); if (cfg) { try { const o = JSON.parse(cfg); if (o.baseUrl && o.apiKey) { localStorage.setItem('media.aiConfig', JSON.stringify(o)); toast('AI 配置已保存'); } else { toast('配置缺少 baseUrl 或 apiKey', 'warn'); } } catch { toast('JSON 格式无效', 'err'); } } }}
+        onClick={openAiCfg}
       >配置 AI 接口</button>
+
+      {/* AI 接口配置弹窗（环境变量 VITE_AI_* 为默认；此处 localStorage 可运行时切换 Ollama/第三方） */}
+      {aiCfgOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.4)' }} onClick={() => setAiCfgOpen(false)}>
+          <div className="bg-white w-full max-w-[520px] max-h-[90vh] overflow-auto" style={{ borderRadius: 10, padding: 20 }} onClick={(e) => e.stopPropagation()}>
+            <div className="text-[16px] mb-1" style={{ color: '#333333' }}>配置 AI 接口</div>
+            <div className="text-xs mb-4" style={{ color: '#999999' }}>
+              大模型由前端（Web 运行时）直连调用，兼容 OpenAI Chat-Completions 标准；可切换 OpenAI / Ollama 本地 / 第三方。环境变量 VITE_AI_BASE_URL / VITE_AI_API_KEY / VITE_AI_MODEL_NAME 作为默认值，此处设置会覆盖并仅存本机。
+            </div>
+            <div className="flex gap-2 mb-3 flex-wrap">
+              <button type="button" className="text-xs" style={{ padding: '5px 12px', borderRadius: 100, border: '1px solid #E0E0E0', background: '#fff', color: '#666', cursor: 'pointer' }} onClick={() => setAiCfg({ baseUrl: 'https://api.openai.com/v1', apiKey: '', model: 'gpt-4o-mini' })}>OpenAI</button>
+              <button type="button" className="text-xs" style={{ padding: '5px 12px', borderRadius: 100, border: '1px solid #E0E0E0', background: '#fff', color: '#666', cursor: 'pointer' }} onClick={() => setAiCfg({ baseUrl: 'http://localhost:11434/v1', apiKey: 'ollama', model: 'llama3' })}>Ollama 本地</button>
+            </div>
+            <div className="space-y-3">
+              <div>
+                <div className="text-xs mb-1" style={{ color: '#666666' }}>Base URL（兼容 /v1/chat/completions）</div>
+                <input value={aiCfg.baseUrl} onChange={(e) => setAiCfg((c) => ({ ...c, baseUrl: e.target.value }))} placeholder="https://api.openai.com/v1 或 http://localhost:11434/v1" style={{ width: '100%', height: 36, border: '1px solid #E0E0E0', borderRadius: 6, padding: '0 10px', fontSize: 13, outline: 'none', boxSizing: 'border-box' }} />
+              </div>
+              <div>
+                <div className="text-xs mb-1" style={{ color: '#666666' }}>API Key</div>
+                <input value={aiCfg.apiKey} onChange={(e) => setAiCfg((c) => ({ ...c, apiKey: e.target.value }))} placeholder="sk-... 或 ollama" style={{ width: '100%', height: 36, border: '1px solid #E0E0E0', borderRadius: 6, padding: '0 10px', fontSize: 13, outline: 'none', boxSizing: 'border-box' }} />
+              </div>
+              <div>
+                <div className="text-xs mb-1" style={{ color: '#666666' }}>模型名（Model Name）</div>
+                <input value={aiCfg.model} onChange={(e) => setAiCfg((c) => ({ ...c, model: e.target.value }))} placeholder="gpt-4o-mini / llama3 ..." style={{ width: '100%', height: 36, border: '1px solid #E0E0E0', borderRadius: 6, padding: '0 10px', fontSize: 13, outline: 'none', boxSizing: 'border-box' }} />
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 mt-5">
+              <button type="button" onClick={() => setAiCfgOpen(false)} className="text-xs" style={{ padding: '8px 16px', borderRadius: 6, border: '1px solid #E0E0E0', background: '#fff', color: '#666666', cursor: 'pointer' }}>取消</button>
+              <button type="button" onClick={saveAiCfg} className="text-xs" style={{ padding: '8px 20px', borderRadius: 6, border: 'none', background: '#2DB7F5', color: '#fff', cursor: 'pointer' }}>保存</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

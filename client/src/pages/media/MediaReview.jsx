@@ -4,7 +4,7 @@
 // 一键回流：复盘识别出的痛点生成新灵感，自动打上「高转化」标签存入灵感库
 import React, { useState, useEffect, useCallback } from 'react';
 import http from '../../api.js';
-import { toast, fmtDateTime, callAI } from './common.js';
+import { toast, fmtDateTime, runSkill } from './common.js';
 
 export default function MediaReview() {
   const [records, setRecords] = useState([]);
@@ -29,14 +29,10 @@ export default function MediaReview() {
 
   const toggleSel = (id) => setSelected((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
 
-  // 生成复盘：只读真实数据
+  // 生成复盘：只读真实数据（走后端 Skill 模板 review_report，后端用发布记录业务数据填占位符）
   const generate = async () => {
     if (!selRecords.length) { toast('请先勾选已发布的分发记录', 'warn'); return; }
     setGenerating(true);
-    const rows = (selRecords || []).map((r, i) => `记录${i + 1}：选题《${r.topic_id ? topicName(r.topic_id) : '未关联'}》 平台=${r.platform || '未知'} 点赞=${r.likes || 0} 收藏=${r.favorites || 0} 评论=${r.comments || 0} 私信咨询=${r.inquiries || 0} 备注=${r.note || '无'}`);
-    const dataText = rows.join('\n');
-    const sys = '你是一位严谨的数据复盘分析师。只能基于用户提供的数据做归纳与洞察，禁止编造任何数据。输出格式：\n【数据概览】\n【表现亮点】\n【待改进】\n【下期建议】\n【识别出的用户痛点】（每条痛点一行，格式：痛点标题|痛点说明）';
-    const user = '以下是本期发布记录的真实回填数据：\n' + dataText + '\n请基于这些真实数据生成复盘报告。';
     const totals = {
       likes: selRecords.reduce((a, r) => a + (r.likes || 0), 0),
       favs: selRecords.reduce((a, r) => a + (r.favorites || 0), 0),
@@ -45,7 +41,7 @@ export default function MediaReview() {
     };
     const fallback = `【数据概览】本期共 ${selRecords.length} 条发布记录，合计：点赞 ${totals.likes}、收藏 ${totals.favs}、评论 ${totals.cmts}、私信咨询 ${totals.inqs}。\n【表现亮点】${totals.inqs > 0 ? '私信咨询 ' + totals.inqs + ' 条，说明内容具备转化潜力。' : '暂无私信咨询线索。'}${totals.likes > 0 ? '点赞 ' + totals.likes + ' 个。' : ''}\n【待改进】${totals.cmts === 0 ? '评论互动较少，可在文末增加互动引导。' : '评论区活跃，可继续维护。'}\n【下期建议】延续高互动选题方向，针对咨询集中的痛点做内容深化。\n【识别出的用户痛点】\n${(selRecords || []).map((r, i) => `痛点${i + 1}|${(r.note || '内容相关）用户关注度较高。').slice(0, 30)}`).join('\n')}\n\n（本报告由本地模板基于真实回填数据生成；配置 AI 接口后调用真实模型生成更深入洞察）`;
     try {
-      const r = await callAI(sys, user, fallback);
+      const r = await runSkill('review_report', { recordIds: selected.slice() }, { fallback, temperature: 0.5 });
       const pains = parsePains(r.text);
       setDraft({ content: r.text, recordIds: selected.slice(), pains, source: r.source });
       toast(r.source === 'ai' ? 'AI 复盘已生成（基于真实数据）' : '已生成模板复盘（未配置 AI 接口）', r.source === 'ai' ? 'ok' : 'warn');

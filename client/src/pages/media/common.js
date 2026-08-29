@@ -1,23 +1,8 @@
 // pages/media/common.js —— 自媒体模块共享工具（toast / 日期 / 优先级 / 颜色 / AI 调用 / 违禁词检测）
 import http from '../../api.js';
+import { toast } from './toast.js';
 
-// 简易 toast（页面内固定位置，独立于 api.js 的全局 toast）
-let _timer = null;
-export function toast(msg, type = 'ok') {
-  let el = document.getElementById('__media_toast__');
-  if (!el) {
-    el = document.createElement('div');
-    el.id = '__media_toast__';
-    el.style.cssText = 'position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:99999;padding:10px 24px;border-radius:10px;font-size:14px;white-space:nowrap;box-shadow:0 4px 20px rgba(0,0,0,.2);transition:opacity .3s;pointer-events:none;font-family:inherit;';
-    document.body.appendChild(el);
-  }
-  el.style.background = type === 'err' ? '#F47175' : type === 'warn' ? '#E6A23C' : '#1f2329';
-  el.style.color = '#fff';
-  el.textContent = msg;
-  el.style.opacity = '1';
-  clearTimeout(_timer);
-  _timer = setTimeout(() => { if (el) el.style.opacity = '0'; }, 2800);
-}
+export { toast } from './toast.js';
 
 export function fmtDate(v) {
   if (!v) return '';
@@ -57,7 +42,6 @@ export const SOURCE_OPTS = [
 export function readAiConfig() {
   try { return JSON.parse(localStorage.getItem('media.aiConfig') || '{}') || {}; } catch { return {}; }
 }
-export function saveAiConfig(cfg) { try { localStorage.setItem('media.aiConfig', JSON.stringify(cfg || {})); } catch {} }
 
 // 返回 { text, source:'ai'|'template' }；AI 失败自动回退 fallback
 export async function callAI(sys, user, fallback) {
@@ -106,3 +90,6 @@ export function checkBanned(text) {
 
 // 素材绑定选择器在各页面内联实现（拉作品相册 / 上传图片）
 export default http;
+
+// AI 调用层（OpenAI 兼容 / 前端直连 / 后端渲染 Skill 模板）—— 见 aiClient.js
+export { getAiConfig, saveAiConfig, runLLM, runSkill } from './aiClient.js';
