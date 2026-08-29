@@ -245,6 +245,8 @@ export default function OrderDetail() {
   const [execDropdownOpen, setExecDropdownOpen] = useState(false);
   // 执行人独立选择弹窗（芯片标签区域的蓝色加号按钮唤起）
   const [execPickerOpen, setExecPickerOpen] = useState(false);
+  // 打印单据 PDF 预览弹窗：生成 PDF 后先预览，用户核对无误再保存/下载
+  const [printPreview, setPrintPreview] = useState(null); // { url, filename, file }
   const [execPickerSelections, setExecPickerSelections] = useState([]);
   // 打印单据：是否附带商家内部备注（默认关，内部备注敏感）
   const [printInternal, setPrintInternal] = useState(false);
@@ -694,18 +696,9 @@ export default function OrderDetail() {
       const pdfBlob = pdf.output('blob');
       const filename = '拍摄服务合同-' + (detail.order_no || detail.id) + '.pdf';
       const file = new File([pdfBlob], filename, { type: 'application/pdf' });
-      if (navigator.canShare && navigator.canShare({ files: [file] })) {
-        await navigator.share({ files: [file], title: filename });
-      } else {
-        const url = URL.createObjectURL(pdfBlob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = filename;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-      }
+      // 不直接下载/分享：先打开预览弹窗，用户核对无误后点「保存」再下载
+      const url = URL.createObjectURL(file);
+      setPrintPreview({ url, filename, file });
     } catch (e) {
       if (e && e.name === 'AbortError') return;
       console.error(e);
@@ -718,6 +711,29 @@ export default function OrderDetail() {
     // 统一走 html2pdf 生成 PDF：确保 PC/手机/微信/PWA 的打印版式完全一致（自定义页眉/页脚、A4 分页），
     // 避免桌面端 window.print() 使用浏览器默认页眉页脚（网页标题、URL、日期、页码）破坏设计版式。
     downloadPrintPdf();
+  }
+  // 打印预览弹窗：用户核对无误后再保存 PDF（移动端优先调系统分享，其余走下载）
+  async function savePrintPdf() {
+    if (!printPreview) return;
+    try {
+      if (navigator.canShare && navigator.canShare({ files: [printPreview.file] })) {
+        await navigator.share({ files: [printPreview.file], title: printPreview.filename });
+      } else {
+        const a = document.createElement('a');
+        a.href = printPreview.url;
+        a.download = printPreview.filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      }
+    } catch (e) {
+      if (e && e.name !== 'AbortError') toast('保存失败：' + (e && e.message ? e.message : e));
+    }
+  }
+  // 关闭预览并释放 blob URL，避免内存泄漏
+  function closePrintPreview() {
+    if (printPreview && printPreview.url) URL.revokeObjectURL(printPreview.url);
+    setPrintPreview(null);
   }
   async function restoreOrder() {
     if (!(await confirm('确认恢复该订单？'))) return;
@@ -2689,6 +2705,23 @@ export default function OrderDetail() {
             )}
           </div>
         </>
+      )}
+
+      {/* 打印单据 PDF 预览弹窗：先预览核对版式，确认无误再点「保存」（避免直接下载后发现版式错误） */}
+      {printPreview && (
+        <div className="fixed inset-0 flex items-center justify-center z-[100] p-4" style={{ background: 'rgba(0,0,0,0.55)' }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ width: '100%', maxWidth: 900, height: '86vh', background: '#fff', borderRadius: 8, display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderBottom: '1px solid #eee', flexShrink: 0 }}>
+              <div style={{ fontSize: 15, color: '#1f2329' }}>打印预览 · 请核对版式后再保存</div>
+              <button onClick={closePrintPreview} style={{ fontSize: 22, color: '#999', background: 'none', border: 'none', cursor: 'pointer', lineHeight: 1, padding: '0 4px' }}>×</button>
+            </div>
+            <iframe src={printPreview.url} title="打印预览" style={{ flex: 1, width: '100%', border: 'none', background: '#f5f5f5' }} />
+            <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end', padding: '12px 16px', borderTop: '1px solid #eee', flexShrink: 0 }}>
+              <button onClick={closePrintPreview} style={{ padding: '8px 18px', borderRadius: 6, background: '#fff', color: '#666', fontSize: 14, border: '1px solid #E8E8E8', cursor: 'pointer' }}>关闭</button>
+              <button onClick={savePrintPdf} style={{ padding: '8px 18px', borderRadius: 6, background: '#7ECDBB', color: '#fff', fontSize: 14, border: 'none', cursor: 'pointer' }}>保存</button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* 打印单据内容（离屏渲染；html2canvas 直接抓取；window.print 通道 @media print 移入视口打印） */}
