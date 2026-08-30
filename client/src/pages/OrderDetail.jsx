@@ -791,14 +791,20 @@ export default function OrderDetail() {
   function printOrder() {
     if (!detail) return;
     setMoreMenu(false);
-    // PC / 普通浏览器优先走 window.print() 弹原生打印对话框（含打印机选择 + 预览）；微信 / PWA 环境 window.print 无效，fallback 到 PDF 下载
-    const isWechat = /MicroMessenger/i.test(navigator.userAgent);
+    // 6.0 决策骨架：PC / 普通浏览器优先 window.print() 弹原生打印对话框（含打印机选择 + 预览）；
+    // 微信 / PWA 环境 window.print 无效 → fallback 到 PDF 下载。
+    // iOS Safari（含 iPadOS 13+ 伪装 Mac）的 window.print() 长期静默无效（实测点击无反应）→ 必须走 downloadPrintPdf，
+    // 其内部 iOS 分支 = 全屏 mask+iframe 预览（Safari 内置 viewer 渲染 PDF + 「分享/保存」按钮），用户立刻看得到。
+    const ua = navigator.userAgent || '';
+    const isIOS = /iphone|ipad|ipod/i.test(ua) || (/Mac/.test(ua) && navigator.maxTouchPoints > 1);
+    const isWechat = /MicroMessenger/i.test(ua);
     const isStandalone = typeof window.matchMedia === 'function' && window.matchMedia('(display-mode: standalone)').matches;
-    if (!isWechat && !isStandalone && typeof window.print === 'function') {
-      window.print();
+    if (isIOS || isWechat || isStandalone || typeof window.print !== 'function') {
+      toast('正在生成 PDF…');
+      downloadPrintPdf();
       return;
     }
-    downloadPrintPdf();
+    window.print();
   }
   async function restoreOrder() {
     if (!(await confirm('确认恢复该订单？'))) return;
