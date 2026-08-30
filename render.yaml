@@ -7,7 +7,8 @@ services:
     runtime: node
     rootDir: server            # 仅构建 server 子目录
     plan: free                 # 免费档；升级可去掉此行
-    buildCommand: npm install && mkdir -p /usr/share/fonts/truetype/yezhe && cp server/fonts/NotoSansSC-Regular.otf /usr/share/fonts/truetype/yezhe/ && fc-cache -fv > /dev/null 2>&1 || true
+    # 注意：rootDir 是 server，buildCommand 的 cwd = server/，字体路径必须用 fonts/ 开头（写 server/fonts/ 会找不到导致字体没注册）
+    buildCommand: npm install && mkdir -p /usr/share/fonts/truetype/yezhe && cp fonts/NotoSansSC-Regular.otf /usr/share/fonts/truetype/yezhe/ && fc-cache -fv > /dev/null 2>&1 || true
     startCommand: node src/index.js
     healthCheckPath: /api/health
     autoDeploy: true           # 推 main 分支自动重新部署

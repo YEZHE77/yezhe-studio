@@ -6,6 +6,7 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { execSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -437,7 +438,28 @@ export function renderOrderPrintHtml(vars, includeInternal) {
 
 // —— puppeteer 渲染 PDF ——
 let _browserPromise = null;
+
+// 运行时注册中文字体：headerTemplate/footerTemplate 是独立沙盒，只能通过 fontconfig 读系统字体；
+// 而 Render buildpack 构建阶段的 /usr/share/fonts 写入不一定保留到运行阶段，所以这里再兜底一次：
+// 把 NotoSansSC 复制到 ~/.fonts 并 fc-cache，确保 Chromium 启动时能读到 CJK 字体。
+function registerSystemFont() {
+  try {
+    if (process.platform !== 'linux' && !process.env.RENDER) return;
+    const home = os.homedir();
+    const fontsDir = path.join(home, '.fonts');
+    if (!fs.existsSync(fontsDir)) fs.mkdirSync(fontsDir, { recursive: true });
+    if (fs.existsSync(FONT_PATH)) {
+      const dest = path.join(fontsDir, path.basename(FONT_PATH));
+      if (!fs.existsSync(dest)) fs.copyFileSync(FONT_PATH, dest);
+    }
+    try {
+      execSync('fc-cache -f > /dev/null 2>&1', { timeout: 10000 });
+    } catch (_) {}
+  } catch (_) {}
+}
+
 async function getBrowser() {
+  registerSystemFont();
   if (!_browserPromise) {
     const isRender = !!process.env.RENDER;
     const isLinux = process.platform === 'linux';
