@@ -692,21 +692,17 @@ export default function OrderDetail() {
       const pageContentPx = contentAreaH * pxPerMm;
       const totalPages = Math.max(1, Math.ceil(bodyCanvas.height / pageContentPx));
 
+      // 提速关键（移动端耗时大头）：正文整图只编码一次 JPEG，逐页用负 y 偏移平移复用。
+      // 实证：jspdf 对相同 dataURL（不传 alias）自动去重，PDF 内仅存 1 份图 → 编码 1 次 + 文件显著变小，
+      // 取代原先"每页新 canvas 切片 + 各自 toDataURL + 各自写入 PDF"（N 次编码、N 份图）的做法。
+      // 页面外的图内容由 PDF 查看器按 MediaBox 自动裁剪（已验证负坐标 addImage 不抛错、输出正常）。
+      const bodyData = bodyCanvas.toDataURL('image/jpeg', imgQuality);
+      const bodyTotalH = bodyCanvas.height / pxPerMm;
+
       for (let i = 0; i < totalPages; i++) {
         if (i > 0) pdf.addPage();
         pdf.addImage(headerData, 'JPEG', sideMargin, topGap, contentW, headerH);
-        const sy = i * pageContentPx;
-        const sH = Math.min(pageContentPx, bodyCanvas.height - sy);
-        if (sH > 0) {
-          const slice = document.createElement('canvas');
-          slice.width = bodyCanvas.width;
-          slice.height = sH;
-          const ctx = slice.getContext('2d');
-          ctx.fillStyle = '#ffffff';
-          ctx.fillRect(0, 0, slice.width, slice.height);
-          ctx.drawImage(bodyCanvas, 0, sy, bodyCanvas.width, sH, 0, 0, bodyCanvas.width, sH);
-          pdf.addImage(slice.toDataURL('image/jpeg', imgQuality), 'JPEG', sideMargin, contentTop, contentW, sH / pxPerMm);
-        }
+        pdf.addImage(bodyData, 'JPEG', sideMargin, contentTop - i * contentAreaH, contentW, bodyTotalH, undefined, 'FAST');
         pdf.addImage(footerData, 'JPEG', sideMargin, pageH - bottomGap - footerH, contentW, footerH);
       }
 
