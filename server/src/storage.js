@@ -107,9 +107,11 @@ export function objectUrl(provider, key) {
   return provider === 'cos' ? `${c.cdnDomain}/${key}` : `${c.R2_WORKER_DOMAIN}/r2/${key}`;
 }
 
-// 缩略图尺寸规格：列表卡片 / 详情预览 / 高清预览（按需取用，命中 Worker ?w=<width> 路径）
+// 缩略图尺寸规格：严格对齐前端 client/src/api.js 的 img() 用法，避免生成无用尺寸或宽度不匹配导致预览降级原图：
+//   - 400  → 列表网格（thumb 模式，首屏几十张，提速关键）
+//   - 1080 → 预览大图（preview 模式，单张大图全屏看）
 // 改这里时必须同时检查 cloudflare/worker.js 的 buildThumbKey（路径规则一致）
-const THUMB_WIDTHS = [400, 800, 1200];
+const THUMB_WIDTHS = [400, 1080];
 const THUMB_QUALITY = 75; // JPEG quality，75 视觉无损 + 体积小
 
 // 由原始 key 推算缩略图 key：biz-works/xxx.jpg → biz-works/thumb_400/xxx.jpg
