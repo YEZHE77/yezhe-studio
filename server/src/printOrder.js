@@ -236,7 +236,7 @@ export function renderOrderPrintHtml(vars, includeInternal) {
 <head>
 <meta charset="UTF-8">
 <style>
-  @page { size: A4; margin: 0; }
+    @page { size: A4; margin: 36mm 12mm 28mm 12mm; }
   @font-face {
     font-family: 'YezheCJK';
     src: url('yezhe-cjk.otf') format('opentype');
@@ -246,13 +246,14 @@ export function renderOrderPrintHtml(vars, includeInternal) {
   * { box-sizing: border-box; }
   body { margin: 0; padding: 0; background: #fff; font-family: 'YezheCJK', SimSun, "Noto Sans CJK SC", "PingFang SC", serif; color: #222; }
   .print-order-sheet { width: 100%; max-width: 100%; margin: 0; padding: 0; }
-  /* 页眉/页脚用 fixed 定位，Chromium 打印时会逐页重复，保证每一页都有页眉页脚（手机端/电脑端一致） */
-  .print-header { position: fixed; top: 0; left: 0; right: 0; z-index: 10; background: #fff; text-align: center; padding: 10mm 12mm 5mm; border-bottom: 1px solid #555; font-family: 'YezheCJK', SimSun, "Noto Sans CJK SC", serif; }
+  /* 页眉/页脚用 fixed 定位，Chromium 打印时会逐页重复；@page 上下页边距已为页眉页脚预留空间，
+     保证每一页的页眉/页脚都与正文保持标准间距，不会折叠。 */
+  .print-header { position: fixed; top: 0; left: 0; right: 0; z-index: 10; background: #fff; text-align: center; padding: 8mm 12mm 0; border-bottom: 1px solid #555; font-family: 'YezheCJK', SimSun, "Noto Sans CJK SC", serif; }
   .print-header-title { font-size: 22px; letter-spacing: 4px; color: #000; font-weight: 400; }
   .print-header-meta { font-size: 13px; margin-top: 6px; color: #555; font-weight: 400; }
   .print-header-meta2 { font-size: 12px; margin-top: 3px; color: #555; font-weight: 400; }
-  .print-sheet-body { font-family: 'YezheCJK', SimSun, "Noto Sans CJK SC", serif; font-size: 14px; line-height: 1.8; color: #222; background: #fff; padding: 38mm 12mm 20mm; }
-  .print-footer { position: fixed; bottom: 0; left: 0; right: 0; z-index: 10; background: #fff; display: flex; justify-content: space-between; align-items: center; padding: 6px 12mm 8mm; border-top: 1px solid #ccc; font-family: 'YezheCJK', SimSun, "Noto Sans CJK SC", serif; font-size: 12px; color: #999; font-weight: 400; }
+  .print-sheet-body { font-family: 'YezheCJK', SimSun, "Noto Sans CJK SC", serif; font-size: 14px; line-height: 1.8; color: #222; background: #fff; padding: 0; }
+  .print-footer { position: fixed; bottom: 0; left: 0; right: 0; z-index: 10; background: #fff; display: flex; justify-content: space-between; align-items: center; padding: 0 12mm 8mm; border-top: 1px solid #ccc; font-family: 'YezheCJK', SimSun, "Noto Sans CJK SC", serif; font-size: 12px; color: #999; font-weight: 400; }
   table { width: 100%; border-collapse: collapse; font-size: 14px; line-height: 1.8; }
   td { padding: 4px 8px; }
 </style>
