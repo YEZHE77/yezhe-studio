@@ -341,8 +341,8 @@ router.get('/:id/print-pdf', authRequired, async (req, res) => {
     }
     const includeInternal = String(req.query.internal || '') === '1';
     const vars = buildOrderPrintVars(order, payments, livePkg);
-    const html = renderOrderPrintHtml(vars, includeInternal);
-    const buf = await generateOrderPdf(html);
+    const { html, headerTemplate, footerTemplate } = renderOrderPrintHtml(vars, includeInternal);
+    const buf = await generateOrderPdf(html, headerTemplate, footerTemplate);
     const filename = encodeURIComponent('拍摄服务合同-' + (o.order_no || o.id) + '.pdf');
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${filename}`);

@@ -260,11 +260,6 @@ export function renderOrderPrintHtml(vars, includeInternal) {
 </head>
 <body>
   <div class="print-order-sheet">
-    <div class="print-header">
-      <div class="print-header-title">拍摄服务合同</div>
-      <div class="print-header-meta">订单编号：${esc(vars.order_no)}</div>
-      <div class="print-header-meta2">创建时间：${esc(vars.created)}　·　订单状态：${esc(vars.statusText)}</div>
-    </div>
     <div class="print-sheet-body">
       <div style="margin-bottom:12px;">
         <div style="font-size:16px; font-weight:400; padding-bottom:4px; margin-bottom:10px;">客户信息</div>
@@ -415,14 +410,29 @@ export function renderOrderPrintHtml(vars, includeInternal) {
         <div style="font-size:14px; line-height:1.8; color:#222; white-space:pre-wrap; text-indent:2em;">${esc(vars.internalRemark)}</div>
       </div>` : ''}
     </div>
-    <div class="print-footer">
-      <span>叶哲 STUDIO · 摄影工作室管理系统</span>
-      <span>打印时间：${esc(vars.printTime)}</span>
-    </div>
   </div>
 </body>
 </html>`;
-  return html;
+
+  // —— Puppeteer headerTemplate / footerTemplate：Chrome 打印官方机制，**真正在每页 margin 区渲染**页眉页脚，
+  // 不与正文（content box）重叠。position:fixed 实测在 Chrome 打印中相对 content box 定位，会盖正文——所以用 headerTemplate 才是正解。
+  // 字号用 px（Chrome 处理 1px = 0.75pt）；font-family 包含 NotoSansSC + 系统中文字体回退。
+  // 中文字体在 Render 容器上由 buildCommand 注册到 /usr/share/fonts 并 fc-cache。
+  const headerTemplate = `
+    <div style="font-size:0; width:100%; padding:0 12mm; -webkit-print-color-adjust:exact; print-color-adjust:exact;">
+      <div style="font-family:'Noto Sans SC','Noto Sans CJK SC','PingFang SC','Microsoft YaHei',sans-serif; font-size:9pt; letter-spacing:4px; text-align:center; color:#000; padding-top:8mm;">拍摄服务合同</div>
+      <div style="font-family:'Noto Sans SC','Noto Sans CJK SC','PingFang SC','Microsoft YaHei',sans-serif; font-size:7pt; text-align:center; color:#555; margin-top:2pt;">订单编号：${esc(vars.order_no)}</div>
+      <div style="font-family:'Noto Sans SC','Noto Sans CJK SC','PingFang SC','Microsoft YaHei',sans-serif; font-size:6.5pt; text-align:center; color:#555; margin-top:1.5pt; padding-bottom:4pt; border-bottom:1px solid #555;">创建时间：${esc(vars.created)}　·　订单状态：${esc(vars.statusText)}</div>
+    </div>`;
+  const footerTemplate = `
+    <div style="font-size:0; width:100%; padding:0 12mm; -webkit-print-color-adjust:exact; print-color-adjust:exact;">
+      <div style="font-family:'Noto Sans SC','Noto Sans CJK SC','PingFang SC','Microsoft YaHei',sans-serif; font-size:6.5pt; display:flex; justify-content:space-between; color:#999; padding:4pt 0 6mm; border-top:1px solid #ccc;">
+        <span>叶哲 STUDIO · 摄影工作室管理系统</span>
+        <span>打印时间：${esc(vars.printTime)}</span>
+      </div>
+    </div>`;
+
+  return { html, headerTemplate, footerTemplate };
 }
 
 // —— puppeteer 渲染 PDF ——
@@ -466,7 +476,7 @@ async function getBrowser() {
   return _browserPromise;
 }
 
-export async function generateOrderPdf(html) {
+export async function generateOrderPdf(html, headerTemplate, footerTemplate) {
   const browser = await getBrowser();
   const page = await browser.newPage();
   // 渲染为临时 HTML 文件，并把中文字体放到同目录，以 file:// 相对路径加载
@@ -483,7 +493,12 @@ export async function generateOrderPdf(html) {
       format: 'A4',
       printBackground: true,
       preferCSSPageSize: true,
-      margin: { top: '0', right: '0', bottom: '0', left: '0' }
+      // Chrome 打印官方机制：displayHeaderFooter + headerTemplate/footerTemplate 真正在每页 margin 区渲染页眉页脚，
+      // 不与正文（content box）重叠。margin 顶部给 header 留空间（与 headerTemplate 字号匹配），底部给 footer 留空间。
+      displayHeaderFooter: true,
+      headerTemplate,
+      footerTemplate,
+      margin: { top: '32mm', right: '12mm', bottom: '20mm', left: '12mm' }
     });
     return buf;
   } finally {
