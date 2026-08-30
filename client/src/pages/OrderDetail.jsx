@@ -713,49 +713,64 @@ export default function OrderDetail() {
       const file = new File([blob], filename, { type: 'application/pdf' });
       const url = URL.createObjectURL(blob);
       let delivered = false;
-      // —— iOS Safari 专属：弹全屏 iframe 让 Safari 内置 PDF viewer 渲染（与 viewContract 合同预览同模式）——
-      // 原因：iOS Safari 对 <a download> 不真正"下载"（iOS 13 前完全不响应，15+ 尝试新标签打开 blob URL 经常因 origin 限制静默失败）；
-      //     navigator.share({files}) 用户没看到/取消 → AbortError → 旧代码把"取消"误判为"已送达"，toast 报"PDF 已生成"用户却什么都没看到。
-      //     唯一稳定的方案是 mask+iframe（Safari 内置 viewer 渲染）+ 手动「分享/保存」按钮。
+      // —— iOS Safari：优先系统分享面板（保存到文件 / 分享微信 / 隔空投送 / 打印，iOS 15+ 原生支持分享 PDF 文件）——
+      // 用户明确要求：手机端不预览 PDF，点打印单据直接可保存本地或分享微信等。
+      // 若 share 不可用或分享失败（非用户取消）→ 兜底全屏 iframe 预览（Safari 内置 viewer 渲染）。
+      // 注意：iOS Safari 对 <a download> 不真正"下载"（15+ 尝试新标签打开 blob URL 经常因 origin 限制静默失败），不能靠 a[download] 兜底。
       if (isIOS) {
-        const mask = document.createElement('div');
-        mask.style.cssText = 'position:fixed;inset:0;z-index:2147483000;background:rgba(0,0,0,0.4);display:flex;flex-direction:column;';
-        const bar = document.createElement('div');
-        bar.style.cssText = 'display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:#1f1f1f;gap:8px;';
-        const title = document.createElement('span');
-        title.textContent = filename;
-        title.style.cssText = 'color:#fff;font-size:13px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
-        const shareBtn = document.createElement('button');
-        shareBtn.type = 'button';
-        shareBtn.textContent = '分享/保存';
-        shareBtn.style.cssText = 'padding:7px 14px;border:none;border-radius:6px;background:#fff;color:#000;cursor:pointer;font-size:13px;';
-        shareBtn.onclick = async () => {
+        let shareFailed = false;
+        if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
           try {
-            if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
-              await navigator.share({ files: [file], title: filename });
-            } else {
-              toast('请用 Safari 工具栏的「分享」按钮保存到文件');
-            }
+            await navigator.share({ files: [file], title: filename });
+            delivered = true;
           } catch (shareErr) {
-            if (shareErr && shareErr.name !== 'AbortError') toast('分享失败');
+            // 用户主动取消 = 用户放弃保存，视为已送达；其余错误（如分享面板被系统拦截）→ 预览兜底
+            if (shareErr && shareErr.name === 'AbortError') delivered = true;
+            else shareFailed = true;
           }
-        };
-        const closeBtn = document.createElement('button');
-        closeBtn.type = 'button';
-        closeBtn.textContent = '关闭';
-        closeBtn.style.cssText = 'padding:7px 14px;border:none;border-radius:6px;background:#fff;color:#000;cursor:pointer;font-size:13px;';
-        closeBtn.onclick = () => { if (mask.parentNode) document.body.removeChild(mask); URL.revokeObjectURL(url); };
-        const iframe = document.createElement('iframe');
-        iframe.src = url;
-        iframe.title = 'PDF 预览';
-        iframe.style.cssText = 'flex:1;width:100%;height:100%;border:none;background:#fff;';
-        bar.appendChild(title);
-        bar.appendChild(shareBtn);
-        bar.appendChild(closeBtn);
-        mask.appendChild(bar);
-        mask.appendChild(iframe);
-        document.body.appendChild(mask);
-        delivered = true;
+        } else {
+          shareFailed = true; // 老 iOS 无 share(files) 能力 → 预览兜底
+        }
+        if (!delivered && shareFailed) {
+          const mask = document.createElement('div');
+          mask.style.cssText = 'position:fixed;inset:0;z-index:2147483000;background:rgba(0,0,0,0.4);display:flex;flex-direction:column;';
+          const bar = document.createElement('div');
+          bar.style.cssText = 'display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:#1f1f1f;gap:8px;';
+          const title = document.createElement('span');
+          title.textContent = filename;
+          title.style.cssText = 'color:#fff;font-size:13px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
+          const shareBtn = document.createElement('button');
+          shareBtn.type = 'button';
+          shareBtn.textContent = '分享/保存';
+          shareBtn.style.cssText = 'padding:7px 14px;border:none;border-radius:6px;background:#fff;color:#000;cursor:pointer;font-size:13px;';
+          shareBtn.onclick = async () => {
+            try {
+              if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+                await navigator.share({ files: [file], title: filename });
+              } else {
+                toast('请用 Safari 工具栏的「分享」按钮保存到文件');
+              }
+            } catch (shareErr2) {
+              if (shareErr2 && shareErr2.name !== 'AbortError') toast('分享失败');
+            }
+          };
+          const closeBtn = document.createElement('button');
+          closeBtn.type = 'button';
+          closeBtn.textContent = '关闭';
+          closeBtn.style.cssText = 'padding:7px 14px;border:none;border-radius:6px;background:#fff;color:#000;cursor:pointer;font-size:13px;';
+          closeBtn.onclick = () => { if (mask.parentNode) document.body.removeChild(mask); URL.revokeObjectURL(url); };
+          const iframe = document.createElement('iframe');
+          iframe.src = url;
+          iframe.title = 'PDF 预览';
+          iframe.style.cssText = 'flex:1;width:100%;height:100%;border:none;background:#fff;';
+          bar.appendChild(title);
+          bar.appendChild(shareBtn);
+          bar.appendChild(closeBtn);
+          mask.appendChild(bar);
+          mask.appendChild(iframe);
+          document.body.appendChild(mask);
+          delivered = true;
+        }
       }
       // —— 兼容性投递：严禁 window.open（异步生成完成后已脱离用户点击手势，会被 Chrome/Safari/微信 弹窗拦截器静默拦截）——
       // 1) 移动端（非 iOS）：优先系统分享面板（保存到文件/打印/隔空投送），用户自行选择目标
