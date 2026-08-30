@@ -716,37 +716,31 @@ export default function OrderDetail() {
       const file = new File([blob], filename, { type: 'application/pdf' });
       const url = URL.createObjectURL(blob);
       let delivered = false;
-      if (isMobile) {
-        // 移动端：优先系统分享（保存到文件/隔空投送/打印），失败降级为下载
-        if (navigator.canShare && navigator.canShare({ files: [file] })) {
-          try {
-            await navigator.share({ files: [file], title: filename });
-            delivered = true;
-          } catch (shareErr) {
-            if (shareErr && shareErr.name === 'AbortError') delivered = true;
-          }
-        }
-        if (!delivered) {
-          const a = document.createElement('a');
-          a.href = url; a.download = filename;
-          document.body.appendChild(a); a.click(); document.body.removeChild(a);
-          delivered = true;
-        }
-      } else {
-        // 桌面端：新标签页 PDF 预览（用户可在阅读器里打印/保存），失败降级为下载
+      // —— 兼容性投递：严禁 window.open（异步生成完成后已脱离用户点击手势，会被 Chrome/Safari/微信 弹窗拦截器静默拦截）——
+      // 1) 移动端：优先系统分享面板（保存到文件/打印/隔空投送），用户自行选择目标
+      if (isMobile && navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
         try {
-          const preview = window.open(url, '_blank');
-          if (preview) delivered = true;
-        } catch (_) {}
-        if (!delivered) {
-          const a = document.createElement('a');
-          a.href = url; a.download = filename;
-          document.body.appendChild(a); a.click(); document.body.removeChild(a);
+          await navigator.share({ files: [file], title: filename });
           delivered = true;
+        } catch (shareErr) {
+          // 用户取消分享 = 已送达；其余错误继续走下载兜底
+          if (shareErr && shareErr.name === 'AbortError') delivered = true;
         }
       }
-      if (delivered) toast('PDF 已生成');
-      setTimeout(() => URL.revokeObjectURL(url), 30000);
+      // 2) 兜底（桌面 + 移动）：a[download] 直接下载 —— 非弹窗，任何浏览器/WebView（微信内置、UC、Safari、Chrome、Edge、Firefox）都不会拦截
+      if (!delivered) {
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        a.rel = 'noopener';
+        a.style.display = 'none';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        delivered = true;
+      }
+      if (delivered) toast(isMobile ? 'PDF 已生成' : 'PDF 已生成，正在下载…');
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
     } catch (e) {
       if (e && e.name === 'AbortError') return;
       console.error(e);
@@ -1042,7 +1036,24 @@ export default function OrderDetail() {
     try {
       const r = await http.get('/api/contract/download/' + detail.id, { responseType: 'blob' });
       const url = URL.createObjectURL(r.data);
-      window.open(url, '_blank');
+      // 兼容性预览：异步 fetch 后 window.open 会被弹窗拦截器拦截；改页面内 iframe 全屏预览（非新窗口，任何浏览器都不会拦截，且支持直接打印/保存）
+      const mask = document.createElement('div');
+      mask.style.cssText = 'position:fixed;inset:0;z-index:2147483000;background:rgba(0,0,0,0.4);display:flex;flex-direction:column;';
+      const bar = document.createElement('div');
+      bar.style.cssText = 'display:flex;justify-content:flex-end;align-items:center;padding:8px 12px;background:#1f1f1f;';
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.textContent = '关闭预览';
+      btn.style.cssText = 'padding:7px 18px;border:none;border-radius:6px;background:#fff;color:#000;cursor:pointer;font-size:14px;';
+      btn.onclick = () => { document.body.removeChild(mask); URL.revokeObjectURL(url); };
+      const iframe = document.createElement('iframe');
+      iframe.src = url;
+      iframe.title = '合同预览';
+      iframe.style.cssText = 'flex:1;width:100%;border:none;background:#fff;';
+      bar.appendChild(btn);
+      mask.appendChild(bar);
+      mask.appendChild(iframe);
+      document.body.appendChild(mask);
     } catch (e) { toast('合同打开失败，请重试'); }
   }
   async function downloadContract() {
