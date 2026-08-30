@@ -12,9 +12,25 @@ import express from 'express';
 import { S3Client, ListObjectsV2Command, GetObjectCommand, PutObjectCommand, HeadObjectCommand } from '@aws-sdk/client-s3';
 import sharp from 'sharp';
 import { authRequired, requireRole } from '../auth.js';
-import { r2Config } from '../storage.js';
+import { r2Config, activeProvider } from '../storage.js';
 
 const router = express.Router();
+
+// 临时诊断：返回后端实际使用的 R2 配置标识（不含密钥），用于排查缩略图写入桶与 Worker 读取桶不一致问题。
+// TODO: 确认后删除本路由。
+router.get('/r2-debug', authRequired, requireRole('admin'), (req, res) => {
+  const r2 = r2Config();
+  if (!r2) return res.json({ configured: false, activeProvider: activeProvider() });
+  let endpointHost = '';
+  try { endpointHost = new URL(r2.R2_ENDPOINT).host; } catch {}
+  res.json({
+    configured: true,
+    activeProvider: activeProvider(),
+    R2_BUCKET: r2.R2_BUCKET,
+    R2_ENDPOINT_HOST: endpointHost,
+    R2_WORKER_DOMAIN: r2.R2_WORKER_DOMAIN,
+  });
+});
 
 // 宽度严格对齐前端 img() 用法：网格 thumb=400，预览 preview=1080（不再生成无用的 800，也不生成与前端不匹配的 1200）
 const THUMB_WIDTHS = [400, 1080];
