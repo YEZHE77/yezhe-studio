@@ -153,7 +153,7 @@ export default function AlbumGrid({ gallery, onBack, albumId }) {
     window.location.href = window.location.origin + '/customer/book';
   };
 
-  // 测量每张照片真实宽高比（?w=40 极小缩略图），用于加载前预留高度（清单 6.3 骨架不塌陷）；
+  // 测量每张照片真实宽高比（?w=400 缩略图，小图秒回），用于加载前预留高度（清单 6.3 骨架不塌陷）；
   // 同时重置失败计数。photos 变化时才重新测量。
   useEffect(() => {
     setFailCount(0);
@@ -166,12 +166,12 @@ export default function AlbumGrid({ gallery, onBack, albumId }) {
       if (done >= photos.length && !cancelled) setRatios(r.slice());
     };
     photos.forEach((p, i) => {
-      const base = img(p);
+      const base = img(p, 'thumb'); // 用 400 宽缩略图测宽高比（小图秒回，且与下方网格同源命中缓存）；不再用 ?w=40（未配置宽度→Worker 降级原图，N 张全尺寸会拖垮整页）
       if (!base) { finish(); return; }
       const im = new Image();
       im.onload = () => { if (!cancelled && im.naturalWidth > 0) r[i] = im.naturalWidth / im.naturalHeight; finish(); };
       im.onerror = finish;
-      im.src = base + (base.includes('?') ? '&w=40' : '?w=40');
+      im.src = base;
     });
     return () => { cancelled = true; };
   }, [photos]);

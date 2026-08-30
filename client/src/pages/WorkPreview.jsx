@@ -119,7 +119,7 @@ export default function WorkPreview() {
     return () => clearInterval(t);
   }, [slideOpen, slidePaused, slideCount]);
 
-  // 宫格瀑布流：与 C 端 AlbumGrid 同一套——切到宫格时预加载 ?w=40 极窄缩略图测每张真实宽高比，
+  // 宫格瀑布流：与 C 端 AlbumGrid 同一套——切到宫格时预加载 ?w=400 缩略图测每张真实宽高比，
   // 贪心分配两列（第 1 张强制左列，之后每张放入当前较矮列），两列底部几乎齐平；测量完成前奇偶双列兜底
   useEffect(() => {
     if (view !== 'grid') { setGridLayout(null); return; }
@@ -142,12 +142,12 @@ export default function WorkPreview() {
       }
     };
     list.forEach((a, i) => {
-      const base = img(a.thumb_url || a.photo_url);
+      const base = img(a.photo_url, 'thumb'); // 用 400 宽缩略图测宽高比（小图秒回，且与下方网格同源命中缓存）；不再用 ?w=40（未配置宽度→Worker 降级原图，232 张全尺寸会拖垮整页）
       if (!base) { finish(); return; }
       const im = new Image();
       im.onload = () => { if (!cancelled && im.naturalWidth > 0) ratios[i] = im.naturalHeight / im.naturalWidth; finish(); };
       im.onerror = finish;
-      im.src = base + (base.includes('?') ? '&w=40' : '?w=40');
+      im.src = base;
     });
     return () => { cancelled = true; };
   }, [view, data]);
@@ -179,7 +179,7 @@ export default function WorkPreview() {
   const brandLogo = studio?.logo || '';
 
   // 幻灯片照片源 = 当前相册
-  const slidePhotos = albums.map((a) => img(a.photo_url));
+  const slidePhotos = albums.map((a) => img(a.photo_url, 'preview'));
 
   const startSlide = () => { setSlideIdx(0); setSlidePaused(false); setSlideOpen(true); };
   const openPreview = (i) => { setPreviewIdx(i); setPreviewOpen(true); };
@@ -317,9 +317,9 @@ export default function WorkPreview() {
       {isMobile ? (
         <div style={{ width: '100%', background: '#1a1a1a', display: 'flex', alignItems: 'center', justifyContent: 'center', maxHeight: '85vh', overflow: 'hidden' }}>
           {cover ? (
-            <img src={img(cover)} alt="" style={{ width: '100%', height: 'auto', maxHeight: '85vh', objectFit: 'contain', display: 'block' }} />
+            <img src={img(cover, 'preview')} alt="" style={{ width: '100%', height: 'auto', maxHeight: '85vh', objectFit: 'contain', display: 'block' }} />
           ) : albums[0] ? (
-            <img src={img(albums[0].photo_url)} alt="" style={{ width: '100%', height: 'auto', maxHeight: '85vh', objectFit: 'contain', display: 'block' }} />
+            <img src={img(albums[0].photo_url, 'preview')} alt="" style={{ width: '100%', height: 'auto', maxHeight: '85vh', objectFit: 'contain', display: 'block' }} />
           ) : (
             <div style={{ width: '100%', height: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#666', fontSize: 14 }}>暂无封面</div>
           )}
@@ -328,9 +328,9 @@ export default function WorkPreview() {
         <div style={{ maxWidth: 900, margin: '24px auto 0', padding: '0 24px' }}>
           <div style={{ width: '100%', maxHeight: '60vh', minHeight: 320, background: '#1a1a1a', borderRadius: 12, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             {cover ? (
-              <img src={img(cover)} alt="" style={{ maxWidth: '100%', maxHeight: '60vh', objectFit: 'contain' }} />
+              <img src={img(cover, 'preview')} alt="" style={{ maxWidth: '100%', maxHeight: '60vh', objectFit: 'contain' }} />
             ) : albums[0] ? (
-              <img src={img(albums[0].photo_url)} alt="" style={{ maxWidth: '100%', maxHeight: '60vh', objectFit: 'contain' }} />
+              <img src={img(albums[0].photo_url, 'preview')} alt="" style={{ maxWidth: '100%', maxHeight: '60vh', objectFit: 'contain' }} />
             ) : (
               <div style={{ color: '#666', fontSize: 14 }}>暂无封面</div>
             )}
@@ -417,7 +417,7 @@ export default function WorkPreview() {
                 };
                 const renderThumb = (idx) => (
                   <div key={albums[idx]?.id || idx} style={{ width: '100%', background: '#f5f5f5', borderRadius: 0, overflow: 'hidden' }}>
-                    <img src={img(albums[idx].thumb_url || albums[idx].photo_url)} alt="" style={{ width: '100%', height: 'auto', display: 'block' }} loading="lazy" onError={(e) => { e.currentTarget.style.opacity = '0.3'; }} />
+                    <img src={img(albums[idx].photo_url, 'thumb')} alt="" style={{ width: '100%', height: 'auto', display: 'block' }} loading={idx < 12 ? 'eager' : 'lazy'} onError={(e) => { e.currentTarget.style.opacity = '0.3'; }} />
                   </div>
                 );
                 return (
@@ -436,7 +436,7 @@ export default function WorkPreview() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {albums.map((a, i) => (
                   <div key={a.id || i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: 10, background: '#f9f9f9', borderRadius: 0, overflow: 'hidden' }}>
-                    <img src={img(a.thumb_url || a.photo_url)} alt="" style={{ width: 64, height: 64, objectFit: 'cover', flexShrink: 0, background: '#f5f5f5' }} />
+                    <img src={img(a.photo_url, 'thumb')} alt="" style={{ width: 64, height: 64, objectFit: 'cover', flexShrink: 0, background: '#f5f5f5' }} />
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: 14, color: '#1f2329', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.title || a.album_name || `相册 ${i + 1}`}</div>
                       <div style={{ fontSize: 12, color: '#999', marginTop: 4 }}>{a.photo_count || 0} 张</div>
@@ -458,11 +458,11 @@ export default function WorkPreview() {
               {(() => {
                 const cols = [[], [], []];
                 albums.forEach((_, i) => cols[i % 3].push(i));
-                const renderThumb = (idx) => (
-                  <div key={albums[idx]?.id || idx} onClick={() => openPreview(idx)} style={{ marginBottom: 8, background: '#f5f5f5', borderRadius: 0, overflow: 'hidden', cursor: 'pointer' }}>
-                    <img src={img(albums[idx].thumb_url || albums[idx].photo_url)} alt="" style={{ width: '100%', height: 'auto', objectFit: 'contain', display: 'block' }} loading="lazy" onError={(e) => { e.currentTarget.style.opacity = '0.3'; }} />
-                  </div>
-                );
+                  const renderThumb = (idx) => (
+                    <div key={albums[idx]?.id || idx} onClick={() => openPreview(idx)} style={{ marginBottom: 8, background: '#f5f5f5', borderRadius: 0, overflow: 'hidden', cursor: 'pointer' }}>
+                      <img src={img(albums[idx].photo_url, 'thumb')} alt="" style={{ width: '100%', height: 'auto', objectFit: 'contain', display: 'block' }} loading={idx < 12 ? 'eager' : 'lazy'} onError={(e) => { e.currentTarget.style.opacity = '0.3'; }} />
+                    </div>
+                  );
                 return (
                   <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
                     {cols.map((col, ci) => (
@@ -573,7 +573,7 @@ export default function WorkPreview() {
 
       {/* 单张大图预览：PC 端相册单击打开，← → 切换，ESC 关闭 */}
       {previewOpen && (
-        <Lightbox photos={albums.map((a) => img(a.photo_url))} index={previewIdx} open={previewOpen} onClose={() => setPreviewOpen(false)} title={w.title || ''} />
+        <Lightbox photos={albums.map((a) => img(a.photo_url, 'preview'))} index={previewIdx} open={previewOpen} onClose={() => setPreviewOpen(false)} title={w.title || ''} />
       )}
 
       {/* 右上角操作弹窗（Action Sheet，与套系预览 1:1） */}
