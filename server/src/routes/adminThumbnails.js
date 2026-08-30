@@ -16,20 +16,36 @@ import { r2Config, activeProvider } from '../storage.js';
 
 const router = express.Router();
 
-// 临时诊断：返回后端实际使用的 R2 配置标识（不含密钥），用于排查缩略图写入桶与 Worker 读取桶不一致问题。
+// 临时诊断：返回后端实际使用的 R2 配置标识（不含密钥），并直接 HeadObject 验证缩略图是否真的落在桶里。
 // TODO: 确认后删除本路由。
-router.get('/r2-debug', authRequired, requireRole('admin'), (req, res) => {
+router.get('/r2-debug', authRequired, requireRole('admin'), async (req, res) => {
   const r2 = r2Config();
   if (!r2) return res.json({ configured: false, activeProvider: activeProvider() });
   let endpointHost = '';
   try { endpointHost = new URL(r2.R2_ENDPOINT).host; } catch {}
-  res.json({
+  const out = {
     configured: true,
     activeProvider: activeProvider(),
     R2_BUCKET: r2.R2_BUCKET,
     R2_ENDPOINT_HOST: endpointHost,
     R2_WORKER_DOMAIN: r2.R2_WORKER_DOMAIN,
-  });
+  };
+  // 用后端自己的 S3 客户端实测：原图与缩略图是否真的在桶里
+  try {
+    const { S3Client, HeadObjectCommand } = await import('@aws-sdk/client-s3');
+    const client = new S3Client({ region: 'auto', endpoint: r2.R2_ENDPOINT, credentials: { accessKeyId: r2.R2_ACCESS_KEY, secretAccessKey: r2.R2_SECRET_KEY } });
+    const testKey = 'biz-works/1786072892130-21j5cx3sxrm.jpg'; // 最早一批，应已被补齐
+    const head = async (k) => {
+      try { const o = await client.send(new HeadObjectCommand({ Bucket: r2.R2_BUCKET, Key: k })); return { exists: true, size: o.ContentLength, type: o.ContentType }; }
+      catch (e) { return { exists: false, error: e.name || String(e) }; }
+    };
+    out.original = await head(testKey);
+    out.thumb400 = await head('biz-works/thumb_400/1786072892130-21j5cx3sxrm.jpg');
+    out.thumb1080 = await head('biz-works/thumb_1080/1786072892130-21j5cx3sxrm.jpg');
+  } catch (e) {
+    out.headError = e.message;
+  }
+  res.json(out);
 });
 
 // 宽度严格对齐前端 img() 用法：网格 thumb=400，预览 preview=1080（不再生成无用的 800，也不生成与前端不匹配的 1200）
