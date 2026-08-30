@@ -12,41 +12,9 @@ import express from 'express';
 import { S3Client, ListObjectsV2Command, GetObjectCommand, PutObjectCommand, HeadObjectCommand } from '@aws-sdk/client-s3';
 import sharp from 'sharp';
 import { authRequired, requireRole } from '../auth.js';
-import { r2Config, activeProvider } from '../storage.js';
+import { r2Config } from '../storage.js';
 
 const router = express.Router();
-
-// 临时诊断：返回后端实际使用的 R2 配置标识（不含密钥），并直接 HeadObject 验证缩略图是否真的落在桶里。
-// TODO: 确认后删除本路由。
-router.get('/r2-debug', authRequired, requireRole('admin'), async (req, res) => {
-  const r2 = r2Config();
-  if (!r2) return res.json({ configured: false, activeProvider: activeProvider() });
-  let endpointHost = '';
-  try { endpointHost = new URL(r2.R2_ENDPOINT).host; } catch {}
-  const out = {
-    configured: true,
-    activeProvider: activeProvider(),
-    R2_BUCKET: r2.R2_BUCKET,
-    R2_ENDPOINT_HOST: endpointHost,
-    R2_WORKER_DOMAIN: r2.R2_WORKER_DOMAIN,
-  };
-  // 用后端自己的 S3 客户端实测：原图与缩略图是否真的在桶里
-  try {
-    const { S3Client, HeadObjectCommand } = await import('@aws-sdk/client-s3');
-    const client = new S3Client({ region: 'auto', endpoint: r2.R2_ENDPOINT, credentials: { accessKeyId: r2.R2_ACCESS_KEY, secretAccessKey: r2.R2_SECRET_KEY } });
-    const testKey = 'biz-works/1786072892130-21j5cx3sxrm.jpg'; // 最早一批，应已被补齐
-    const head = async (k) => {
-      try { const o = await client.send(new HeadObjectCommand({ Bucket: r2.R2_BUCKET, Key: k })); return { exists: true, size: o.ContentLength, type: o.ContentType }; }
-      catch (e) { return { exists: false, error: e.name || String(e) }; }
-    };
-    out.original = await head(testKey);
-    out.thumb400 = await head('biz-works/thumb_400/1786072892130-21j5cx3sxrm.jpg');
-    out.thumb1080 = await head('biz-works/thumb_1080/1786072892130-21j5cx3sxrm.jpg');
-  } catch (e) {
-    out.headError = e.message;
-  }
-  res.json(out);
-});
 
 // 宽度严格对齐前端 img() 用法：网格 thumb=400，预览 preview=1080（不再生成无用的 800，也不生成与前端不匹配的 1200）
 const THUMB_WIDTHS = [400, 1080];
@@ -96,50 +64,61 @@ async function keepAliveIfNeeded() {
 async function runGeneration(client, bucket, prefixes) {
   for (const prefix of prefixes) {
     progress.prefix = prefix;
+    // 先完整列出该前缀下所有 key（R2 单页上限 1000，可能分页），统一处理
     let token;
+    let allKeys = [];
     do {
       const list = await client.send(new ListObjectsV2Command({
         Bucket: bucket, Prefix: prefix + '/', ContinuationToken: token, MaxKeys: 1000,
       }));
       const keys = (list.Contents || []).map((o) => o.Key).filter(Boolean);
-      progress.totalListed += keys.length;
-      for (const key of keys) {
-        progress.currentKey = key;
-        if (SKIP_KEY_PARTS.some((p) => key.includes(p))) { progress.skipped++; continue; }
-        const ext = (key.split('.').pop() || '').toLowerCase();
-        if (!['jpg','jpeg','png','webp','gif','avif','tiff'].includes(ext)) { progress.skipped++; continue; }
-        try {
-          // 幂等标志必须查 thumb_1080 而非 thumb_400：
-          // 早期批次曾用 [400,800,1200] 生成，导致有 thumb_400 但缺 thumb_1080（预览大图降级原图）。
-          // 查 1080 才能确保「400+1080 两档都齐」才跳过，否则会漏补 1080。
-          try {
-            await client.send(new HeadObjectCommand({ Bucket: bucket, Key: thumbKeyOf(key, 1080) }));
-            progress.skipped++;
-            continue;
-          } catch {}
-          const obj = await client.send(new GetObjectCommand({ Bucket: bucket, Key: key }));
-          const buf = Buffer.from(await obj.Body.transformToByteArray());
-          for (const w of THUMB_WIDTHS) {
-            const out = await sharp(buf).rotate()
-              .resize({ width: w, withoutEnlargement: true, fit: 'inside' })
-              .jpeg({ quality: QUALITY, mozjpeg: true })
-              .toBuffer();
-            await client.send(new PutObjectCommand({
-              Bucket: bucket, Key: thumbKeyOf(key, w), Body: out, ContentType: 'image/jpeg',
-            }));
-            progress.generated++;
-          }
-          progress.processed++;
-        } catch (e) {
-          progress.failed++;
-          console.error('[gen-thumbnails] ✗', key, e.message);
-        }
-        // 周期性自保活，防止 Render 免费实例因无外部请求休眠而杀掉长任务
-        await keepAliveIfNeeded();
-      }
+      allKeys.push(...keys);
       token = list.NextContinuationToken;
     } while (token);
+    // 新上传优先：按 key 内时间戳倒序，让用户最近的作品先生成缩略图、先变快
+    allKeys.sort((a, b) => keyTs(b) - keyTs(a));
+    progress.totalListed += allKeys.length;
+    for (const key of allKeys) {
+      progress.currentKey = key;
+      if (SKIP_KEY_PARTS.some((p) => key.includes(p))) { progress.skipped++; continue; }
+      const ext = (key.split('.').pop() || '').toLowerCase();
+      if (!['jpg','jpeg','png','webp','gif','avif','tiff'].includes(ext)) { progress.skipped++; continue; }
+      try {
+        // 幂等标志必须查 thumb_1080 而非 thumb_400：
+        // 早期批次曾用 [400,800,1200] 生成，导致有 thumb_400 但缺 thumb_1080（预览大图降级原图）。
+        // 查 1080 才能确保「400+1080 两档都齐」才跳过，否则会漏补 1080。
+        try {
+          await client.send(new HeadObjectCommand({ Bucket: bucket, Key: thumbKeyOf(key, 1080) }));
+          progress.skipped++;
+          continue;
+        } catch {}
+        const obj = await client.send(new GetObjectCommand({ Bucket: bucket, Key: key }));
+        const buf = Buffer.from(await obj.Body.transformToByteArray());
+        for (const w of THUMB_WIDTHS) {
+          const out = await sharp(buf).rotate()
+            .resize({ width: w, withoutEnlargement: true, fit: 'inside' })
+            .jpeg({ quality: QUALITY, mozjpeg: true })
+            .toBuffer();
+          await client.send(new PutObjectCommand({
+            Bucket: bucket, Key: thumbKeyOf(key, w), Body: out, ContentType: 'image/jpeg',
+          }));
+          progress.generated++;
+        }
+        progress.processed++;
+      } catch (e) {
+        progress.failed++;
+        console.error('[gen-thumbnails] ✗', key, e.message);
+      }
+      // 周期性自保活，防止 Render 免费实例因无外部请求休眠而杀掉长任务
+      await keepAliveIfNeeded();
+    }
   }
+}
+
+// 从 key（形如 biz-works/1786094876311-xxx.jpg）提取时间戳，用于倒序（新上传优先）
+function keyTs(key) {
+  const m = key.match(/(\d{10,})/);
+  return m ? Number(m[1]) : 0;
 }
 
 // 触发生成（后台执行，立刻返回）
