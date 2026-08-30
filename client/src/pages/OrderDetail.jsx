@@ -820,15 +820,19 @@ export default function OrderDetail() {
   function printOrder() {
     if (!detail) return;
     setMoreMenu(false);
-    // 决策：
-    // - iOS Safari（含 iPadOS 13+ 伪装 Mac）：window.print() 长期静默无效 + html2canvas 渲染大 DOM 卡死 → 必须走后端 puppeteer（1-3 秒）→ 系统分享面板
-    // - 微信/PWA：window.print 无效 → 走后端 puppeteer → 系统分享面板
-    // - 桌面/安卓普通浏览器：直接 window.print() 系统打印对话框秒出
+    // 决策（2026-08-30 实测修正）：
+    // - 移动端一律走后端 puppeteer → 系统分享面板。原因：iOS Safari window.print() 静默无效；
+    //   安卓国产浏览器（小米浏览器/UC/夸克/华为等）window.print() 同样静默无效（实测小米无反应）；
+    //   前端 html2canvas 在 iOS 渲染大 DOM 卡死。手机端唯一可靠路径 = 后端生成 PDF → navigator.share 系统分享面板。
+    // - 只有桌面 PC（非 touch、宽屏）才用 window.print() 系统打印对话框秒出。
     const ua = navigator.userAgent || '';
     const isIOS = /iphone|ipad|ipod/i.test(ua) || (/Mac/.test(ua) && navigator.maxTouchPoints > 1);
+    const isMobileUA = /iphone|ipad|ipod|android|mobile/i.test(ua);
+    const isTouchSmall = typeof navigator.maxTouchPoints === 'number' && navigator.maxTouchPoints > 1 && (window.innerWidth || 0) < 1024;
     const isWechat = /MicroMessenger/i.test(ua);
     const isStandalone = typeof window.matchMedia === 'function' && window.matchMedia('(display-mode: standalone)').matches;
-    if (isIOS || isWechat || isStandalone || typeof window.print !== 'function') {
+    const isMobile = isIOS || isMobileUA || isTouchSmall;
+    if (isMobile || isWechat || isStandalone || typeof window.print !== 'function') {
       toast('正在生成 PDF…');
       downloadPrintPdf({ useServer: true });
       return;
