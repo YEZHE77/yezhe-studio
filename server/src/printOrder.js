@@ -428,17 +428,39 @@ export function renderOrderPrintHtml(vars, includeInternal) {
 let _browserPromise = null;
 async function getBrowser() {
   if (!_browserPromise) {
-    const puppeteer = await import('puppeteer');
-    _browserPromise = puppeteer.launch({
-      headless: true,
-      args: [
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        '--disable-gpu',
-        '--disable-dev-shm-usage', // 容器 /dev/shm 太小，避免 Chromium 崩溃
-        '--font-render-hinting=none'
-      ]
-    }).catch((e) => { _browserPromise = null; throw e; });
+    const isRender = !!process.env.RENDER;
+    const isLinux = process.platform === 'linux';
+    if (isRender || isLinux) {
+      // Render 等 Linux 容器缺少 puppeteer 自带 Chromium 的系统依赖（libnss3 等），
+      // 使用 @sparticuz/chromium（为 serverless/容器预编译，依赖自包含）
+      _browserPromise = (async () => {
+        const [{ default: puppeteerCore }, { default: chromium }] = await Promise.all([
+          import('puppeteer-core'),
+          import('@sparticuz/chromium')
+        ]);
+        const executablePath = await chromium.executablePath();
+        return puppeteerCore.launch({
+          args: [...chromium.args, '--disable-dev-shm-usage'],
+          executablePath,
+          headless: chromium.headless
+        });
+      })().catch((e) => { _browserPromise = null; throw e; });
+    } else {
+      // 本地 macOS/Windows：继续用 puppeteer 下载的 Chromium
+      _browserPromise = (async () => {
+        const { default: puppeteer } = await import('puppeteer');
+        return puppeteer.launch({
+          headless: true,
+          args: [
+            '--no-sandbox',
+            '--disable-setuid-sandbox',
+            '--disable-gpu',
+            '--disable-dev-shm-usage',
+            '--font-render-hinting=none'
+          ]
+        });
+      })().catch((e) => { _browserPromise = null; throw e; });
+    }
   }
   return _browserPromise;
 }
