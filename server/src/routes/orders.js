@@ -13,7 +13,6 @@ import { emitBizToStaff, BIZ_TYPE } from './mobileMessage.js';
 import { syncOrderTodos, generateEventTodo, archiveOrderTodos } from '../todo.js';
 import { getConfig } from '../configStore.js';
 import { serverError } from '../httpError.js';
-import { buildOrderPrintVars, renderOrderPrintHtml, generateOrderPdf } from '../printOrder.js';
 
 const router = Router();
 const JSON_COLS = ['package_snapshot', 'addons_snapshot', 'logs', 'phones', 'time_slots', 'extra_items', 'executors', 'order_photos'];
@@ -347,35 +346,6 @@ router.get('/:id', authRequired, async (req, res) => {
       } catch {}
     }
     res.json({ ...out, payments, packageName: pkgName, agreement_signs: agreementSigns });
-  } catch (e) { serverError(res, e); }
-});
-
-// 打印单据：服务端生成「拍摄服务合同」PDF（1:1 复刻前端 sheet 版式）
-// 数据源唯一性：只信任 :id，内容全部由服务端从数据库查询渲染；登录鉴权 + 归属/状态拦截
-router.get('/:id/print-pdf', authRequired, async (req, res) => {
-  try {
-    const o = await get('SELECT * FROM orders WHERE id = ?', [req.params.id]);
-    if (!o) return res.status(404).json({ error: '订单不存在' });
-    if (Number(o.cancelled) === 1) return res.status(400).json({ error: '已作废订单无法打印单据' });
-    if (Number(o.is_deleted) === 1) return res.status(400).json({ error: '订单已删除，无法打印单据' });
-    const order = parseRow(o, JSON_COLS);
-    const payments = await query('SELECT * FROM payments WHERE order_id = ? ORDER BY created_at ASC', [o.id]).then(
-      (rows) => rows.map((r) => parseRow(r, []))
-    );
-    // 实时套系（仅用于快照缺失字段兜底，与前端 pkgInfo 合并逻辑一致）
-    let livePkg = null;
-    if (o.package_id) livePkg = await get('SELECT * FROM packages WHERE id = ?', [o.package_id]);
-    if (livePkg && livePkg.details && typeof livePkg.details === 'string') {
-      try { livePkg.details = JSON.parse(livePkg.details); } catch { livePkg.details = {}; }
-    }
-    const includeInternal = String(req.query.internal || '') === '1';
-    const vars = buildOrderPrintVars(order, payments, livePkg);
-    const html = renderOrderPrintHtml(vars, includeInternal);
-    const buf = await generateOrderPdf(html);
-    const filename = encodeURIComponent('拍摄服务合同-' + (o.order_no || o.id) + '.pdf');
-    res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${filename}`);
-    res.send(Buffer.from(buf));
   } catch (e) { serverError(res, e); }
 });
 

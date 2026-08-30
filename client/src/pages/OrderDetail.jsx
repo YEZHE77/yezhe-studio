@@ -278,6 +278,7 @@ export default function OrderDetail() {
 
   // 请求序号：连点时只接受最后一次 reload 的响应，避免旧 GET 覆盖乐观更新后的新状态
   const reloadSeq = useRef(0);
+  const pdfLock = useRef(false); // 防止打印按钮被重复点击导致 PDF 生成多次
   const reload = useCallback(async () => {
     const seq = ++reloadSeq.current;
     try {
@@ -609,7 +610,6 @@ export default function OrderDetail() {
   // 修复 v6 bug：抓取 .print-sheet-body 整体，而非 querySelector('div')（那只拿到页眉首元素，正文会空白）。
   async function downloadPrintPdf() {
     try {
-      toast('正在生成 PDF…');
       const sheet = document.querySelector('.print-order-sheet');
       if (!sheet) throw new Error('未找到打印内容');
       const bodyEl = sheet.querySelector('.print-sheet-body');
@@ -617,8 +617,11 @@ export default function OrderDetail() {
 
       const CJK = "'PingFang SC','Microsoft YaHei','Noto Sans SC','Hiragino Sans GB',sans-serif";
       const PAGE_W = 700; // 版心像素宽，对应 A4 内容区
-      const isMobile = /iphone|ipad|ipod|android/i.test(navigator.userAgent || '');
-      const scale = isMobile ? 1.5 : 2;
+      const ua = navigator.userAgent || '';
+      const isMobile = /iphone|ipad|ipod|android/i.test(ua);
+      // 移动端降 scale 大幅提速：1.0 已足够清晰，桌面用 2.0 保留锐利
+      const scale = isMobile ? 1 : 2;
+      const imgQuality = isMobile ? 0.88 : 0.95;
 
       // —— 正文：克隆 .print-sheet-body 离屏渲染（强制 sans-serif，贴近后端 Noto Sans 观感）——
       const clone = bodyEl.cloneNode(true);
@@ -633,7 +636,13 @@ export default function OrderDetail() {
 
       let bodyCanvas;
       try {
-        bodyCanvas = await html2canvas(clone, { scale, useCORS: true, backgroundColor: '#ffffff', logging: false });
+        bodyCanvas = await html2canvas(clone, {
+          scale,
+          useCORS: true,
+          backgroundColor: '#ffffff',
+          logging: false,
+          imageTimeout: 10000
+        });
       } finally {
         document.body.removeChild(wrap);
       }
@@ -658,12 +667,16 @@ export default function OrderDetail() {
         el.style.cssText = 'position:fixed;left:-10000px;top:0;width:' + PAGE_W + 'px;background:#fff;z-index:-1;';
         el.innerHTML = html;
         document.body.appendChild(el);
-        html2canvas(el.firstElementChild, { scale, backgroundColor: '#ffffff', logging: false })
+        html2canvas(el.firstElementChild, { scale, backgroundColor: '#ffffff', logging: false, imageTimeout: 10000 })
           .then((c) => { document.body.removeChild(el); resolve(c); })
           .catch((e) => { try { document.body.removeChild(el); } catch (_) {} reject(e); });
       });
 
       const [headerCanvas, footerCanvas] = await Promise.all([renderBlock(headerHTML), renderBlock(footerHTML)]);
+
+      // 预先把页眉页脚转成 base64（避免循环里重复编码，多页时能省大量时间）
+      const headerData = headerCanvas.toDataURL('image/jpeg', 0.9);
+      const footerData = footerCanvas.toDataURL('image/jpeg', 0.9);
 
       // —— 拼装 A4（mm）：每页 页眉 + 正文切片 + 页脚，间距对齐后端 @page 边距 ——
       const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
@@ -681,7 +694,7 @@ export default function OrderDetail() {
 
       for (let i = 0; i < totalPages; i++) {
         if (i > 0) pdf.addPage();
-        pdf.addImage(headerCanvas.toDataURL('image/jpeg', 0.95), 'JPEG', sideMargin, topGap, contentW, headerH);
+        pdf.addImage(headerData, 'JPEG', sideMargin, topGap, contentW, headerH);
         const sy = i * pageContentPx;
         const sH = Math.min(pageContentPx, bodyCanvas.height - sy);
         if (sH > 0) {
@@ -692,9 +705,9 @@ export default function OrderDetail() {
           ctx.fillStyle = '#ffffff';
           ctx.fillRect(0, 0, slice.width, slice.height);
           ctx.drawImage(bodyCanvas, 0, sy, bodyCanvas.width, sH, 0, 0, bodyCanvas.width, sH);
-          pdf.addImage(slice.toDataURL('image/jpeg', 0.98), 'JPEG', sideMargin, contentTop, contentW, sH / pxPerMm);
+          pdf.addImage(slice.toDataURL('image/jpeg', imgQuality), 'JPEG', sideMargin, contentTop, contentW, sH / pxPerMm);
         }
-        pdf.addImage(footerCanvas.toDataURL('image/jpeg', 0.95), 'JPEG', sideMargin, pageH - bottomGap - footerH, contentW, footerH);
+        pdf.addImage(footerData, 'JPEG', sideMargin, pageH - bottomGap - footerH, contentW, footerH);
       }
 
       const blob = pdf.output('blob');
@@ -741,12 +754,13 @@ export default function OrderDetail() {
     }
   }
   function printOrder() {
-    if (!detail) return;
+    if (!detail || pdfLock.current) return;
     setMoreMenu(false);
+    pdfLock.current = true;
     // 全平台统一走前端 html2canvas + jsPDF 直接生成「拍摄服务合同」PDF（1:1 复刻 sheet 版式，手机端 1–2 秒出），
     // 桌面新标签页预览 / 移动端系统分享·下载。
     toast('正在生成 PDF…');
-    downloadPrintPdf();
+    downloadPrintPdf().finally(() => { pdfLock.current = false; });
   }
   async function restoreOrder() {
     if (!(await confirm('确认恢复该订单？'))) return;
