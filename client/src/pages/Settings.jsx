@@ -75,6 +75,45 @@ export default function Settings() {
   const [mrLoaded, setMrLoaded] = useState(false);
   const [mrSaving, setMrSaving] = useState(false);
   const [mrTip, setMrTip] = useState('');
+  // 图片优化：批量补齐历史图片的 R2 缩略图变体（thumb_400/800/1200），
+  // 让 Worker ?w= 查询命中小图，手机端作品预览提速 5-10 倍
+  const [thumbBusy, setThumbBusy] = useState(false);
+  const [thumbProg, setThumbProg] = useState(null);
+  const [thumbTip, setThumbTip] = useState('');
+  const thumbTimerRef = useRef(null);
+  async function startThumbGen() {
+    if (thumbBusy) return;
+    setThumbBusy(true);
+    setThumbTip('正在启动缩略图生成任务…');
+    try {
+      await http.post('/api/admin/gen-thumbnails');
+      setThumbTip('任务已在后台执行，正在轮询进度…');
+      pollThumbStatus();
+    } catch (e) {
+      setThumbBusy(false);
+      setThumbTip('启动失败：' + ((e.response && e.response.data && e.response.data.error) || e.message));
+    }
+  }
+  async function pollThumbStatus() {
+    try {
+      const r = await http.get('/api/admin/gen-thumbnails/status');
+      const p = r.data || {};
+      setThumbProg(p);
+      if (p.running) {
+        setThumbTip('生成中… 已生成 ' + p.generated + ' 张缩略图');
+        thumbTimerRef.current = setTimeout(pollThumbStatus, 3000);
+      } else {
+        setThumbBusy(false);
+        if (thumbTimerRef.current) { clearTimeout(thumbTimerRef.current); thumbTimerRef.current = null; }
+        setThumbTip('完成：列出 ' + (p.totalListed || 0) + ' 张，处理 ' + (p.processed || 0) + '，生成 ' + (p.generated || 0) + ' 张缩略图' + (p.failed ? '，失败 ' + p.failed : ''));
+      }
+    } catch (e) {
+      setThumbBusy(false);
+      if (thumbTimerRef.current) { clearTimeout(thumbTimerRef.current); thumbTimerRef.current = null; }
+      setThumbTip('查询进度失败：' + ((e.response && e.response.data && e.response.data.error) || e.message));
+    }
+  }
+  useEffect(() => () => { if (thumbTimerRef.current) clearTimeout(thumbTimerRef.current); }, []);
   async function doBackup() {
     if (backupBusy) return;
     setBackupBusy(true);
@@ -577,6 +616,26 @@ export default function Settings() {
           <button onClick={doBackup} disabled={backupBusy}
             className="px-5 py-2 rounded-lg bg-brand text-white text-sm hover:opacity-90 disabled:opacity-50 max-md:w-full max-md:py-2.5">
             {backupBusy ? '导出中…' : '导出 JSON 备份'}
+          </button>
+        </div>
+      </div>
+      {/* 图片优化：批量补齐历史缩略图（手机端作品预览提速） */}
+      <div className="mt-6 max-md:mt-0 max-md:pb-6">
+        <div className="mb-4 max-md:mb-3 max-md:px-4 max-md:pt-5">
+          <h2 className="text-lg font-semibold text-fg max-md:text-base">图片优化</h2>
+          <p className="text-xs text-muted mt-0.5 max-md:text-[11px] max-md:leading-tight">为历史图片批量生成 400/800/1200px 缩略图（新上传图片已自动生成）。补齐后客户端相册预览加载速度提升 5-10 倍。任务在后台执行，可重复触发（已生成的自动跳过）。</p>
+        </div>
+        {thumbTip && <div className="mb-4 text-sm px-4 py-2 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 max-md:text-xs max-md:mx-4">{thumbTip}</div>}
+        {thumbProg && thumbProg.running && (
+          <div className="mb-4 text-xs px-4 py-2 rounded-lg bg-sky-50 text-sky-700 border border-sky-200 max-md:text-[11px] max-md:mx-4">
+            当前处理：{thumbProg.currentKey || '—'}（已生成 {thumbProg.generated} 张 / 失败 {thumbProg.failed}）
+          </div>
+        )}
+        <div className="bg-panel border border-line rounded-xl2 p-5 max-w-xl max-md:rounded-none max-md:border-x-0 max-md:border-t-0 max-md:p-4 max-md:bg-white max-md:max-w-full">
+          <p className="text-sm text-muted mb-4 max-md:text-xs max-md:leading-relaxed">适用于历史作品/相册图片：生成 3 档缩略图并上传到 R2，Worker 按 ?w= 参数命中小图返回，大幅降低首屏加载体积。</p>
+          <button onClick={startThumbGen} disabled={thumbBusy}
+            className="px-5 py-2 rounded-lg bg-brand text-white text-sm hover:opacity-90 disabled:opacity-50 max-md:w-full max-md:py-2.5">
+            {thumbBusy ? '生成中…' : (thumbProg && thumbProg.generated ? '继续生成缩略图' : '生成历史图片缩略图')}
           </button>
         </div>
       </div>
