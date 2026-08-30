@@ -77,9 +77,11 @@ async function runGeneration(client, bucket, prefixes) {
         const ext = (key.split('.').pop() || '').toLowerCase();
         if (!['jpg','jpeg','png','webp','gif','avif','tiff'].includes(ext)) { progress.skipped++; continue; }
         try {
-          // 幂等：thumb_400 存在则跳过
+          // 幂等标志必须查 thumb_1080 而非 thumb_400：
+          // 早期批次曾用 [400,800,1200] 生成，导致有 thumb_400 但缺 thumb_1080（预览大图降级原图）。
+          // 查 1080 才能确保「400+1080 两档都齐」才跳过，否则会漏补 1080。
           try {
-            await client.send(new HeadObjectCommand({ Bucket: bucket, Key: thumbKeyOf(key, 400) }));
+            await client.send(new HeadObjectCommand({ Bucket: bucket, Key: thumbKeyOf(key, 1080) }));
             progress.skipped++;
             continue;
           } catch {}
