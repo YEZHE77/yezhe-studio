@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useParams, useNavigate } from 'react-router-dom';
 import http, { img, uploadBatch, conflictOf } from '../api.js';
 import { HOURS } from '../constants/timeSlots.js';
@@ -793,10 +794,23 @@ export default function OrderDetail() {
     if (!detail || pdfLock.current) return;
     setMoreMenu(false);
     pdfLock.current = true;
-    // 全平台统一走前端 html2canvas + jsPDF 直接生成「拍摄服务合同」PDF（1:1 复刻 sheet 版式，手机端 1–2 秒出），
-    // 桌面新标签页预览 / 移动端系统分享·下载。
-    toast('正在生成 PDF…');
-    downloadPrintPdf().finally(() => { pdfLock.current = false; });
+    // —— 最快方案：浏览器原生打印 window.print()（零生成等待，矢量渲染无 canvas 大小限制）——
+    // .print-order-sheet 已用 createPortal 渲染到 body 直接子级，配合 @media print 的
+    // body > *:not(.print-order-sheet){display:none}（index.css）只打印单据、零空白页。
+    // iOS Safari/安卓 Chrome 打印面板自带「存储为 PDF / 另存为 PDF」，秒出，无需 html2canvas/jsPDF 前端生成。
+    // 微信内置浏览器（WKWebView/X5）不支持 window.print → 降级走 downloadPrintPdf 生成 PDF 文件。
+    try {
+      const ua = navigator.userAgent || '';
+      if (/MicroMessenger/i.test(ua)) {
+        toast('正在生成 PDF…');
+        downloadPrintPdf().finally(() => { pdfLock.current = false; });
+        return;
+      }
+      toast('已调起系统打印面板，可选择「存储为 PDF / 打印」');
+      window.print();
+    } finally {
+      setTimeout(() => { pdfLock.current = false; }, 1500); // 给系统打印面板一些时间；连点由锁挡住
+    }
   }
   async function restoreOrder() {
     if (!(await confirm('确认恢复该订单？'))) return;
@@ -1174,6 +1188,12 @@ export default function OrderDetail() {
         <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 6 2 18 2 18 9" /><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" /><rect x="6" y="14" width="12" height="8" /></svg>
           打印单据
+        </span>
+      </button>
+      <button type="button" onClick={() => { onClose && onClose(); toast('正在生成 PDF…'); downloadPrintPdf(); }} style={moreItemStyle}>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg>
+          下载 PDF 文件
         </span>
       </button>
       {/* 打印设置：是否附带商家内部备注（默认关） */}
@@ -1584,6 +1604,7 @@ export default function OrderDetail() {
                   { t: '分享订单', fn: () => { setMoreMenu(false); openMiniQr(); } },
                   { t: '登记收款', fn: () => { setMoreMenu(false); setPay({ type: 'deposit', amount: '', method: 'offline', channel: 'wechat', note: '' }); } },
                   { t: '打印单据', fn: () => { setMoreMenu(false); printOrder(); } },
+                  { t: '下载 PDF 文件', fn: () => { setMoreMenu(false); toast('正在生成 PDF…'); downloadPrintPdf(); } },
                   { t: '复制订单', fn: () => { setMoreMenu(false); copyOrder(); } },
                   { t: '关闭订单', fn: () => { setMoreMenu(false); cancel(); } },
                   { t: '删除订单', fn: () => { setMoreMenu(false); removeOrder(); } }
@@ -2788,6 +2809,9 @@ export default function OrderDetail() {
       )}
 
       {/* 打印单据内容（离屏渲染；html2canvas 直接抓取；window.print 通道 @media print 移入视口打印） */}
+      {/* 用 createPortal 渲染到 body 直接子级：@media print 的 body > *:not(.print-order-sheet){display:none} 只打单据、零空白页，
+          且 React 正常管理该节点（手动 appendChild 移动会被 React 重渲染移回，导致打印空白）。 */}
+      {createPortal(
       <div className="print-order-sheet" style={{ position: 'fixed', left: -10000, top: 0, width: '700px' }}>
         {/* 页眉（window.print 走 sheet 通道直出；下载 PDF 走 downloadPrintPdf 自行 addImage 互相独立） */}
         <div className="print-header">
@@ -3017,7 +3041,8 @@ export default function OrderDetail() {
           <span>叶哲 STUDIO · 摄影工作室管理系统</span>
           <span>打印时间：{new Date().toLocaleString('zh-CN')}</span>
         </div>
-      </div>
+      </div>,
+      document.body)}
 
       {/* 订单记录全屏页（点击底部订单变更记录跳转，校 IMG_7533） */}
       {logModal && (

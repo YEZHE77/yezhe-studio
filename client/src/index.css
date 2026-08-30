@@ -40,10 +40,11 @@ body {
 }
 
 /* 打印：仅显示 .print-order-sheet（订单/合同单据），隐藏侧边栏/顶栏/订单详情其他内容 */
+/* 用 display:none 而非 visibility:hidden——后者仍占位，长页面会打出多张空白页 */
 @media print {
-  body * { visibility: hidden; }
+  body > *:not(.print-order-sheet) { display: none !important; }
   .print-order-sheet, .print-order-sheet * { visibility: visible; }
-  .print-order-sheet { position: static !important; left: auto !important; top: auto !important; width: 100%; max-width: 700px; margin: 0 auto; padding: 0; }
+  .print-order-sheet { display: block !important; position: static !important; left: auto !important; top: auto !important; width: 100%; max-width: 700px; margin: 0 auto; padding: 0; }
   /* sheet 内的页眉/页脚（window.print 通道，让电脑端打印也带页眉页脚，与手机 PDF 路径一致） */
   .print-header { display: block !important; text-align: center; padding: 4mm 0 3mm; border-bottom: 1px solid #555; font-family: SimSun, STSong, serif; page-break-after: avoid; }
   .print-header-title { font-size: 22px; letter-spacing: 4px; color: #000; font-weight: 400; }
