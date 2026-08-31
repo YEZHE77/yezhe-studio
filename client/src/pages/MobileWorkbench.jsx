@@ -147,12 +147,16 @@ function GroupBlock({ title, children, last, pink }) {
   );
 }
 
+// 模块级缓存：返回主页时先显示上次数据，避免余额/待办数字闪一下 "--" 再回填
+let cachedStats = null;
+let cachedStudio = null;
+
 export default function MobileWorkbench() {
   const nav = useNavigate();
   const { user, updateUser } = useAuth();
-  const [stats, setStats] = useState(null);
-  const [studio, setStudio] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState(cachedStats);
+  const [studio, setStudio] = useState(cachedStudio);
+  const [loading, setLoading] = useState(false);
   const [hideBalance, setHideBalance] = useState(false);
   const [miniOpen, setMiniOpen] = useState(false);
   const fileRef = useRef(null);
@@ -185,15 +189,13 @@ export default function MobileWorkbench() {
 
   const refreshStats = useCallback(() => {
     http.get('/api/stats')
-      .then((r) => setStats(r.data))
+      .then((r) => { cachedStats = r.data; setStats(r.data); })
       .catch(() => {});
   }, []);
 
   useEffect(() => {
-    setLoading(true);
+    // 返回主页即后台刷新：有缓存先秒显上次数，不再闪 "--"；页面重新可见也刷新
     refreshStats();
-    setLoading(false);
-    // 页面重新可见时刷新（从订单/档期等页面返回后数字实时更新）
     const onVis = () => {
       if (document.visibilityState === 'visible') refreshStats();
     };
@@ -204,8 +206,8 @@ export default function MobileWorkbench() {
   // 工作室名称（编辑资料可改，存于 settings/studio.name）
   useEffect(() => {
     http.get('/api/settings/studio')
-      .then((r) => setStudio(r.data))
-      .catch(() => setStudio({}));
+      .then((r) => { cachedStudio = r.data; setStudio(r.data); })
+      .catch(() => setStudio(cachedStudio || {}));
   }, []);
 
   // 「小程序」入口：微信内尝试直接跳转客户小程序（H5 处于小程序 web-view 时生效），
