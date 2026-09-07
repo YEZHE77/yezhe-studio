@@ -3,7 +3,7 @@
 // 交互：横向卡片 Tab 分类（已付定金/等待拍摄/待选片/精修中/待交付/重新生成合同/客户申请）
 //      点击待办跳订单详情；「标记完成」归档（仅改待办状态，绝不动订单业务数据）
 import React, { useEffect, useState, useCallback, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import http from '../api.js';
 import { avatarColor, avatarText } from '../utils/avatar.js';
 
@@ -43,10 +43,16 @@ function todayInfo() {
 
 export default function Todo() {
   const nav = useNavigate();
+  const [searchParams] = useSearchParams();
+  // 从 URL ?tab= 参数读取初始 Tab（主页「等待拍摄」传 waiting、「已付定金」传 deposit）
+  // 映射到 TAB_DEFS 的 key：waiting → waiting_shoot，其余直接匹配
+  const tabParam = searchParams.get('tab') || '';
+  const initialKey = (tabParam === 'waiting' ? 'waiting_shoot' : tabParam) || 'deposit';
+  const VALID_KEYS = new Set(TAB_DEFS.map((t) => t.key));
   const [today] = useState(() => todayInfo());
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [activeKey, setActiveKey] = useState('deposit');
+  const [activeKey, setActiveKey] = useState(VALID_KEYS.has(initialKey) ? initialKey : 'deposit');
   const [lunar, setLunar] = useState('');
   const tabsScrollRef = useRef(null);
   const tabRefs = useRef({});
