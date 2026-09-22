@@ -91,7 +91,9 @@ export default function Home() {
       if (!mounted) return;
       const s = r.data || {};
       setStudio(s);
-      const hero = (s.heroImages || []).map((u) => img(u, 'thumb')).filter(Boolean);
+      // 轮播图是全宽 16:9 大图展示（手机 3x 屏需约 1290 物理像素），必须用 preview(?w=1080)：
+      // 用 thumb(?w=400) 会被拉伸 3 倍导致明显模糊（实测 400 档仅 10KB、1080 档 51KB）
+      const hero = (s.heroImages || []).map((u) => img(u, 'preview')).filter(Boolean);
       if (hero.length) setBanners(hero);
     }).catch(() => {});
     const fetchCats = http.get('/api/categories').then((r) => {
