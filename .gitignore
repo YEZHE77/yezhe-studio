@@ -17,8 +17,9 @@ server/.env
 *.log
 .DS_Store
 
-# 本地保活工作流（仅本地运行，绝不入库提交）
-.github/workflows/keepalive.yml
+# 注意：保活工作流 .github/workflows/keepalive.yml 必须入库！
+# GitHub Actions 只能执行仓库中的 workflow 文件，本地文件永远不会运行。
+# 曾因被此处忽略导致保活从未生效，Render 实例照常休眠、首访冷启动 30-60 秒。
 
 # 项目记忆（WorkBuddy 内部数据，非代码）
 .workbuddy/
