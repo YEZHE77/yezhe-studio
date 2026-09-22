@@ -317,9 +317,9 @@ export default function WorkPreview() {
       {isMobile ? (
         <div style={{ width: '100%', background: '#1a1a1a', display: 'flex', alignItems: 'center', justifyContent: 'center', maxHeight: '85vh', overflow: 'hidden' }}>
           {cover ? (
-            <img src={img(cover, 'preview')} alt="" style={{ width: '100%', height: 'auto', maxHeight: '85vh', objectFit: 'contain', display: 'block' }} />
+            <img src={img(cover)} alt="" style={{ width: '100%', height: 'auto', maxHeight: '85vh', objectFit: 'contain', display: 'block' }} />
           ) : albums[0] ? (
-            <img src={img(albums[0].photo_url, 'preview')} alt="" style={{ width: '100%', height: 'auto', maxHeight: '85vh', objectFit: 'contain', display: 'block' }} />
+            <img src={img(albums[0].photo_url)} alt="" style={{ width: '100%', height: 'auto', maxHeight: '85vh', objectFit: 'contain', display: 'block' }} />
           ) : (
             <div style={{ width: '100%', height: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#666', fontSize: 14 }}>暂无封面</div>
           )}
@@ -328,9 +328,9 @@ export default function WorkPreview() {
         <div style={{ maxWidth: 900, margin: '24px auto 0', padding: '0 24px' }}>
           <div style={{ width: '100%', maxHeight: '60vh', minHeight: 320, background: '#1a1a1a', borderRadius: 12, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             {cover ? (
-              <img src={img(cover, 'preview')} alt="" style={{ maxWidth: '100%', maxHeight: '60vh', objectFit: 'contain' }} />
+              <img src={img(cover)} alt="" style={{ maxWidth: '100%', maxHeight: '60vh', objectFit: 'contain' }} />
             ) : albums[0] ? (
-              <img src={img(albums[0].photo_url, 'preview')} alt="" style={{ maxWidth: '100%', maxHeight: '60vh', objectFit: 'contain' }} />
+              <img src={img(albums[0].photo_url)} alt="" style={{ maxWidth: '100%', maxHeight: '60vh', objectFit: 'contain' }} />
             ) : (
               <div style={{ color: '#666', fontSize: 14 }}>暂无封面</div>
             )}

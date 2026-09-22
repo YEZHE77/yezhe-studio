@@ -72,7 +72,8 @@ export default function Home() {
         .then((r) => {
           if (myReq !== reqRef.current) return;
           const data = r.data || {};
-          const items = (data.items || []).map((w) => ({ ...w, cover: img(w.cover_url || '', 'thumb') }));
+          // 作品展示封面按用户要求显示原图（不压缩）；渲染处已 loading="lazy"，避免首屏一次性拉全部封面
+          const items = (data.items || []).map((w) => ({ ...w, cover: img(w.cover_url || '') }));
           setWorks((prev) => (reset ? items : prev.concat(items)));
           setPage(p);
           setHasMore(items.length < (data.total || 0));
@@ -91,9 +92,9 @@ export default function Home() {
       if (!mounted) return;
       const s = r.data || {};
       setStudio(s);
-      // 轮播图是全宽 16:9 大图展示（手机 3x 屏需约 1290 物理像素），必须用 preview(?w=1080)：
-      // 用 thumb(?w=400) 会被拉伸 3 倍导致明显模糊（实测 400 档仅 10KB、1080 档 51KB）
-      const hero = (s.heroImages || []).map((u) => img(u, 'preview')).filter(Boolean);
+      // 轮播图按用户要求显示原图（不压缩）。hero 仅 2-3 张、是首屏门面，画质优先；
+      // 注意别改成 thumb/preview，否则全宽 16:9 拉伸后必糊
+      const hero = (s.heroImages || []).map((u) => img(u)).filter(Boolean);
       if (hero.length) setBanners(hero);
     }).catch(() => {});
     const fetchCats = http.get('/api/categories').then((r) => {
